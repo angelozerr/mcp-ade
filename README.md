@@ -1,14 +1,18 @@
 # MCP Language Tools
 
-> **Note**: This is a Proof of Concept (POC) project.
+> **MCP LT** is an [MCP](https://modelcontextprotocol.io/) server for [LSP](https://microsoft.github.io/language-server-protocol/) and [DAP](https://microsoft.github.io/debug-adapter-protocol/).
 
-MCP Language Tools is an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that gives AI assistants the power of [LSP (Language Server Protocol)](https://microsoft.github.io/language-server-protocol/) and [DAP (Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) through MCP tools.
+*— What! Yet another MCP Server for LSP?*
 
-## What is it?
+Not just LSP. Also **DAP** — debugging. And not just a server — a **standalone platform**.
+No IDE required. MCP LT manages multiple language servers and debug adapters, handles their lifecycle,
+and exposes all their capabilities as MCP tools to any AI assistant.
 
-**MCP Language Tools acts as a platform for [LSP (Language Server Protocol)](https://microsoft.github.io/language-server-protocol/) language servers and [DAP (Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) debug adapters**, similar to VS Code. Just as VS Code hosts extensions to provide IDE features, MCP Language Tools manages LSP and DAP servers and exposes their capabilities to any AI assistant through MCP.
+*— OK but what can it actually do?*
 
-This means AI assistants can leverage the same tooling that developers use in their IDEs: diagnostics, code navigation, refactoring, debugging, and more — for **any language**.
+Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [10+ more languages](docs/why-mcp-lt.md). Java alone has **80 dedicated tools** powered by Eclipse JDT.LS.
+
+*— [Read the full conversation with our skeptic →](docs/why-mcp-lt.md)*
 
 ### Key highlights
 
