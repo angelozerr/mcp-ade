@@ -105,7 +105,7 @@ class FileWatcherTest {
             watcher.start();
             Thread.sleep(200);
             Files.delete(file);
-            Thread.sleep(500);
+            Thread.sleep(1500);
             Files.writeString(file, "{\"new\": true}");
             assertTrue(secondCall.await(WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS),
                     "Callback should be called at least twice (delete + create)");

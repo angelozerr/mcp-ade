@@ -25,6 +25,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <tycho.version>4.0.9</tycho.version>
+        <tycho.test.platformArgs/>
     </properties>
 
     <modules>
@@ -96,8 +97,32 @@
                         <useProjectSettings>false</useProjectSettings>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-surefire-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                    <configuration>
+                        <useUIHarness>false</useUIHarness>
+                        <argLine>-Xmx4G -DDetectVMInstallationsJob.disabled=true ${tycho.test.platformArgs}</argLine>
+                        <forkedProcessTimeoutInSeconds>900</forkedProcessTimeoutInSeconds>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <profile>
+            <id>macosx</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <tycho.test.platformArgs>-XstartOnFirstThread</tycho.test.platformArgs>
+            </properties>
+        </profile>
+    </profiles>
 
 </project>

@@ -1,0 +1,59 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  mcp-languagetools-build:
+    name: MCP LanguageTools (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Eclipse Temurin JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Make Maven wrapper executable
+        run: chmod +x ./mvnw
+        shell: bash
+      - name: Build and test
+        run: ./mvnw -B -U clean verify
+        shell: bash
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-languagetools-test-reports-${{ matrix.os }}
+          path: '**/target/surefire-reports/**'
+          retention-days: 7
+
+  jdtls:
+    name: MCP JDT.LS Plugin (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Eclipse Temurin JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Build and test
+        working-directory: com.ibm.mcp.jdtls
+        run: mvn -B -U -e clean verify
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jdtls-test-reports-${{ matrix.os }}
+          path: 'com.ibm.mcp.jdtls/**/target/surefire-reports/**'
+          retention-days: 7
