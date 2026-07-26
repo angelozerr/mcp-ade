@@ -4,49 +4,51 @@
 
 ---
 
-**MCP LT**: Hi! I'm an MCP server for LSP and DAP.
+**MCP LT**: I'm an MCP server for LSP and DAP.
 
 **Skeptic**: What! Yet another MCP server for LSP?
 
-**MCP LT**: Indeed, there are MCP servers for LSP. But did you notice the "and DAP" part?
+**MCP LT**: Did you notice the "and DAP" part?
 
-**Skeptic**: DAP? What's that?
+**Skeptic**: DAP — as in [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/)? So you support debugging too?
 
-**MCP LT**: [DAP (Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) is to debuggers what LSP is to language features. It's a standard protocol that lets you debug programs — set breakpoints, step through code, inspect variables — with any debug adapter that speaks the protocol.
+**MCP LT**: Yes. Breakpoints, stepping, variable inspection, expression evaluation — through any debug adapter that speaks the protocol.
 
-**Skeptic**: OK, so you support debugging too. But why do I need that when my IDE already handles it?
+**Skeptic**: But my IDE already handles all of this. Why would I need MCP LT?
 
-**MCP LT**: Good question. If you're working inside an IDE that already has its own MCP server — like [JetBrains MCP Server](https://www.jetbrains.com/help/idea/mcp-server.html) — then use that. It already knows your project, your settings, your run configurations.
+**MCP LT**: If your IDE has its own MCP server — like [JetBrains MCP Server](https://www.jetbrains.com/help/idea/mcp-server.html) — use that instead.
 
-MCP LT is for a different scenario: AI assistants that **don't live inside an IDE**. [Claude Code](https://docs.anthropic.com/en/docs/claude-code) runs in your terminal. [Claude Desktop](https://claude.ai/download) runs on your desktop. [Bob Shell](https://bob.ibm.com/) runs in a terminal. They have no IDE behind them. MCP LT gives them LSP and DAP capabilities as a **standalone process** — no IDE required.
+MCP LT is for AI assistants that **don't live inside an IDE**: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) in your terminal, [Claude Desktop](https://claude.ai/download) on your desktop, [Bob Shell](https://bob.ibm.com/) in a terminal. They have no IDE behind them.
 
-**Skeptic**: Standalone? So I don't need VS Code or anything running?
+**Skeptic**: So MCP LT is standalone? No IDE needed at all?
 
-**MCP LT**: Nothing. MCP LT is a standalone server. It starts, downloads and manages the language servers and debug adapters itself, and exposes everything through MCP. Your AI assistant connects to it directly — no IDE in the loop.
+**MCP LT**: Nothing. It starts, downloads the language servers and debug adapters, and exposes everything through MCP. Your AI assistant connects directly — no IDE in the loop.
 
 **Skeptic**: OK that makes sense. But for the LSP part, there are already other MCP servers that do that. What makes you different?
 
-**MCP LT**: Keep reading — you'll see. Let me start with how it's built. MCP LT is a **platform** that manages language servers and debug adapters, handles their lifecycle, and exposes their capabilities as MCP tools.
+**MCP LT**: A few things — but let me show you a concrete example first. Imagine Claude Code is working on your Java project and introduces a compilation error. Here's what happens with MCP LT:
 
-**Skeptic**: A platform? That sounds overengineered. What does that actually mean?
+1. Claude calls `get_diagnostics` — the language server reports the error **instantly**, no need to recompile the project
+2. Claude calls `get_quick_fixes` — the language server suggests fixes for that exact error
+3. Claude applies the fix — done
 
-**MCP LT**: It means each language server is packaged as an **extension**, defined by just two JSON files — `server.json` for configuration and `installer.json` for auto-download. No code required. Want to add support for a new language? Write two small JSON files and you're done.
+Without MCP LT, Claude would have to **rebuild the entire project** just to discover the mistake, then parse the compiler output to understand it. That's slow on large projects and wastes a lot of tokens. With MCP LT, the feedback loop is instant.
 
-**Skeptic**: Wait, no code at all? What about complex servers like JDT.LS that need special setup?
+**Skeptic**: OK, that's compelling. But that's just diagnostics. What else?
+
+**MCP LT**: MCP LT is a **platform** — it manages multiple language servers and debug adapters, handles their lifecycle, and exposes all their capabilities as MCP tools. Out of the box: Java, JavaScript/TypeScript, Python, Go, Rust, C/C++, XML, YAML, Kotlin, Dart, PHP, Lua, and Dockerfile — each with its standard language server, and many with a debug adapter too.
+
+**Skeptic**: A platform — so how do you add a language?
+
+**MCP LT**: Each language server is packaged as an **extension**, defined by just two JSON files — `server.json` for configuration and `installer.json` for auto-download. No code required. Want to add support for a new language? Write two small JSON files and you're done.
+
+**Skeptic**: No code at all? What about complex servers like JDT.LS that need special setup?
 
 **MCP LT**: For those cases, you can use Java code via SPI. JDT.LS is a good example — it needs custom initialization, workspace management, and special command handling. The SPI extension point lets you handle that while the core framework still manages the lifecycle.
 
-**Skeptic**: OK so how many languages do you actually support?
+**Skeptic**: OK, but what can you actually do beyond diagnostics?
 
-**MCP LT**: Out of the box: Java, JavaScript/TypeScript, Python, Go, Rust, C/C++, XML, YAML, Kotlin, Dart, PHP, Lua, and Dockerfile. Each with its standard language server, and many with a debug adapter too.
-
-**Skeptic**: That's the list of languages, but what can you actually *do* with them? Get diagnostics and go to definition — is that really useful for an AI?
-
-**MCP LT**: Diagnostics alone are a game-changer. Think about what happens today when an AI assistant makes a code change that introduces an error. Without diagnostics, it has to **recompile the entire project** to discover the mistake — that's slow on large projects and consumes a lot of tokens parsing compiler output. With MCP LT, the language server reports the error **instantly** as a diagnostic. The AI sees exactly what's wrong, applies a quick fix, and moves on. No full rebuild, no wasted tokens.
-
-**Skeptic**: OK, that's a good point. But beyond diagnostics, is there more?
-
-**MCP LT**: Far more than that. Take Java as an example — there are [**80 dedicated Java tools**](../README.md#java-tools-79-tools-from-java-extension) covering analysis, navigation, refactoring, code generation, diagnostics, code quality, and even framework support for Spring/Jakarta endpoints and JPA models.
+**MCP LT**: Take Java as an example — there are [**80 dedicated Java tools**](../README.md#java-tools-79-tools-from-java-extension) covering analysis, navigation, refactoring, code generation, diagnostics, code quality, and even framework support for Spring/Jakarta endpoints and JPA models.
 
 **Skeptic**: 80 tools? Like what?
 
@@ -60,11 +62,11 @@ MCP LT is for a different scenario: AI assistants that **don't live inside an ID
 
 **MCP LT**: Each language gets whatever its language server provides. Rust with rust-analyzer gives you full type analysis. Python with Pyright gives you type checking. Go with gopls gives you the full Go tooling experience. The MCP tools for diagnostics, references, definitions, and code actions work with **all** language servers.
 
-**Skeptic**: You mentioned servers can collaborate? What does that mean?
+**Skeptic**: Wait — you said MicroProfile LS, Quarkus LS... those depend on JDT.LS for Java type resolution. How does that work if they're separate servers?
 
-**MCP LT**: It's called the [Bind Mechanism](bind-mechanism.md). Servers can communicate with each other — not just LSP-to-LSP, but also LSP-to-DAP. For example, MicroProfile LS needs to resolve Java types — so it delegates to JDT.LS. And the Java debug adapter (`java-debug`) communicates with JDT.LS to resolve classpath and launch configurations. MCP LT manages all this communication between servers automatically.
+**MCP LT**: That's the [Bind Mechanism](bind-mechanism.md). Servers can communicate with each other — not just LSP-to-LSP, but also LSP-to-DAP. MicroProfile LS delegates Java type resolution to JDT.LS. The Java debug adapter (`java-debug`) communicates with JDT.LS to resolve classpath and launch configurations. MCP LT manages all this automatically.
 
-**Skeptic**: Wait — so MicroProfile, Quarkus, Liberty... those VS Code / Bob IDE extensions that depend on JDT.LS, they work here too?
+**Skeptic**: So those VS Code / Bob IDE extensions that depend on JDT.LS — they work here as-is?
 
 **MCP LT**: Yes, and that's a key point. The language servers for MicroProfile, Quarkus, and Liberty that exist as VS Code or Bob IDE extensions are **reused as-is** in MCP LT — including their delegate command handlers that communicate with JDT.LS. So out of the box, your AI assistant gets framework support for MicroProfile, Quarkus, and Liberty, with the same capabilities as in your IDE.
 
@@ -90,29 +92,29 @@ MCP LT is for a different scenario: AI assistants that **don't live inside an ID
 
 **Skeptic**: But how does MCP LT know which project I'm working on?
 
-**MCP LT**: When an AI assistant calls a tool with a `cwd` parameter — say `/home/user/my-project` — MCP LT creates a **workspace** in memory for that directory. It then starts LSP and DAP server instances attached to that workspace. All subsequent tool calls for the same `cwd` reuse those instances. It's the same model as an IDE: one project directory = one workspace = dedicated server instances.
+**MCP LT**: When an AI assistant calls a tool with a `cwd` parameter — say `/home/user/my-project` — MCP LT creates a **workspace** in memory for that directory, starts LSP and DAP server instances attached to it, and reuses them for all subsequent calls on the same `cwd`.
 
-**Skeptic**: Wait — so if I have VS Code or Bob IDE open on the same directory, and I also launch Claude Code on that same `cwd`, they won't share the same LSP server instances? For something like JDT.LS, running two instances on the same project sounds heavy...
+**Skeptic**: So if I have VS Code open on the same directory and I launch Claude Code — that's two JDT.LS instances on the same project?
 
-**MCP LT**: You're right, today they won't share instances — MCP LT runs its own. That's the tradeoff of being standalone: full independence from the IDE, but also separate resource usage. For heavy servers like JDT.LS, that means two instances loading the same project.
+**MCP LT**: Today, yes. That's the tradeoff of being standalone.
 
-However, there's an ongoing experiment to support **multiple language clients** on a single LSP server instance (for servers built with [LSP4J](https://github.com/eclipse-lsp4j/lsp4j), like JDT.LS). Once validated and integrated, MCP LT would be able to **connect to an existing JDT.LS instance** already running in your IDE, instead of launching its own. That would eliminate the duplication entirely — your IDE and your AI assistant sharing the same language server.
+However, there's an ongoing experiment to support **multiple language clients** on a single LSP server instance (for servers built with [LSP4J](https://github.com/eclipse-lsp4j/lsp4j), like JDT.LS). Once validated, MCP LT would **connect to an existing JDT.LS instance** already running in your IDE instead of launching its own — your IDE and your AI assistant sharing the same language server.
 
 **Skeptic**: And if I want to see what's going on under the hood?
 
 **MCP LT**: There's an **Admin Console** at `http://localhost:7654/admin`. You can manage extensions, monitor workspaces, view LSP and MCP traces, and see active debug sessions — all from a web UI.
 
-**Skeptic**: Alright, I'm starting to see the picture. But who would actually use this?
+**Skeptic**: OK you've sold me on the features. Now tell me what doesn't work.
 
-**MCP LT**: Anyone who wants their AI assistant to have LSP and DAP capabilities. [Claude Code](https://docs.anthropic.com/en/docs/claude-code) can use it to refactor Java code safely. [Claude Desktop](https://claude.ai/download) can use it to diagnose errors in any language. [Bob IDE](https://bob.ibm.com/) and Bob Shell get the same power. Any MCP-compatible client gets the full power of LSP and DAP — without reinventing the wheel.
+**MCP LT**: Fair. Large codebases are a challenge right now. Language servers like JDT.LS need time to load a project, especially with Maven dependency resolution (M2E). On a big Java project, you may have to wait a while before tools become responsive. This is something we're actively investigating.
 
-**Skeptic**: Sounds great. But what are the limitations? What does it *not* handle well?
+Also, MCP LT is still a young project. Not every language server feature is exposed as an MCP tool yet, and some edge cases in DAP may not be covered.
 
-**MCP LT**: Let's be honest — large codebases are a challenge right now. Language servers like JDT.LS need time to load a project, especially with Maven dependency resolution (M2E). On a big Java project, you may have to wait a while before tools become responsive. This is something we're actively investigating.
+**Skeptic**: So it's not production-ready for large projects?
 
-Also, MCP LT is still a young project. Not every language server feature is exposed as an MCP tool yet, and some edge cases in DAP may not be covered. It works well, but it's not battle-tested at the scale of a mature IDE.
+**MCP LT**: Not yet for the largest ones. It works well on small to medium projects. The loading time is the main bottleneck — once the language server is ready, the tools are fast. We're working on it.
 
-**Skeptic**: Fair enough. At least you're upfront about it. I'll give it a try — where do I start?
+**Skeptic**: Alright. Where do I start?
 
 **MCP LT**: Pick your path:
 - **[Getting Started with LSP](getting-started.md)** — diagnostics, navigation, refactoring in 5 minutes

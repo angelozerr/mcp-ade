@@ -208,8 +208,8 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
         AnalyzeDataFlowHandler handler = new AnalyzeDataFlowHandler();
         String uri = fileUri("src/com/example/service/UserService.java");
 
-        // findByName method at line 36 (0-based), character 25
-        Map<String, Object> p = params(uri, 36, 25);
+        // findByName method at line 36 (0-based), character 26
+        Map<String, Object> p = params(uri, 36, 26);
         Object result = handler.execute(args(p), MONITOR);
 
         assertNotNull(result);
@@ -314,14 +314,15 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
         assertTrue(((Number) map.get("count")).intValue() >= 1,
                 "User should have references in other files");
 
-        // Verify line/character format (not offset)
+        // Verify line/character format (not offset) — references are grouped by URI
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> refs = (List<Map<String, Object>>) map.get("references");
-        Map<String, Object> firstRef = refs.get(0);
+        Map<String, List<Map<String, Object>>> refs = (Map<String, List<Map<String, Object>>>) map.get("references");
+        Map.Entry<String, List<Map<String, Object>>> firstEntry = refs.entrySet().iterator().next();
+        assertNotNull(firstEntry.getKey(), "Reference group should have uri as key");
+        Map<String, Object> firstRef = firstEntry.getValue().get(0);
         assertNotNull(firstRef.get("line"), "Reference should have line");
         assertNotNull(firstRef.get("character"), "Reference should have character");
         assertNull(firstRef.get("offset"), "Reference should NOT have offset");
-        assertNotNull(firstRef.get("uri"), "Reference should have uri");
     }
 
     @Test
@@ -978,7 +979,7 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         // addUser is called from UserController.createUser
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> callers = (List<Map<String, Object>>) map.get("callers");
+        Map<String, ?> callers = (Map<String, ?>) map.get("callers");
         assertTrue(callers.size() >= 1,
                 "addUser should be called from at least UserController");
     }
@@ -1058,7 +1059,7 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
                 "User should be instantiated at least once");
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> instantiations = (List<Map<String, Object>>) map.get("instantiations");
+        Map<String, ?> instantiations = (Map<String, ?>) map.get("instantiations");
         assertTrue(instantiations.size() >= 1);
     }
 

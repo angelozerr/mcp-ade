@@ -77,12 +77,22 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
             return createErrorResult("Refactoring precondition failed: " + initialStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
         }
 
-        RefactoringStatus finalStatus = refactoring.checkFinalConditions(monitor);
+        RefactoringStatus finalStatus;
+        try {
+            finalStatus = refactoring.checkFinalConditions(monitor);
+        } catch (RuntimeException e) {
+            return createErrorResult("Refactoring failed: " + e.getMessage());
+        }
         if (finalStatus.hasFatalError()) {
             return createErrorResult("Refactoring validation failed: " + finalStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
         }
 
-        Change change = refactoring.createChange(monitor);
+        Change change;
+        try {
+            change = refactoring.createChange(monitor);
+        } catch (RuntimeException e) {
+            return createErrorResult("Refactoring failed: " + e.getMessage());
+        }
         if (change == null) {
             return createErrorResult("Refactoring produced no changes");
         }

@@ -13,16 +13,12 @@
  *******************************************************************************/
 package com.ibm.mcp.jdtls.tests;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,10 +27,12 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.manipulation.JavaManipulation;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -80,6 +78,15 @@ public abstract class AbstractHandlerTest {
         project.open(MONITOR);
 
         javaProject = JavaCore.create(project);
+
+        if (JavaManipulation.getPreferenceNodeId() == null) {
+            JavaManipulation.setPreferenceNodeId("org.eclipse.jdt.ui");
+        }
+        IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(JavaManipulation.getPreferenceNodeId());
+        prefs.put("org.eclipse.jdt.ui.importorder", "java;javax;org;com");
+        prefs.put("org.eclipse.jdt.ui.ondemandthreshold", "99");
+        prefs.put("org.eclipse.jdt.ui.staticondemandthreshold", "99");
+        prefs.flush();
 
         // Wait for the Java model to build
         waitForBuild();

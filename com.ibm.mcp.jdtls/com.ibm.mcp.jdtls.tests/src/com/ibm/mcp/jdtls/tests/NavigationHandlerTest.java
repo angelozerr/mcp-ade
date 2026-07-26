@@ -62,10 +62,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGoToDefinition_UserReferenceInUserService() throws Exception {
         GoToDefinitionHandler handler = new GoToDefinitionHandler();
 
-        // UserService.java line 24: "public void addUser(User user) {"
-        // "User" starts at character 24
+        // UserService.java line 24 (1-based) / 23 (0-based): "public void addUser(User user) {"
+        // "User" starts at character 25
         String uri = fileUri(USER_SERVICE_JAVA);
-        Object result = handler.execute(args(params(uri, 24, 25)), MONITOR);
+        Object result = handler.execute(args(params(uri, 23, 25)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -92,10 +92,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetHoverInfo_MethodName() throws Exception {
         GetHoverInfoHandler handler = new GetHoverInfoHandler();
 
-        // User.java line 34: "public String getName() {"
+        // User.java line 34 (1-based) / 33 (0-based): "public String getName() {"
         // "getName" starts at character 18
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 34, 20)), MONITOR);
+        Object result = handler.execute(args(params(uri, 33, 20)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -127,10 +127,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetJavadoc_UserConstructor() throws Exception {
         GetJavadocHandler handler = new GetJavadocHandler();
 
-        // User.java line 27: "public User(String name, int age, String email) {"
+        // User.java line 27 (1-based) / 26 (0-based): "public User(String name, int age, String email) {"
         // "User" constructor name at character 11
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 27, 11)), MONITOR);
+        Object result = handler.execute(args(params(uri, 26, 11)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -177,10 +177,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetSymbolInfo_Field() throws Exception {
         GetSymbolInfoHandler handler = new GetSymbolInfoHandler();
 
-        // User.java line 15: "private String name;"
+        // User.java line 15 (1-based) / 14 (0-based): "private String name;"
         // "name" at character 19
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 15, 19)), MONITOR);
+        Object result = handler.execute(args(params(uri, 14, 19)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -200,10 +200,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetSymbolInfo_Method() throws Exception {
         GetSymbolInfoHandler handler = new GetSymbolInfoHandler();
 
-        // User.java line 34: "public String getName() {"
+        // User.java line 34 (1-based) / 33 (0-based): "public String getName() {"
         // "getName" at character 18
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 34, 20)), MONITOR);
+        Object result = handler.execute(args(params(uri, 33, 20)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -219,10 +219,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetSymbolInfo_Type() throws Exception {
         GetSymbolInfoHandler handler = new GetSymbolInfoHandler();
 
-        // User.java line 13: "public class User {"
+        // User.java line 13 (1-based) / 12 (0-based): "public class User {"
         // "User" at character 13
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 13, 14)), MONITOR);
+        Object result = handler.execute(args(params(uri, 12, 14)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -242,10 +242,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetFieldAtPosition_NameField() throws Exception {
         GetFieldAtPositionHandler handler = new GetFieldAtPositionHandler();
 
-        // User.java line 15: "private String name;"
+        // User.java line 15 (1-based) / 14 (0-based): "private String name;"
         // "name" at character 19
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 15, 19)), MONITOR);
+        Object result = handler.execute(args(params(uri, 14, 19)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -270,10 +270,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetMethodAtPosition_GetName() throws Exception {
         GetMethodAtPositionHandler handler = new GetMethodAtPositionHandler();
 
-        // User.java line 34: "public String getName() {"
+        // User.java line 34 (1-based) / 33 (0-based): "public String getName() {"
         // "getName" at character 18
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 34, 20)), MONITOR);
+        Object result = handler.execute(args(params(uri, 33, 20)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -304,10 +304,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetTypeAtPosition_UserClass() throws Exception {
         GetTypeAtPositionHandler handler = new GetTypeAtPositionHandler();
 
-        // User.java line 13: "public class User {"
+        // User.java line 13 (1-based) / 12 (0-based): "public class User {"
         // "User" at character 13
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 13, 14)), MONITOR);
+        Object result = handler.execute(args(params(uri, 12, 14)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -336,10 +336,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetSignatureHelp_Constructor() throws Exception {
         GetSignatureHelpHandler handler = new GetSignatureHelpHandler();
 
-        // User.java line 27: "public User(String name, int age, String email) {"
+        // User.java line 27 (1-based) / 26 (0-based): "public User(String name, int age, String email) {"
         // "User" constructor at character 11
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 27, 11)), MONITOR);
+        Object result = handler.execute(args(params(uri, 26, 11)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -372,10 +372,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetSuperMethod_GetDisplayNameOverride() throws Exception {
         GetSuperMethodHandler handler = new GetSuperMethodHandler();
 
-        // Admin.java line 32: "public String getDisplayName() {"
+        // Admin.java line 32 (1-based) / 31 (0-based): "public String getDisplayName() {"
         // "getDisplayName" at character 18
         String uri = fileUri(ADMIN_JAVA);
-        Object result = handler.execute(args(params(uri, 32, 20)), MONITOR);
+        Object result = handler.execute(args(params(uri, 31, 20)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -403,10 +403,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetSuperMethod_NoSuperMethod() throws Exception {
         GetSuperMethodHandler handler = new GetSuperMethodHandler();
 
-        // Admin.java line 36: "public boolean hasPermission(String permission) {"
+        // Admin.java line 36 (1-based) / 35 (0-based): "public boolean hasPermission(String permission) {"
         // "hasPermission" at character 19
         String uri = fileUri(ADMIN_JAVA);
-        Object result = handler.execute(args(params(uri, 36, 20)), MONITOR);
+        Object result = handler.execute(args(params(uri, 35, 20)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -535,10 +535,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetEnclosingElement_InsideMethodBody() throws Exception {
         GetEnclosingElementHandler handler = new GetEnclosingElementHandler();
 
-        // User.java line 35: "return name;" (inside getName() method body)
+        // User.java line 35 (1-based) / 34 (0-based): "return name;" (inside getName() method body)
         // character 15 points inside the statement
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 35, 15)), MONITOR);
+        Object result = handler.execute(args(params(uri, 34, 15)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
@@ -568,10 +568,10 @@ class NavigationHandlerTest extends AbstractHandlerTest {
     void testGetEnclosingElement_InsideFieldDeclaration() throws Exception {
         GetEnclosingElementHandler handler = new GetEnclosingElementHandler();
 
-        // User.java line 15: "private String name;"
+        // User.java line 15 (1-based) / 14 (0-based): "private String name;"
         // Inside a field, not a method -- enclosingMethod should be null
         String uri = fileUri(USER_JAVA);
-        Object result = handler.execute(args(params(uri, 15, 10)), MONITOR);
+        Object result = handler.execute(args(params(uri, 14, 10)), MONITOR);
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);

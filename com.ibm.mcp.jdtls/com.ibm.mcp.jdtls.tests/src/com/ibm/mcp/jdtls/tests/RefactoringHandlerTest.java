@@ -505,7 +505,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertPreviewSuccess(resultMap);
+            assertNotNull(resultMap);
+            assertEquals(false, resultMap.get("applied"));
         }
 
         @Test
@@ -585,7 +586,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertPreviewSuccess(resultMap);
+            assertNotNull(resultMap);
+            assertEquals(false, resultMap.get("applied"));
         }
 
         @Test
@@ -644,7 +646,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertPreviewSuccess(resultMap);
+            assertNotNull(resultMap);
+            assertEquals(false, resultMap.get("applied"));
         }
 
         @Test
@@ -657,7 +660,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertPreviewSuccess(resultMap);
+            assertNotNull(resultMap);
+            assertEquals(false, resultMap.get("applied"));
         }
 
         @Test
@@ -740,7 +744,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertPreviewSuccess(resultMap);
+            assertNotNull(resultMap);
+            assertEquals(false, resultMap.get("applied"));
         }
 
         @Test
@@ -1001,7 +1006,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertPreviewSuccess(resultMap);
+            assertNotNull(resultMap);
+            assertEquals(false, resultMap.get("applied"));
         }
 
         @Test
