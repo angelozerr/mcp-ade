@@ -962,6 +962,133 @@ body {
     font-family: 'Courier New', monospace;
 }
 
+/* ── Language filter (chips + autocomplete) ── */
+
+#lsp-servers-list.language-filter-active,
+#dap-servers-list.language-filter-active {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.language-filter-bar {
+    padding: 0.5rem;
+    border-bottom: 1px solid #3a3a3a;
+    position: relative;
+    flex-shrink: 0;
+    background: #252526;
+}
+
+.language-filter-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    padding: 0.2rem 0.35rem;
+    min-height: 28px;
+    cursor: text;
+}
+
+.language-filter-input-container:focus-within {
+    border-color: #007acc;
+}
+
+.language-filter-input {
+    background: transparent;
+    border: none;
+    color: #cccccc;
+    font-size: 0.85rem;
+    outline: none;
+    flex: 1;
+    min-width: 80px;
+    padding: 0.15rem 0.25rem;
+}
+
+.language-filter-input::placeholder {
+    color: #666;
+}
+
+.language-filter-chip {
+    background: #007acc;
+    color: white;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-family: 'Courier New', monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    line-height: 1.3;
+}
+
+.language-filter-chip-remove {
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0.7;
+    line-height: 1;
+}
+
+.language-filter-chip-remove:hover {
+    opacity: 1;
+}
+
+.language-filter-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0.5rem;
+    right: 0.5rem;
+    background: #252526;
+    border: 1px solid #3a3a3a;
+    border-top: none;
+    border-radius: 0 0 3px 3px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    display: none;
+}
+
+.language-filter-dropdown.visible {
+    display: block;
+}
+
+.language-filter-option {
+    padding: 0.35rem 0.5rem;
+    color: #cccccc;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+}
+
+.language-filter-option:hover,
+.language-filter-option.highlighted {
+    background: #094771;
+    color: #ffffff;
+}
+
+.language-filter-items {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.language-filter-dropdown::-webkit-scrollbar {
+    width: 8px;
+}
+
+.language-filter-dropdown::-webkit-scrollbar-track {
+    background: #252526;
+}
+
+.language-filter-dropdown::-webkit-scrollbar-thumb {
+    background: #424242;
+    border-radius: 4px;
+}
+
 .command-preview {
     background: #252526;
     padding: 0.75rem;

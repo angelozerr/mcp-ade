@@ -7,13 +7,37 @@
 let selectedAllServer = null; // Track selected server in global Servers tab
 let currentServerTab = 'overview'; // Track current tab: overview, contributions, install
 let allServersLoaded = false;
+let lspLanguageFilter = null;
 
 /**
  * Load all global LSP servers.
  */
+function renderLspServerItem(server, contributedByMap) {
+    const isActive = selectedAllServer === server.id ? 'active' : '';
+    const extensionClass = server.isExtension ? 'server-extension' : '';
+    const disabledClass = server.enabled === false ? 'server-disabled' : '';
+    const extensionBadge = server.isExtension ? ' <span style="color: #999999; font-size: 0.85em;">(Extension)</span>' : '';
+    const serverIcon = server.isExtension ? '🧩' : '🚀';
+    const contributeInfo = formatContributeInfo(server, contributedByMap);
+    return `
+        <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" onclick="showServerDetails('${server.id}')">
+            <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>
+                    <span class="server-source-icon">${serverIcon}</span>
+                    ${server.name}${extensionBadge}
+                </span>
+                <label class="toggle-switch" onclick="event.stopPropagation()">
+                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleLspServerEnabled('${server.id}', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="server-id" ${contributeInfo.tooltip ? `title="${contributeInfo.tooltip}"` : ''}>${server.id}${contributeInfo.text}</div>
+        </div>
+    `;
+}
+
 async function loadAllLspServers(serverIdToSelect) {
     try {
-        // Use cached server configs from admin.js (include both LSP and DAP for contribution detection)
         const lspServers = Object.values(window.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         const dapServers = Object.values(window.dapConfigs || {}).map(s => ({...s, isDap: true}));
         const allServers = [...lspServers, ...dapServers];
@@ -24,45 +48,27 @@ async function loadAllLspServers(serverIdToSelect) {
             return;
         }
 
-        // Calculate contributedBy for all servers (including DAP contributions)
-        const contributedByMap = buildContributedByMap(allServers);
+        if (!lspLanguageFilter) {
+            lspLanguageFilter = new LanguageFilter(container, () => window.lspConfigs, () => loadAllLspServers(selectedAllServer));
+        }
 
-        // Render only LSP servers in the list
-        container.innerHTML = lspServers.map(server => {
-            const isActive = selectedAllServer === server.id ? 'active' : '';
-            const extensionClass = server.isExtension ? 'server-extension' : '';
-            const disabledClass = server.enabled === false ? 'server-disabled' : '';
-            const extensionBadge = server.isExtension ? ' <span style="color: #999999; font-size: 0.85em;">(Extension)</span>' : '';
-            const serverIcon = server.isExtension ? '🧩' : '🚀';
-            const contributeInfo = formatContributeInfo(server, contributedByMap);
-            return `
-                <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" onclick="showServerDetails('${server.id}')">
-                    <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
-                        <span>
-                            <span class="server-source-icon">${serverIcon}</span>
-                            ${server.name}${extensionBadge}
-                        </span>
-                        <label class="toggle-switch" onclick="event.stopPropagation()">
-                            <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleLspServerEnabled('${server.id}', this.checked)">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="server-id" ${contributeInfo.tooltip ? `title="${contributeInfo.tooltip}"` : ''}>${server.id}${contributeInfo.text}</div>
-                </div>
-            `;
-        }).join('');
+        const contributedByMap = buildContributedByMap(allServers);
+        const filteredServers = lspLanguageFilter.filterServers(lspServers);
+
+        lspLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
+            renderLspServerItem(server, contributedByMap)
+        ).join('');
 
         allServersLoaded = true;
 
-        // Auto-select: 1) specified server, 2) previously selected, 3) first server
-        if (lspServers.length > 0) {
+        if (filteredServers.length > 0) {
             let serverToShow;
-            if (serverIdToSelect && lspServers.find(s => s.id === serverIdToSelect)) {
+            if (serverIdToSelect && filteredServers.find(s => s.id === serverIdToSelect)) {
                 serverToShow = serverIdToSelect;
-            } else if (selectedAllServer && lspServers.find(s => s.id === selectedAllServer)) {
+            } else if (selectedAllServer && filteredServers.find(s => s.id === selectedAllServer)) {
                 serverToShow = selectedAllServer;
             } else {
-                serverToShow = lspServers[0].id;
+                serverToShow = filteredServers[0].id;
             }
             showServerDetails(serverToShow);
         }
@@ -83,32 +89,13 @@ async function showServerDetails(serverId) {
     const dapServers = Object.values(window.dapConfigs || {}).map(s => ({...s, isDap: true}));
     const allServers = [...lspServers, ...dapServers];
     const contributedByMap = buildContributedByMap(allServers);
-    const container = document.getElementById('lsp-servers-list');
 
-    // Render only LSP servers in the list
-    container.innerHTML = lspServers.map(server => {
-        const isActive = selectedAllServer === server.id ? 'active' : '';
-        const extensionClass = server.isExtension ? 'server-extension' : '';
-        const disabledClass = server.enabled === false ? 'server-disabled' : '';
-        const extensionBadge = server.isExtension ? ' <span style="color: #999999; font-size: 0.85em;">(Extension)</span>' : '';
-        const serverIcon = server.isExtension ? '🧩' : '🚀';
-        const contributeInfo = formatContributeInfo(server, contributedByMap);
-        return `
-            <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" onclick="showServerDetails('${server.id}')">
-                <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
-                    <span>
-                        <span class="server-source-icon">${serverIcon}</span>
-                        ${server.name}${extensionBadge}
-                    </span>
-                    <label class="toggle-switch" onclick="event.stopPropagation()">
-                        <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleLspServerEnabled('${server.id}', this.checked)">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="server-id" ${contributeInfo.tooltip ? `title="${contributeInfo.tooltip}"` : ''}>${server.id}${contributeInfo.text}</div>
-            </div>
-        `;
-    }).join('');
+    if (lspLanguageFilter) {
+        const filteredServers = lspLanguageFilter.filterServers(lspServers);
+        lspLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
+            renderLspServerItem(server, contributedByMap)
+        ).join('');
+    }
 
     const details = window.lspConfigs[serverId];
     if (!details) {

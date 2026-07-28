@@ -595,20 +595,42 @@ function renderDapTracesForSession(sessionId) {
 let selectedDapServer = null;
 let currentDapServerTab = 'overview'; // overview, install
 let dapServerConfigs = {};
+let dapLanguageFilter = null;
 
 /**
  * Load all global DAP servers.
  */
+function renderDapServerItem(server) {
+    const isActive = selectedDapServer === server.id ? 'active' : '';
+    const disabledClass = server.enabled === false ? 'server-disabled' : '';
+    return `
+        <div class="server-item ${isActive} ${disabledClass}" onclick="showDapServerDetails('${server.id}')">
+            <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>
+                    <span class="server-source-icon">🐛</span>
+                    ${server.name}
+                </span>
+                <label class="toggle-switch" onclick="event.stopPropagation()">
+                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleDapServerEnabled('${server.id}', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="server-id">${server.id}</div>
+        </div>
+    `;
+}
+
 async function loadAllDapServers(serverIdToSelect) {
     try {
         const response = await fetch('/api/admin/dap/configs');
         const dapServers = (await response.json()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-        // Store in map for easy access
         dapServerConfigs = {};
         dapServers.forEach(server => {
             dapServerConfigs[server.id] = server;
         });
+        // Also update window.dapConfigs so the filter can extract languages
+        window.dapConfigs = dapServerConfigs;
 
         const container = document.getElementById('dap-servers-list');
         if (!container) {
@@ -616,40 +638,29 @@ async function loadAllDapServers(serverIdToSelect) {
             return;
         }
 
+        if (!dapLanguageFilter) {
+            dapLanguageFilter = new LanguageFilter(container, () => dapServerConfigs, () => loadAllDapServers(selectedDapServer));
+        }
+
         if (dapServers.length === 0) {
-            container.innerHTML = '<div class="servers-placeholder">No debuggers configured</div>';
+            dapLanguageFilter.getItemsContainer().innerHTML = '<div class="servers-placeholder">No debuggers configured</div>';
             return;
         }
 
-        container.innerHTML = dapServers.map(server => {
-            const isActive = selectedDapServer === server.id ? 'active' : '';
-            const disabledClass = server.enabled === false ? 'server-disabled' : '';
-            return `
-                <div class="server-item ${isActive} ${disabledClass}" onclick="showDapServerDetails('${server.id}')">
-                    <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
-                        <span>
-                            <span class="server-source-icon">🐛</span>
-                            ${server.name}
-                        </span>
-                        <label class="toggle-switch" onclick="event.stopPropagation()">
-                            <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleDapServerEnabled('${server.id}', this.checked)">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="server-id">${server.id}</div>
-                </div>
-            `;
-        }).join('');
+        const filteredServers = dapLanguageFilter.filterServers(dapServers);
 
-        // Auto-select: 1) specified server, 2) previously selected, 3) first server
-        if (dapServers.length > 0) {
+        dapLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
+            renderDapServerItem(server)
+        ).join('');
+
+        if (filteredServers.length > 0) {
             let serverToShow;
-            if (serverIdToSelect && dapServers.find(s => s.id === serverIdToSelect)) {
+            if (serverIdToSelect && filteredServers.find(s => s.id === serverIdToSelect)) {
                 serverToShow = serverIdToSelect;
-            } else if (selectedDapServer && dapServers.find(s => s.id === selectedDapServer)) {
+            } else if (selectedDapServer && filteredServers.find(s => s.id === selectedDapServer)) {
                 serverToShow = selectedDapServer;
             } else {
-                serverToShow = dapServers[0].id;
+                serverToShow = filteredServers[0].id;
             }
             showDapServerDetails(serverToShow);
         }
@@ -675,26 +686,13 @@ async function showDapServerDetails(serverId) {
 
     // Re-render server list to update active state
     const dapServers = Object.values(dapServerConfigs).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    const container = document.getElementById('dap-servers-list');
-    container.innerHTML = dapServers.map(server => {
-        const isActive = selectedDapServer === server.id ? 'active' : '';
-        const disabledClass = server.enabled === false ? 'server-disabled' : '';
-        return `
-            <div class="server-item ${isActive} ${disabledClass}" onclick="showDapServerDetails('${server.id}')">
-                <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
-                    <span>
-                        <span class="server-source-icon">🐛</span>
-                        ${server.name}
-                    </span>
-                    <label class="toggle-switch" onclick="event.stopPropagation()">
-                        <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleDapServerEnabled('${server.id}', this.checked)">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="server-id">${server.id}</div>
-            </div>
-        `;
-    }).join('');
+
+    if (dapLanguageFilter) {
+        const filteredServers = dapLanguageFilter.filterServers(dapServers);
+        dapLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
+            renderDapServerItem(server)
+        ).join('');
+    }
 
     const server = dapServerConfigs[serverId];
     if (!server) {

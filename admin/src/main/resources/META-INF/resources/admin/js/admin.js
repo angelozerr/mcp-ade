@@ -837,7 +837,7 @@
                 }
             } else if (tab === 'lsp-servers') {
                 document.getElementById('workspaces-list').style.display = 'none';
-                document.getElementById('lsp-servers-list').style.display = 'block';
+                document.getElementById('lsp-servers-list').style.display = '';
                 document.getElementById('dap-servers-list').style.display = 'none';
                 document.getElementById('extensions-list').style.display = 'none';
                 document.getElementById('mcp-traces-list').style.display = 'none';
@@ -854,7 +854,7 @@
             } else if (tab === 'dap-servers') {
                 document.getElementById('workspaces-list').style.display = 'none';
                 document.getElementById('lsp-servers-list').style.display = 'none';
-                document.getElementById('dap-servers-list').style.display = 'block';
+                document.getElementById('dap-servers-list').style.display = '';
                 document.getElementById('extensions-list').style.display = 'none';
                 document.getElementById('mcp-traces-list').style.display = 'none';
                 serversColumn.style.display = 'none';
