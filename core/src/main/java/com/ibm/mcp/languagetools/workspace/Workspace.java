@@ -24,7 +24,9 @@ import com.ibm.mcp.languagetools.lsp.server.LspServerFactoryRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServerStatusChangeEvent;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
+import com.ibm.mcp.languagetools.server.ActivationCondition;
 import com.ibm.mcp.languagetools.server.ServerBase;
+import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import org.jboss.logging.Logger;
@@ -60,6 +62,9 @@ public class Workspace {
     private final Map<String, LspServer> lspServers = new ConcurrentHashMap<>();
     private final Map<String, McpClientInfo> mcpClientConnections = new ConcurrentHashMap<>();
     private Consumer<LspServerStatusChangeEvent> statusChangeCallback;
+
+    // Activation condition cache: serverId -> whether the server should be activated for this workspace
+    private final Map<String, Boolean> activationCache = new ConcurrentHashMap<>();
 
     public record McpClientInfo(
             String connectionId,
@@ -360,6 +365,36 @@ public class Workspace {
      */
     public boolean hasLspServer(String serverId) {
         return lspServers.containsKey(serverId);
+    }
+
+    /**
+     * Check if a server should be activated for this workspace based on its activation condition.
+     * Results are cached per server ID.
+     */
+    public boolean isServerActivated(ServerConfigBase config) {
+        return activationCache.computeIfAbsent(config.getServerId(), id -> {
+            ActivationCondition condition = config.getActivateWhen();
+            if (condition == null) {
+                return true;
+            }
+            return evaluateActivationCondition(condition);
+        });
+    }
+
+    private boolean evaluateActivationCondition(ActivationCondition condition) {
+        if (condition.getFileExists() != null) {
+            Path file = rootPath.resolve(condition.getFileExists());
+            boolean exists = java.nio.file.Files.exists(file);
+            LOG.debugf("Activation condition fileExists '%s': %s", condition.getFileExists(), exists);
+            return exists;
+        }
+        // TODO: globPattern support (shared workspace scan)
+        // TODO: command support (delegate to bound server)
+        return true;
+    }
+
+    public void refreshActivationCache() {
+        activationCache.clear();
     }
 
     /**

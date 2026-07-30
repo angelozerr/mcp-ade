@@ -20,6 +20,7 @@
         <module>extensions/quarkus</module>
         <module>extensions/java</module>
         <module>extensions/javascript</module>
+        <module>extensions/angular</module>
         <module>extensions/python</module>
         <module>extensions/rust</module>
         <module>extensions/c</module>

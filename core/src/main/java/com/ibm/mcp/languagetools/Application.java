@@ -241,6 +241,11 @@ public class Application {
                 continue;
             }
             if (config.canHandle(fileUri, language, basePath)) {
+                if (!workspace.isServerActivated(config)) {
+                    LOG.debugf("Server '%s' skipped: activation condition not met for workspace %s",
+                            config.getServerId(), workspace.getNormalizedUri());
+                    continue;
+                }
                 LspServer existingServer = workspace.getLspServer(config.getServerId());
                 if (existingServer == null || existingServer.getStatus() == ServerStatus.STOPPED) {
                     configsToStart.add(config);

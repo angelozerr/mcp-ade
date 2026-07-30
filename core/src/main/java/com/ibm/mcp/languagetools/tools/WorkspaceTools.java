@@ -62,6 +62,26 @@ public class WorkspaceTools {
     }
 
     @Tool(
+            name = "refresh_workspace",
+            description = "Re-evaluate activation conditions for all language servers in a workspace. " +
+                        "Use this after project configuration changes (e.g., adding angular.json) " +
+                        "to activate or deactivate language servers accordingly.")
+    public String refreshWorkspace(
+            @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
+        try {
+            Workspace workspace = application.getWorkspaceForPath(cwd);
+            if (workspace == null) {
+                return "No workspace found for: " + cwd;
+            }
+            workspace.refreshActivationCache();
+            return "Workspace refreshed: " + workspace.getRootUri();
+        } catch (Exception e) {
+            LOG.error("Failed to refresh workspace", e);
+            return "Failed to refresh workspace: " + e.getMessage();
+        }
+    }
+
+    @Tool(
             name = "list_language_servers",
             description = "Get information about configured language servers (ID, name, description, supported languages). " +
                         "Without cwd: returns available server configurations. " +

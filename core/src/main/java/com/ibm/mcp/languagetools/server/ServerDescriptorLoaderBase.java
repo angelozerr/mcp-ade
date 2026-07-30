@@ -61,6 +61,10 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
     private static final String FIELD_ACCEPT_CONTRIBUTIONS = "acceptContributions";
     private static final String FIELD_ENV = "env";
     private static final String FIELD_WORKING_DIRECTORY = "workingDirectory";
+    private static final String FIELD_ACTIVATE_WHEN = "activateWhen";
+    private static final String FIELD_FILE_EXISTS = "fileExists";
+    private static final String FIELD_GLOB_PATTERN = "globPattern";
+    private static final String FIELD_COMMAND = "command";
     protected final Gson gson = new Gson();
 
     protected ServerDescriptorLoaderBase() {
@@ -157,6 +161,27 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
                 filters.add(filter);
             });
             config.setDocumentSelector(new DocumentSelector(filters));
+        }
+
+        // Activation condition
+        if (jsonObject.has(FIELD_ACTIVATE_WHEN)) {
+            JsonObject whenObj = jsonObject.getAsJsonObject(FIELD_ACTIVATE_WHEN);
+            ActivationCondition condition = new ActivationCondition();
+            if (whenObj.has(FIELD_FILE_EXISTS)) {
+                condition.setFileExists(whenObj.get(FIELD_FILE_EXISTS).getAsString());
+            }
+            if (whenObj.has(FIELD_GLOB_PATTERN)) {
+                condition.setGlobPattern(whenObj.get(FIELD_GLOB_PATTERN).getAsString());
+            }
+            if (whenObj.has(FIELD_COMMAND)) {
+                JsonObject cmdObj = whenObj.getAsJsonObject(FIELD_COMMAND);
+                ActivationCondition.CommandCondition cmd = new ActivationCondition.CommandCondition();
+                if (cmdObj.has(FIELD_NAME)) {
+                    cmd.setName(cmdObj.get(FIELD_NAME).getAsString());
+                }
+                condition.setCommand(cmd);
+            }
+            config.setActivateWhen(condition);
         }
 
         // Contributions

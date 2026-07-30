@@ -54,6 +54,8 @@ public class ServerConfigBase implements ServerConfig {
     protected Map<String, String> env = new HashMap<>();
     protected String workingDirectory;
 
+    private ActivationCondition activateWhen;
+
     /**
      * Contributions (VS Code-like extension system)
      */
@@ -222,6 +224,14 @@ public class ServerConfigBase implements ServerConfig {
 
     public void setDocumentSelector(DocumentSelector documentSelector) {
         this.documentSelector = documentSelector;
+    }
+
+    public ActivationCondition getActivateWhen() {
+        return activateWhen;
+    }
+
+    public void setActivateWhen(ActivationCondition activateWhen) {
+        this.activateWhen = activateWhen;
     }
 
     public Contributes getContributes() {

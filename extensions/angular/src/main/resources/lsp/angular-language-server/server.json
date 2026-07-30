@@ -1,0 +1,13 @@
+{
+  "id": "angular-language-server",
+  "name": "Angular Language Server",
+  "description": "Angular Language Service for templates and TypeScript components",
+  "url": "https://github.com/angular/angular",
+  "documentSelector": [
+    { "language": "html" },
+    { "language": "typescript" }
+  ],
+  "activateWhen": {
+    "fileExists": "angular.json"
+  }
+}
