@@ -15,11 +15,7 @@ function renderExtensionsList() {
     const container = document.getElementById('extensions-list');
     if (!container) return;
 
-    let html = `
-        <div class="add-extension-bar">
-            <button onclick="showAddExtensionForm()">+ Add Extension</button>
-        </div>
-    `;
+    let html = '';
 
     if (extensionsData.length === 0) {
         html += '<div class="servers-placeholder">No extensions installed</div>';
@@ -100,12 +96,12 @@ function showExtensionDetails(extensionId) {
     // Build servers list HTML
     let serversHTML = '';
     if (ext.lspServers && ext.lspServers.length > 0) {
-        serversHTML += '<h4 style="color: #569cd6; margin-top: 1.5rem;">LSP Servers</h4>';
+        serversHTML += '<h4 class="text-label" style="margin-top: 1.5rem;">LSP Servers</h4>';
         serversHTML += ext.lspServers.map(server => {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
                 <div class="extension-server-item ${disabledClass}">
-                    <span style="cursor: pointer;" onclick="switchTab('lsp-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🚀</span> ${server.name} <span style="color: #666; font-size: 0.75rem;">(${server.id})</span></span>
+                    <span style="cursor: pointer;" onclick="switchTab('lsp-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🚀</span> ${server.name} <span class="text-dimmed" style="font-size: 0.75rem;">(${server.id})</span></span>
                     <label class="toggle-switch">
                         <input type="checkbox" ${server.enabled ? 'checked' : ''} onchange="toggleExtensionServerEnabled('lsp', '${server.id}', this.checked)">
                         <span class="toggle-slider"></span>
@@ -116,12 +112,12 @@ function showExtensionDetails(extensionId) {
     }
 
     if (ext.dapServers && ext.dapServers.length > 0) {
-        serversHTML += '<h4 style="color: #4ec9b0; margin-top: 1.5rem;">DAP Servers</h4>';
+        serversHTML += '<h4 class="text-success" style="margin-top: 1.5rem;">DAP Servers</h4>';
         serversHTML += ext.dapServers.map(server => {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
                 <div class="extension-server-item ${disabledClass}">
-                    <span style="cursor: pointer;" onclick="switchTab('dap-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🐛</span> ${server.name} <span style="color: #666; font-size: 0.75rem;">(${server.id})</span></span>
+                    <span style="cursor: pointer;" onclick="switchTab('dap-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🐛</span> ${server.name} <span class="text-dimmed" style="font-size: 0.75rem;">(${server.id})</span></span>
                     <label class="toggle-switch">
                         <input type="checkbox" ${server.enabled ? 'checked' : ''} onchange="toggleExtensionServerEnabled('dap', '${server.id}', this.checked)">
                         <span class="toggle-slider"></span>
@@ -132,14 +128,13 @@ function showExtensionDetails(extensionId) {
     }
 
     if (!serversHTML) {
-        serversHTML = '<p style="color: #666; margin-top: 1rem;">No servers in this extension.</p>';
+        serversHTML = '<p class="text-dimmed" style="margin-top: 1rem;">No servers in this extension.</p>';
     }
 
     // Remove button (only for USER extensions)
     const removeButton = ext.source === 'USER' ? `
-        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #3a3a3a;">
-            <button onclick="removeExtension('${ext.id}')"
-                    style="background: #d16969; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 3px; cursor: pointer;">
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle);">
+            <button class="btn-danger" onclick="removeExtension('${ext.id}')">
                 Remove Extension
             </button>
         </div>
@@ -153,22 +148,22 @@ function showExtensionDetails(extensionId) {
                 ${ext.id} ${sourceBadge}
             </div>
         </div>
-        <div class="details-panel" style="padding: 2rem; color: #cccccc; overflow-y: auto;">
-            <h3 style="margin-top: 0; color: #569cd6;">Extension Information</h3>
+        <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto;">
+            <h3 class="text-label" style="margin-top: 0;">Extension Information</h3>
 
             <div style="margin-bottom: 1rem;">
-                <strong style="color: #569cd6;">ID:</strong>
-                <span style="color: #d4d4d4; margin-left: 0.5rem;">${ext.id}</span>
+                <strong class="text-label">ID:</strong>
+                <span class="text-value" style="margin-left: 0.5rem;">${ext.id}</span>
             </div>
 
             <div style="margin-bottom: 1rem;">
-                <strong style="color: #569cd6;">Source:</strong>
+                <strong class="text-label">Source:</strong>
                 <span style="margin-left: 0.5rem;">${sourceBadge}</span>
             </div>
 
             <div style="margin-bottom: 1rem;">
-                <strong style="color: #569cd6;">Status:</strong>
-                <span style="color: ${ext.enabled ? '#4ec9b0' : '#d16969'}; margin-left: 0.5rem;">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
+                <strong class="text-label">Status:</strong>
+                <span class="${ext.enabled ? 'text-success' : 'text-error'}" style="margin-left: 0.5rem;">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
             </div>
 
             ${serversHTML}
@@ -198,16 +193,16 @@ function showAddExtensionForm() {
                 Add Extension
             </div>
         </div>
-        <div class="details-panel" style="padding: 2rem; color: #cccccc;">
-            <h3 style="margin-top: 0; color: #569cd6;">Add a New Extension</h3>
-            <p style="color: #aaa; margin-bottom: 1.5rem;">
+        <div class="details-panel text-primary" style="padding: 2rem;">
+            <h3 class="text-label" style="margin-top: 0;">Add a New Extension</h3>
+            <p class="text-secondary" style="margin-bottom: 1.5rem;">
                 Upload a ZIP or JAR file containing lsp/ and/or dap/ subdirectories with server configurations.
             </p>
 
             <div style="margin-bottom: 1.25rem;">
-                <label style="display: block; color: #569cd6; margin-bottom: 0.35rem; font-weight: 500;">Extension ID</label>
+                <label class="text-label" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Extension ID</label>
                 <input type="text" id="add-ext-id" placeholder="e.g. my-extension"
-                       style="width: 100%; max-width: 400px; padding: 0.5rem; background: #3c3c3c; border: 1px solid #555; color: #d4d4d4; border-radius: 3px; font-size: 0.9rem;">
+                       class="input-field" style="width: 100%; max-width: 400px; font-size: 0.9rem;">
             </div>
 
             <div id="drop-zone" class="drop-zone" onclick="document.getElementById('add-ext-file').click()">
@@ -218,14 +213,14 @@ function showAddExtensionForm() {
             </div>
 
             <div id="selected-file-info" style="display: none; margin-bottom: 1.25rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #2a2d2e; border: 1px solid #3a3a3a; border-radius: 3px; max-width: 400px;">
-                    <span style="color: #4ec9b0;">📄</span>
-                    <span id="selected-file-name" style="color: #d4d4d4; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
-                    <span style="color: #666; cursor: pointer; font-size: 1.1rem;" onclick="clearSelectedFile()" title="Remove file">×</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 3px; max-width: 400px;">
+                    <span class="text-success">📄</span>
+                    <span id="selected-file-name" class="text-value" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                    <span class="text-dimmed" style="cursor: pointer; font-size: 1.1rem;" onclick="clearSelectedFile()" title="Remove file">×</span>
                 </div>
             </div>
 
-            <button onclick="addExtension()" style="background: #007acc; color: #fff; border: none; padding: 0.5rem 1.25rem; border-radius: 3px; cursor: pointer; font-size: 0.9rem;">
+            <button class="btn-primary" onclick="addExtension()">
                 Add Extension
             </button>
 
@@ -266,7 +261,7 @@ function setupDropZone() {
                 setSelectedFile(file);
             } else {
                 const resultDiv = document.getElementById('add-ext-result');
-                if (resultDiv) resultDiv.innerHTML = '<div style="color: #d16969;">Only ZIP and JAR files are accepted.</div>';
+                if (resultDiv) resultDiv.innerHTML = '<div class="text-error">Only ZIP and JAR files are accepted.</div>';
             }
         }
     });
@@ -313,16 +308,16 @@ async function addExtension() {
     const resultDiv = document.getElementById('add-ext-result');
 
     if (!extensionId) {
-        if (resultDiv) resultDiv.innerHTML = '<div style="color: #d16969;">Extension ID is required.</div>';
+        if (resultDiv) resultDiv.innerHTML = '<div class="text-error">Extension ID is required.</div>';
         return;
     }
 
     if (!selectedFile) {
-        if (resultDiv) resultDiv.innerHTML = '<div style="color: #d16969;">Please select a ZIP or JAR file.</div>';
+        if (resultDiv) resultDiv.innerHTML = '<div class="text-error">Please select a ZIP or JAR file.</div>';
         return;
     }
 
-    if (resultDiv) resultDiv.innerHTML = '<div style="color: #4ec9b0;">Uploading extension...</div>';
+    if (resultDiv) resultDiv.innerHTML = '<div class="text-success">Uploading extension...</div>';
 
     try {
         const formData = new FormData();
@@ -337,17 +332,17 @@ async function addExtension() {
         const result = await response.json();
 
         if (response.ok) {
-            if (resultDiv) resultDiv.innerHTML = '<div style="color: #4ec9b0;">Extension added successfully.</div>';
+            if (resultDiv) resultDiv.innerHTML = '<div class="text-success">Extension added successfully.</div>';
             selectedFile = null;
             if (window.loadLspConfigs) await window.loadLspConfigs();
             if (window.loadDapConfigs) await window.loadDapConfigs();
             loadAllExtensions(extensionId);
         } else {
-            if (resultDiv) resultDiv.innerHTML = `<div style="color: #d16969;">Failed: ${result.error || 'Unknown error'}</div>`;
+            if (resultDiv) resultDiv.innerHTML = `<div class="text-error">Failed: ${result.error || 'Unknown error'}</div>`;
         }
     } catch (error) {
         console.error('Failed to add extension:', error);
-        if (resultDiv) resultDiv.innerHTML = `<div style="color: #d16969;">Error: ${error.message}</div>`;
+        if (resultDiv) resultDiv.innerHTML = `<div class="text-error">Error: ${error.message}</div>`;
     }
 }
 

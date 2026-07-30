@@ -1,0 +1,180 @@
+[data-theme="dark"] {
+    /* ── Backgrounds ── */
+    --bg-body: #1e1e1e;
+    --bg-panel: #252526;
+    --bg-sidebar: #2c2c2c;
+    --bg-header: #252526;
+    --bg-input: #3c3c3c;
+    --bg-hover: #37373d;
+    --bg-active: #37373d;
+    --bg-console: #1e1e1e;
+    --bg-card: #1e1e1e;
+    --bg-card-alt: #252526;
+    --bg-drop-zone: #2a2d2e;
+    --bg-drop-zone-hover: #1e2a35;
+    --bg-hint: #2a2a2a;
+    --bg-editor: #1e1e1e;
+    --bg-editor-focus: #252526;
+    --bg-error-details: #1a1a1a;
+    --bg-modal: #2d2d30;
+    --bg-progress-badge: rgba(30, 30, 30, 0.6);
+    --bg-progress-bar: rgba(255, 255, 255, 0.05);
+    --bg-server-item: #1e1e1e;
+    --bg-server-hover: #2a2d2e;
+    --bg-server-external: #1a2a1a;
+    --bg-server-external-hover: #243024;
+    --bg-trace-hover: #2a2a2a;
+
+    /* ── Text ── */
+    --text-primary: #cccccc;
+    --text-bright: #ffffff;
+    --text-secondary: #858585;
+    --text-muted: #6b6b6b;
+    --text-dimmed: #666666;
+    --text-code: #d4d4d4;
+    --text-ide: #00bfa5;
+    --text-server-id: #6ba3d4;
+    --text-client-time: #b0b0b0;
+
+    /* ── Borders ── */
+    --border-primary: #1e1e1e;
+    --border-subtle: #3a3a3a;
+    --border-input: #555555;
+    --border-editor: #444444;
+    --border-progress: #3e3e42;
+    --border-extension: #2d2d2d;
+    --border-drop-zone: #555555;
+
+    /* ── Accent colors ── */
+    --accent-primary: #007acc;
+    --accent-hover: #005a9e;
+    --accent-highlight: #094771;
+    --accent-secondary: #1177bb;
+    --accent-bg: rgba(0, 122, 204, 0.2);
+    --accent-bg-light: rgba(0, 122, 204, 0.1);
+
+    /* ── Semantic colors ── */
+    --color-success: #4ec9b0;
+    --color-success-dark: #3a8070;
+    --color-success-text: #28a745;
+    --color-success-bg: rgba(78, 201, 176, 0.15);
+    --color-error: #dc3545;
+    --color-error-light: #ff6b6b;
+    --color-error-text: #f48771;
+    --color-error-hover: #e14856;
+    --color-error-dark: #d73a49;
+    --color-error-muted: #d16969;
+    --color-error-delete: #ff4444;
+    --color-warning: #ffa500;
+    --color-warning-alt: #ff9800;
+    --color-warning-light: #ffc107;
+    --color-label: #569cd6;
+    --color-label-bg: rgba(86, 156, 214, 0.2);
+    --color-label-alt: #dcdcaa;
+    --color-error-bg: rgba(244, 135, 113, 0.2);
+    --color-string: #ce9178;
+    --color-info: #4fc1ff;
+    --color-purple: #9b59b6;
+    --color-purple-alt: #ab47bc;
+
+    /* ── Scrollbar ── */
+    --scrollbar-track: #1e1e1e;
+    --scrollbar-thumb: #424242;
+    --scrollbar-thumb-hover: #4e4e4e;
+
+    /* ── Search highlight ── */
+    --search-highlight-bg: #4a4a00;
+    --search-highlight-color: #ffff00;
+    --search-current-bg: #ff9800;
+    --search-current-color: #000000;
+
+    /* ── Modal ── */
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+    --modal-shadow: rgba(0, 0, 0, 0.5);
+
+    /* ── Server types (for sidebar items) ── */
+    --server-lsp-bg: rgba(58, 128, 112, 0.15);
+    --server-lsp-hover: rgba(58, 128, 112, 0.25);
+    --server-lsp-active: rgba(58, 128, 112, 0.3);
+    --server-lsp-border: #3a8070;
+    --server-ext-bg: rgba(58, 128, 112, 0.2);
+    --server-ext-hover: rgba(58, 128, 112, 0.3);
+    --server-ext-active: rgba(58, 128, 112, 0.35);
+    --server-extension-bg: #2a2a2a;
+    --server-extension-hover: #3a3a3a;
+    --server-extension-active: #444444;
+    --server-extension-border: #6b6b6b;
+    --server-extension-name: #999999;
+
+    /* ── Toggle switch ── */
+    --toggle-bg: #555555;
+    --toggle-knob: #cccccc;
+
+    /* ── Progress ── */
+    --progress-gradient-start: #4ec9b0;
+    --progress-gradient-end: #569cd6;
+    --progress-install-start: #ce9178;
+    --progress-install-end: #d16969;
+    --progress-starting-start: #4fc1ff;
+    --progress-starting-end: #569cd6;
+    --progress-task-bar-fill-start: #4ec9b0;
+    --progress-task-bar-fill-end: #5dd8bd;
+    --progress-step-active-start: #569cd6;
+    --progress-step-active-end: #4fc1ff;
+    --progress-count-bg: #4ec9b0;
+    --progress-count-color: #1e1e1e;
+    --progress-cancel-border: #585858;
+    --progress-cancel-color: #858585;
+    --progress-cancel-hover-border: #d16969;
+    --progress-cancel-hover-color: #d16969;
+    --progress-cancel-hover-bg: rgba(209, 105, 105, 0.1);
+    --progress-step-completed: #4ec9b0;
+    --progress-step-active: #569cd6;
+    --progress-step-pending: #585858;
+
+    /* ── Status badges ── */
+    --status-starting-bg: #ffa500;
+    --status-running-bg: #28a745;
+    --status-running-not-ready-bg: #cddc39;
+    --status-running-not-ready-color: black;
+    --status-stopping-bg: #ff9800;
+    --status-stopped-bg: #6c757d;
+    --status-installing-bg: #ffc107;
+    --status-installing-color: black;
+    --status-install-failed-bg: #dc3545;
+    --status-start-failed-bg: #ff6b6b;
+    --status-error-bg: #dc3545;
+    --status-switching-bg: #17a2b8;
+    --status-connecting-bg: #9b59b6;
+    --status-connected-bg: #00897b;
+    --status-disconnecting-bg: #ab47bc;
+
+    /* ── Spinner ── */
+    --spinner-border: #333333;
+    --spinner-active: #007acc;
+
+    /* ── Diagram (vis.js) ── */
+    --diagram-node-lsp: #3a8070;
+    --diagram-node-lsp-selected: #005a9e;
+    --diagram-node-dap: #8e6b8a;
+    --diagram-node-dap-selected: #6a2c6a;
+    --diagram-node-ext: #6b6b6b;
+    --diagram-node-ext-selected: #4a4a4a;
+    --diagram-node-border: #3a3a3a;
+    --diagram-edge-bundle: #4a7ba7;
+    --diagram-edge-classpath: #3a9178;
+    --diagram-edge-bind-req: #a67656;
+    --diagram-edge-bind-notif: #8e6b8a;
+    --diagram-edge-label-bg: #1e1e1e;
+    --diagram-font-color: #ffffff;
+    --diagram-edge-color: #cccccc;
+
+    /* ── Theme toggle ── */
+    --theme-toggle-color: #cccccc;
+
+    /* ── Trace colors ── */
+    --trace-toggle: #808080;
+    --trace-tooltip-bg: #2d2d30;
+    --trace-tooltip-border: #007acc;
+    --trace-tooltip-shadow: rgba(0, 0, 0, 0.6);
+}

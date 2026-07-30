@@ -16,7 +16,7 @@ function renderLspServerItem(server, contributedByMap) {
     const isActive = selectedAllServer === server.id ? 'active' : '';
     const extensionClass = server.isExtension ? 'server-extension' : '';
     const disabledClass = server.enabled === false ? 'server-disabled' : '';
-    const extensionBadge = server.isExtension ? ' <span style="color: #999999; font-size: 0.85em;">(Extension)</span>' : '';
+    const extensionBadge = server.isExtension ? ' <span class="text-secondary" style="font-size: 0.85em;">(Extension)</span>' : '';
     const serverIcon = server.isExtension ? '🧩' : '🚀';
     const contributeInfo = formatContributeInfo(server, contributedByMap);
     return `
@@ -139,16 +139,16 @@ async function showServerDetails(serverId) {
             </div>
             <div class="tab-content">
                 <div id="server-overview-tab" class="tab-panel ${currentServerTab === 'overview' ? 'active' : ''}">
-                    <div class="details-panel" style="padding: 2rem; color: #cccccc; overflow-y: auto;">
+                    <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto;">
                         ${detailsHTML}
-                        <div style="margin-top: 2rem; padding: 1rem; background: #252526; border-left: 3px solid #007acc; border-radius: 4px;">
+                        <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-panel); border-left: 3px solid var(--accent-primary); border-radius: 4px;">
                             <strong>Note:</strong> To run this server, open a workspace using an MCP client.
                         </div>
                     </div>
                 </div>
                 <div id="server-contributions-tab" class="tab-panel ${currentServerTab === 'contributions' ? 'active' : ''}" style="overflow-y: auto;">
-                    <div id="server-diagram-container" style="width: 100%; height: 400px; background: #1e1e1e; border-bottom: 1px solid #333;"></div>
-                    <div class="details-panel" style="padding: 2rem; color: #cccccc;">
+                    <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); border-bottom: 1px solid var(--border-subtle);"></div>
+                    <div class="details-panel text-primary" style="padding: 2rem;">
                         ${contributionsHTML || '<p class="detail-value">No contributions</p>'}
                     </div>
                 </div>
@@ -197,7 +197,7 @@ async function showServerDetails(serverId) {
     } catch (error) {
         console.error('Failed to load server details:', error);
         document.getElementById('console-area').innerHTML = `
-            <div class="placeholder" style="color: #ff6b6b;">
+            <div class="placeholder text-error-light">
                 Failed to load server details
             </div>
         `;
@@ -209,7 +209,7 @@ async function showServerDetails(serverId) {
  */
 function buildServerDetailsHTML(details, allServers) {
     // Document selector
-    let docSelectorHTML = '<p style="color: #999;">None configured</p>';
+    let docSelectorHTML = '<p class="text-secondary">None configured</p>';
     if (details.documentSelector && details.documentSelector.length > 0) {
         docSelectorHTML = details.documentSelector.map(selector => {
             return `<div class="selector-item">
@@ -221,7 +221,7 @@ function buildServerDetailsHTML(details, allServers) {
     }
 
     // Command
-    let commandHTML = '<p style="color: #999;">None (contribution-only server)</p>';
+    let commandHTML = '<p class="text-secondary">None (contribution-only server)</p>';
     if (details.command) {
         if (typeof details.command === 'string') {
             commandHTML = `<code>${details.command}</code>`;
@@ -233,43 +233,43 @@ function buildServerDetailsHTML(details, allServers) {
     }
 
     return `
-        <h3 style="margin-top: 0; color: #569cd6;">Server Information</h3>
+        <h3 class="text-label" style="margin-top: 0;">Server Information</h3>
 
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Server ID:</strong>
-            <p style="margin: 0.25rem 0; color: #d4d4d4;"><code>${details.id}</code></p>
+            <strong class="text-label">Server ID:</strong>
+            <p class="text-value" style="margin: 0.25rem 0;"><code>${details.id}</code></p>
         </div>
 
         ${details.description ? `
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Description:</strong>
-            <p style="margin: 0.25rem 0; color: #d4d4d4;">${details.description}</p>
+            <strong class="text-label">Description:</strong>
+            <p class="text-value" style="margin: 0.25rem 0;">${details.description}</p>
         </div>
         ` : ''}
 
         ${details.url ? `
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">URL:</strong>
-            <p style="margin: 0.25rem 0;"><a href="${details.url}" target="_blank" style="color: #3794ff; text-decoration: none;">${details.url}</a></p>
+            <strong class="text-label">URL:</strong>
+            <p style="margin: 0.25rem 0;"><a href="${details.url}" target="_blank" style="color: var(--accent-primary); text-decoration: none;">${details.url}</a></p>
         </div>
         ` : ''}
 
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Command:</strong>
-            <p style="margin: 0.25rem 0; color: #d4d4d4;">${commandHTML}</p>
+            <strong class="text-label">Command:</strong>
+            <p class="text-value" style="margin: 0.25rem 0;">${commandHTML}</p>
         </div>
 
         ${details.args && details.args.length > 0 ? `
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Arguments:</strong>
-            <ul style="margin: 0.5rem 0; padding-left: 1.5rem; color: #d4d4d4;">
+            <strong class="text-label">Arguments:</strong>
+            <ul class="text-value" style="margin: 0.5rem 0; padding-left: 1.5rem;">
                 ${details.args.map(arg => `<li><code>${arg}</code></li>`).join('')}
             </ul>
         </div>
         ` : ''}
 
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Supported Languages/Files:</strong>
+            <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
         </div>
     `;
@@ -281,13 +281,13 @@ function buildServerDetailsHTML(details, allServers) {
 function buildContributionsHTML(details) {
     if (!details.contributes) return '';
 
-    let html = '<h3 style="margin-top: 0; color: #4ec9b0;">Contributions</h3>';
+    let html = '<h3 class="text-success" style="margin-top: 0;">Contributions</h3>';
 
     if (details.contributes.languages) {
         html += `
             <div style="margin-bottom: 1.5rem;">
-                <strong style="color: #569cd6;">Languages:</strong>
-                <ul style="margin: 0.5rem 0; padding-left: 1.5rem; color: #d4d4d4;">
+                <strong class="text-label">Languages:</strong>
+                <ul class="text-value" style="margin: 0.5rem 0; padding-left: 1.5rem;">
                     ${details.contributes.languages.map(lang =>
                         `<li><strong>${lang.id}</strong>${lang.extensions ? ` (${lang.extensions.join(', ')})` : ''}</li>`
                     ).join('')}
@@ -299,8 +299,8 @@ function buildContributionsHTML(details) {
     if (details.contributes.snippets) {
         html += `
             <div style="margin-bottom: 1.5rem;">
-                <strong style="color: #569cd6;">Snippets:</strong>
-                <p style="color: #d4d4d4; margin: 0.25rem 0;">${details.contributes.snippets.length} snippet file(s)</p>
+                <strong class="text-label">Snippets:</strong>
+                <p class="text-value" style="margin: 0.25rem 0;">${details.contributes.snippets.length} snippet file(s)</p>
             </div>
         `;
     }
@@ -396,11 +396,11 @@ async function runInstaller(serverId, force) {
 
     const label = force ? 'Force installing' : 'Installing';
     outputDiv.innerHTML = `
-        <div class="install-output-header" style="color: #4ec9b0; margin-bottom: 0.5rem;">${label} ${serverId}...</div>
-        <div id="install-progress-bar" style="height: 4px; background: #333; border-radius: 2px; margin-bottom: 0.5rem; display: none;">
-            <div id="install-progress-fill" style="height: 100%; background: #4ec9b0; border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
+        <div class="install-output-header text-success" style="margin-bottom: 0.5rem;">${label} ${serverId}...</div>
+        <div id="install-progress-bar" style="height: 4px; background: var(--bg-input); border-radius: 2px; margin-bottom: 0.5rem; display: none;">
+            <div id="install-progress-fill" style="height: 100%; background: var(--color-success); border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
         </div>
-        <div id="install-traces" style="font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; background: #1e1e1e; padding: 0.5rem; border-radius: 4px;"></div>
+        <div id="install-traces" style="font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; background: var(--bg-card); padding: 0.5rem; border-radius: 4px;"></div>
     `;
 
     window.installOutputServerId = serverId;
@@ -416,7 +416,7 @@ async function runInstaller(serverId, force) {
     } catch (error) {
         console.error('Failed to run installer:', error);
         window.installOutputServerId = null;
-        outputDiv.innerHTML = `<div style="color: #f48771;">✗ Installation failed: ${error.message}</div>`;
+        outputDiv.innerHTML = `<div class="text-error">✗ Installation failed: ${error.message}</div>`;
     }
 }
 
@@ -427,9 +427,9 @@ function appendInstallTrace(trace) {
     const tracesDiv = document.getElementById('install-traces');
     if (!tracesDiv) return;
 
-    const color = trace.messageType === 'ERROR' ? '#f48771'
-        : trace.messageType === 'UPDATE' ? '#858585'
-        : '#d4d4d4';
+    const color = trace.messageType === 'ERROR' ? 'var(--color-error-text)'
+        : trace.messageType === 'UPDATE' ? 'var(--text-secondary)'
+        : 'var(--text-code)';
 
     if (trace.messageType === 'UPDATE') {
         const lastLine = tracesDiv.lastElementChild;
@@ -464,16 +464,16 @@ function updateInstallProgress(msg) {
 
     if (msg.status === 'completed') {
         window.installOutputServerId = null;
-        if (fill) fill.style.background = '#4ec9b0';
+        if (fill) fill.style.background = 'var(--color-success)';
         if (header) {
-            header.style.color = '#4ec9b0';
+            header.style.color = 'var(--color-success)';
             header.textContent = `✓ Installation completed`;
         }
     } else if (msg.status === 'failed') {
         window.installOutputServerId = null;
-        if (fill) fill.style.background = '#f48771';
+        if (fill) fill.style.background = 'var(--color-error-text)';
         if (header) {
-            header.style.color = '#f48771';
+            header.style.color = 'var(--color-error-text)';
             header.textContent = `✗ Installation failed`;
         }
     }

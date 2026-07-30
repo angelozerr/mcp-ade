@@ -144,7 +144,7 @@
                                 return `
                                     <div class="workspace-section-item" title="Session: ${client.connectionId || 'N/A'}">
                                         <div>📱 ${client.name}${timeStr ? ` <span class="client-time">@ ${timeStr}</span>` : ''}</div>
-                                        ${shortId ? `<div style="font-size: 0.7rem; color: #555; margin-left: 1.5rem; margin-top: 0.15rem;">Session: ${shortId}</div>` : ''}
+                                        ${shortId ? `<div class="text-dimmed" style="font-size: 0.7rem; margin-left: 1.5rem; margin-top: 0.15rem;">Session: ${shortId}</div>` : ''}
                                     </div>
                                 `;
                             }).join('')}
@@ -225,9 +225,9 @@
                         <li>Remove the workspace from memory</li>
                         <li>Clear all cached data</li>
                     </ul>
-                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(0,122,204,0.1); border-left: 3px solid #007acc; border-radius: 3px;">
+                    <div class="callout-info" style="margin-top: 1rem;">
                         <div><strong>Workspace:</strong> ${folderName}</div>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #cccccc;">💡 The workspace will automatically reappear when an MCP client accesses it again.</div>
+                        <div class="text-primary" style="margin-top: 0.5rem; font-size: 0.85rem;">💡 The workspace will automatically reappear when an MCP client accesses it again.</div>
                     </div>
                 `,
                 async () => {
@@ -321,23 +321,23 @@
             // Build workspace header (compact, same level as left sidebar)
             const workspaceName = workspace ? (workspace.rootUri.split('/').filter(p => p).pop() || workspace.rootUri) : '';
             const headerHTML = `
-                <div style="padding: 0.5rem 1rem; background: #1e1e1e; border-bottom: 1px solid #3a3a3a;">
-                    <div style="font-size: 0.8rem; color: #cccccc; font-weight: 500;">📂 ${workspaceName}</div>
+                <div style="padding: 0.5rem 1rem; background: var(--bg-card); border-bottom: 1px solid var(--border-primary);">
+                    <div class="text-primary" style="font-size: 0.8rem; font-weight: 500;">📂 ${workspaceName}</div>
                 </div>
             `;
 
             // Build tabs header
             const tabsHTML = `
-                <div style="display: flex; background: #252526; border-bottom: 1px solid #1e1e1e;">
-                    <div style="flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; font-weight: ${currentWorkspaceTab === 'servers' ? '600' : '400'}; border-bottom: ${currentWorkspaceTab === 'servers' ? '2px solid #007acc' : '2px solid transparent'};" onclick="switchWorkspaceTab('servers')">Servers</div>
-                    <div style="flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; font-weight: ${currentWorkspaceTab === 'debuggers' ? '600' : '400'}; border-bottom: ${currentWorkspaceTab === 'debuggers' ? '2px solid #007acc' : '2px solid transparent'};" onclick="switchWorkspaceTab('debuggers')">Debuggers</div>
+                <div style="display: flex; background: var(--bg-panel); border-bottom: 1px solid var(--bg-card);">
+                    <div style="flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; font-weight: ${currentWorkspaceTab === 'servers' ? '600' : '400'}; border-bottom: ${currentWorkspaceTab === 'servers' ? '2px solid var(--accent-primary)' : '2px solid transparent'};" onclick="switchWorkspaceTab('servers')">Servers</div>
+                    <div style="flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; font-weight: ${currentWorkspaceTab === 'debuggers' ? '600' : '400'}; border-bottom: ${currentWorkspaceTab === 'debuggers' ? '2px solid var(--accent-primary)' : '2px solid transparent'};" onclick="switchWorkspaceTab('debuggers')">Debuggers</div>
                 </div>
             `;
 
             // Filter bar
             const filterHTML = `
-                <div style="display: flex; align-items: center; padding: 0.35rem 0.75rem; background: #2d2d2d; border-bottom: 1px solid #3a3a3a; font-size: 0.8rem;">
-                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; color: #aaa; user-select: none;">
+                <div style="display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--bg-panel); border-bottom: 1px solid var(--border-primary); font-size: 0.8rem;">
+                    <label class="text-secondary" style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; user-select: none;">
                         <input type="checkbox" onchange="toggleShowActiveServers()" ${showOnlyActiveServers ? 'checked' : ''}>
                         Show active only
                     </label>
@@ -497,7 +497,7 @@
                     const serverClass = isExternal ? 'server-item-external' : 'server-item-managed';
                     const extensionClass = server.isExtension ? 'server-extension' : '';
                     const disabledClass = server.enabled === false ? 'server-disabled' : '';
-                    const extensionBadge = server.isExtension ? ' <span style="color: #999999; font-size: 0.85em;">(Extension)</span>' : '';
+                    const extensionBadge = server.isExtension ? ' <span class="text-secondary" style="font-size: 0.85em;">(Extension)</span>' : '';
 
                     let actions = '';
                     if (!server.isExtension) {
@@ -558,7 +558,7 @@
                             <div class="server-id" ${contributedInfo.tooltip ? `title="${contributedInfo.tooltip}"` : ''}>${server.id}${contributedInfo.text}</div>
                             <div class="server-status-badge-container">
                                 ${renderStatusBadge(server)}
-                                ${server.statusMessage ? `<span class="server-status-message" style="color: #888; font-size: 0.85rem; margin-left: 0.5rem;">${escapeHtml(server.statusMessage)}</span>` : ''}
+                                ${server.statusMessage ? `<span class="server-status-message text-secondary" style="font-size: 0.85rem; margin-left: 0.5rem;">${escapeHtml(server.statusMessage)}</span>` : ''}
                                 ${!server.isExtension ? ideInfo : ''}
                                 ${!server.isExtension && server.pid ? `<span class="server-ide-info"><span title="Process ID">${server.pid}</span></span>` : ''}
                             </div>
@@ -814,8 +814,8 @@
                         </div>
                         ${hasContributions ? `
                         <div id="contributions-tab" class="tab-panel ${currentConsoleTab === 'contributions' ? 'active' : ''}" style="overflow-y: auto;">
-                            <div id="workspace-diagram-container" style="width: 100%; height: 400px; background: #1e1e1e; border-bottom: 1px solid #333;"></div>
-                            <div class="details-panel" id="contributions-content" style="padding: 2rem; color: #cccccc;">
+                            <div id="workspace-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); border-bottom: 1px solid var(--border-subtle);"></div>
+                            <div class="details-panel text-primary" id="contributions-content" style="padding: 2rem;">
                                 <p>Loading...</p>
                             </div>
                         </div>
@@ -1049,28 +1049,29 @@
             // Show "Contributes To" section
             if (contributesTo.length > 0) {
                 html += '<div class="contribution-subsection">';
-                html += '<h5 style="color: #4ec9b0; margin-bottom: 0.5rem;">→ Contributes To</h5>';
+                html += '<h5 class="text-success" style="margin-bottom: 0.5rem;">→ Contributes To</h5>';
 
                 for (const targetServerId of contributesTo) {
                     const contributionData = server.contributions[targetServerId];
                     html += `<div class="contribution-target" style="margin-bottom: 1rem;">`;
-                    html += `<div style="font-weight: bold; color: #dcdcaa; margin-bottom: 0.25rem;">${targetServerId}</div>`;
+                    html += `<div class="text-label-alt" style="font-weight: bold; margin-bottom: 0.25rem;">${targetServerId}</div>`;
 
                     // Show each contribution type (bundles, classpath, bindRequest, etc.)
                     for (const [type, items] of Object.entries(contributionData)) {
                         if (items && items.length > 0) {
                             html += `<div style="margin-left: 1rem; margin-bottom: 0.5rem;">`;
-                            html += `<span style="color: #888;">${type}:</span>`;
-                            html += `<ul style="margin: 0.25rem 0 0 1.5rem; padding: 0; color: #aaa; font-size: 0.9rem;">`;
+                            html += `<span class="text-secondary">${type}:</span>`;
+                            html += `<ul class="text-secondary" style="margin: 0.25rem 0 0 1.5rem; padding: 0; font-size: 0.9rem;">`;
                             items.forEach(item => {
                                 const displayValue = typeof item === 'string' ? item : JSON.stringify(item);
                                 const isError = displayValue.startsWith('ERROR:');
                                 const cleanValue = isError ? displayValue.substring(6) : displayValue;
+                                const errorClass = isError ? 'text-error-light' : '';
                                 const style = isError
-                                    ? 'color: #ff6b6b; font-weight: bold; cursor: help;'
+                                    ? 'font-weight: bold; cursor: help;'
                                     : '';
                                 const title = isError ? 'File not found or pattern did not match any files' : '';
-                                html += `<li style="margin-bottom: 0.2rem; word-break: break-all; ${style}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</li>`;
+                                html += `<li class="${errorClass}" style="margin-bottom: 0.2rem; word-break: break-all; ${style}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</li>`;
                             });
                             html += `</ul></div>`;
                         }
@@ -1083,7 +1084,7 @@
             // Show "Contributed By" section grouped by contribution type
             if (contributedBy.length > 0) {
                 html += '<div class="contribution-subsection" style="margin-top: 1rem;">';
-                html += '<h5 style="color: #ce9178; margin-bottom: 0.5rem;">← Contributed By</h5>';
+                html += '<h5 class="text-string" style="margin-bottom: 0.5rem;">← Contributed By</h5>';
 
                 // Group contributions by type (bundles, bindRequest, classpath, etc.)
                 const contributionsByType = {};
@@ -1120,21 +1121,22 @@
                 // Display grouped by type
                 for (const [type, contributions] of Object.entries(contributionsByType)) {
                     html += `<div style="margin-bottom: 1rem;">`;
-                    html += `<div style="font-weight: bold; color: #888; margin-bottom: 0.5rem;">${type} <span style="color: #666;">(Total: ${contributions.length})</span></div>`;
+                    html += `<div class="text-secondary" style="font-weight: bold; margin-bottom: 0.5rem;">${type} <span class="text-dimmed">(Total: ${contributions.length})</span></div>`;
                     html += `<div style="margin-left: 1rem;">`;
 
                     contributions.forEach(contrib => {
                         const displayValue = typeof contrib.value === 'string' ? contrib.value : JSON.stringify(contrib.value);
                         const isError = displayValue.startsWith('ERROR:');
                         const cleanValue = isError ? displayValue.substring(6) : displayValue;
+                        const valueClass = isError ? 'text-error-light' : '';
                         const valueStyle = isError
-                            ? 'word-break: break-all; color: #ff6b6b; font-weight: bold; cursor: help;'
+                            ? 'word-break: break-all; font-weight: bold; cursor: help;'
                             : 'word-break: break-all;';
                         const title = isError ? 'File not found or pattern did not match any files' : '';
-                        html += `<div style="margin-bottom: 0.3rem; color: #aaa; font-size: 0.9rem;">`;
-                        html += `<span style="display: inline-block; min-width: 120px; color: #dcdcaa;">${contrib.server}</span>`;
-                        html += `<span style="color: #569cd6;">•</span> `;
-                        html += `<span style="${valueStyle}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</span>`;
+                        html += `<div class="text-secondary" style="margin-bottom: 0.3rem; font-size: 0.9rem;">`;
+                        html += `<span class="text-label-alt" style="display: inline-block; min-width: 120px;">${contrib.server}</span>`;
+                        html += `<span class="text-label">•</span> `;
+                        html += `<span class="${valueClass}" style="${valueStyle}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</span>`;
                         html += `</div>`;
                     });
 
@@ -1216,7 +1218,7 @@
                 const message = currentTraceLevel === 'off'
                     ? 'Traces are disabled (level: off)'
                     : 'No LSP trace messages yet.';
-                container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #858585;">${message}</div>`;
+                container.innerHTML = `<div class="text-secondary" style="text-align: center; padding: 2rem;">${message}</div>`;
                 return;
             }
 
@@ -1234,13 +1236,13 @@
                 const isError = headerLine.startsWith('[Error') || trace.messageType === 'ERROR';
                 const isInfo = trace.messageType === 'INFO';
                 const isUpdate = trace.messageType === 'UPDATE';
-                const headerColor = isError ? '#ff6b6b' : isInfo ? '#4fc1ff' : isUpdate ? '#dcdcaa' : '#cccccc';
+                const traceTypeClass = isError ? 'trace-type-error' : isInfo ? 'trace-type-info' : isUpdate ? 'trace-type-update' : 'trace-type-default';
 
                 // Messages mode: show only header line, no folding
                 if (currentTraceLevel === 'messages') {
                     return `
                         <div class="trace-line">
-                            <div style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: ${headerColor};">${escapeHtml(headerLine)}</div>
+                            <div class="${traceTypeClass}" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
@@ -1254,7 +1256,7 @@
                 if (!hasBody) {
                     return `
                         <div class="trace-line">
-                            <div style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: ${headerColor};">${escapeHtml(headerLine)}</div>
+                            <div class="${traceTypeClass}" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
@@ -1271,7 +1273,7 @@
                     const line = trimmedBodyLines[i];
                     const trimmed = line.trim();
                     if (isError && trimmed.startsWith('at ') && trimmed.includes('(') && trimmed.includes(')')) {
-                        bodyHtml += `<span style="color: #ff6b6b;">${escapeHtml(line)}</span>`;
+                        bodyHtml += `<span class="text-error-light">${escapeHtml(line)}</span>`;
                     } else {
                         bodyHtml += escapeHtml(line);
                     }
@@ -1290,9 +1292,9 @@
                              onmouseup="onHeaderMouseUp(${index})"
                              style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">
                             <span class="trace-toggle" id="toggle-${index}" style="margin-right: 0.5rem;">▶</span>
-                            <span class="trace-header-text" style="color: ${headerColor};">${escapeHtml(headerLine)}</span>
+                            <span class="trace-header-text ${traceTypeClass}">${escapeHtml(headerLine)}</span>
                         </div>
-                        <div class="trace-body collapsed" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc; white-space: pre-wrap;">${bodyHtml}</div>
+                        <div class="trace-body collapsed text-primary" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; white-space: pre-wrap;">${bodyHtml}</div>
                         <div class="trace-tooltip" id="tooltip-${index}">${escapeHtml(fullContent)}</div>
                     </div>
                 `;
@@ -1622,7 +1624,7 @@
                 const message = currentTraceLevel === 'off'
                     ? 'Traces are disabled (level: off)'
                     : 'No LSP trace messages yet.';
-                container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #858585;">${message}</div>`;
+                container.innerHTML = `<div class="text-secondary" style="text-align: center; padding: 2rem;">${message}</div>`;
                 return;
             }
 
@@ -1648,7 +1650,7 @@
                 const message = currentTraceLevel === 'off'
                     ? 'Traces are disabled (level: off)'
                     : 'No LSP trace messages yet.';
-                container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #858585;">${message}</div>`;
+                container.innerHTML = `<div class="text-secondary" style="text-align: center; padding: 2rem;">${message}</div>`;
                 return;
             }
 
@@ -1663,7 +1665,7 @@
                 if (currentTraceLevel === 'messages') {
                     return `
                         <div class="trace-line">
-                            <div style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc;">${escapeHtml(headerLine)}</div>
+                            <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
@@ -1677,7 +1679,7 @@
                 if (!hasBody) {
                     return `
                         <div class="trace-line">
-                            <div style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc;">${escapeHtml(headerLine)}</div>
+                            <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
@@ -1686,9 +1688,9 @@
                     <div class="trace-line">
                         <div class="trace-header folded" onclick="toggleTrace(${index})" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">
                             <span class="trace-toggle" id="toggle-${index}" style="margin-right: 0.5rem;">▶</span>
-                            <span class="trace-header-text" style="color: #cccccc;">${escapeHtml(headerLine)}</span>
+                            <span class="trace-header-text text-primary">${escapeHtml(headerLine)}</span>
                         </div>
-                        <div class="trace-body collapsed" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc;">${escapeHtml(body)}</div>
+                        <div class="trace-body collapsed text-primary" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(body)}</div>
                     </div>
                 `;
             }).join('');

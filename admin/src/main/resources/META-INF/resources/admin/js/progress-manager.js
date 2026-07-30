@@ -86,7 +86,7 @@ function refreshProgressPanel() {
     const content = document.getElementById('progress-panel-content');
 
     if (activeTasks.size === 0) {
-        content.innerHTML = '<div style="text-align: center; padding: 2rem; color: #858585;">No active tasks</div>';
+        content.innerHTML = '<div class="text-secondary" style="text-align: center; padding: 2rem;">No active tasks</div>';
         return;
     }
 

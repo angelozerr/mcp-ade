@@ -27,7 +27,7 @@ const TraceRenderer = (function() {
             // Single line trace
             return `
                 <div class="trace-line">
-                    <div style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc;">${highlightText(content, searchQuery)}</div>
+                    <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${highlightText(content, searchQuery)}</div>
                 </div>
             `;
         }
@@ -42,7 +42,7 @@ const TraceRenderer = (function() {
         if (traceLevel === 'messages') {
             return `
                 <div class="trace-line">
-                    <div style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc;">${highlightText(headerLine, searchQuery)}</div>
+                    <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${highlightText(headerLine, searchQuery)}</div>
                 </div>
             `;
         }
@@ -51,7 +51,7 @@ const TraceRenderer = (function() {
         if (!body) {
             return `
                 <div class="trace-line">
-                    <div style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc;">${highlightText(headerLine, searchQuery)}</div>
+                    <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${highlightText(headerLine, searchQuery)}</div>
                 </div>
             `;
         }
@@ -69,9 +69,9 @@ const TraceRenderer = (function() {
                      onmouseup="onHeaderMouseUp(${index})"
                      style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">
                     <span class="trace-toggle" id="toggle-${index}" style="margin-right: 0.5rem;">${toggleIcon}</span>
-                    <span class="trace-header-text" style="color: #cccccc;">${highlightText(headerLine, searchQuery)}</span>
+                    <span class="trace-header-text text-primary">${highlightText(headerLine, searchQuery)}</span>
                 </div>
-                <div class="trace-body ${foldState}" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: #cccccc; white-space: pre-wrap;">${highlightText(body, searchQuery)}</div>
+                <div class="trace-body ${foldState} text-primary" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; white-space: pre-wrap;">${highlightText(body, searchQuery)}</div>
                 <div class="trace-tooltip" id="tooltip-${index}">${escapeHtml(fullContent)}</div>
             </div>
         `;
@@ -395,9 +395,9 @@ const TraceRenderer = (function() {
      * @returns {string} HTML string
      */
     function renderTraceControls(id, level, onchange, buttons) {
-        let html = `<label style="color: #cccccc; font-size: 0.85rem;">
+        let html = `<label class="text-primary" style="font-size: 0.85rem;">
                 Trace Level:
-                <select id="${id}-level" onchange="${onchange}" style="margin-left: 0.5rem; background: #3e3e42; color: #cccccc; border: 1px solid #555; padding: 0.25rem 0.5rem; border-radius: 3px;">
+                <select id="${id}-level" onchange="${onchange}" class="select-field" style="margin-left: 0.5rem;">
                     <option value="off" ${level === 'off' ? 'selected' : ''}>Off</option>
                     <option value="messages" ${level === 'messages' ? 'selected' : ''}>Messages</option>
                     <option value="verbose" ${level === 'verbose' ? 'selected' : ''}>Verbose</option>

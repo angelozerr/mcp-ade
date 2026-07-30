@@ -6,6 +6,49 @@
         window.selectedWorkspace = null;
         window.workspaces = workspaces;
 
+        // ========== Theme Toggle ==========
+        const THEME_DARK = 'dark';
+        const THEME_LIGHT = 'light';
+        const THEME_STORAGE_KEY = 'admin-theme';
+        const THEME_ATTR = 'data-theme';
+
+        function getCurrentTheme() {
+            return document.documentElement.getAttribute(THEME_ATTR) || THEME_DARK;
+        }
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute(THEME_ATTR, theme);
+            localStorage.setItem(THEME_STORAGE_KEY, theme);
+            updateThemeIcon(theme);
+        }
+
+        function toggleTheme() {
+            const next = getCurrentTheme() === THEME_DARK ? THEME_LIGHT : THEME_DARK;
+            setTheme(next);
+            // Persist to server settings
+            fetch('/api/admin/settings/admin.theme', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: next })
+            }).catch(() => {});
+            // Re-render diagram if visible
+            if (typeof renderCurrentDiagram === 'function') {
+                renderCurrentDiagram();
+            }
+        }
+        window.toggleTheme = toggleTheme;
+
+        function updateThemeIcon(theme) {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                btn.innerHTML = theme === THEME_DARK ? '🌙' : '☀️';
+                btn.title = theme === THEME_DARK ? 'Switch to light theme' : 'Switch to dark theme';
+            }
+        }
+
+        // Init theme icon on load
+        updateThemeIcon(getCurrentTheme());
+
         let tracesByServer = {}; // Store traces per server: {serverId: [...traces]}
         let currentTab = 'workspaces';
         let workspacesRendered = false; // Track if workspaces have been rendered at least once
@@ -221,21 +264,21 @@
 
             if (contributesTo.length > 0) {
                 const full = contributesTo.join(', ');
-                const styled = contributesTo.map(id => `<span style="color: #888;">${id}</span>`).join(', ');
+                const styled = contributesTo.map(id => `<span class="text-secondary">${id}</span>`).join(', ');
                 const displayStyled = full.length > 20
-                    ? contributesTo.slice(0, 1).map(id => `<span style="color: #888;">${id}</span>`).join('') + ', <span style="color: #888;">...</span>'
+                    ? contributesTo.slice(0, 1).map(id => `<span class="text-secondary">${id}</span>`).join('') + ', <span class="text-secondary">...</span>'
                     : styled;
-                text = ` <span style="color: #aaa; font-size: 1.3rem; font-weight: bold;">→</span> ${displayStyled}`;
+                text = ` <span class="text-muted" style="font-size: 1.3rem; font-weight: bold;">→</span> ${displayStyled}`;
                 if (full.length > 20) {
                     tooltip = `Contributes to: ${full}`;
                 }
             } else if (contributedBy.length > 0) {
                 const full = contributedBy.join(', ');
-                const styled = contributedBy.map(id => `<span style="color: #888;">${id}</span>`).join(', ');
+                const styled = contributedBy.map(id => `<span class="text-secondary">${id}</span>`).join(', ');
                 const displayStyled = full.length > 20
-                    ? contributedBy.slice(0, 1).map(id => `<span style="color: #888;">${id}</span>`).join('') + ', <span style="color: #888;">...</span>'
+                    ? contributedBy.slice(0, 1).map(id => `<span class="text-secondary">${id}</span>`).join('') + ', <span class="text-secondary">...</span>'
                     : styled;
-                text = ` <span style="color: #aaa; font-size: 1.3rem; font-weight: bold;">←</span> ${displayStyled}`;
+                text = ` <span class="text-muted" style="font-size: 1.3rem; font-weight: bold;">←</span> ${displayStyled}`;
                 if (full.length > 20) {
                     tooltip = `Contributed by: ${full}`;
                 }
@@ -751,8 +794,8 @@
                 progressElement.innerHTML = renderProgressBadge(label, statusClass, progressPercent, message);
                 progressElement.style.display = 'block';
                 progressElement.style.padding = '0.5rem 1rem';
-                progressElement.style.background = '#1e1e1e';
-                progressElement.style.borderBottom = '1px solid #3e3e42';
+                progressElement.style.background = 'var(--bg-card)';
+                progressElement.style.borderBottom = '1px solid var(--border-progress)';
             } else {
                 // Hide progress section
                 progressElement.innerHTML = '';
@@ -802,7 +845,7 @@
                 document.getElementById('workspaces-list').style.display = 'block';
                 document.getElementById('lsp-servers-list').style.display = 'none';
                 document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-list').style.display = 'none';
+                document.getElementById('extensions-container').style.display = 'none';
                 document.getElementById('mcp-traces-list').style.display = 'none';
                 serversColumn.style.display = 'block';
                 consoleColumn.style.display = 'flex';
@@ -839,7 +882,7 @@
                 document.getElementById('workspaces-list').style.display = 'none';
                 document.getElementById('lsp-servers-list').style.display = '';
                 document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-list').style.display = 'none';
+                document.getElementById('extensions-container').style.display = 'none';
                 document.getElementById('mcp-traces-list').style.display = 'none';
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';
@@ -855,7 +898,7 @@
                 document.getElementById('workspaces-list').style.display = 'none';
                 document.getElementById('lsp-servers-list').style.display = 'none';
                 document.getElementById('dap-servers-list').style.display = '';
-                document.getElementById('extensions-list').style.display = 'none';
+                document.getElementById('extensions-container').style.display = 'none';
                 document.getElementById('mcp-traces-list').style.display = 'none';
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';
@@ -872,7 +915,7 @@
                 document.getElementById('workspaces-list').style.display = 'none';
                 document.getElementById('lsp-servers-list').style.display = 'none';
                 document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-list').style.display = 'block';
+                document.getElementById('extensions-container').style.display = 'flex';
                 document.getElementById('mcp-traces-list').style.display = 'none';
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';
@@ -885,7 +928,7 @@
                 document.getElementById('workspaces-list').style.display = 'none';
                 document.getElementById('lsp-servers-list').style.display = 'none';
                 document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-list').style.display = 'none';
+                document.getElementById('extensions-container').style.display = 'none';
                 document.getElementById('mcp-traces-list').style.display = 'block';
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';

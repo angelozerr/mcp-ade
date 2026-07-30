@@ -72,8 +72,8 @@ async function createNewTestSession(dapServerId) {
         const consoleArea = document.getElementById('console-area');
         consoleArea.innerHTML = `
             <div style="padding: 1rem;">
-                <h3 style="color: #f48771;">❌ Failed to Create Session</h3>
-                <pre style="background: #1e1e1e; padding: 1rem; border-radius: 3px; color: #f48771; font-family: monospace; white-space: pre-wrap;">${error.message}</pre>
+                <h3 class="text-error">Failed to Create Session</h3>
+                <pre class="text-error" style="background: var(--bg-card); padding: 1rem; border-radius: 3px; font-family: monospace; white-space: pre-wrap;">${error.message}</pre>
             </div>
         `;
     }
@@ -138,72 +138,66 @@ function showLaunchConfigForm(session, dapServerId) {
         <div style="padding: 1rem; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
             <div style="margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                    <h3 style="margin: 0; color: #cccccc;">${session.sessionName || 'New Debug Session'}</h3>
+                    <h3 class="text-primary" style="margin: 0;">${session.sessionName || 'New Debug Session'}</h3>
                     <span id="dap-session-status-${sessionId}" class="session-server-status status-badge status-badge-compact ${statusClass}">${statusText}</span>
                 </div>
-                <p style="margin: 0; color: #858585; font-size: 0.85rem;">Server: ${session.serverId || session.dapServerId || dapServerId}</p>
-                <p style="margin: 0; color: #666; font-size: 0.75rem; font-family: monospace;">Session ID: ${sessionId}</p>
-                ${session.createdBy ? `<p style="margin: 0; color: #666; font-size: 0.75rem;">Created by: <span class="session-created-by">${formatSessionActor(session.createdBy)}</span>${session.createdAt ? ` at ${formatTimestamp(session.createdAt)}` : ''}</p>` : ''}
-                ${session.launchedBy ? `<p style="margin: 0; color: #666; font-size: 0.75rem;">Launched by: <span class="session-launched-by">${formatSessionActor(session.launchedBy)}</span>${session.launchedAt ? ` at ${formatTimestamp(session.launchedAt)}` : ''}</p>` : '<p style="margin: 0; color: #666; font-size: 0.75rem;">Launched by: <span class="session-launched-by">-</span></p>'}
+                <p class="text-secondary" style="margin: 0; font-size: 0.85rem;">Server: ${session.serverId || session.dapServerId || dapServerId}</p>
+                <p class="text-dimmed" style="margin: 0; font-size: 0.75rem; font-family: monospace;">Session ID: ${sessionId}</p>
+                ${session.createdBy ? `<p class="text-dimmed" style="margin: 0; font-size: 0.75rem;">Created by: <span class="session-created-by">${formatSessionActor(session.createdBy)}</span>${session.createdAt ? ` at ${formatTimestamp(session.createdAt)}` : ''}</p>` : ''}
+                ${session.launchedBy ? `<p class="text-dimmed" style="margin: 0; font-size: 0.75rem;">Launched by: <span class="session-launched-by">${formatSessionActor(session.launchedBy)}</span>${session.launchedAt ? ` at ${formatTimestamp(session.launchedAt)}` : ''}</p>` : '<p class="text-dimmed" style="margin: 0; font-size: 0.75rem;">Launched by: <span class="session-launched-by">-</span></p>'}
             </div>
 
             <div style="margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                    <label style="font-weight: 500; color: #cccccc;">Launch Configuration</label>
+                    <label class="text-primary" style="font-weight: 500;">Launch Configuration</label>
                     <div style="display: flex; gap: 0;">
                         <button
                             id="dap-launch-btn-${sessionId}"
+                            class="dap-toolbar-btn dap-toolbar-btn-run"
                             onclick="launchDapSession('${session.sessionId}')"
-                            style="padding: 0.1rem 0.2rem; background: transparent; color: #4ec9b0; border: none; cursor: pointer; font-size: 1rem; display: flex; align-items: center; border-radius: 3px; transition: background 0.2s;"
-                            onmouseover="this.style.background='rgba(78, 201, 176, 0.2)'"
-                            onmouseout="this.style.background='transparent'"
                             title="Run (without debugging)">
                             ▶
                         </button>
                         <button
                             id="dap-debug-btn-${sessionId}"
+                            class="dap-toolbar-btn dap-toolbar-btn-debug"
                             onclick="debugDapSession('${session.sessionId}')"
-                            style="padding: 0.1rem 0.2rem; background: transparent; color: #569cd6; border: none; cursor: pointer; font-size: 1rem; display: flex; align-items: center; border-radius: 3px; transition: background 0.2s;"
-                            onmouseover="this.style.background='rgba(86, 156, 214, 0.2)'"
-                            onmouseout="this.style.background='transparent'"
                             title="Debug (with breakpoints)">
                             🐛
                         </button>
                         <button
                             id="dap-stop-btn-${sessionId}"
+                            class="dap-toolbar-btn dap-toolbar-btn-stop"
                             onclick="stopDapSession('${session.sessionId}')"
                             disabled
-                            style="padding: 0.1rem 0.2rem; background: transparent; color: #f48771; border: none; cursor: pointer; font-size: 1rem; display: flex; align-items: center; border-radius: 3px; transition: background 0.2s; opacity: 0.3;"
-                            onmouseover="if (!this.disabled) this.style.background='rgba(244, 135, 113, 0.2)'"
-                            onmouseout="this.style.background='transparent'"
                             title="Stop debug session">
                             ⏹
                         </button>
                         <button
+                            class="dap-toolbar-btn dap-toolbar-btn-delete"
                             onclick="deleteDapSession('${session.sessionId}')"
-                            style="padding: 0.1rem 0.2rem; background: transparent; color: #858585; border: none; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; border-radius: 3px; transition: background 0.2s;"
-                            onmouseover="this.style.background='rgba(133, 133, 133, 0.2)'"
-                            onmouseout="this.style.background='transparent'"
                             title="Delete session">
                             🗑️
                         </button>
                     </div>
                     <select
                         id="launch-template-selector-${sessionId}"
+                        class="select-field"
                         onchange="applyLaunchTemplate('${session.sessionId}', this.value)"
-                        style="padding: 0.2rem 0.4rem; background: #252526; color: #cccccc; border: 1px solid #3a3a3a; border-radius: 3px; font-size: 0.85rem; cursor: pointer;">
+                        style="padding: 0.2rem 0.4rem; font-size: 0.85rem;">
                         <option value="">Select template...</option>
                     </select>
                 </div>
                 <textarea
                     id="launch-config-editor-${sessionId}"
-                    style="width: 100%; padding: 0.75rem; background: #1e1e1e; color: #d4d4d4; border: 1px solid #3a3a3a; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.9rem; resize: vertical; height: 150px;"
+                    class="input-field"
+                    style="width: 100%; padding: 0.75rem; background: var(--bg-card); color: var(--text-code); border: 1px solid var(--border-subtle); border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.9rem; resize: vertical; height: 150px;"
                 >${JSON.stringify(defaultConfig, null, 2)}</textarea>
             </div>
 
             <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <label style="font-weight: 500; color: #cccccc;">Console:</label>
+                    <label class="text-primary" style="font-weight: 500;">Console:</label>
                     <div class="console-controls">
                         ${TraceRenderer.renderTraceControls('dap-trace', 'off', `changeDapTraceLevel('${session.sessionId}', this.value)`, {
                             onFold: `toggleAllDapTraces('${session.sessionId}')`,
@@ -211,8 +205,8 @@ function showLaunchConfigForm(session, dapServerId) {
                         })}
                     </div>
                 </div>
-                <div id="dap-traces-container-${sessionId}" style="flex: 1; overflow-y: auto; background: #1e1e1e; padding: 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.85rem;">
-                    <div style="color: #666;">Ready. Click ▶ to launch.</div>
+                <div id="dap-traces-container-${sessionId}" style="flex: 1; overflow-y: auto; background: var(--bg-card); padding: 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.85rem;">
+                    <div class="text-dimmed">Ready. Click ▶ to launch.</div>
                 </div>
             </div>
         </div>
@@ -535,18 +529,20 @@ function renderDapTraces(traces, sessionId) {
         // Use TraceRenderer for consistent rendering
         let rendered = TraceRenderer.renderTrace(trace, index, level, TraceRenderer.getCurrentSearchQuery());
 
-        // Apply DAP-specific colors based on messageType
+        // Apply DAP-specific CSS classes based on messageType
         if (trace.messageType) {
-            let color = '#cccccc'; // Default gray
+            let traceClass = '';
             if (trace.messageType === 'ERROR') {
-                color = '#ff6b6b'; // Red for errors/stderr
+                traceClass = 'trace-type-dap-error';
             } else if (trace.messageType === 'INFO') {
-                color = '#569cd6'; // Blue for console/stdout output
+                traceClass = 'trace-type-dap-info';
             } else if (trace.messageType === 'UPDATE') {
-                color = '#4ec9b0'; // Cyan for progress updates
+                traceClass = 'trace-type-dap-update';
             }
-            // Replace the default color with the specific one
-            rendered = rendered.replace(/color: #cccccc;/g, `color: ${color};`);
+            if (traceClass) {
+                // Add CSS class to the trace-line element
+                rendered = rendered.replace(/class="trace-line/, `class="trace-line ${traceClass}`);
+            }
         }
 
         return rendered;
@@ -577,7 +573,7 @@ function renderDapTracesForSession(sessionId) {
     const wasAtBottom = TraceRenderer.isScrolledToBottom(container);
     const expandedIds = TraceRenderer.saveExpandedState(container);
 
-    container.innerHTML = traces.length > 0 ? renderDapTraces(traces, sessionId) : '<div style="color: #666;">No traces yet.</div>';
+    container.innerHTML = traces.length > 0 ? renderDapTraces(traces, sessionId) : '<div class="text-dimmed">No traces yet.</div>';
 
     TraceRenderer.restoreExpandedState(container, expandedIds);
 
@@ -708,7 +704,7 @@ async function showDapServerDetails(serverId) {
     consoleColumn.style.gridColumn = '2';
 
     // Build document selector info
-    let docSelectorHTML = '<p style="color: #999;">None configured</p>';
+    let docSelectorHTML = '<p class="text-secondary">None configured</p>';
     if (server.documentSelector && server.documentSelector.length > 0) {
         docSelectorHTML = server.documentSelector.map(selector => {
             return `<div class="selector-item">
@@ -736,33 +732,33 @@ async function showDapServerDetails(serverId) {
     }
 
     const detailsHTML = `
-        <h3 style="margin-top: 0; color: #4ec9b0;">Debug Adapter Information</h3>
+        <h3 class="text-success" style="margin-top: 0;">Debug Adapter Information</h3>
 
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Server ID:</strong>
-            <p style="margin: 0.25rem 0; color: #d4d4d4;"><code>${server.id}</code></p>
+            <strong class="text-label">Server ID:</strong>
+            <p class="text-value" style="margin: 0.25rem 0;"><code>${server.id}</code></p>
         </div>
 
         ${server.description ? `
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Description:</strong>
-            <p style="margin: 0.25rem 0; color: #d4d4d4;">${server.description}</p>
+            <strong class="text-label">Description:</strong>
+            <p class="text-value" style="margin: 0.25rem 0;">${server.description}</p>
         </div>
         ` : ''}
 
         ${server.url ? `
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">URL:</strong>
-            <p style="margin: 0.25rem 0;"><a href="${server.url}" target="_blank" style="color: #3794ff; text-decoration: none;">${server.url}</a></p>
+            <strong class="text-label">URL:</strong>
+            <p style="margin: 0.25rem 0;"><a href="${server.url}" target="_blank" style="color: var(--accent-primary); text-decoration: none;">${server.url}</a></p>
         </div>
         ` : ''}
 
         <div style="margin-bottom: 1.5rem;">
-            <strong style="color: #569cd6;">Supported Languages/Files:</strong>
+            <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
         </div>
 
-        <div style="margin-top: 2rem; padding: 1rem; background: #252526; border-left: 3px solid #4ec9b0; border-radius: 4px;">
+        <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-panel); border-left: 3px solid var(--color-success); border-radius: 4px;">
             <strong>Note:</strong> Debuggers are started on-demand during debug sessions. They are not automatically started with workspaces.
         </div>
     `;
@@ -786,14 +782,14 @@ async function showDapServerDetails(serverId) {
         </div>
         <div class="tab-content">
             <div id="dap-server-overview-tab" class="tab-panel ${currentDapServerTab === 'overview' ? 'active' : ''}">
-                <div class="details-panel" style="padding: 2rem; color: #cccccc; overflow-y: auto;">
+                <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto;">
                     ${detailsHTML}
                 </div>
             </div>
             ${hasContributions ? `
             <div id="dap-server-contributions-tab" class="tab-panel ${currentDapServerTab === 'contributions' ? 'active' : ''}">
-                <div id="server-diagram-container" style="width: 100%; height: 400px; background: #1e1e1e; border-bottom: 1px solid #333;"></div>
-                <div class="details-panel" id="dap-contributions-content" style="padding: 2rem; color: #cccccc;">
+                <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); border-bottom: 1px solid var(--border-subtle);"></div>
+                <div class="details-panel text-primary" id="dap-contributions-content" style="padding: 2rem;">
                     ${contributionsHTML}
                 </div>
             </div>
@@ -912,7 +908,7 @@ async function runDapInstaller(serverId, force) {
     if (!outputDiv) return;
 
     const label = force ? 'Force installing' : 'Installing';
-    outputDiv.innerHTML = `<div style="color: #4ec9b0;">${label}...</div>`;
+    outputDiv.innerHTML = `<div class="text-success">${label}...</div>`;
 
     try {
         const url = `/api/admin/dap/configs/${serverId}/install${force ? '?force=true' : ''}`;
@@ -922,12 +918,12 @@ async function runDapInstaller(serverId, force) {
 
         const result = await response.json();
         outputDiv.innerHTML = `
-            <div style="color: #4ec9b0;">✓ Installation started</div>
-            <pre style="margin-top: 0.5rem; color: #d4d4d4;">${JSON.stringify(result, null, 2)}</pre>
+            <div class="text-success">Installation started</div>
+            <pre class="text-value" style="margin-top: 0.5rem;">${JSON.stringify(result, null, 2)}</pre>
         `;
     } catch (error) {
         console.error('Failed to run DAP installer:', error);
-        outputDiv.innerHTML = `<div style="color: #f48771;">✗ Installation failed: ${error.message}</div>`;
+        outputDiv.innerHTML = `<div class="text-error">Installation failed: ${error.message}</div>`;
     }
 }
 
@@ -1533,7 +1529,7 @@ function createSessionHTML(session) {
         ? '<span style="font-size: 0.75rem; opacity: 0.7;" title="Created by AI Agent">🤖</span>'
         : session.createdBy === 'MANUAL'
         ? '<span style="font-size: 0.75rem; opacity: 0.7;" title="Created manually">👤</span>'
-        : '<span style="font-size: 0.75rem; opacity: 0.5; color: #666;" title="Creator unknown">❓</span>';
+        : '<span class="text-dimmed" style="font-size: 0.75rem; opacity: 0.5;" title="Creator unknown">❓</span>';
 
     return `
         <div data-session-id="${session.sessionId}" class="dap-session-item" style="margin-left: 2rem; padding: 0.25rem 0.5rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; opacity: 0.9; border-radius: 4px; transition: background-color 0.2s;" onclick="selectDapSession('${session.sessionId}')">

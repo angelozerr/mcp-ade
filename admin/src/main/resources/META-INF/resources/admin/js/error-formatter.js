@@ -24,10 +24,10 @@ function formatErrorWithFolding(title, errorData) {
     return `
         <div style="margin-bottom: 1rem; font-family: 'Consolas', 'Monaco', monospace;">
             <div class="trace-header folded" onclick="window.toggleErrorTrace('${traceId}')" style="padding: 0.25rem; cursor: pointer; user-select: none; display: flex; align-items: center;">
-                <span class="trace-toggle" style="color: #f48771; margin-right: 0.25rem;">▶</span>
-                <span class="trace-header-text" style="font-weight: bold; color: #f48771;">${title} - ${type}</span>
+                <span class="trace-toggle text-error" style="margin-right: 0.25rem;">▶</span>
+                <span class="trace-header-text text-error" style="font-weight: bold;">${title} - ${type}</span>
             </div>
-            <div id="${traceId}" class="trace-body collapsed" style="padding-left: 1.5rem; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word; color: #f48771;">${body}</div>
+            <div id="${traceId}" class="trace-body collapsed text-error" style="padding-left: 1.5rem; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">${body}</div>
         </div>
     `;
 }

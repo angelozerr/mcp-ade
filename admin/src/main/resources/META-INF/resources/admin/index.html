@@ -1,11 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCP Language Tools - Admin</title>
+    <link rel="stylesheet" href="css/theme-dark.css">
+    <link rel="stylesheet" href="css/theme-light.css">
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/diagram.css">
+    <script>
+        (function() {
+            var DARK = 'dark', LIGHT = 'light', KEY = 'admin-theme';
+            var saved = localStorage.getItem(KEY);
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else {
+                // No local cache: apply OS preference immediately, then sync from server
+                var os = window.matchMedia('(prefers-color-scheme: light)').matches ? LIGHT : DARK;
+                document.documentElement.setAttribute('data-theme', os);
+                fetch('/api/admin/settings/admin.theme')
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if (data && data.value) {
+                            document.documentElement.setAttribute('data-theme', data.value);
+                            localStorage.setItem(KEY, data.value);
+                            if (window.updateThemeIcon) window.updateThemeIcon(data.value);
+                        }
+                    })
+                    .catch(function() {});
+            }
+        })();
+    </script>
     <!-- vis.js for network diagrams (local copy for offline support) -->
     <script type="text/javascript" src="js/vis-network.min.js"></script>
 </head>
@@ -20,16 +45,22 @@
                     <div class="tab" onclick="switchTab('dap-servers', this)">Debuggers</div>
                     <div class="tab" onclick="switchTab('extensions', this)">Extensions</div>
                     <div class="tab" onclick="switchTab('mcp-traces', this)">MCP</div>
+                    <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle light/dark theme">🌙</button>
                 </div>
             </div>
             <div id="workspaces-list"></div>
             <div id="lsp-servers-list" style="display: none;"></div>
             <div id="dap-servers-list" style="display: none;"></div>
-            <div id="extensions-list" style="display: none;"></div>
+            <div id="extensions-container" style="display: none;">
+                <div class="add-extension-bar">
+                    <button onclick="showAddExtensionForm()">+ Add Extension</button>
+                </div>
+                <div id="extensions-list"></div>
+            </div>
             <div id="mcp-traces-list" style="display: none;">
-                <div style="padding: 1rem; border-bottom: 1px solid #1e1e1e;">
-                    <h3 style="margin-bottom: 0.25rem; color: #cccccc;">AI Clients</h3>
-                    <p style="font-size: 0.75rem; color: #666;">Connected via MCP</p>
+                <div style="padding: 1rem; border-bottom: 1px solid var(--border-primary);">
+                    <h3 class="text-primary" style="margin-bottom: 0.25rem;">AI Clients</h3>
+                    <p class="text-dimmed" style="font-size: 0.75rem;">Connected via MCP</p>
                 </div>
                 <div id="mcp-clients-list"></div>
             </div>
@@ -45,13 +76,13 @@
             <div class="search-box" id="search-box">
                 <input type="text" id="search-input" placeholder="Find in console..." />
                 <span class="search-count" id="search-count">0/0</span>
-                <button onclick="searchPrev()">↑</button>
-                <button onclick="searchNext()">↓</button>
-                <span class="search-close" onclick="closeSearch()">×</span>
+                <button onclick="searchPrev()">&#8593;</button>
+                <button onclick="searchNext()">&#8595;</button>
+                <span class="search-close" onclick="closeSearch()">&#215;</span>
             </div>
             <div id="console-area">
                 <div class="placeholder">
-                    ← Select a workspace and LSP server to view console
+                    &#8592; Select a workspace and LSP server to view console
                 </div>
             </div>
         </div>
@@ -81,9 +112,9 @@
     <!-- Global Progress Footer -->
     <div id="progress-footer" class="progress-footer">
         <div class="progress-footer-content">
-            <div id="progress-status" class="progress-status">No tasks running</div>
+            <span id="progress-status" class="progress-status">No tasks running</span>
             <button id="progress-toggle" class="progress-toggle" onclick="toggleProgressPanel()" title="Show progress tasks">
-                <span id="progress-icon">⏸</span>
+                <span id="progress-icon">&#9208;</span>
                 <span id="progress-count" class="progress-count">0</span>
             </button>
         </div>
@@ -93,10 +124,10 @@
     <div id="progress-panel" class="progress-panel">
         <div class="progress-panel-header">
             <h3>Active Tasks</h3>
-            <button onclick="toggleProgressPanel()">✕</button>
+            <button onclick="toggleProgressPanel()">&#10005;</button>
         </div>
         <div id="progress-panel-content" class="progress-panel-content">
-            <div style="text-align: center; padding: 2rem; color: #858585;">No active tasks</div>
+            <div class="text-secondary" style="text-align: center; padding: 2rem;">No active tasks</div>
         </div>
     </div>
 

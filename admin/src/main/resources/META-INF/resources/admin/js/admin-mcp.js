@@ -45,7 +45,7 @@ async function loadMcpClients() {
     } catch (e) {
         console.error('Failed to load MCP clients:', e);
         document.getElementById('mcp-clients-list').innerHTML =
-            '<div style="padding: 1rem; color: #888;">Failed to load clients</div>';
+            '<div class="text-secondary" style="padding: 1rem;">Failed to load clients</div>';
     }
 }
 
@@ -54,7 +54,7 @@ function renderMcpClients() {
     if (!list) return;
 
     if (mcpClients.length === 0) {
-        list.innerHTML = '<div style="padding: 1rem; color: #888;">No clients connected</div>';
+        list.innerHTML = '<div class="text-secondary" style="padding: 1rem;">No clients connected</div>';
         return;
     }
 
@@ -70,7 +70,7 @@ function renderMcpClients() {
                 <div style="font-weight: 600; margin-bottom: 0.25rem;">
                     📱 ${window.escapeHtml ? window.escapeHtml(client.name) : client.name}
                 </div>
-                <div style="font-size: 0.75rem; color: #666; padding-left: 1.5rem;">
+                <div class="text-dimmed" style="font-size: 0.75rem; padding-left: 1.5rem;">
                     Session: ${window.escapeHtml ? window.escapeHtml(shortId) : shortId}
                 </div>
             </div>
@@ -241,7 +241,7 @@ function renderMcpConsole() {
     if (!output) return;
 
     if (mcpTraceLevel === 'off') {
-        output.innerHTML = '<div style="padding: 1rem; color: #888;">Traces disabled (level: off)</div>';
+        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">Traces disabled (level: off)</div>';
         return;
     }
 
@@ -249,7 +249,7 @@ function renderMcpConsole() {
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
 
     if (clientTraces.length === 0) {
-        output.innerHTML = '<div style="padding: 1rem; color: #888;">No MCP traces yet...</div>';
+        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">No MCP traces yet...</div>';
         return;
     }
 
@@ -271,7 +271,7 @@ function renderMcpConsoleWithHighlights() {
     if (!output) return;
 
     if (mcpTraceLevel === 'off') {
-        output.innerHTML = '<div style="padding: 1rem; color: #888;">Traces disabled (level: off)</div>';
+        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">Traces disabled (level: off)</div>';
         return;
     }
 
@@ -279,7 +279,7 @@ function renderMcpConsoleWithHighlights() {
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
 
     if (clientTraces.length === 0) {
-        output.innerHTML = '<div style="padding: 1rem; color: #888;">No MCP traces yet...</div>';
+        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">No MCP traces yet...</div>';
         return;
     }
 
