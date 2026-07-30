@@ -136,11 +136,11 @@
     --status-starting-bg: #ffa500;
     --status-running-bg: #28a745;
     --status-running-not-ready-bg: #cddc39;
-    --status-running-not-ready-color: black;
+    --status-running-not-ready-color: #000000;
     --status-stopping-bg: #ff9800;
     --status-stopped-bg: #6c757d;
     --status-installing-bg: #ffc107;
-    --status-installing-color: black;
+    --status-installing-color: #000000;
     --status-install-failed-bg: #dc3545;
     --status-start-failed-bg: #ff6b6b;
     --status-error-bg: #dc3545;
@@ -148,6 +148,9 @@
     --status-connecting-bg: #9b59b6;
     --status-connected-bg: #00897b;
     --status-disconnecting-bg: #ab47bc;
+
+    /* ── Progress badge ── */
+    --progress-badge-border: rgba(255, 255, 255, 0.1);
 
     /* ── Spinner ── */
     --spinner-border: #333333;
@@ -168,6 +171,9 @@
     --diagram-edge-label-bg: #1e1e1e;
     --diagram-font-color: #ffffff;
     --diagram-edge-color: #cccccc;
+
+    /* ── Text on accent/colored backgrounds ── */
+    --text-on-accent: #ffffff;
 
     /* ── Theme toggle ── */
     --theme-toggle-color: #cccccc;

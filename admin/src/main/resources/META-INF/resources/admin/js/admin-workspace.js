@@ -321,16 +321,16 @@
             // Build workspace header (compact, same level as left sidebar)
             const workspaceName = workspace ? (workspace.rootUri.split('/').filter(p => p).pop() || workspace.rootUri) : '';
             const headerHTML = `
-                <div style="padding: 0.5rem 1rem; background: var(--bg-card); border-bottom: 1px solid var(--border-primary);">
-                    <div class="text-primary" style="font-size: 0.8rem; font-weight: 500;">📂 ${workspaceName}</div>
+                <div style="padding: 0.75rem 1rem calc(0.75rem + 2px); background: var(--bg-card); border-bottom: 1px solid var(--border-primary); display: flex; align-items: center;">
+                    <span class="text-primary" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2px;">📂 ${workspaceName}</span>
                 </div>
             `;
 
             // Build tabs header
             const tabsHTML = `
-                <div style="display: flex; background: var(--bg-panel); border-bottom: 1px solid var(--bg-card);">
-                    <div style="flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; font-weight: ${currentWorkspaceTab === 'servers' ? '600' : '400'}; border-bottom: ${currentWorkspaceTab === 'servers' ? '2px solid var(--accent-primary)' : '2px solid transparent'};" onclick="switchWorkspaceTab('servers')">Servers</div>
-                    <div style="flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; font-weight: ${currentWorkspaceTab === 'debuggers' ? '600' : '400'}; border-bottom: ${currentWorkspaceTab === 'debuggers' ? '2px solid var(--accent-primary)' : '2px solid transparent'};" onclick="switchWorkspaceTab('debuggers')">Debuggers</div>
+                <div class="tabs" style="background: var(--bg-panel); border-bottom: 1px solid var(--bg-card);">
+                    <div class="tab ${currentWorkspaceTab === 'servers' ? 'active' : ''}" style="flex: 1; text-align: center;" onclick="switchWorkspaceTab('servers')">Servers</div>
+                    <div class="tab ${currentWorkspaceTab === 'debuggers' ? 'active' : ''}" style="flex: 1; text-align: center;" onclick="switchWorkspaceTab('debuggers')">Debuggers</div>
                 </div>
             `;
 

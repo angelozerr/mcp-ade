@@ -149,6 +149,9 @@
     --status-connected-bg: #007a66;
     --status-disconnecting-bg: #8e44ad;
 
+    /* ── Progress badge ── */
+    --progress-badge-border: rgba(0, 0, 0, 0.1);
+
     /* ── Spinner ── */
     --spinner-border: #e0e0e0;
     --spinner-active: #005fb8;
@@ -168,6 +171,9 @@
     --diagram-edge-label-bg: #ffffff;
     --diagram-font-color: #333333;
     --diagram-edge-color: #666666;
+
+    /* ── Text on accent/colored backgrounds ── */
+    --text-on-accent: #ffffff;
 
     /* ── Theme toggle ── */
     --theme-toggle-color: #333333;
