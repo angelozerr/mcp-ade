@@ -407,6 +407,7 @@ public class AdminWebSocketEndpoint {
             if (server != null) {
                 statusMessage = server.getStatusMessage();
                 isReady = server.isReady();
+                LOG.infof("WebSocket: statusMessage='%s', isReady=%s for %s", statusMessage, isReady, event.serverId());
 
                 // Get install progress if installing
                 if (event.newStatus() == ServerStatus.INSTALLING) {
@@ -416,7 +417,11 @@ public class AdminWebSocketEndpoint {
                         installProgress = progressIndicator.getFraction();
                     }
                 }
+            } else {
+                LOG.warnf("WebSocket: server '%s' not found in workspace", event.serverId());
             }
+        } else {
+            LOG.warnf("WebSocket: workspace not found for URI: %s", event.workspaceUri());
         }
 
         // Send status change event with progress info
@@ -429,6 +434,11 @@ public class AdminWebSocketEndpoint {
                 installProgress,
                 isReady
         );
+        try {
+            LOG.infof("WebSocket: broadcasting status JSON: %s", objectMapper.writeValueAsString(msg));
+        } catch (Exception e) {
+            LOG.warnf("WebSocket: failed to log status JSON");
+        }
         broadcast(msg);
     }
 

@@ -76,6 +76,14 @@ public interface ProgressMonitor {
     <T> CompletableFuture<T> executeWithCancellation(CompletableFuture<T> future);
 
     /**
+     * Report a trace-only message (visible in traces but does not update status).
+     *
+     * @param message Trace message
+     */
+    default void reportTrace(String message) {
+    }
+
+    /**
      * Check if progress reporting is supported/available.
      *
      * @return true if progress can be reported, false otherwise

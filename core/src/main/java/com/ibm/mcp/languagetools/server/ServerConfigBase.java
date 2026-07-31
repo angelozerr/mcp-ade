@@ -66,6 +66,11 @@ public class ServerConfigBase implements ServerConfig {
      */
     private List<String> acceptContributions;
 
+    /**
+     * Declarative settings from server.json, rendered dynamically in the admin UI.
+     */
+    private List<ServerSettingDescriptor> settings;
+
     // Trace collector (set by workspace/session when server is added)
     protected TraceCollector traceCollector;
 
@@ -256,6 +261,14 @@ public class ServerConfigBase implements ServerConfig {
 
     public boolean acceptsContribution(String contributionType) {
         return acceptContributions != null && acceptContributions.contains(contributionType);
+    }
+
+    public List<ServerSettingDescriptor> getSettings() {
+        return settings;
+    }
+
+    public void setSettings(List<ServerSettingDescriptor> settings) {
+        this.settings = settings;
     }
 
     public String getCommand() {

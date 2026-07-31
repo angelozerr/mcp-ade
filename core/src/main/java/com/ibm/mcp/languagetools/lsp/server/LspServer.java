@@ -573,9 +573,20 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     }
                 }
 
-                // Force kill process if still alive (only if we launched it)
+                // Wait for process to exit after LSP exit notification.
+                // On Windows, process.destroy() is a hard kill (no SIGTERM),
+                // so we must wait for the process to exit on its own first.
                 if (!isSocketConnection) {
-                    destroyProcess(0, 3000);
+                    Process process = getServerProcess();
+                    if (process != null && process.isAlive()) {
+                        boolean exited = process.waitFor(10, TimeUnit.SECONDS);
+                        if (!exited) {
+                            LOG.warnf("Server process did not exit after LSP exit, forcing kill (PID: %d)",
+                                    process.pid());
+                            process.destroyForcibly();
+                            process.waitFor(3, TimeUnit.SECONDS);
+                        }
+                    }
                 }
 
                 // Shutdown executor
@@ -716,6 +727,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
      * Start watching instance files for changes (IDE start/stop detection).
      */
     private void startFileWatcher(String workspacePath) {
+        if (fileWatcher != null) {
+            fileWatcher.stop();
+        }
         var config = super.getConfig();
         fileWatcher = new InstanceFileWatcher(
                 workspacePath,

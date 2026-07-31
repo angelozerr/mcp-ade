@@ -13,13 +13,18 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin.dto;
 
+import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
+import com.ibm.mcp.languagetools.server.ServerSettingDescriptor;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Builder for Server DTOs (Config and Runtime).
@@ -32,6 +37,9 @@ public class ServerDTOBuilder {
 
     @Inject
     ExtensionRegistry extensionRegistry;
+
+    @Inject
+    ApplicationConfiguration applicationConfiguration;
 
     /**
      * Build LspConfigDTO from LspServerConfig.
@@ -52,7 +60,8 @@ public class ServerDTOBuilder {
             config.getInitializationOptions(),
             contributionBuilder.buildContributions(config),
             isExtension,
-            extensionRegistry.isServerEnabled(config.getServerId())
+            extensionRegistry.isServerEnabled(config.getServerId()),
+            buildSettings(config)
         );
     }
 
@@ -142,5 +151,26 @@ public class ServerDTOBuilder {
             parentServerId,
             installProgress
         );
+    }
+
+    private List<ServerSettingDTO> buildSettings(LspServerConfig config) {
+        List<ServerSettingDescriptor> descriptors = config.getSettings();
+        if (descriptors == null || descriptors.isEmpty()) {
+            return null;
+        }
+        String serverId = config.getServerId();
+        List<ServerSettingDTO> result = new ArrayList<>();
+        for (ServerSettingDescriptor desc : descriptors) {
+            String settingKey = "lsp." + serverId + ".settings." + desc.key();
+            String currentValue = applicationConfiguration.getString(settingKey);
+            if (currentValue == null) {
+                currentValue = desc.defaultValue();
+            }
+            result.add(new ServerSettingDTO(
+                    desc.key(), desc.label(), desc.description(),
+                    desc.type(), desc.values(), desc.valueLabels(),
+                    desc.defaultValue(), currentValue));
+        }
+        return result;
     }
 }

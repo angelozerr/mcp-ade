@@ -875,8 +875,8 @@
             // Load traces for specific workspace + server
             try {
                 // Traces are populated via WebSocket (history on connect + real-time updates)
-                if (!tracesByServer[server.id]) {
-                    tracesByServer[server.id] = [];
+                if (!tracesByServer[window.traceKey(selectedWorkspace, server.id)]) {
+                    tracesByServer[window.traceKey(selectedWorkspace, server.id)] = [];
                 }
                 renderConsole();
             } catch (error) {
@@ -1018,6 +1018,66 @@
                     <pre class="detail-value">${JSON.stringify(server.initializationOptions, null, 2)}</pre>
                 </div>
                 ` : ''}
+
+                ${renderSettingsSection(server)}
+            `;
+        }
+
+        /**
+         * Render settings section from declarative settings in server.json.
+         */
+        function renderSettingsSection(server) {
+            if (!server.settings || server.settings.length === 0) {
+                return '';
+            }
+
+            const serverId = server.id;
+
+            const controlsHTML = server.settings.map(setting => {
+                const currentValue = setting.currentValue || setting.defaultValue || '';
+                let controlHTML = '';
+
+                if (setting.type === 'enum' && setting.values) {
+                    const options = setting.values.map(v => {
+                        const label = (setting.valueLabels && setting.valueLabels[v]) ? setting.valueLabels[v] : v;
+                        const selected = v === currentValue ? 'selected' : '';
+                        return `<option value="${v}" ${selected}>${label}</option>`;
+                    }).join('');
+                    controlHTML = `<select class="select-field" onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+                                           style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">
+                                       ${options}
+                                   </select>`;
+                } else if (setting.type === 'boolean') {
+                    const checked = currentValue === 'true' ? 'checked' : '';
+                    controlHTML = `<label class="toggle-switch">
+                                       <input type="checkbox" ${checked}
+                                              onchange="updateServerSetting('${serverId}', '${setting.key}', this.checked ? 'true' : 'false')">
+                                       <span class="toggle-slider"></span>
+                                   </label>`;
+                } else {
+                    controlHTML = `<input type="text" class="input-field" value="${currentValue}"
+                                          onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+                                          style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">`;
+                }
+
+                const descHTML = setting.description
+                    ? `<div class="text-dimmed" style="font-size: 0.8rem; margin-top: 0.25rem;">${setting.description}</div>`
+                    : '';
+
+                return `<div class="detail-item" style="flex-direction: column; align-items: flex-start;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; width: 100%;">
+                                <span class="detail-label">${setting.label}:</span>
+                                ${controlHTML}
+                            </div>
+                            ${descHTML}
+                        </div>`;
+            }).join('');
+
+            return `
+                <div class="details-section">
+                    <h4>Settings</h4>
+                    ${controlsHTML}
+                </div>
             `;
         }
 
@@ -1209,8 +1269,8 @@
             const container = document.getElementById('console-output');
             if (!container) return;
 
-            // Get traces for current server
-            const traces = tracesByServer[window.currentServerId] || [];
+            // Get traces for current workspace + server
+            const traces = tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] || [];
 
             // Filter traces based on current level
             const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
@@ -1425,9 +1485,9 @@
             try {
                 await fetch('/api/admin/traces/lsp', { method: 'DELETE' });
 
-                // Clear traces for current server only
+                // Clear traces for current workspace + server only
                 if (window.currentServerId) {
-                    tracesByServer[window.currentServerId] = [];
+                    tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] = [];
                 }
 
                 renderConsole();
@@ -1618,7 +1678,7 @@
             const container = document.getElementById('console-output');
             if (!container) return;
 
-            const traces = tracesByServer[window.currentServerId] || [];
+            const traces = tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] || [];
             const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
 
             if (filteredTraces.length === 0) {
@@ -1641,8 +1701,8 @@
             const container = document.getElementById('console-output');
             if (!container) return;
 
-            // Get traces for current server
-            const traces = tracesByServer[window.currentServerId] || [];
+            // Get traces for current workspace + server
+            const traces = tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] || [];
 
             // Filter traces based on current level
             const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));

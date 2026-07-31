@@ -14,6 +14,9 @@
 package com.ibm.mcp.languagetools.extensions.jdtls.lsp;
 
 import com.ibm.mcp.languagetools.ContributionManager;
+import com.ibm.mcp.languagetools.extensions.jdtls.classpath.FastModeProjectManager;
+import com.ibm.mcp.languagetools.extensions.jdtls.classpath.ServerStatusProgressMonitor;
+import com.ibm.mcp.languagetools.extensions.jdtls.tools.JdtlsCommands;
 import com.ibm.mcp.languagetools.installer.InstallerEvent;
 import com.ibm.mcp.languagetools.installer.InstallerListener;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
@@ -28,6 +31,8 @@ import org.jboss.logging.Logger;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 
+import jakarta.enterprise.inject.spi.CDI;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -35,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,8 +56,26 @@ public class JdtLsServer extends LspServer implements InstallerListener {
 
     private static final Logger LOG = Logger.getLogger(JdtLsServer.class);
 
+    public static final String IMPORT_MODE_FAST = "fast";
+    public static final String IMPORT_MODE_FAST_CACHE = "fast+cache";
+    public static final String IMPORT_MODE_FULL = "full";
+
+    private volatile String importMode;
+
     public JdtLsServer(LspServerConfig config, Workspace workspace) {
         super(config, workspace);
+    }
+
+    /**
+     * Returns whether this server is running in fast import mode
+     * (M2E/Gradle import disabled, classpath extracted directly from build tool).
+     */
+    public boolean isFastMode() {
+        return IMPORT_MODE_FAST.equals(importMode) || IMPORT_MODE_FAST_CACHE.equals(importMode);
+    }
+
+    public boolean isCacheEnabled() {
+        return IMPORT_MODE_FAST_CACHE.equals(importMode);
     }
 
     @Override
@@ -116,6 +140,9 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             options.putAll(config.getInitializationOptions());
         }
 
+        // Determine import mode from application settings (configured via admin UI)
+        resolveImportMode();
+
         // Add required JDT.LS settings if not already present
         if (!options.containsKey("settings")) {
             Map<String, Object> settings = new HashMap<>();
@@ -124,11 +151,36 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             options.put("settings", settings);
         }
 
+        // In fast mode, disable M2E/Gradle import and auto-build
+        if (isFastMode()) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> settings = (Map<String, Object>) options.get("settings");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> javaSettings = (Map<String, Object>) settings.get("java");
+            if (javaSettings == null) {
+                javaSettings = new HashMap<>();
+                settings.put("java", javaSettings);
+            }
+            javaSettings.put("import", Map.of(
+                    "maven", Map.of("enabled", false),
+                    "gradle", Map.of("enabled", false)
+            ));
+            // Always disable autobuild in fast mode to prevent JDT.LS from building
+            // ALL projects at startup (causes diagnostic flood + hang on large projects
+            // like Quarkus). Instead, buildProject is called after setupProject to build
+            // only the targeted module.
+            javaSettings.put("autobuild", Map.of("enabled", false));
+            LOG.info("Fast import mode enabled: M2E/Gradle import disabled, autobuild=false");
+        }
+
         // Add extended client capabilities
         if (!options.containsKey("extendedClientCapabilities")) {
             Map<String, Object> extendedCaps = new HashMap<>();
             extendedCaps.put("classFileContentsSupport", true);
             extendedCaps.put("shouldLanguageServerExitOnShutdown", true);
+            if (isFastMode()) {
+                extendedCaps.put("skipProjectConfiguration", true);
+            }
             options.put("extendedClientCapabilities", extendedCaps);
         }
 
@@ -158,7 +210,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         setReady(true);
     }
 
-    private static final String DIAGNOSTICS_COMMAND = "mcp.jdtls.diagnostics";
+    private static final String DIAGNOSTICS_COMMAND = JdtlsCommands.DIAGNOSTICS;
 
     /**
      * Get diagnostics for a Java file.
@@ -177,8 +229,11 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             return CompletableFuture.completedFuture(cached);
         }
 
-        Object params = Map.of("uris", List.of(uri));
-        return executeCommand(DIAGNOSTICS_COMMAND, List.of(params))
+        return ensureModuleSetupIfFastMode(uri)
+                .thenCompose(v -> {
+                    Object params = Map.of("uris", List.of(uri));
+                    return executeCommand(DIAGNOSTICS_COMMAND, List.of(params));
+                })
                 .thenApply(result -> {
                     List<Diagnostic> diags = parseDiagnosticsResult(result);
                     getDiagnosticsCache().put(uri, diags);
@@ -190,13 +245,28 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                 });
     }
 
+    private CompletableFuture<Void> ensureModuleSetupIfFastMode(String fileUri) {
+        if (!isFastMode()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        try {
+            FastModeProjectManager fmpm = CDI.current().select(FastModeProjectManager.class).get();
+            Path workspaceRoot = getWorkspace().getRootPath();
+            ServerStatusProgressMonitor progressMonitor = new ServerStatusProgressMonitor(this);
+            return fmpm.ensureModuleSetup(workspaceRoot, fileUri, this, progressMonitor)
+                    .whenComplete((v, ex) -> progressMonitor.setComplete());
+        } catch (Exception e) {
+            LOG.debugf(e, "CDI not available for FastModeProjectManager lookup");
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+
     private boolean hasDiagnosticsCommand() {
         var contributionManager = getWorkspace().getApplication().getContributionManager();
         List<String> bundles = contributionManager.extractFilesFromContribution(getId(), JdtLsContributes.BUNDLES);
         return !bundles.isEmpty();
     }
 
-    @SuppressWarnings("unchecked")
     private List<Diagnostic> parseDiagnosticsResult(Object result) {
         if (result instanceof List<?> list) {
             return list.stream()
@@ -259,14 +329,61 @@ public class JdtLsServer extends LspServer implements InstallerListener {
 
     @Override
     public CompletableFuture<Void> initialize() {
+        resolveImportMode();
+        if (isFastMode()) {
+            cleanResidualProjects();
+        }
         return super.initialize()
                 .thenRun(() -> {
-                    // Override parent behavior: JDT.LS is NOT ready immediately after initialize
-                    // We need to wait for language/status notification with "ServiceReady"
                     setReady(false);
                     LOG.infof("JDT.LS initialized for workspace: %s (waiting for ServiceReady notification)", workspaceRoot);
-                    // The language/status notifications will be handled by JdtLsLanguageClient
                 });
+    }
+
+    private void resolveImportMode() {
+        if (importMode != null) {
+            return;
+        }
+        importMode = IMPORT_MODE_FULL;
+        var appConfig = getWorkspace().getApplication().getConfiguration();
+        if (appConfig != null) {
+            String mode = appConfig.getString("lsp.jdtls.settings.java.import.mode");
+            if (IMPORT_MODE_FAST.equals(mode) || IMPORT_MODE_FAST_CACHE.equals(mode)) {
+                importMode = mode;
+            }
+        }
+    }
+
+    // In fast mode, residual projects from a previous run in the -data directory
+    // cause M2E to process them at startup ("Updating X configuration"), adding ~40s
+    // of overhead even with skipProjectConfiguration=true. Deleting the entire
+    // org.eclipse.core.resources directory (.projects/, .root/, .snap) ensures
+    // JDT.LS starts with zero projects. JDT indexes (org.eclipse.jdt.core/) are preserved.
+    private void cleanResidualProjects() {
+        Path dataDir = getJdtlsDataDir();
+        Path resourcesDir = dataDir.resolve(".metadata")
+                .resolve(".plugins")
+                .resolve("org.eclipse.core.resources");
+        if (!Files.exists(resourcesDir)) {
+            return;
+        }
+        LOG.infof("Cleaning residual workspace metadata from: %s", resourcesDir);
+        deleteDirectoryRecursively(resourcesDir);
+    }
+
+    private void deleteDirectoryRecursively(Path dir) {
+        try (var walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            LOG.debugf(e, "Failed to delete: %s", path);
+                        }
+                    });
+        } catch (IOException e) {
+            LOG.warnf(e, "Failed to clean directory: %s", dir);
+        }
     }
 
     /**
@@ -312,7 +429,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         params.add("-Dosgi.bundles.defaultStartLevel=4");
         params.add("-Declipse.product=org.eclipse.jdt.ls.core.product");
 
-        // 9. Workspace data directory
+        // 8. Workspace data directory
         params.add("-data");
         params.add(getJdtlsDataDir().toString());
 
@@ -449,7 +566,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         URI rootUri = getWorkspace().getRootUri();
         String workspaceName = Path.of(rootUri).getFileName().toString();
         Path baseDir = getWorkspace().getApplication().getPathManager().getMcpLangToolsRoot().resolve("jdtls-workspaces");
-        Path dir = baseDir.resolve(workspaceName + "-" + Math.abs(rootUri.hashCode()));
+        Path dir = baseDir.resolve(workspaceName + "-" + (rootUri.hashCode() & 0x7FFFFFFF));
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {
