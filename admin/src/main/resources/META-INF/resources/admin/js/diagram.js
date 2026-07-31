@@ -172,12 +172,13 @@ function buildDiagramOptions(colors) {
                 centralGravity: 0.01,
                 springLength: 200,
                 springConstant: 0.08,
-                damping: 0.4,
+                damping: 0.85,
                 avoidOverlap: 1
             },
+            maxVelocity: 30,
             stabilization: {
                 enabled: true,
-                iterations: 200,
+                iterations: 500,
                 updateInterval: 25
             }
         },
