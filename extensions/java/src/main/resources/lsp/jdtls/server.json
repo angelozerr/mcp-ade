@@ -10,5 +10,20 @@
     {
       "language": "java"
     }
+  ],
+  "settings": [
+    {
+      "key": "java.import.mode",
+      "label": "Import mode",
+      "description": "Fast: bypass M2E/Gradle, extract classpath directly. Full: standard IDE import with M2E/Gradle.",
+      "type": "enum",
+      "values": ["fast", "fast+cache", "full"],
+      "valueLabels": {
+        "fast": "Fast (direct classpath extraction)",
+        "fast+cache": "Fast + Cache (cached classpath, skip Maven on restart)",
+        "full": "Full (M2E/Gradle import)"
+      },
+      "default": "full"
+    }
   ]
 }

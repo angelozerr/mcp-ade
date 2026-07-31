@@ -49,7 +49,14 @@
         // Init theme icon on load
         updateThemeIcon(getCurrentTheme());
 
-        let tracesByServer = {}; // Store traces per server: {serverId: [...traces]}
+        let tracesByServer = {}; // Store traces per workspace+server: {traceKey: [...traces]}
+
+        // Build a composite key for tracesByServer so that two workspaces
+        // with the same serverId (e.g. "jdtls") get separate trace buckets.
+        function traceKey(workspaceUri, serverId) {
+            return (workspaceUri || '') + '|' + serverId;
+        }
+        window.traceKey = traceKey;
         let currentTab = 'workspaces';
         let workspacesRendered = false; // Track if workspaces have been rendered at least once
         let currentConsoleTab = 'traces'; // Track current tab in Workspaces view
@@ -222,6 +229,7 @@
                 contributions: config.contributions,
                 isExtension: config.isExtension,
                 enabled: config.enabled,
+                settings: config.settings,
                 parentServerId: runtime.parentServerId,
 
                 // Runtime fields
@@ -376,14 +384,15 @@
                 appendInstallTrace(trace);
             }
 
-            // Store trace by server
-            if (!tracesByServer[trace.serverId]) {
-                tracesByServer[trace.serverId] = [];
+            // Store trace by workspace + server
+            const tk = traceKey(trace.workspaceUri, trace.serverId);
+            if (!tracesByServer[tk]) {
+                tracesByServer[tk] = [];
             }
 
             // Check if this is an UPDATE message (replaces previous line)
             if (trace.messageType === 'UPDATE') {
-                const traces = tracesByServer[trace.serverId];
+                const traces = tracesByServer[tk];
                 const lastTrace = traces[traces.length - 1];
                 // Replace last trace if it was also an UPDATE or if it exists
                 if (lastTrace && lastTrace.messageType === 'UPDATE') {
@@ -392,14 +401,14 @@
                     traces.push(trace);
                 }
             } else {
-                tracesByServer[trace.serverId].push(trace);
+                tracesByServer[tk].push(trace);
             }
 
-            console.log('Stored trace, total for', trace.serverId, ':', tracesByServer[trace.serverId].length);
+            console.log('Stored trace, total for', tk, ':', tracesByServer[tk].length);
 
             // Keep only last 200 traces per server
-            if (tracesByServer[trace.serverId].length > 200) {
-                tracesByServer[trace.serverId] = tracesByServer[trace.serverId].slice(-200);
+            if (tracesByServer[tk].length > 200) {
+                tracesByServer[tk] = tracesByServer[tk].slice(-200);
             }
 
             // If this is an installation trace (INFO, UPDATE, ERROR) and no server is currently selected,
@@ -435,10 +444,10 @@
                 }
             }
 
-            // Refresh console if this trace is for the currently selected server
+            // Refresh console if this trace is for the currently selected workspace+server
             // Installation traces have null workspaceUri — match by serverId only
-            if ((trace.workspaceUri == null || trace.workspaceUri === selectedWorkspace) &&
-                trace.serverId === window.currentServerId) {
+            if (tk === traceKey(selectedWorkspace, window.currentServerId) ||
+                (trace.workspaceUri == null && trace.serverId === window.currentServerId)) {
                 console.log('Refreshing console for current server');
                 renderConsole();
             }
@@ -745,12 +754,15 @@
                 return;
             }
 
-            // Update status badge
+            // Update status badge and status message
             const statusBadgeContainer = serverElement.querySelector('.server-status-badge-container');
             if (statusBadgeContainer) {
                 const statusClass = formatStatusClass(server.status, server.isReady);
                 const label = formatStatusLabel(server.status, server.externalInstance);
-                statusBadgeContainer.innerHTML = `<span class="status-badge ${statusClass}">${label}</span>`;
+                const statusMessageHTML = server.statusMessage
+                    ? `<span class="server-status-message text-secondary" style="font-size: 0.85rem; margin-left: 0.5rem;">${escapeHtml(server.statusMessage)}</span>`
+                    : '';
+                statusBadgeContainer.innerHTML = `<span class="status-badge ${statusClass}">${label}</span>${statusMessageHTML}`;
             }
 
             // Update action buttons based on new status
@@ -995,7 +1007,7 @@
                         return {
                             type: 'lsp',
                             containerId: 'console-output',
-                            data: tracesByServer[window.currentServerId] || []
+                            data: tracesByServer[traceKey(selectedWorkspace, window.currentServerId)] || []
                         };
                     }
 

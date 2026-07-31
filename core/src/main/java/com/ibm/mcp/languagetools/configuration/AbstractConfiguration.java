@@ -62,6 +62,9 @@ public abstract class AbstractConfiguration implements Configuration {
 
     @Override
     public void watch() {
+        if (fileWatcher != null) {
+            fileWatcher.stop();
+        }
         Path settingsFile = getSettingsFile();
         if (settingsFile != null) {
             fileWatcher = new FileWatcher(settingsFile, this::reload);

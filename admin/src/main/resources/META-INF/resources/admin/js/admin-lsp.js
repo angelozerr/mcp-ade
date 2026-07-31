@@ -273,7 +273,93 @@ function buildServerDetailsHTML(details, allServers) {
             <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
         </div>
+
+        ${buildSettingsHTML(details)}
     `;
+}
+
+/**
+ * Build settings HTML from declarative settings in server.json.
+ * Renders controls dynamically based on setting type (enum, boolean, string).
+ */
+function buildSettingsHTML(details) {
+    if (!details.settings || details.settings.length === 0) {
+        return '';
+    }
+
+    const serverId = details.id;
+
+    let controlsHTML = details.settings.map(setting => {
+        let controlHTML = '';
+        const currentValue = setting.currentValue || setting.defaultValue || '';
+
+        if (setting.type === 'enum' && setting.values) {
+            const options = setting.values.map(v => {
+                const label = (setting.valueLabels && setting.valueLabels[v]) ? setting.valueLabels[v] : v;
+                const selected = v === currentValue ? 'selected' : '';
+                return `<option value="${v}" ${selected}>${label}</option>`;
+            }).join('');
+            controlHTML = `<select class="select-field" onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+                                   style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">
+                               ${options}
+                           </select>`;
+        } else if (setting.type === 'boolean') {
+            const checked = currentValue === 'true' ? 'checked' : '';
+            controlHTML = `<label class="toggle-switch">
+                               <input type="checkbox" ${checked}
+                                      onchange="updateServerSetting('${serverId}', '${setting.key}', this.checked ? 'true' : 'false')">
+                               <span class="toggle-slider"></span>
+                           </label>`;
+        } else {
+            controlHTML = `<input type="text" class="input-field" value="${currentValue}"
+                                  onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+                                  style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">`;
+        }
+
+        const descHTML = setting.description
+            ? `<span class="text-dimmed" style="font-size: 0.8rem; margin-left: 0.5rem;">${setting.description}</span>`
+            : '';
+
+        return `<div style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <strong class="text-label" style="min-width: 120px;">${setting.label}:</strong>
+                    ${controlHTML}
+                    ${descHTML}
+                </div>`;
+    }).join('');
+
+    return `
+        <div style="margin-bottom: 1.5rem;">
+            <h3 class="text-label" style="margin-top: 1rem;">Settings</h3>
+            ${controlsHTML}
+        </div>
+    `;
+}
+
+/**
+ * Update a server setting via the REST API and sync in-memory state.
+ * @param {string} serverId - Server ID (e.g. "jdtls")
+ * @param {string} settingKey - Setting key (e.g. "java.import.mode")
+ * @param {string} value - New value
+ */
+function updateServerSetting(serverId, settingKey, value) {
+    const persistKey = `lsp.${serverId}.settings.${settingKey}`;
+    fetch(`/api/admin/settings/${persistKey}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: value })
+    }).then(response => {
+        if (!response.ok) {
+            console.error('Failed to update setting:', persistKey, response.statusText);
+            return;
+        }
+        const config = window.lspConfigs && window.lspConfigs[serverId];
+        if (config && config.settings) {
+            const setting = config.settings.find(s => s.key === settingKey);
+            if (setting) {
+                setting.currentValue = value;
+            }
+        }
+    }).catch(err => console.error('Error updating setting:', err));
 }
 
 /**

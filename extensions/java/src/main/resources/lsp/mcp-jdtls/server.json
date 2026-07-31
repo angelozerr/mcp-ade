@@ -83,8 +83,17 @@
         "mcp.jdtls.moveTypeToNewFile",
         "mcp.jdtls.pullUp",
         "mcp.jdtls.pushDown",
+        "mcp.jdtls.convertToRecord",
+        "mcp.jdtls.moveTypeToPackage",
+        "mcp.jdtls.generateGettersSetters",
+        "mcp.jdtls.generateConstructor",
+        "mcp.jdtls.generateToString",
+        "mcp.jdtls.generateEqualsHashCode",
+        "mcp.jdtls.generateDelegateMethods",
         "mcp.jdtls.getProjectStructure",
-        "mcp.jdtls.getClasspathInfo"
+        "mcp.jdtls.getClasspathInfo",
+        "mcp.jdtls.setupProject",
+        "mcp.jdtls.getIndexingStatus"
       ]
     }
   }

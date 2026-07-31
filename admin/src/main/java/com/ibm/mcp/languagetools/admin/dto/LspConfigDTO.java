@@ -34,6 +34,7 @@ public record LspConfigDTO(
     Map<String, Object> initializationOptions,
     Map<String, Map<String, List<?>>> contributions,
     boolean isExtension,
-    boolean enabled
+    boolean enabled,
+    List<ServerSettingDTO> settings
 ) {
 }

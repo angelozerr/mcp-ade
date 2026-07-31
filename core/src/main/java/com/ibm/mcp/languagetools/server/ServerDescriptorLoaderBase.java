@@ -65,6 +65,7 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
     private static final String FIELD_FILE_EXISTS = "fileExists";
     private static final String FIELD_GLOB_PATTERN = "globPattern";
     private static final String FIELD_COMMAND = "command";
+    private static final String FIELD_SETTINGS = "settings";
     protected final Gson gson = new Gson();
 
     protected ServerDescriptorLoaderBase() {
@@ -214,6 +215,41 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
         String command = OSUtils.getStringFromOs(jsonObject, getCommandFieldName());
         if (command != null) {
             config.setCommand(command);
+        }
+
+        // Declarative settings
+        if (jsonObject.has(FIELD_SETTINGS)) {
+            List<ServerSettingDescriptor> settings = new ArrayList<>();
+            jsonObject.getAsJsonArray(FIELD_SETTINGS).forEach(el -> {
+                JsonObject settingObj = el.getAsJsonObject();
+                String key = settingObj.has("key") ? settingObj.get("key").getAsString() : null;
+                if (key == null) {
+                    return;
+                }
+                String label = settingObj.has("label") ? settingObj.get("label").getAsString() : key;
+                String desc = settingObj.has("description") ? settingObj.get("description").getAsString() : null;
+                String type = settingObj.has("type") ? settingObj.get("type").getAsString() : "string";
+                String defaultValue = settingObj.has("default") ? settingObj.get("default").getAsString() : null;
+
+                List<String> values = null;
+                if (settingObj.has("values")) {
+                    values = new ArrayList<>();
+                    for (var v : settingObj.getAsJsonArray("values")) {
+                        values.add(v.getAsString());
+                    }
+                }
+
+                Map<String, String> valueLabels = null;
+                if (settingObj.has("valueLabels")) {
+                    valueLabels = new HashMap<>();
+                    for (var entry : settingObj.getAsJsonObject("valueLabels").entrySet()) {
+                        valueLabels.put(entry.getKey(), entry.getValue().getAsString());
+                    }
+                }
+
+                settings.add(new ServerSettingDescriptor(key, label, desc, type, values, valueLabels, defaultValue));
+            });
+            config.setSettings(settings);
         }
 
         return jsonObject;
