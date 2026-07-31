@@ -813,9 +813,10 @@
                             </div>
                         </div>
                         ${hasContributions ? `
-                        <div id="contributions-tab" class="tab-panel ${currentConsoleTab === 'contributions' ? 'active' : ''}" style="overflow-y: auto;">
-                            <div id="workspace-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); border-bottom: 1px solid var(--border-subtle);"></div>
-                            <div class="details-panel text-primary" id="contributions-content" style="padding: 2rem;">
+                        <div id="contributions-tab" class="tab-panel ${currentConsoleTab === 'contributions' ? 'active' : ''}">
+                            <div id="workspace-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); flex-shrink: 0;"></div>
+                            <div class="diagram-resizer"></div>
+                            <div class="details-panel text-primary" id="contributions-content" style="padding: 2rem; overflow-y: auto; flex: 1; min-height: 0;">
                                 <p>Loading...</p>
                             </div>
                         </div>

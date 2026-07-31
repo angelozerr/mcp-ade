@@ -146,9 +146,10 @@ async function showServerDetails(serverId) {
                         </div>
                     </div>
                 </div>
-                <div id="server-contributions-tab" class="tab-panel ${currentServerTab === 'contributions' ? 'active' : ''}" style="overflow-y: auto;">
-                    <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); border-bottom: 1px solid var(--border-subtle);"></div>
-                    <div class="details-panel text-primary" style="padding: 2rem;">
+                <div id="server-contributions-tab" class="tab-panel ${currentServerTab === 'contributions' ? 'active' : ''}">
+                    <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); flex-shrink: 0;"></div>
+                    <div class="diagram-resizer"></div>
+                    <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto; flex: 1; min-height: 0;">
                         ${contributionsHTML || '<p class="detail-value">No contributions</p>'}
                     </div>
                 </div>

@@ -788,8 +788,9 @@ async function showDapServerDetails(serverId) {
             </div>
             ${hasContributions ? `
             <div id="dap-server-contributions-tab" class="tab-panel ${currentDapServerTab === 'contributions' ? 'active' : ''}">
-                <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); border-bottom: 1px solid var(--border-subtle);"></div>
-                <div class="details-panel text-primary" id="dap-contributions-content" style="padding: 2rem;">
+                <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); flex-shrink: 0;"></div>
+                <div class="diagram-resizer"></div>
+                <div class="details-panel text-primary" id="dap-contributions-content" style="padding: 2rem; overflow-y: auto; flex: 1; min-height: 0;">
                     ${contributionsHTML}
                 </div>
             </div>

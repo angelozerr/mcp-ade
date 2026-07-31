@@ -302,6 +302,8 @@ function renderServerDiagram(servers, currentServerId) {
     }, 100);
 
     console.log('Server diagram rendered with', nodes.length, 'nodes and', edges.length, 'edges');
+
+    initDiagramResizer('server-diagram-container');
 }
 
 /**
@@ -399,4 +401,57 @@ function renderWorkspaceDiagram(servers, currentServerId) {
     }, 100);
 
     console.log('Workspace diagram rendered with', nodes.length, 'nodes and', edges.length, 'edges');
+
+    initDiagramResizer('workspace-diagram-container');
+}
+
+/**
+ * Initialize a draggable resizer between a diagram container and the content below it.
+ * The resizer element must be a sibling between the diagram container and the content panel.
+ */
+function initDiagramResizer(diagramContainerId) {
+    const diagramContainer = document.getElementById(diagramContainerId);
+    if (!diagramContainer) return;
+
+    const resizer = diagramContainer.nextElementSibling;
+    if (!resizer || !resizer.classList.contains('diagram-resizer')) return;
+
+    const contentPanel = resizer.nextElementSibling;
+    if (!contentPanel) return;
+
+    let startY, startHeight;
+
+    function onMouseDown(e) {
+        e.preventDefault();
+        startY = e.clientY;
+        startHeight = diagramContainer.offsetHeight;
+        resizer.classList.add('active');
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+    }
+
+    function onMouseMove(e) {
+        const delta = e.clientY - startY;
+        const newHeight = Math.max(100, startHeight + delta);
+        diagramContainer.style.height = newHeight + 'px';
+
+        const network = diagramContainerId.includes('workspace')
+            ? workspaceDiagramNetwork
+            : serverDiagramNetwork;
+        if (network) {
+            network.redraw();
+        }
+    }
+
+    function onMouseUp() {
+        resizer.classList.remove('active');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    }
+
+    resizer.addEventListener('mousedown', onMouseDown);
 }

@@ -31,3 +31,37 @@
 .vis-network .vis-navigation {
     background: transparent !important;
 }
+
+/* Resizable splitter between diagram and contributions content */
+.diagram-resizer {
+    height: 3px;
+    cursor: ns-resize;
+    background: var(--border-subtle);
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s;
+}
+
+.diagram-resizer:hover,
+.diagram-resizer.active {
+    background: var(--accent-primary);
+}
+
+.diagram-resizer::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 2px;
+    background: var(--text-secondary);
+    border-radius: 1px;
+    opacity: 0.5;
+}
+
+.diagram-resizer:hover::after,
+.diagram-resizer.active::after {
+    opacity: 1;
+    background: var(--bg-card);
+}
