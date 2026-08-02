@@ -180,6 +180,13 @@ public class FastModeProjectManager {
                                     long setupCommandElapsed = System.currentTimeMillis() - setupCommandStart;
                                     LOG.infof("Project setup result: %s (setupProject: %d ms)",
                                             result, setupCommandElapsed);
+
+                                    String status = extractStatus(result);
+                                    if ("unchanged".equals(status)) {
+                                        LOG.infof("Classpath unchanged, skipping build for %s", info.moduleName());
+                                        return CompletableFuture.completedFuture(null);
+                                    }
+
                                     progress.reportProgress("Building project " + info.moduleName());
                                     return buildProject(jdtls, info.moduleName());
                                 })
@@ -263,6 +270,15 @@ public class FastModeProjectManager {
                     LOG.debugf(ex, "Failed to get indexing status");
                     return false;
                 });
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractStatus(Object result) {
+        if (result instanceof Map) {
+            Object status = ((Map<String, Object>) result).get("status");
+            return status instanceof String ? (String) status : null;
+        }
+        return null;
     }
 
     private CompletableFuture<Object> buildProject(LspServer jdtls, String projectName) {

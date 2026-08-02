@@ -108,31 +108,39 @@ public class SetupProjectHandler implements ICommandHandler {
             project.open(monitor);
         }
 
-        // Add Java nature if not already present
+        // Force Java-only nature (strip Maven/PDE/Gradle natures from the on-disk .project)
         IProjectDescription desc = project.getDescription();
         String[] natures = desc.getNatureIds();
-        boolean hasJavaNature = false;
-        for (String nature : natures) {
-            if (JavaCore.NATURE_ID.equals(nature)) {
-                hasJavaNature = true;
-                break;
-            }
-        }
-        if (!hasJavaNature) {
-            String[] newNatures = new String[natures.length + 1];
-            System.arraycopy(natures, 0, newNatures, 1, natures.length);
-            newNatures[0] = JavaCore.NATURE_ID;
-            desc.setNatureIds(newNatures);
+        boolean needsNatureUpdate = natures.length != 1 || !JavaCore.NATURE_ID.equals(natures[0]);
+        if (needsNatureUpdate) {
+            desc.setNatureIds(new String[]{JavaCore.NATURE_ID});
             project.setDescription(desc, monitor);
         }
 
-        // For reactor dep projects: remove all builders to prevent JDT from
-        // generating diagnostics. The Java nature is kept so CPE_PROJECT
-        // references can resolve types from source.
         if (Boolean.TRUE.equals(disableBuilders)) {
+            // For reactor dep projects: remove all builders to prevent JDT from
+            // generating diagnostics. The Java nature is kept so CPE_PROJECT
+            // references can resolve types from source.
             IProjectDescription buildDesc = project.getDescription();
             if (buildDesc.getBuildSpec().length > 0) {
                 buildDesc.setBuildSpec(new org.eclipse.core.resources.ICommand[0]);
+                project.setDescription(buildDesc, monitor);
+            }
+        } else {
+            // Keep only Java builder (strip Maven/PDE builders from on-disk .project)
+            IProjectDescription buildDesc = project.getDescription();
+            org.eclipse.core.resources.ICommand[] buildSpec = buildDesc.getBuildSpec();
+            boolean hasNonJavaBuilder = false;
+            for (var cmd : buildSpec) {
+                if (!JavaCore.BUILDER_ID.equals(cmd.getBuilderName())) {
+                    hasNonJavaBuilder = true;
+                    break;
+                }
+            }
+            if (hasNonJavaBuilder || buildSpec.length != 1) {
+                org.eclipse.core.resources.ICommand javaBuilder = buildDesc.newCommand();
+                javaBuilder.setBuilderName(JavaCore.BUILDER_ID);
+                buildDesc.setBuildSpec(new org.eclipse.core.resources.ICommand[]{javaBuilder});
                 project.setDescription(buildDesc, monitor);
             }
         }

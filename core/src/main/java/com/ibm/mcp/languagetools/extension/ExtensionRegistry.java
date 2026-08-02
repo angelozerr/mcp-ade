@@ -41,6 +41,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -66,8 +67,8 @@ public class ExtensionRegistry {
     private final Set<String> disabledExtensions = ConcurrentHashMap.newKeySet();
     private final Set<String> disabledServers = ConcurrentHashMap.newKeySet();
 
-    private final List<ExtensionListener> extensionListeners = new ArrayList<>();
-    private final List<InstallerListener> installerListeners = new ArrayList<>();
+    private final List<ExtensionListener> extensionListeners = new CopyOnWriteArrayList<>();
+    private final List<InstallerListener> installerListeners = new CopyOnWriteArrayList<>();
 
     // ========== Listeners ==========
 

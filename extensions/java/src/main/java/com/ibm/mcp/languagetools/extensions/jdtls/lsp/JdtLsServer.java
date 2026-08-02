@@ -40,7 +40,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -330,9 +329,6 @@ public class JdtLsServer extends LspServer implements InstallerListener {
     @Override
     public CompletableFuture<Void> initialize() {
         resolveImportMode();
-        if (isFastMode()) {
-            cleanResidualProjects();
-        }
         return super.initialize()
                 .thenRun(() -> {
                     setReady(false);
@@ -351,38 +347,6 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             if (IMPORT_MODE_FAST.equals(mode) || IMPORT_MODE_FAST_CACHE.equals(mode)) {
                 importMode = mode;
             }
-        }
-    }
-
-    // In fast mode, residual projects from a previous run in the -data directory
-    // cause M2E to process them at startup ("Updating X configuration"), adding ~40s
-    // of overhead even with skipProjectConfiguration=true. Deleting the entire
-    // org.eclipse.core.resources directory (.projects/, .root/, .snap) ensures
-    // JDT.LS starts with zero projects. JDT indexes (org.eclipse.jdt.core/) are preserved.
-    private void cleanResidualProjects() {
-        Path dataDir = getJdtlsDataDir();
-        Path resourcesDir = dataDir.resolve(".metadata")
-                .resolve(".plugins")
-                .resolve("org.eclipse.core.resources");
-        if (!Files.exists(resourcesDir)) {
-            return;
-        }
-        LOG.infof("Cleaning residual workspace metadata from: %s", resourcesDir);
-        deleteDirectoryRecursively(resourcesDir);
-    }
-
-    private void deleteDirectoryRecursively(Path dir) {
-        try (var walk = Files.walk(dir)) {
-            walk.sorted(Comparator.reverseOrder())
-                    .forEach(path -> {
-                        try {
-                            Files.delete(path);
-                        } catch (IOException e) {
-                            LOG.debugf(e, "Failed to delete: %s", path);
-                        }
-                    });
-        } catch (IOException e) {
-            LOG.warnf(e, "Failed to clean directory: %s", dir);
         }
     }
 
