@@ -42,9 +42,13 @@ Démarrage (fast mode)                    Premier appel outil (ex: diagnostics s
 2. skipProjectConfiguration=true         2. Extraction classpath Maven (~30s 1er run, 0s cache)
 3. M2E/Gradle import disabled            3. Setup des reactor modules comme projets source (~2s)
 4. JDT.LS démarre en ~5s                 4. Setup du module cible (setupProject) (~1s)
-5. ServiceReady immédiat                 5. Build du module cible (buildProject) (~10s)
-                                         6. Module prêt → diagnostics disponibles
+5. ServiceReady immédiat                 5. Module prêt → outils disponibles
 ```
+
+> **Pas de build nécessaire** : tous les outils MCP utilisent l'index JDT ou l'`ASTParser` directement.
+> Les outils de navigation/recherche s'appuient sur l'index (alimenté par `setRawClasspath`).
+> Les outils de diagnostics (`diagnoseAndFix`, etc.) calculent les erreurs via `ASTParser` avec bindings.
+> Le debug (java-debug) gère son propre cycle de build séparément.
 
 ### Comparaison des temps
 
@@ -54,8 +58,7 @@ Démarrage (fast mode)                    Premier appel outil (ex: diagnostics s
 | Import/Scan | 300-600s (tous modules) | 0s (aucun scan) | 0s |
 | Configuration Maven | 600-3600s (tous modules) | 30s (1 module ciblé) | 0s (depuis cache) |
 | Setup projets | inclus ci-dessus | 3s (module + reactor deps) | 3s |
-| Build | 600-3600s (tous modules) | 10s (1 module ciblé) | 10s |
-| **Total** | **1-2 heures** | **~48s** | **~18s** |
+| **Total** | **1-2 heures** | **~38s** | **~8s** |
 
 ### Pourquoi c'est possible pour un agent IA
 
@@ -84,7 +87,7 @@ Capacité native de JDT.LS (vérifié dans `ProjectsManager.java` ligne 116) qui
 
 En mode `fast+cache`, le classpath extrait de Maven est sauvegardé sur disque. Au prochain démarrage :
 - Pas d'appel Maven (0s au lieu de 30s)
-- Le projet doit quand même être créé dans le workspace (setupProject + buildProject ~13s)
+- Le projet doit quand même être créé dans le workspace (setupProject ~3s)
 
 ### 4. Reactor modules comme projets source
 
@@ -99,5 +102,5 @@ Les dépendances intra-workspace (reactor modules Maven) sont créées comme pro
 | Projets créés au démarrage | Tous (~1400) | 0 |
 | Projets créés à l'usage | 0 | 1 + ses reactor deps (~7) |
 | Risque OOM | Élevé (gros projets) | Faible |
-| Temps au 1er outil | 0s (tout est prêt) | ~48s (setup à la demande) |
+| Temps au 1er outil | 0s (tout est prêt) | ~38s (setup à la demande) |
 | Temps total démarrage → prêt | 1-2 heures | 5s (ServiceReady) |

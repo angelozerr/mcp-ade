@@ -126,6 +126,5 @@ public final class JdtlsCommands {
     public static final String GET_PROJECT_STRUCTURE = "mcp.jdtls.getProjectStructure";
     public static final String GET_CLASSPATH_INFO = "mcp.jdtls.getClasspathInfo";
     public static final String SETUP_PROJECT = "mcp.jdtls.setupProject";
-    public static final String BUILD_PROJECT = "mcp.jdtls.buildProject";
     public static final String GET_INDEXING_STATUS = "mcp.jdtls.getIndexingStatus";
 }

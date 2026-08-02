@@ -32,7 +32,6 @@ import com.ibm.mcp.jdtls.handlers.codegen.*;
 import com.ibm.mcp.jdtls.handlers.diagnostics.*;
 import com.ibm.mcp.jdtls.handlers.framework.*;
 import com.ibm.mcp.jdtls.handlers.navigation.*;
-import com.ibm.mcp.jdtls.handlers.project.BuildProjectHandler;
 import com.ibm.mcp.jdtls.handlers.project.GetClasspathInfoHandler;
 import com.ibm.mcp.jdtls.handlers.project.GetIndexingStatusHandler;
 import com.ibm.mcp.jdtls.handlers.project.GetProjectStructureHandler;
@@ -152,7 +151,6 @@ public class McpDelegateCommandHandler implements IDelegateCommandHandler {
         HANDLERS.put(JdtlsCommands.GET_PROJECT_STRUCTURE, new GetProjectStructureHandler());
         HANDLERS.put(JdtlsCommands.GET_CLASSPATH_INFO, new GetClasspathInfoHandler());
         HANDLERS.put(JdtlsCommands.SETUP_PROJECT, new SetupProjectHandler());
-        HANDLERS.put(JdtlsCommands.BUILD_PROJECT, new BuildProjectHandler());
         HANDLERS.put(JdtlsCommands.GET_INDEXING_STATUS, new GetIndexingStatusHandler());
     }
 

@@ -176,19 +176,11 @@ public class FastModeProjectManager {
 
                         long setupCommandStart = System.currentTimeMillis();
                         return jdtls.executeCommand(JdtlsCommands.SETUP_PROJECT, List.of(params))
-                                .thenCompose(result -> {
+                                .thenApply(result -> {
                                     long setupCommandElapsed = System.currentTimeMillis() - setupCommandStart;
                                     LOG.infof("Project setup result: %s (setupProject: %d ms)",
                                             result, setupCommandElapsed);
-
-                                    String status = extractStatus(result);
-                                    if ("unchanged".equals(status)) {
-                                        LOG.infof("Classpath unchanged, skipping build for %s", info.moduleName());
-                                        return CompletableFuture.completedFuture(null);
-                                    }
-
-                                    progress.reportProgress("Building project " + info.moduleName());
-                                    return buildProject(jdtls, info.moduleName());
+                                    return (Void) null;
                                 })
                                 .thenApply(buildResult -> {
                                     long totalElapsed = System.currentTimeMillis() - setupStartTime;
@@ -269,32 +261,6 @@ public class FastModeProjectManager {
                 .exceptionally(ex -> {
                     LOG.debugf(ex, "Failed to get indexing status");
                     return false;
-                });
-    }
-
-    @SuppressWarnings("unchecked")
-    private String extractStatus(Object result) {
-        if (result instanceof Map) {
-            Object status = ((Map<String, Object>) result).get("status");
-            return status instanceof String ? (String) status : null;
-        }
-        return null;
-    }
-
-    private CompletableFuture<Object> buildProject(LspServer jdtls, String projectName) {
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("projectName", projectName);
-        long start = System.currentTimeMillis();
-        return jdtls.executeCommand(JdtlsCommands.BUILD_PROJECT, List.of(params))
-                .thenApply(result -> {
-                    LOG.infof("buildProject %s: %s (%d ms)", projectName, result,
-                            System.currentTimeMillis() - start);
-                    return result;
-                })
-                .exceptionally(ex -> {
-                    LOG.warnf(ex, "buildProject %s failed (%d ms)", projectName,
-                            System.currentTimeMillis() - start);
-                    return null;
                 });
     }
 

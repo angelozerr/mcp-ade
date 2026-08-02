@@ -166,8 +166,8 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             ));
             // Always disable autobuild in fast mode to prevent JDT.LS from building
             // ALL projects at startup (causes diagnostic flood + hang on large projects
-            // like Quarkus). Instead, buildProject is called after setupProject to build
-            // only the targeted module.
+            // like Quarkus). Building is deferred to on-demand diagnostic tools like
+            // diagnoseAndFix; search/navigation tools only need the JDT index.
             javaSettings.put("autobuild", Map.of("enabled", false));
             LOG.info("Fast import mode enabled: M2E/Gradle import disabled, autobuild=false");
         }

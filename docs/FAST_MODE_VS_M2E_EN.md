@@ -42,9 +42,13 @@ Startup (fast mode)                      First tool call (e.g., diagnostics on a
 2. skipProjectConfiguration=true         2. Maven classpath extraction (~30s 1st run, 0s cache)
 3. M2E/Gradle import disabled            3. Reactor module setup as source projects (~2s)
 4. JDT.LS starts in ~5s                  4. Target module setup (setupProject) (~1s)
-5. ServiceReady immediate                5. Target module build (buildProject) (~10s)
-                                         6. Module ready → diagnostics available
+5. ServiceReady immediate                5. Module ready → tools available
 ```
+
+> **No build needed**: all MCP tools use the JDT index or `ASTParser` directly.
+> Navigation/search tools rely on the index (populated by `setRawClasspath`).
+> Diagnostic tools (`diagnoseAndFix`, etc.) compute errors via `ASTParser` with bindings.
+> Debug (java-debug) handles its own build cycle separately.
 
 ### Time Comparison
 
@@ -54,8 +58,7 @@ Startup (fast mode)                      First tool call (e.g., diagnostics on a
 | Import/Scan | 300-600s (all modules) | 0s (no scan) | 0s |
 | Maven configuration | 600-3600s (all modules) | 30s (1 targeted module) | 0s (from cache) |
 | Project setup | included above | 3s (module + reactor deps) | 3s |
-| Build | 600-3600s (all modules) | 10s (1 targeted module) | 10s |
-| **Total** | **1-2 hours** | **~48s** | **~18s** |
+| **Total** | **1-2 hours** | **~38s** | **~8s** |
 
 ### Why This Works for AI Agents
 
@@ -84,7 +87,7 @@ Native JDT.LS capability (verified in `ProjectsManager.java` line 116) that prev
 
 In `fast+cache` mode, the classpath extracted from Maven is saved to disk. On next startup:
 - No Maven call (0s instead of 30s)
-- The project still needs to be created in the workspace (setupProject + buildProject ~13s)
+- The project still needs to be created in the workspace (setupProject ~3s)
 
 ### 4. Reactor Modules as Source Projects
 
@@ -99,5 +102,5 @@ Intra-workspace dependencies (Maven reactor modules) are created as JDT source p
 | Projects created at startup | All (~1400) | 0 |
 | Projects created on use | 0 | 1 + its reactor deps (~7) |
 | OOM risk | High (large projects) | Low |
-| Time to first tool | 0s (everything ready) | ~48s (on-demand setup) |
+| Time to first tool | 0s (everything ready) | ~38s (on-demand setup) |
 | Total startup → ready | 1-2 hours | 5s (ServiceReady) |
