@@ -1,0 +1,24 @@
+{
+  "id": "jakarta",
+  "name": "Jakarta EE Language Server",
+  "description": "Language server for Jakarta EE (CDI, Persistence, RESTful Web Services, Bean Validation, Servlet, WebSocket, etc.)",
+  "url": "https://github.com/eclipse/lsp4jakarta",
+  "documentSelector": [
+    {
+      "language": "java"
+    }
+  ],
+  "contributes": {
+    "jdtls": {
+      "bundles": ["plugins/*.jar"],
+      "bindRequest": [
+        "jakarta/java/fileInfo",
+        "jakarta/java/diagnostics",
+        "jakarta/java/completion",
+        "jakarta/java/codeAction",
+        "jakarta/java/codeActionResolve",
+        "jakarta/java/projectLabels"
+      ]
+    }
+  }
+}

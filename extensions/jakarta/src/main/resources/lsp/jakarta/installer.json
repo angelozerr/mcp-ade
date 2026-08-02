@@ -1,0 +1,24 @@
+{
+  "id": "jakarta",
+  "name": "Jakarta EE Language Server",
+  "check": {
+    "fileExists": {
+      "name": "Check if Jakarta EE LS is installed",
+      "file": "$SERVER_HOME$/lib/org.eclipse.lsp4jakarta.ls-uber.jar"
+    }
+  },
+  "run": {
+    "copy": {
+      "name": "Copy Jakarta EE LS JAR",
+      "source": "/lsp/jakarta/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
+      "destination": "$SERVER_HOME$/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Jakarta EE LS command",
+          "command": "java -jar $SERVER_HOME$/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
+          "update": true
+        }
+      }
+    }
+  }
+}
