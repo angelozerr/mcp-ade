@@ -859,7 +859,7 @@
                 document.getElementById('dap-servers-list').style.display = 'none';
                 document.getElementById('extensions-container').style.display = 'none';
                 document.getElementById('mcp-traces-list').style.display = 'none';
-                serversColumn.style.display = 'block';
+                serversColumn.style.display = 'flex';
                 consoleColumn.style.display = 'flex';
                 // 3 columns layout: workspaces | servers | console
                 appContainer.style.gridTemplateColumns = '400px 300px 1fr';
