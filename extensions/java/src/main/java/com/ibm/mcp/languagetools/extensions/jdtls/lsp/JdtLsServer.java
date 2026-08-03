@@ -293,7 +293,13 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         if (!isReady()) {
             return;
         }
-        LOG.infof("Contributor '%s' installed while JDT.LS is ready, reloading bundles", config.getServerId());
+        // Only reload bundles if the contributor is in the same workspace
+        if (!getWorkspace().hasLspServer(config.getServerId())) {
+            LOG.debugf("Contributor '%s' not in workspace %s, skipping reload",
+                    config.getServerId(), getWorkspace().getRootUri());
+            return;
+        }
+        LOG.infof("Contributor '%s' installed in same workspace, reloading bundles", config.getServerId());
         reloadBundles()
                 .exceptionally(error -> {
                     LOG.errorf(error, "Failed to reload bundles into JDT.LS");
