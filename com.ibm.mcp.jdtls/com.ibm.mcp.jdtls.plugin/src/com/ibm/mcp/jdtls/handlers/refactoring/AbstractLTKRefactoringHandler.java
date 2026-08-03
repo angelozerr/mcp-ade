@@ -39,6 +39,8 @@ import org.eclipse.text.edits.TextEdit;
 
 import com.ibm.mcp.jdtls.JdtUtils;
 
+import org.eclipse.jdt.core.JavaModelException;
+
 /**
  * Base class for refactoring handlers that delegate to the JDT LTK refactoring engine.
  *
@@ -109,25 +111,29 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
             return createErrorResult("Refactoring produced no changes");
         }
 
-        if (hasUnconvertibleChanges(change)) {
-            List<Map<String, Object>> edits = performChangeAndComputeEdits(change, apply, monitor);
+        try {
+            if (hasUnconvertibleChanges(change)) {
+                List<Map<String, Object>> edits = performChangeAndComputeEdits(change, apply, monitor);
+                if (edits.isEmpty()) {
+                    return createErrorResult("Refactoring produced no text edits");
+                }
+                return createSuccessResult(edits, apply);
+            }
+
+            List<Map<String, Object>> edits = convertChangeToEdits(change);
+
             if (edits.isEmpty()) {
                 return createErrorResult("Refactoring produced no text edits");
             }
+
+            if (apply) {
+                change.perform(monitor);
+            }
+
             return createSuccessResult(edits, apply);
+        } finally {
+            reconcileAffectedCompilationUnits(change);
         }
-
-        List<Map<String, Object>> edits = convertChangeToEdits(change);
-
-        if (edits.isEmpty()) {
-            return createErrorResult("Refactoring produced no text edits");
-        }
-
-        if (apply) {
-            change.perform(monitor);
-        }
-
-        return createSuccessResult(edits, apply);
     }
 
     /**
@@ -307,6 +313,44 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
         return false;
     }
 
+    private void reconcileAffectedCompilationUnits(Change change) {
+        java.util.Set<ICompilationUnit> cus = new java.util.LinkedHashSet<>();
+        collectAffectedCUs(change, cus);
+        for (ICompilationUnit cu : cus) {
+            try {
+                if (cu.isWorkingCopy()) {
+                    cu.reconcile(ICompilationUnit.NO_AST, true, null, null);
+                } else {
+                    cu.close();
+                }
+            } catch (JavaModelException e) {
+                // best effort
+            }
+        }
+    }
+
+    private void collectAffectedCUs(Change change, java.util.Set<ICompilationUnit> cus) {
+        if (change instanceof CompositeChange) {
+            for (Change child : ((CompositeChange) change).getChildren()) {
+                collectAffectedCUs(child, cus);
+            }
+        }
+        if (change instanceof TextFileChange) {
+            TextFileChange tfc = (TextFileChange) change;
+            if (tfc.getFile() != null) {
+                ICompilationUnit cu = JdtUtils.getCompilationUnit(JdtUtils.toFileUri(tfc.getFile()));
+                if (cu != null) {
+                    cus.add(cu);
+                }
+            }
+        } else if (change instanceof TextChange) {
+            Object element = change.getModifiedElement();
+            if (element instanceof ICompilationUnit) {
+                cus.add((ICompilationUnit) element);
+            }
+        }
+    }
+
     /**
      * Fallback: perform the change, read affected files, compute diffs, then undo.
      * Handles Change types that aren't TextChange (e.g., CreateCompilationUnitChange for new files)
@@ -412,16 +456,21 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
     }
 
     private static String getRuntimeExceptionMessage(RuntimeException e) {
+        StringBuilder sb = new StringBuilder();
         String message = e.getMessage();
         if (message == null || message.isEmpty()) {
-            return "unexpected " + e.getClass().getSimpleName();
+            sb.append("unexpected ").append(e.getClass().getSimpleName());
+        } else {
+            sb.append(message);
         }
-        if (e instanceof NullPointerException) {
-            return "unexpected NullPointerException in the refactoring engine. "
-                    + "This can happen with complex class hierarchies. "
-                    + "Try extracting fewer or simpler members.";
+        sb.append(" | stacktrace: ");
+        StackTraceElement[] stack = e.getStackTrace();
+        int limit = Math.min(stack.length, 15);
+        for (int i = 0; i < limit; i++) {
+            if (i > 0) sb.append(" <- ");
+            sb.append(stack[i].toString());
         }
-        return message;
+        return sb.toString();
     }
 
 }

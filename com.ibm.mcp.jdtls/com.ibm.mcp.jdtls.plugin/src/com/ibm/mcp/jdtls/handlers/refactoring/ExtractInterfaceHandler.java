@@ -95,6 +95,10 @@ public class ExtractInterfaceHandler extends AbstractLTKRefactoringHandler {
         processor.setExtractedMembers(extractMethods.toArray(new IMethod[0]));
 
         ProcessorBasedRefactoring refactoring = new ProcessorBasedRefactoring(processor);
-        return executeRefactoring(refactoring, params, monitor);
+        try {
+            return executeRefactoring(refactoring, params, monitor);
+        } finally {
+            RefactoringUtils.disposeWorkingCopies(processor);
+        }
     }
 }

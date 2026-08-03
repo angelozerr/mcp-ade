@@ -104,6 +104,10 @@ public class PullUpHandler extends AbstractLTKRefactoringHandler {
         processor.setMembersToMove(members);
 
         ProcessorBasedRefactoring refactoring = new ProcessorBasedRefactoring(processor);
-        return executeRefactoring(refactoring, params, monitor);
+        try {
+            return executeRefactoring(refactoring, params, monitor);
+        } finally {
+            RefactoringUtils.disposeWorkingCopies(processor);
+        }
     }
 }
