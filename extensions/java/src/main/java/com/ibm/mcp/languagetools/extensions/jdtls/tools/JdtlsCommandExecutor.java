@@ -110,14 +110,15 @@ public class JdtlsCommandExecutor {
                                 List<Object> args = arguments instanceof List
                                         ? (List<Object>) arguments
                                         : List.of(arguments);
-                                return jdtls.executeCommand(commandId, args);
-                            })
-                            .thenCompose(result -> {
+                                CompletableFuture<Object> commandFuture =
+                                        jdtls.executeCommand(commandId, args);
                                 if (!fastMode) {
-                                    return CompletableFuture.completedFuture(result);
+                                    return commandFuture;
                                 }
-                                return fastModeProjectManager.isIndexing(jdtls)
-                                        .thenApply(indexing -> enrichResultWithMetadata(result, indexing));
+                                CompletableFuture<Boolean> indexingFuture =
+                                        fastModeProjectManager.isIndexing(jdtls);
+                                return commandFuture.thenCombine(indexingFuture,
+                                        this::enrichResultWithMetadata);
                             });
                 });
     }

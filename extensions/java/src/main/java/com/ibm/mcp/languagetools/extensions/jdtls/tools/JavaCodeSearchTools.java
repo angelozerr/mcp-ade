@@ -192,14 +192,31 @@ public class JavaCodeSearchTools {
     }
 
     @Tool(name = "java_find_implementations",
-          description = "Find all implementations of a Java interface or abstract class")
+          description = "Find all implementations of a Java interface, abstract class, or method. "
+                  + "Provide either fullyQualifiedName (for types) or fileUri+line+character "
+                  + "(for types or methods at a cursor position)")
     public CompletableFuture<String> findImplementations(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Fully qualified name of the interface or abstract class") String fullyQualifiedName,
+            @ToolArg(description = "Fully qualified name of the interface or abstract class",
+                     required = false) String fullyQualifiedName,
+            @ToolArg(description = ToolArgDescriptions.FILE_URI,
+                     required = false) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.POSITION_LINE,
+                     required = false) Integer line,
+            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER,
+                     required = false) Integer character,
             Cancellation cancellation,
             Progress progress) {
+        Object params;
+        if (fileUri != null && line != null && character != null) {
+            params = RefactoringHelper.positionParams(fileUri, line, character);
+        } else if (fullyQualifiedName != null) {
+            params = RefactoringHelper.fqnParams(fullyQualifiedName);
+        } else {
+            return CompletableFuture.completedFuture(
+                    "Error: provide either fullyQualifiedName or fileUri+line+character");
+        }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_IMPLEMENTATIONS,
-                RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
+                params, cancellation, progress);
     }
 }

@@ -28,6 +28,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
@@ -86,6 +87,63 @@ public final class JdtUtils {
      */
     public static IType resolveTypeAtPosition(String uri, int line, int character, IProgressMonitor monitor)
             throws JavaModelException {
+        IJavaElement element = resolveElementAtPosition(uri, line, character, monitor);
+        if (element instanceof IType type) {
+            return type;
+        }
+        if (element != null) {
+            IType enclosingType = (IType) element.getAncestor(IJavaElement.TYPE);
+            if (enclosingType != null) {
+                return enclosingType;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolve a Java element (type or method) from command arguments.
+     *
+     * <p>Same argument formats as {@link #resolveType}, but returns
+     * the element directly instead of always coercing to IType.
+     * For position-based input, returns the first IType or IMethod from codeSelect.</p>
+     */
+    @SuppressWarnings("unchecked")
+    public static IJavaElement resolveElement(List<Object> arguments, IProgressMonitor monitor)
+            throws JavaModelException {
+        if (arguments == null || arguments.isEmpty()) {
+            return null;
+        }
+
+        Object firstArg = arguments.get(0);
+
+        if (firstArg instanceof Map) {
+            Map<String, Object> params = (Map<String, Object>) firstArg;
+            String uri = (String) params.get("uri");
+            if (uri != null && params.containsKey("line") && params.containsKey("character")) {
+                int line = ((Number) params.get("line")).intValue();
+                int character = ((Number) params.get("character")).intValue();
+                return resolveElementAtPosition(uri, line, character, monitor);
+            }
+            String fqn = (String) params.get("fullyQualifiedName");
+            if (fqn != null) {
+                return resolveTypeByName(fqn);
+            }
+        }
+
+        if (firstArg instanceof String) {
+            return resolveTypeByName((String) firstArg);
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve a Java element at a position using codeSelect.
+     * Returns the first IType or IMethod found.
+     */
+    public static IJavaElement resolveElementAtPosition(String uri, int line, int character,
+                                                         IProgressMonitor monitor)
+            throws JavaModelException {
         ICompilationUnit cu = getCompilationUnit(uri);
         if (cu == null) {
             return null;
@@ -94,9 +152,11 @@ public final class JdtUtils {
         int offset = getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
         for (IJavaElement element : elements) {
-            if (element instanceof IType) {
-                return (IType) element;
+            if (element instanceof IType || element instanceof IMethod) {
+                return element;
             }
+        }
+        for (IJavaElement element : elements) {
             IType enclosingType = (IType) element.getAncestor(IJavaElement.TYPE);
             if (enclosingType != null) {
                 return enclosingType;

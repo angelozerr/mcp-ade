@@ -26,14 +26,9 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.ISourceRange;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.FieldDeclaration;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import com.ibm.mcp.jdtls.ICommandHandler;
 import com.ibm.mcp.jdtls.JdtUtils;
@@ -44,11 +39,8 @@ import com.ibm.mcp.jdtls.JdtUtils;
  * <p>Arguments: [{maxMethods (optional, default 20), maxFields (optional, default 20),
  * maxLoc (optional, default 500)}]</p>
  *
- * <p>Scans all CUs in the workspace and filters types exceeding any threshold.</p>
- *
- * <p>Copied and adapted from
- * <a href="https://github.com/pzalutski-pixel/javalens-mcp/blob/master/org.javalens.mcp/src/org/javalens/mcp/tools/FindLargeClassesTool.java">javalens-mcp FindLargeClassesTool</a>
- * for JDT.LS delegate command handler architecture.</p>
+ * <p>Scans all source types in the workspace using the Java model (no AST parsing)
+ * and filters types exceeding any threshold.</p>
  */
 public class FindLargeClassesHandler implements ICommandHandler {
 
@@ -76,10 +68,6 @@ public class FindLargeClassesHandler implements ICommandHandler {
             }
         }
 
-        final int thresholdMethods = maxMethods;
-        final int thresholdFields = maxFields;
-        final int thresholdLoc = maxLoc;
-
         List<Map<String, Object>> largeClasses = new ArrayList<>();
 
         IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
@@ -101,8 +89,7 @@ public class FindLargeClassesHandler implements ICommandHandler {
                     }
                     if (child instanceof IPackageFragment pkg) {
                         for (ICompilationUnit cu : pkg.getCompilationUnits()) {
-                            analyzeCompilationUnit(cu, thresholdMethods, thresholdFields,
-                                    thresholdLoc, largeClasses, monitor);
+                            analyzeTypes(cu, maxMethods, maxFields, maxLoc, largeClasses, monitor);
                         }
                     }
                 }
@@ -115,50 +102,54 @@ public class FindLargeClassesHandler implements ICommandHandler {
         return result;
     }
 
-    private void analyzeCompilationUnit(ICompilationUnit cu, int thresholdMethods,
+    private void analyzeTypes(ICompilationUnit cu, int thresholdMethods,
             int thresholdFields, int thresholdLoc, List<Map<String, Object>> largeClasses,
-            IProgressMonitor monitor) {
-        ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
-        parser.setSource(cu);
-        parser.setResolveBindings(true);
-        CompilationUnit ast = (CompilationUnit) parser.createAST(monitor);
+            IProgressMonitor monitor) throws Exception {
+        String source = null;
 
-        ast.accept(new ASTVisitor() {
-            @Override
-            public boolean visit(TypeDeclaration node) {
-                int methodCount = 0;
-                int fieldCount = 0;
-
-                for (Object bodyDecl : node.bodyDeclarations()) {
-                    if (bodyDecl instanceof MethodDeclaration) {
-                        methodCount++;
-                    } else if (bodyDecl instanceof FieldDeclaration fd) {
-                        fieldCount += fd.fragments().size();
-                    }
-                }
-
-                int startLine = ast.getLineNumber(node.getStartPosition());
-                int endLine = ast.getLineNumber(node.getStartPosition() + node.getLength());
-                int loc = endLine - startLine + 1;
-
-                if (methodCount > thresholdMethods || fieldCount > thresholdFields
-                        || loc > thresholdLoc) {
-                    Map<String, Object> classInfo = new HashMap<>();
-                    classInfo.put("name", node.getName().getIdentifier());
-                    if (node.resolveBinding() != null) {
-                        classInfo.put("fqn", node.resolveBinding().getQualifiedName());
-                    }
-                    if (cu.getResource() != null) {
-                        classInfo.put("uri", JdtUtils.toFileUri(cu.getResource()));
-                    }
-                    classInfo.put("methods", methodCount);
-                    classInfo.put("fields", fieldCount);
-                    classInfo.put("loc", loc);
-                    largeClasses.add(classInfo);
-                }
-
-                return true;
+        for (IType type : cu.getAllTypes()) {
+            if (monitor != null && monitor.isCanceled()) {
+                break;
             }
-        });
+
+            int methodCount = type.getMethods().length;
+            int fieldCount = type.getFields().length;
+
+            int loc = 0;
+            ISourceRange range = type.getSourceRange();
+            if (range != null && range.getLength() > 0) {
+                if (source == null) {
+                    source = cu.getSource();
+                }
+                if (source != null) {
+                    loc = countLines(source, range.getOffset(), range.getLength());
+                }
+            }
+
+            if (methodCount > thresholdMethods || fieldCount > thresholdFields
+                    || loc > thresholdLoc) {
+                Map<String, Object> classInfo = new HashMap<>();
+                classInfo.put("name", type.getElementName());
+                classInfo.put("fqn", type.getFullyQualifiedName());
+                if (cu.getResource() != null) {
+                    classInfo.put("uri", JdtUtils.toFileUri(cu.getResource()));
+                }
+                classInfo.put("methods", methodCount);
+                classInfo.put("fields", fieldCount);
+                classInfo.put("loc", loc);
+                largeClasses.add(classInfo);
+            }
+        }
+    }
+
+    private int countLines(String source, int offset, int length) {
+        int end = Math.min(offset + length, source.length());
+        int lines = 1;
+        for (int i = offset; i < end; i++) {
+            if (source.charAt(i) == '\n') {
+                lines++;
+            }
+        }
+        return lines;
     }
 }

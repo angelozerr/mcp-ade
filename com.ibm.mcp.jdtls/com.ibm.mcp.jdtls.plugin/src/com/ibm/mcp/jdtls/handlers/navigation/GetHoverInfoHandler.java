@@ -26,9 +26,11 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.ILocalVariable;
 import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.internal.core.manipulation.JavaElementLabelsCore;
 
 /**
  * Handler for "mcp.jdtls.getHoverInfo" command.
@@ -45,6 +47,27 @@ import org.eclipse.jdt.core.Signature;
  */
 public class GetHoverInfoHandler extends AbstractPositionHandler {
 
+    private static final long LABEL_FLAGS =
+            JavaElementLabelsCore.ALL_FULLY_QUALIFIED
+            | JavaElementLabelsCore.M_PRE_RETURNTYPE
+            | JavaElementLabelsCore.M_PARAMETER_ANNOTATIONS
+            | JavaElementLabelsCore.M_PARAMETER_TYPES
+            | JavaElementLabelsCore.M_PARAMETER_NAMES
+            | JavaElementLabelsCore.M_EXCEPTIONS
+            | JavaElementLabelsCore.F_PRE_TYPE_SIGNATURE
+            | JavaElementLabelsCore.M_PRE_TYPE_PARAMETERS
+            | JavaElementLabelsCore.T_TYPE_PARAMETERS
+            | JavaElementLabelsCore.USE_RESOLVED;
+
+    private static final long LOCAL_VARIABLE_FLAGS =
+            LABEL_FLAGS & ~JavaElementLabelsCore.F_FULLY_QUALIFIED
+            | JavaElementLabelsCore.F_POST_QUALIFIED;
+
+    private static final long COMMON_SIGNATURE_FLAGS =
+            LABEL_FLAGS & ~JavaElementLabelsCore.ALL_FULLY_QUALIFIED
+            | JavaElementLabelsCore.T_FULLY_QUALIFIED
+            | JavaElementLabelsCore.M_FULLY_QUALIFIED;
+
     @Override
     protected Object handleElements(IJavaElement[] elements, ICompilationUnit cu, int offset,
             IProgressMonitor monitor) throws Exception {
@@ -57,28 +80,26 @@ public class GetHoverInfoHandler extends AbstractPositionHandler {
         result.put("element", element.getElementName());
         result.put("kind", getElementKind(element));
 
-        // Javadoc
+        // Rich signature (same approach as JDT.LS HoverInfoProvider)
+        if (element instanceof ILocalVariable) {
+            result.put("signature", JavaElementLabelsCore.getElementLabel(element, LOCAL_VARIABLE_FLAGS));
+        } else {
+            result.put("signature", JavaElementLabelsCore.getElementLabel(element, COMMON_SIGNATURE_FLAGS));
+        }
+
         if (element instanceof IMember member) {
-            String javadoc = null;
-            try {
-                javadoc = member.getAttachedJavadoc(monitor);
-            } catch (JavaModelException e) {
-                // Attached Javadoc not available, ignore
-            }
+            String javadoc = extractSourceJavadoc(member);
             if (javadoc != null) {
                 result.put("javadoc", javadoc);
             }
 
-            // Modifiers
             result.put("modifiers", getModifiersList(member.getFlags()));
 
-            // Declaring type
             if (member.getDeclaringType() != null) {
                 result.put("declaringType", member.getDeclaringType().getFullyQualifiedName());
             }
         }
 
-        // Kind-specific details
         if (element instanceof IMethod method) {
             addMethodInfo(method, result);
         } else if (element instanceof IField field) {
@@ -107,23 +128,6 @@ public class GetHoverInfoHandler extends AbstractPositionHandler {
             params.add(param);
         }
         result.put("parameters", params);
-
-        // Build signature string
-        StringBuilder sig = new StringBuilder();
-        sig.append(Signature.toString(method.getReturnType()));
-        sig.append(' ');
-        sig.append(method.getElementName());
-        sig.append('(');
-        for (int i = 0; i < paramNames.length; i++) {
-            if (i > 0) {
-                sig.append(", ");
-            }
-            sig.append(Signature.toString(paramTypes[i]));
-            sig.append(' ');
-            sig.append(paramNames[i]);
-        }
-        sig.append(')');
-        result.put("signature", sig.toString());
     }
 
     private void addFieldInfo(IField field, Map<String, Object> result) throws JavaModelException {
@@ -175,6 +179,28 @@ public class GetHoverInfoHandler extends AbstractPositionHandler {
             return "interface";
         } else {
             return "class";
+        }
+    }
+
+    private String extractSourceJavadoc(IMember member) {
+        try {
+            ISourceRange javadocRange = member.getJavadocRange();
+            if (javadocRange == null) {
+                return null;
+            }
+            ICompilationUnit memberCu = member.getCompilationUnit();
+            if (memberCu == null) {
+                return null;
+            }
+            String source = memberCu.getSource();
+            if (source == null) {
+                return null;
+            }
+            int start = javadocRange.getOffset();
+            int end = Math.min(start + javadocRange.getLength(), source.length());
+            return source.substring(start, end);
+        } catch (JavaModelException e) {
+            return null;
         }
     }
 

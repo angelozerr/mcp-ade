@@ -14,6 +14,7 @@
 package com.ibm.mcp.jdtls;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -154,6 +155,7 @@ public class McpDelegateCommandHandler implements IDelegateCommandHandler {
         HANDLERS.put(JdtlsCommands.GET_INDEXING_STATUS, new GetIndexingStatusHandler());
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Object executeCommand(String commandId, List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (monitor == null) {
@@ -163,6 +165,14 @@ public class McpDelegateCommandHandler implements IDelegateCommandHandler {
         if (handler == null) {
             throw new UnsupportedOperationException("Unknown command: " + commandId);
         }
-        return handler.execute(arguments, monitor);
+        long start = System.currentTimeMillis();
+        Object result = handler.execute(arguments, monitor);
+        long elapsed = System.currentTimeMillis() - start;
+        if (result instanceof Map) {
+            Map<String, Object> timed = new LinkedHashMap<>((Map<String, Object>) result);
+            timed.put("_elapsed", elapsed);
+            return timed;
+        }
+        return result;
     }
 }
