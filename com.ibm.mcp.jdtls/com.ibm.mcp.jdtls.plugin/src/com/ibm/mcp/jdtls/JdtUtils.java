@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.jdtls;
 
+import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,7 +24,9 @@ import java.util.Map;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -187,16 +190,53 @@ public final class JdtUtils {
      */
     public static ICompilationUnit getCompilationUnit(String uri) {
         URI fileUri = URI.create(uri);
-        IFile[] files = ResourcesPlugin.getWorkspace().getRoot()
-                .findFilesForLocationURI(fileUri);
+        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+        IFile[] files = root.findFilesForLocationURI(fileUri);
         if (files.length == 0) {
-            return null;
+            files = refreshAndRetry(fileUri, root);
+            if (files.length == 0) {
+                return null;
+            }
         }
         IJavaElement element = JavaCore.create(files[0]);
-        if (element instanceof ICompilationUnit) {
-            return (ICompilationUnit) element;
+        if (element instanceof ICompilationUnit cu) {
+            if (!cu.exists()) {
+                files = refreshAndRetry(fileUri, root);
+                if (files.length == 0) {
+                    return null;
+                }
+                element = JavaCore.create(files[0]);
+                if (element instanceof ICompilationUnit cu2 && cu2.exists()) {
+                    return cu2;
+                }
+                return null;
+            }
+            return cu;
         }
         return null;
+    }
+
+    private static IFile[] refreshAndRetry(URI fileUri, IWorkspaceRoot root) {
+        File file = new File(fileUri);
+        if (!file.exists()) {
+            return new IFile[0];
+        }
+        IPath filePath = org.eclipse.core.runtime.Path.fromOSString(file.getAbsolutePath());
+        for (IProject project : root.getProjects()) {
+            if (!project.isOpen()) {
+                continue;
+            }
+            IPath projectLocation = project.getLocation();
+            if (projectLocation != null && projectLocation.isPrefixOf(filePath)) {
+                try {
+                    project.refreshLocal(IResource.DEPTH_INFINITE, null);
+                } catch (Exception e) {
+                    // Best-effort refresh
+                }
+                return root.findFilesForLocationURI(fileUri);
+            }
+        }
+        return new IFile[0];
     }
 
     /**
