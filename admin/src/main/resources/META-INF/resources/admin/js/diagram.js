@@ -185,7 +185,10 @@ function buildDiagramOptions(colors) {
         interaction: {
             hover: true,
             navigationButtons: true,
-            keyboard: true
+            keyboard: {
+                enabled: true,
+                bindToWindow: false
+            }
         },
         nodes: {
             borderWidth: 2,
