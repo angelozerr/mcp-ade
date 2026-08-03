@@ -52,10 +52,14 @@ public class JavaTypeMemberTools {
           description = "Get the import-based dependency graph for a Java project")
     public CompletableFuture<String> getDependencyGraph(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
+            @ToolArg(description = "Maximum number of edges to return (0 or omit for unlimited). When truncated, response includes truncated=true",
+                     required = false) Integer maxEdges,
             Cancellation cancellation,
             Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_DEPENDENCY_GRAPH,
-                Map.of(),
-                cancellation, progress);
+        Map<String, Object> params = new java.util.HashMap<>();
+        if (maxEdges != null && maxEdges > 0) {
+            params.put("maxEdges", maxEdges);
+        }
+        return executor.executeCommand(cwd, JdtlsCommands.GET_DEPENDENCY_GRAPH, params, cancellation, progress);
     }
 }

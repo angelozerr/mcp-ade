@@ -92,10 +92,12 @@ public class JavaAnalysisTools {
             @ToolArg(description = "Fully qualified name of the annotation (e.g., 'jakarta.inject.Inject')") String fullyQualifiedName,
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
+            @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
         Map<String, Object> params = RefactoringHelper.fqnParams(fullyQualifiedName);
         RefactoringHelper.putScope(params, scope, projectName);
+        RefactoringHelper.putMaxResults(params, maxResults);
         return executor.executeCommand(cwd, JdtlsCommands.FIND_ANNOTATION_USAGES, params, cancellation, progress);
     }
 
@@ -106,10 +108,12 @@ public class JavaAnalysisTools {
             @ToolArg(description = "Fully qualified name of the type (e.g., 'java.util.ArrayList')") String fullyQualifiedName,
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
+            @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
         Map<String, Object> params = RefactoringHelper.fqnParams(fullyQualifiedName);
         RefactoringHelper.putScope(params, scope, projectName);
+        RefactoringHelper.putMaxResults(params, maxResults);
         return executor.executeCommand(cwd, JdtlsCommands.FIND_TYPE_INSTANTIATIONS, params, cancellation, progress);
     }
 
@@ -164,11 +168,12 @@ public class JavaAnalysisTools {
             @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
+            @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_CHANGE_IMPACT,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
+        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
+        RefactoringHelper.putMaxResults(params, maxResults);
+        return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_CHANGE_IMPACT, params, cancellation, progress);
     }
 
 }

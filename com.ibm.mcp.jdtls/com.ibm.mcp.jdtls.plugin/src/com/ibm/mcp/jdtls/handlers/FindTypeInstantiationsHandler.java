@@ -47,11 +47,21 @@ import com.ibm.mcp.jdtls.JdtUtils;
 public class FindTypeInstantiationsHandler implements ICommandHandler {
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         IType type = JdtUtils.resolveType(arguments, monitor);
         if (type == null || !type.exists()) {
             return Map.of("error", "Type not found");
         }
+
+        int maxResults = 0;
+        if (arguments != null && !arguments.isEmpty() && arguments.get(0) instanceof Map) {
+            Object mr = ((Map<String, Object>) arguments.get(0)).get("maxResults");
+            if (mr instanceof Number n) {
+                maxResults = n.intValue();
+            }
+        }
+        final int limit = maxResults;
 
         SearchPattern pattern = SearchPattern.createPattern(
                 type,
@@ -64,6 +74,7 @@ public class FindTypeInstantiationsHandler implements ICommandHandler {
         IJavaSearchScope scope = JdtUtils.resolveSearchScope(arguments);
         List<Map<String, Object>> instantiations = new ArrayList<>();
         Map<IResource, String> sourceCache = new HashMap<>();
+        final boolean[] truncated = {false};
 
         SearchEngine engine = new SearchEngine();
         engine.search(
@@ -73,6 +84,10 @@ public class FindTypeInstantiationsHandler implements ICommandHandler {
                 new SearchRequestor() {
                     @Override
                     public void acceptSearchMatch(SearchMatch match) {
+                        if (limit > 0 && instantiations.size() >= limit) {
+                            truncated[0] = true;
+                            return;
+                        }
                         instantiations.add(JdtUtils.formatSearchMatch(match, sourceCache));
                     }
                 },
@@ -81,6 +96,9 @@ public class FindTypeInstantiationsHandler implements ICommandHandler {
         Map<String, Object> result = new HashMap<>();
         result.put("type", type.getFullyQualifiedName());
         result.put("count", instantiations.size());
+        if (truncated[0]) {
+            result.put("truncated", true);
+        }
         result.put("instantiations", JdtUtils.groupResultsByUri(instantiations));
         return result;
     }

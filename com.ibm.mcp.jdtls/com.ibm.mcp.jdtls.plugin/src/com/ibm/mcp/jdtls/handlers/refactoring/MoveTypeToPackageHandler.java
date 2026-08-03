@@ -26,6 +26,7 @@ import org.eclipse.jdt.internal.corext.refactoring.reorg.IReorgPolicy;
 import org.eclipse.jdt.internal.corext.refactoring.reorg.JavaMoveProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.reorg.ReorgDestinationFactory;
 import org.eclipse.jdt.internal.corext.refactoring.reorg.ReorgPolicyFactory;
+import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.MoveRefactoring;
 
 import com.ibm.mcp.jdtls.JdtUtils;
@@ -81,16 +82,24 @@ public class MoveTypeToPackageHandler extends AbstractLTKRefactoringHandler {
             targetPackage = sourceRoot.createPackageFragment(targetPackageName, true, monitor);
         }
 
-        IReorgPolicy.IMovePolicy policy = ReorgPolicyFactory.createMovePolicy(
-                new IResource[0],
-                new IJavaElement[]{cu});
+        try {
+            IReorgPolicy.IMovePolicy policy = ReorgPolicyFactory.createMovePolicy(
+                    new IResource[0],
+                    new IJavaElement[]{cu});
 
-        JavaMoveProcessor processor = new JavaMoveProcessor(policy);
-        processor.setDestination(ReorgDestinationFactory.createDestination(targetPackage));
-        processor.setUpdateReferences(true);
+            JavaMoveProcessor processor = new JavaMoveProcessor(policy);
+            RefactoringStatus destinationStatus = processor.setDestination(ReorgDestinationFactory.createDestination(targetPackage));
+            if (destinationStatus.hasFatalError()) {
+                return createErrorResult("Invalid move destination: " + destinationStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+            }
+            processor.setUpdateReferences(true);
 
-        MoveRefactoring refactoring = new MoveRefactoring(processor);
+            MoveRefactoring refactoring = new MoveRefactoring(processor);
 
-        return executeRefactoring(refactoring, params, monitor);
+            return executeRefactoring(refactoring, params, monitor);
+        } catch (IllegalArgumentException e) {
+            return createErrorResult("Move refactoring setup failed: " + e.getMessage()
+                    + ". Ensure the project is fully loaded (not in fast/lightweight mode).");
+        }
     }
 }

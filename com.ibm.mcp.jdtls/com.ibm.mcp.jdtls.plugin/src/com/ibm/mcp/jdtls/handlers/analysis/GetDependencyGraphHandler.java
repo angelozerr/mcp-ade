@@ -54,27 +54,36 @@ public class GetDependencyGraphHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         String uri = null;
+        int maxEdges = 0;
         if (arguments != null && !arguments.isEmpty()) {
             Map<String, Object> params = (Map<String, Object>) arguments.get(0);
             uri = (String) params.get("uri");
+            Object me = params.get("maxEdges");
+            if (me instanceof Number n) {
+                maxEdges = n.intValue();
+            }
         }
+        final int edgeLimit = maxEdges;
 
         Set<String> nodes = new LinkedHashSet<>();
         List<Map<String, Object>> edges = new ArrayList<>();
         Set<String> edgeKeys = new HashSet<>();
+        boolean[] truncated = {false};
 
         if (uri != null) {
-            // Analyze a single file
             ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
             if (cu == null) {
                 return Map.of("error", "Compilation unit not found: " + uri);
             }
-            collectDependencies(cu, nodes, edges, edgeKeys);
+            collectDependencies(cu, nodes, edges, edgeKeys, edgeLimit, truncated);
         } else {
-            // Analyze all CUs in the workspace
             IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
             for (IProject project : projects) {
                 if (monitor != null && monitor.isCanceled()) {
+                    break;
+                }
+                if (edgeLimit > 0 && edges.size() >= edgeLimit) {
+                    truncated[0] = true;
                     break;
                 }
                 IJavaProject javaProject = JavaCore.create(project);
@@ -89,9 +98,17 @@ public class GetDependencyGraphHandler implements ICommandHandler {
                         if (monitor != null && monitor.isCanceled()) {
                             break;
                         }
+                        if (edgeLimit > 0 && edges.size() >= edgeLimit) {
+                            truncated[0] = true;
+                            break;
+                        }
                         if (child instanceof IPackageFragment pkg) {
                             for (ICompilationUnit cu : pkg.getCompilationUnits()) {
-                                collectDependencies(cu, nodes, edges, edgeKeys);
+                                if (edgeLimit > 0 && edges.size() >= edgeLimit) {
+                                    truncated[0] = true;
+                                    break;
+                                }
+                                collectDependencies(cu, nodes, edges, edgeKeys, edgeLimit, truncated);
                             }
                         }
                     }
@@ -104,16 +121,28 @@ public class GetDependencyGraphHandler implements ICommandHandler {
         result.put("edges", edges);
         result.put("nodeCount", nodes.size());
         result.put("edgeCount", edges.size());
+        if (truncated[0]) {
+            result.put("truncated", true);
+        }
         return result;
     }
 
     private void collectDependencies(ICompilationUnit cu, Set<String> nodes,
-            List<Map<String, Object>> edges, Set<String> edgeKeys) throws JavaModelException {
+            List<Map<String, Object>> edges, Set<String> edgeKeys,
+            int edgeLimit, boolean[] truncated) throws JavaModelException {
+        if (edgeLimit > 0 && edges.size() >= edgeLimit) {
+            truncated[0] = true;
+            return;
+        }
         String sourcePackage = getPackageName(cu);
         nodes.add(sourcePackage);
 
         IImportDeclaration[] imports = cu.getImports();
         for (IImportDeclaration imp : imports) {
+            if (edgeLimit > 0 && edges.size() >= edgeLimit) {
+                truncated[0] = true;
+                return;
+            }
             String importName = imp.getElementName();
             String targetPackage = extractPackage(importName, imp.isOnDemand());
             if (targetPackage != null && !targetPackage.equals(sourcePackage)) {

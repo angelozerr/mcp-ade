@@ -361,6 +361,27 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
         }
 
         @Test
+        @DisplayName("Inline variable never returns empty edits without error")
+        void inlineVariable_neverSilentlyEmpty() throws Exception {
+            String uri = fileUri("src/com/example/service/UserService.java");
+            // 'adults' at line 51 (0-based), char 19 - modified in loop, cannot be inlined
+            Map<String, Object> p = params(uri, 51, 19);
+
+            Object result = handler.execute(args(p), MONITOR);
+            Map<String, Object> resultMap = asMap(result);
+
+            assertNotNull(resultMap);
+            assertEquals(false, resultMap.get("applied"));
+
+            @SuppressWarnings("unchecked")
+            List<Object> edits = (List<Object>) resultMap.get("edits");
+            if (edits == null || edits.isEmpty()) {
+                assertNotNull(resultMap.get("error"),
+                        "When edits are empty, result must contain an error message");
+            }
+        }
+
+        @Test
         @DisplayName("Inline variable on non-declaration position returns error")
         void inlineVariable_nonDeclaration() throws Exception {
             String uri = fileUri("src/com/example/model/User.java");
@@ -427,6 +448,73 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> resultMap = asMap(result);
 
             assertPreviewSuccess(resultMap);
+        }
+
+        @Test
+        @DisplayName("Rename method produces delete edits for old name (DeleteEdit handling)")
+        void changeSignature_producesDeleteEdits() throws Exception {
+            String uri = fileUri("src/com/example/service/UserService.java");
+            // addUser() is on line 23 (0-based), character 16
+            Map<String, Object> p = params(uri, 23, 16);
+            p.put("newName", "registerUser");
+
+            Object result = handler.execute(args(p), MONITOR);
+            Map<String, Object> resultMap = asMap(result);
+
+            assertPreviewSuccess(resultMap);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> edits = (List<Map<String, Object>>) resultMap.get("edits");
+
+            boolean hasDeleteEdits = false;
+            boolean hasInsertEdits = false;
+            for (Map<String, Object> fileEdit : edits) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> textEdits = (List<Map<String, Object>>) fileEdit.get("textEdits");
+                for (Map<String, Object> textEdit : textEdits) {
+                    if ("".equals(textEdit.get("newText"))) {
+                        hasDeleteEdits = true;
+                    }
+                    if ("registerUser".equals(textEdit.get("newText"))) {
+                        hasInsertEdits = true;
+                    }
+                }
+            }
+            assertTrue(hasDeleteEdits,
+                    "Rename should produce delete edits (newText=\"\") for removing old method name");
+            assertTrue(hasInsertEdits,
+                    "Rename should produce insert edits with new method name");
+        }
+
+        @Test
+        @DisplayName("Rename method with apply produces delete and insert edits on disk")
+        void changeSignature_applyWithDeleteEdits() throws Exception {
+            String serviceRelPath = "src/com/example/service/UserService.java";
+            String controllerRelPath = "src/com/example/controller/UserController.java";
+
+            String origService = readFileContent(serviceRelPath);
+            String origController = readFileContent(controllerRelPath);
+
+            try {
+                String uri = fileUri(serviceRelPath);
+                Map<String, Object> p = params(uri, 23, 16);
+                p.put("newName", "registerUser");
+                p.put("apply", true);
+
+                Object result = handler.execute(args(p), MONITOR);
+                Map<String, Object> resultMap = asMap(result);
+
+                assertSuccess(resultMap, true);
+
+                String modifiedService = readFileContent(serviceRelPath);
+                assertTrue(modifiedService.contains("registerUser"),
+                        "Applied rename should write new method name to disk");
+                assertFalse(modifiedService.contains("addUser"),
+                        "Applied rename should remove old method name from disk");
+            } finally {
+                writeFileContent(serviceRelPath, origService);
+                writeFileContent(controllerRelPath, origController);
+            }
         }
 
         @Test
@@ -607,6 +695,20 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             assertFalse(resultMap.containsKey("error") &&
                             resultMap.get("error").toString().contains("NullPointerException"),
                     "Should not produce NPE (Bug #7 regression)");
+        }
+
+        @Test
+        @DisplayName("Extract superclass produces edits via whole-file fallback")
+        void extractSuperclass_wholeFileFallback() throws Exception {
+            String uri = fileUri("src/com/example/service/UserService.java");
+            Map<String, Object> p = params(uri, 12, 13);
+            p.put("superclassName", "BaseUserService");
+            p.put("memberNames", List.of("addUser"));
+
+            Object result = handler.execute(args(p), MONITOR);
+            Map<String, Object> resultMap = asMap(result);
+
+            assertPreviewSuccess(resultMap);
         }
 
         @Test

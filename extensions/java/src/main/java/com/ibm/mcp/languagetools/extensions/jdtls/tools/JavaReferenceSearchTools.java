@@ -49,6 +49,7 @@ public class JavaReferenceSearchTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Fully qualified name of the type (e.g., 'java.lang.String')") String fullyQualifiedName,
             @ToolArg(description = "Usage kind: 'cast', 'catch', 'instanceof', 'throws', or 'type_argument'") String kind,
+            @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
         String commandId = KIND_TO_COMMAND.get(kind);
@@ -56,8 +57,8 @@ public class JavaReferenceSearchTools {
             return CompletableFuture.completedFuture(
                     "Error: invalid kind '" + kind + "'. Valid values: cast, catch, instanceof, throws, type_argument");
         }
-        return executor.executeCommand(cwd, commandId,
-                RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
+        Map<String, Object> params = RefactoringHelper.fqnParams(fullyQualifiedName);
+        RefactoringHelper.putMaxResults(params, maxResults);
+        return executor.executeCommand(cwd, commandId, params, cancellation, progress);
     }
 }

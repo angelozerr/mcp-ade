@@ -28,12 +28,11 @@ import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.TextChange;
 import org.eclipse.ltk.core.refactoring.TextFileChange;
+import org.eclipse.text.edits.DeleteEdit;
 import org.eclipse.text.edits.InsertEdit;
-import org.eclipse.text.edits.MalformedTreeException;
 import org.eclipse.text.edits.MultiTextEdit;
 import org.eclipse.text.edits.ReplaceEdit;
 import org.eclipse.text.edits.TextEdit;
-import org.eclipse.text.edits.TextEditVisitor;
 
 import com.ibm.mcp.jdtls.JdtUtils;
 
@@ -99,7 +98,15 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
 
         List<Map<String, Object>> edits = convertChangeToEdits(change);
 
-        if (apply && !edits.isEmpty()) {
+        if (edits.isEmpty()) {
+            edits = convertChangeToWholeFileEdits(change);
+        }
+
+        if (edits.isEmpty()) {
+            return createErrorResult("Refactoring produced no text edits");
+        }
+
+        if (apply) {
             change.perform(monitor);
         }
 
@@ -119,6 +126,9 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (FileEdits fileEdits : editsByUri.values()) {
+            if (fileEdits.textEdits.isEmpty()) {
+                continue;
+            }
             Map<String, Object> entry = new HashMap<>();
             entry.put("uri", fileEdits.uri);
             entry.put("textEdits", fileEdits.textEdits);
@@ -167,6 +177,9 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
         } else if (edit instanceof InsertEdit) {
             InsertEdit insert = (InsertEdit) edit;
             textEdits.add(createTextEdit(source, insert.getOffset(), 0, insert.getText()));
+        } else if (edit instanceof DeleteEdit) {
+            DeleteEdit delete = (DeleteEdit) edit;
+            textEdits.add(createTextEdit(source, delete.getOffset(), delete.getLength(), ""));
         }
     }
 

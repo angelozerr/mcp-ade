@@ -77,6 +77,13 @@ public class FindAffectedTestsHandler implements ICommandHandler {
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
+        int maxResults = 0;
+        Object mr = params.get("maxResults");
+        if (mr instanceof Number n) {
+            maxResults = n.intValue();
+        }
+        final int limit = maxResults > 0 ? maxResults : 50;
+
         ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
         if (cu == null) {
             return Map.of("error", "Compilation unit not found");
@@ -99,11 +106,16 @@ public class FindAffectedTestsHandler implements ICommandHandler {
 
         Set<IMethod> candidateMethods = new HashSet<>();
         int depth = 0;
+        boolean truncated = false;
 
         while (!queue.isEmpty() && depth < MAX_DEPTH) {
             int levelSize = queue.size();
             for (int i = 0; i < levelSize; i++) {
                 if (monitor.isCanceled()) {
+                    break;
+                }
+                if (candidateMethods.size() >= limit * 3) {
+                    truncated = true;
                     break;
                 }
                 IJavaElement current = queue.poll();
@@ -155,6 +167,10 @@ public class FindAffectedTestsHandler implements ICommandHandler {
             if (monitor.isCanceled()) {
                 break;
             }
+            if (affectedTests.size() >= limit) {
+                truncated = true;
+                break;
+            }
             if (isTestMethod(method)) {
                 Map<String, Object> test = new HashMap<>();
                 test.put("methodName", method.getElementName());
@@ -172,6 +188,9 @@ public class FindAffectedTestsHandler implements ICommandHandler {
         Map<String, Object> result = new HashMap<>();
         result.put("element", elementName);
         result.put("count", affectedTests.size());
+        if (truncated) {
+            result.put("truncated", true);
+        }
         result.put("affectedTests", affectedTests);
         return result;
     }

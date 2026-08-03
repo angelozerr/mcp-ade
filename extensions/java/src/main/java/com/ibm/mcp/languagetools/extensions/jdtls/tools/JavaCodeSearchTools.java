@@ -78,11 +78,12 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
+            @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_AFFECTED_TESTS,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
+        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
+        RefactoringHelper.putMaxResults(params, maxResults);
+        return executor.executeCommand(cwd, JdtlsCommands.FIND_AFFECTED_TESTS, params, cancellation, progress);
     }
 
     @Tool(name = "java_find_unused_code",

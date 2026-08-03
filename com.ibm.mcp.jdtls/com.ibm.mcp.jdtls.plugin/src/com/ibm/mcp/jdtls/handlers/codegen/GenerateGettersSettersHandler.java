@@ -111,8 +111,7 @@ public class GenerateGettersSettersHandler extends AbstractRefactoringHandler {
         String source = cu.getSource();
         int insertOffset = findInsertOffset(type, source);
 
-        String newSource = source.substring(0, insertOffset) + code.toString() + source.substring(insertOffset);
-        List<Map<String, Object>> edits = createWholeFileEdit(uri, source, newSource);
+        List<Map<String, Object>> edits = createInsertEdit(uri, source, insertOffset, code.toString());
         return createSuccessResult(edits);
     }
 

@@ -116,6 +116,41 @@ public abstract class AbstractRefactoringHandler implements ICommandHandler {
     }
 
     /**
+     * Create a targeted insert edit at a specific offset in the source.
+     * Unlike {@link #createWholeFileEdit}, this only sends the inserted text,
+     * not the entire file content — saving significant tokens.
+     *
+     * @param uri          the file URI
+     * @param source       the original source (used to compute line/character from offset)
+     * @param insertOffset the absolute offset in the source where the text should be inserted
+     * @param insertText   the text to insert
+     * @return a list containing one edit entry with a single textEdit
+     */
+    protected List<Map<String, Object>> createInsertEdit(String uri, String source,
+            int insertOffset, String insertText) {
+        int line = 0;
+        int character = 0;
+        for (int i = 0; i < Math.min(insertOffset, source.length()); i++) {
+            if (source.charAt(i) == '\n') {
+                line++;
+                character = 0;
+            } else {
+                character++;
+            }
+        }
+
+        Map<String, Object> textEdit = new HashMap<>();
+        textEdit.put("range", createRange(line, character, line, character));
+        textEdit.put("newText", insertText);
+
+        Map<String, Object> edit = new HashMap<>();
+        edit.put("uri", uri);
+        edit.put("textEdits", List.of(textEdit));
+
+        return List.of(edit);
+    }
+
+    /**
      * Create a result map indicating an error.
      *
      * @param message the error message

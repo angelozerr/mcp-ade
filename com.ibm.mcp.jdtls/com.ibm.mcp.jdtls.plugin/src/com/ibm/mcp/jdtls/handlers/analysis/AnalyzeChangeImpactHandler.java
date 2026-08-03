@@ -63,6 +63,13 @@ public class AnalyzeChangeImpactHandler implements ICommandHandler {
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
+        int maxResults = 0;
+        Object mr = params.get("maxResults");
+        if (mr instanceof Number n) {
+            maxResults = n.intValue();
+        }
+        final int limit = maxResults > 0 ? maxResults : 50;
+
         ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
         if (cu == null) {
             return Map.of("error", "Compilation unit not found: " + uri);
@@ -75,31 +82,43 @@ public class AnalyzeChangeImpactHandler implements ICommandHandler {
         }
 
         IJavaElement element = elements[0];
+        boolean truncated = false;
 
         // Find direct references (level 1)
         List<IMember> directCallers = findReferences(element, monitor);
+        if (directCallers.size() > limit) {
+            directCallers = directCallers.subList(0, limit);
+            truncated = true;
+        }
         List<Map<String, Object>> directImpact = new ArrayList<>();
         for (IMember caller : directCallers) {
             directImpact.add(formatMember(caller));
         }
 
-        // Find transitive references (level 2)
+        // Find transitive references (level 2) — skip if direct already hit the limit
         List<Map<String, Object>> transitiveImpact = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        for (IMember caller : directCallers) {
-            if (monitor != null && monitor.isCanceled()) {
-                break;
+        if (!truncated) {
+            Set<String> seen = new HashSet<>();
+            for (IMember caller : directCallers) {
+                seen.add(caller.getHandleIdentifier());
             }
-            seen.add(caller.getHandleIdentifier());
-        }
-        for (IMember caller : directCallers) {
-            if (monitor != null && monitor.isCanceled()) {
-                break;
-            }
-            List<IMember> transCallers = findReferences(caller, monitor);
-            for (IMember transCaller : transCallers) {
-                if (seen.add(transCaller.getHandleIdentifier())) {
-                    transitiveImpact.add(formatMember(transCaller));
+            for (IMember caller : directCallers) {
+                if (monitor != null && monitor.isCanceled()) {
+                    break;
+                }
+                if (transitiveImpact.size() >= limit) {
+                    truncated = true;
+                    break;
+                }
+                List<IMember> transCallers = findReferences(caller, monitor);
+                for (IMember transCaller : transCallers) {
+                    if (transitiveImpact.size() >= limit) {
+                        truncated = true;
+                        break;
+                    }
+                    if (seen.add(transCaller.getHandleIdentifier())) {
+                        transitiveImpact.add(formatMember(transCaller));
+                    }
                 }
             }
         }
@@ -123,6 +142,9 @@ public class AnalyzeChangeImpactHandler implements ICommandHandler {
         result.put("directImpact", directImpact);
         result.put("transitiveImpact", transitiveImpact);
         result.put("affectedFiles", affectedFiles.size());
+        if (truncated) {
+            result.put("truncated", true);
+        }
         return result;
     }
 
