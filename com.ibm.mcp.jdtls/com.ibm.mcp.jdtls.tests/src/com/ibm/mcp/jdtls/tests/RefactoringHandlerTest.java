@@ -544,7 +544,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
         private final EncapsulateFieldHandler handler = new EncapsulateFieldHandler();
 
         @Test
-        @DisplayName("Encapsulate 'department' field in Admin.java - preview mode")
+        @DisplayName("Encapsulate 'department' field returns error when getter/setter exist")
         void encapsulateField_department() throws Exception {
             String uri = fileUri("src/com/example/model/Admin.java");
             // 'department' field is on line 6 (0-based), character 19
@@ -553,7 +553,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertPreviewSuccess(resultMap);
+            assertEquals(false, resultMap.get("applied"));
+            assertNotNull(resultMap.get("error"), "Should return error when getter/setter already exist");
         }
 
         @Test
@@ -674,15 +675,12 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertNotNull(resultMap);
-            assertEquals(false, resultMap.get("applied"));
+            assertPreviewSuccess(resultMap);
         }
 
         @Test
         @DisplayName("Bug #7 regression - no NPE from null CodeGenerationSettings")
         void extractSuperclass_noNPE() throws Exception {
-            // Regression test for Bug #7: ExtractSupertypeProcessor used to NPE
-            // when CodeGenerationSettings was null.
             String uri = fileUri("src/com/example/service/UserService.java");
             Map<String, Object> p = params(uri, 12, 13);
             p.put("superclassName", "BaseService");
@@ -691,14 +689,11 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
 
-            assertNotNull(resultMap, "Result must not be null (NPE regression check)");
-            assertFalse(resultMap.containsKey("error") &&
-                            resultMap.get("error").toString().contains("NullPointerException"),
-                    "Should not produce NPE (Bug #7 regression)");
+            assertPreviewSuccess(resultMap);
         }
 
         @Test
-        @DisplayName("Extract superclass produces edits via whole-file fallback")
+        @DisplayName("Extract superclass produces edits for both new superclass and original file")
         void extractSuperclass_wholeFileFallback() throws Exception {
             String uri = fileUri("src/com/example/service/UserService.java");
             Map<String, Object> p = params(uri, 12, 13);
@@ -709,6 +704,55 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> resultMap = asMap(result);
 
             assertPreviewSuccess(resultMap);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> edits = (List<Map<String, Object>>) resultMap.get("edits");
+            assertTrue(edits.size() >= 2, "Extract superclass should produce edits for at least 2 files (original + new superclass), got " + edits.size());
+
+            boolean hasNewSuperclass = false;
+            boolean hasOriginalFile = false;
+            for (Map<String, Object> edit : edits) {
+                String editUri = (String) edit.get("uri");
+                StringBuilder newTextBuilder = new StringBuilder();
+                if (edit.get("newText") != null) {
+                    newTextBuilder.append(edit.get("newText"));
+                } else if (edit.get("textEdits") != null) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> textEdits = (List<Map<String, Object>>) edit.get("textEdits");
+                    for (Map<String, Object> te : textEdits) {
+                        if (te.get("newText") != null) {
+                            newTextBuilder.append(te.get("newText"));
+                        }
+                    }
+                }
+                String newText = newTextBuilder.toString();
+                if (editUri != null && editUri.contains("BaseUserService")) {
+                    hasNewSuperclass = true;
+                    assertTrue(newText.contains("addUser"), "New superclass file should contain the moved method 'addUser'");
+                }
+                if (editUri != null && editUri.contains("UserService")) {
+                    hasOriginalFile = true;
+                }
+            }
+            assertTrue(hasNewSuperclass, "Edits should include the new superclass file (BaseUserService)");
+            assertTrue(hasOriginalFile, "Edits should include the modified original file (UserService)");
+        }
+
+        @Test
+        @DisplayName("Extract superclass with conflicting name returns validation error")
+        void extractSuperclass_conflictingName_returnsError() throws Exception {
+            String uri = fileUri("src/com/example/model/Admin.java");
+            // Admin extends User; using "User" as superclass name conflicts with existing type
+            Map<String, Object> p = params(uri, 4, 13);
+            p.put("superclassName", "User");
+            p.put("memberNames", List.of("department"));
+
+            Object result = handler.execute(args(p), MONITOR);
+            Map<String, Object> resultMap = asMap(result);
+
+            assertEquals(false, resultMap.get("applied"));
+            assertNotNull(resultMap.get("error"),
+                    "Should return error when superclass name conflicts with existing type");
         }
 
         @Test

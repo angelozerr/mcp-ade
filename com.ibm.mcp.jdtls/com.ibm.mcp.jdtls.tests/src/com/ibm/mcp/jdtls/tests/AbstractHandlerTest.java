@@ -28,11 +28,13 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.manipulation.JavaManipulation;
+import org.eclipse.text.templates.TemplateStoreCore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -82,6 +84,21 @@ public abstract class AbstractHandlerTest {
         if (JavaManipulation.getPreferenceNodeId() == null) {
             JavaManipulation.setPreferenceNodeId("org.eclipse.jdt.ui");
         }
+
+        // Initialize code template store (same approach as JDT.LS PreferenceManager)
+        // Required by LTK refactoring processors (ExtractSupertype, etc.) that generate new files
+        if (JavaManipulation.getCodeTemplateStore() == null) {
+            IEclipsePreferences defPrefs = DefaultScope.INSTANCE.getNode("org.eclipse.jdt.ui");
+            TemplateStoreCore templateStore = new TemplateStoreCore(defPrefs,
+                    "org.eclipse.jdt.ui.text.custom_code_templates");
+            try {
+                templateStore.load();
+            } catch (IOException e) {
+                // empty store is fine for tests
+            }
+            JavaManipulation.setCodeTemplateStore(templateStore);
+        }
+
         IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(JavaManipulation.getPreferenceNodeId());
         prefs.put("org.eclipse.jdt.ui.importorder", "java;javax;org;com");
         prefs.put("org.eclipse.jdt.ui.ondemandthreshold", "99");

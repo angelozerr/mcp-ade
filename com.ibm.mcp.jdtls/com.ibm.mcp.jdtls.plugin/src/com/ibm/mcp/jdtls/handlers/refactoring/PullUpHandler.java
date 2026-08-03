@@ -25,7 +25,6 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.ITypeHierarchy;
 import org.eclipse.jdt.internal.corext.codemanipulation.CodeGenerationSettings;
 import org.eclipse.jdt.internal.corext.refactoring.structure.PullUpRefactoringProcessor;
-import org.eclipse.jdt.internal.ui.preferences.JavaPreferencesSettings;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 
 import com.ibm.mcp.jdtls.JdtUtils;
@@ -99,7 +98,7 @@ public class PullUpHandler extends AbstractLTKRefactoringHandler {
         }
 
         IMember[] members = membersToMove.toArray(new IMember[0]);
-        CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(type.getJavaProject());
+        CodeGenerationSettings settings = createCodeGenerationSettings(type.getCompilationUnit());
         PullUpRefactoringProcessor processor = new PullUpRefactoringProcessor(members, settings);
         processor.setDestinationType(superclass);
         processor.setMembersToMove(members);

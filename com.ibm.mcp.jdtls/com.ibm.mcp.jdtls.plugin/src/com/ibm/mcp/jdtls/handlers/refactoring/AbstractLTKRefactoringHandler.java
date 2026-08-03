@@ -22,12 +22,15 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.internal.corext.codemanipulation.CodeGenerationSettings;
+import org.eclipse.jdt.internal.corext.util.CodeFormatterUtil;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.CompositeChange;
 import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.TextChange;
 import org.eclipse.ltk.core.refactoring.TextFileChange;
+import org.eclipse.jdt.internal.corext.refactoring.changes.CreateCompilationUnitChange;
 import org.eclipse.text.edits.DeleteEdit;
 import org.eclipse.text.edits.InsertEdit;
 import org.eclipse.text.edits.MultiTextEdit;
@@ -73,34 +76,48 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
             IProgressMonitor monitor) throws CoreException {
         RefactoringStatus initialStatus = refactoring.checkInitialConditions(monitor);
         if (initialStatus.hasFatalError()) {
-            return createErrorResult("Refactoring precondition failed: " + initialStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+            return createErrorResult("Refactoring precondition failed: "
+                    + initialStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+        }
+        if (initialStatus.hasError()) {
+            return createErrorResult("Refactoring precondition failed: "
+                    + initialStatus.getMessageMatchingSeverity(RefactoringStatus.ERROR));
         }
 
         RefactoringStatus finalStatus;
         try {
             finalStatus = refactoring.checkFinalConditions(monitor);
         } catch (RuntimeException e) {
-            return createErrorResult("Refactoring failed: " + e.getMessage());
+            return createErrorResult("Refactoring validation failed: " + getRuntimeExceptionMessage(e));
         }
         if (finalStatus.hasFatalError()) {
-            return createErrorResult("Refactoring validation failed: " + finalStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+            return createErrorResult("Refactoring validation failed: "
+                    + finalStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+        }
+        if (finalStatus.hasError()) {
+            return createErrorResult("Refactoring validation failed: "
+                    + finalStatus.getMessageMatchingSeverity(RefactoringStatus.ERROR));
         }
 
         Change change;
         try {
             change = refactoring.createChange(monitor);
         } catch (RuntimeException e) {
-            return createErrorResult("Refactoring failed: " + e.getMessage());
+            return createErrorResult("Refactoring failed: " + getRuntimeExceptionMessage(e));
         }
         if (change == null) {
             return createErrorResult("Refactoring produced no changes");
         }
 
-        List<Map<String, Object>> edits = convertChangeToEdits(change);
-
-        if (edits.isEmpty()) {
-            edits = convertChangeToWholeFileEdits(change);
+        if (hasUnconvertibleChanges(change)) {
+            List<Map<String, Object>> edits = performChangeAndComputeEdits(change, apply, monitor);
+            if (edits.isEmpty()) {
+                return createErrorResult("Refactoring produced no text edits");
+            }
+            return createSuccessResult(edits, apply);
         }
+
+        List<Map<String, Object>> edits = convertChangeToEdits(change);
 
         if (edits.isEmpty()) {
             return createErrorResult("Refactoring produced no text edits");
@@ -154,15 +171,38 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
                 return;
             }
 
-            String source = null;
-            try {
-                source = textChange.getCurrentContent(new NullProgressMonitor());
-            } catch (CoreException e) {
-                // fall through with null source
-            }
-
             FileEdits fileEdits = editsByUri.computeIfAbsent(uri, k -> new FileEdits(k));
-            collectTextEdits(edit, source, fileEdits.textEdits);
+
+            if (hasUnsupportedEdits(edit)) {
+                try {
+                    String current = textChange.getCurrentContent(new NullProgressMonitor());
+                    String preview = textChange.getPreviewContent(new NullProgressMonitor());
+                    if (preview != null && current != null && !preview.equals(current)) {
+                        fileEdits.textEdits.add(createTextEdit(current, 0, current.length(), preview));
+                    }
+                } catch (CoreException e) {
+                    // fall through
+                }
+            } else {
+                String source = null;
+                try {
+                    source = textChange.getCurrentContent(new NullProgressMonitor());
+                } catch (CoreException e) {
+                    // fall through with null source
+                }
+                collectTextEdits(edit, source, fileEdits.textEdits);
+            }
+        } else if (change instanceof CreateCompilationUnitChange) {
+            CreateCompilationUnitChange createCUChange = (CreateCompilationUnitChange) change;
+            ICompilationUnit cu = createCUChange.getCu();
+            if (cu != null && cu.getResource() != null) {
+                String uri = JdtUtils.toFileUri(cu.getResource());
+                String preview = createCUChange.getPreview();
+                if (uri != null && preview != null && !preview.isEmpty()) {
+                    FileEdits fileEdits = editsByUri.computeIfAbsent(uri, k -> new FileEdits(k));
+                    fileEdits.textEdits.add(createTextEdit("", 0, 0, preview));
+                }
+            }
         }
     }
 
@@ -239,34 +279,149 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
         return null;
     }
 
-    /**
-     * Convert an LTK Change to a whole-file replacement edit.
-     * This is a simpler approach that applies the change to get the new content.
-     */
-    protected List<Map<String, Object>> convertChangeToWholeFileEdits(Change change) throws CoreException {
-        List<Map<String, Object>> edits = new ArrayList<>();
-        collectWholeFileEdits(change, edits);
-        return edits;
-    }
-
-    private void collectWholeFileEdits(Change change, List<Map<String, Object>> edits) throws CoreException {
+    private boolean hasUnconvertibleChanges(Change change) {
         if (change instanceof CompositeChange) {
             for (Change child : ((CompositeChange) change).getChildren()) {
-                collectWholeFileEdits(child, edits);
+                if (hasUnconvertibleChanges(child)) {
+                    return true;
+                }
             }
-        } else if (change instanceof TextChange) {
-            TextChange textChange = (TextChange) change;
-            String uri = getChangeUri(change);
-            if (uri == null) {
-                return;
+            return false;
+        }
+        return !(change instanceof TextChange)
+                && !(change instanceof CreateCompilationUnitChange);
+    }
+
+    private boolean hasUnsupportedEdits(TextEdit edit) {
+        if (edit instanceof org.eclipse.text.edits.MoveSourceEdit
+                || edit instanceof org.eclipse.text.edits.MoveTargetEdit
+                || edit instanceof org.eclipse.text.edits.CopySourceEdit
+                || edit instanceof org.eclipse.text.edits.CopyTargetEdit) {
+            return true;
+        }
+        for (TextEdit child : edit.getChildren()) {
+            if (hasUnsupportedEdits(child)) {
+                return true;
             }
+        }
+        return false;
+    }
 
-            String preview = textChange.getPreviewContent(new NullProgressMonitor());
-            String current = textChange.getCurrentContent(new NullProgressMonitor());
+    /**
+     * Fallback: perform the change, read affected files, compute diffs, then undo.
+     * Handles Change types that aren't TextChange (e.g., CreateCompilationUnitChange for new files)
+     * and MoveSourceEdit/MoveTargetEdit pairs that span different changes.
+     */
+    private List<Map<String, Object>> performChangeAndComputeEdits(Change change, boolean apply,
+            IProgressMonitor monitor) throws CoreException {
+        Map<String, String> contentBefore = new java.util.LinkedHashMap<>();
+        collectAffectedCompilationUnits(change, contentBefore);
 
-            if (preview != null && current != null && !preview.equals(current)) {
-                edits.addAll(createWholeFileEdit(uri, current, preview));
+        Change undoChange = change.perform(monitor);
+        try {
+            List<Map<String, Object>> edits = new ArrayList<>();
+            for (Map.Entry<String, String> entry : contentBefore.entrySet()) {
+                String uri = entry.getKey();
+                String before = entry.getValue();
+                ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
+                if (cu != null && cu.exists()) {
+                    String after = cu.getSource();
+                    if (after != null && !after.equals(before)) {
+                        edits.addAll(createWholeFileEdit(uri, before, after));
+                    }
+                }
+            }
+            return edits;
+        } finally {
+            if (!apply && undoChange != null) {
+                undoChange.perform(new NullProgressMonitor());
+                refreshAffectedResources(contentBefore);
             }
         }
     }
+
+    private void collectAffectedCompilationUnits(Change change, Map<String, String> contentBefore) {
+        if (change instanceof CompositeChange) {
+            for (Change child : ((CompositeChange) change).getChildren()) {
+                collectAffectedCompilationUnits(child, contentBefore);
+            }
+        }
+        String uri = getChangeUri(change);
+        if (uri == null) {
+            Object element = change.getModifiedElement();
+            if (element instanceof ICompilationUnit) {
+                ICompilationUnit cu = (ICompilationUnit) element;
+                if (cu.getResource() != null) {
+                    uri = JdtUtils.toFileUri(cu.getResource());
+                }
+            } else if (element instanceof org.eclipse.core.resources.IResource) {
+                org.eclipse.core.resources.IResource resource = (org.eclipse.core.resources.IResource) element;
+                if (resource.getName().endsWith(".java")) {
+                    uri = JdtUtils.toFileUri(resource);
+                }
+            }
+        }
+        if (uri != null && !contentBefore.containsKey(uri)) {
+            try {
+                ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
+                contentBefore.put(uri, (cu != null && cu.exists()) ? cu.getSource() : "");
+            } catch (Exception e) {
+                contentBefore.put(uri, "");
+            }
+        }
+    }
+
+    private void refreshAffectedResources(Map<String, String> contentBefore) {
+        java.util.Set<org.eclipse.core.resources.IContainer> parentFolders = new java.util.HashSet<>();
+        for (String uri : contentBefore.keySet()) {
+            try {
+                java.net.URI fileUri = java.net.URI.create(uri);
+                org.eclipse.core.resources.IFile[] files = org.eclipse.core.resources.ResourcesPlugin
+                        .getWorkspace().getRoot().findFilesForLocationURI(fileUri);
+                for (org.eclipse.core.resources.IFile file : files) {
+                    if (file.exists()) {
+                        file.refreshLocal(org.eclipse.core.resources.IResource.DEPTH_ZERO,
+                                new NullProgressMonitor());
+                    }
+                    if (file.getParent() != null) {
+                        parentFolders.add(file.getParent());
+                    }
+                }
+            } catch (Exception e) {
+                // best effort
+            }
+        }
+        for (org.eclipse.core.resources.IContainer folder : parentFolders) {
+            try {
+                folder.refreshLocal(org.eclipse.core.resources.IResource.DEPTH_ONE,
+                        new NullProgressMonitor());
+            } catch (Exception e) {
+                // best effort
+            }
+        }
+    }
+
+    // Same logic as JDT.LS PreferenceManager.getCodeGenerationSettings(ICompilationUnit)
+    protected static CodeGenerationSettings createCodeGenerationSettings(ICompilationUnit cu) {
+        CodeGenerationSettings settings = new CodeGenerationSettings();
+        settings.overrideAnnotation = true;
+        settings.createComments = false;
+        settings.tabWidth = CodeFormatterUtil.getTabWidth(cu);
+        settings.indentWidth = CodeFormatterUtil.getIndentWidth(cu);
+        return settings;
+    }
+
+    private static String getRuntimeExceptionMessage(RuntimeException e) {
+        String message = e.getMessage();
+        if (message == null || message.isEmpty()) {
+            return "unexpected " + e.getClass().getSimpleName();
+        }
+        if (e instanceof NullPointerException) {
+            return "unexpected NullPointerException in the refactoring engine. "
+                    + "This can happen with complex class hierarchies. "
+                    + "Try extracting fewer or simpler members.";
+        }
+        return message;
+    }
+
 }

@@ -22,7 +22,6 @@ import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.internal.corext.codemanipulation.CodeGenerationSettings;
 import org.eclipse.jdt.internal.corext.refactoring.structure.ExtractInterfaceProcessor;
-import org.eclipse.jdt.internal.ui.preferences.JavaPreferencesSettings;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 
 import com.ibm.mcp.jdtls.JdtUtils;
@@ -68,11 +67,15 @@ public class ExtractInterfaceHandler extends AbstractLTKRefactoringHandler {
             return createErrorResult("No type found at position");
         }
 
+        if (type.getCompilationUnit() == null) {
+            return createErrorResult("Cannot extract interface: type is from a binary dependency, not a source file");
+        }
+
         if (type.isInterface()) {
             return createErrorResult("Cannot extract interface from an interface");
         }
 
-        CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(type.getJavaProject());
+        CodeGenerationSettings settings = createCodeGenerationSettings(type.getCompilationUnit());
         ExtractInterfaceProcessor processor = new ExtractInterfaceProcessor(type, settings);
         processor.setTypeName(interfaceName);
 

@@ -24,7 +24,6 @@ import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.internal.corext.codemanipulation.CodeGenerationSettings;
 import org.eclipse.jdt.internal.corext.refactoring.structure.ExtractSupertypeProcessor;
-import org.eclipse.jdt.internal.ui.preferences.JavaPreferencesSettings;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 
 import com.ibm.mcp.jdtls.JdtUtils;
@@ -71,6 +70,10 @@ public class ExtractSuperclassHandler extends AbstractLTKRefactoringHandler {
             return createErrorResult("No type found at position");
         }
 
+        if (type.getCompilationUnit() == null) {
+            return createErrorResult("Cannot extract superclass: type is from a binary dependency, not a source file");
+        }
+
         // Collect members to move
         List<IMember> membersToMove = new ArrayList<>();
         for (String memberName : memberNames) {
@@ -93,7 +96,7 @@ public class ExtractSuperclassHandler extends AbstractLTKRefactoringHandler {
         }
 
         IMember[] members = membersToMove.toArray(new IMember[0]);
-        CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(type.getJavaProject());
+        CodeGenerationSettings settings = createCodeGenerationSettings(type.getCompilationUnit());
         ExtractSupertypeProcessor processor = new ExtractSupertypeProcessor(members, settings);
         processor.setTypeName(superclassName);
         processor.setMembersToMove(members);
