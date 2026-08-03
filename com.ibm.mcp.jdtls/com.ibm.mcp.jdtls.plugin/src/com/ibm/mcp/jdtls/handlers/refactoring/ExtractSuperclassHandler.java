@@ -47,6 +47,11 @@ import com.ibm.mcp.jdtls.JdtUtils;
 public class ExtractSuperclassHandler extends AbstractLTKRefactoringHandler {
 
     @Override
+    protected boolean isFinalConditionErrorBlocking() {
+        return false;
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         Map<String, Object> params = parseParams(arguments);
@@ -102,10 +107,6 @@ public class ExtractSuperclassHandler extends AbstractLTKRefactoringHandler {
         processor.setMembersToMove(members);
 
         ProcessorBasedRefactoring refactoring = new ProcessorBasedRefactoring(processor);
-        try {
-            return executeRefactoring(refactoring, params, monitor);
-        } finally {
-            RefactoringUtils.disposeWorkingCopies(processor);
-        }
+        return executeRefactoring(refactoring, params, monitor);
     }
 }

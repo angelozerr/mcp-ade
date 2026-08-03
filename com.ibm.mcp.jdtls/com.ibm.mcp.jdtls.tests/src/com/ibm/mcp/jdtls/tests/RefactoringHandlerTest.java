@@ -670,7 +670,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // Position on 'UserService' class name, line 12 (0-based), char 13
             Map<String, Object> p = params(uri, 12, 13);
             p.put("superclassName", "AbstractUserService");
-            p.put("memberNames", List.of("addUser", "findByName"));
+            p.put("memberNames", List.of("users", "MAX_USERS", "addUser", "findByName"));
 
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
@@ -684,7 +684,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             String uri = fileUri("src/com/example/service/UserService.java");
             Map<String, Object> p = params(uri, 12, 13);
             p.put("superclassName", "BaseService");
-            p.put("memberNames", List.of("addUser"));
+            p.put("memberNames", List.of("users", "MAX_USERS", "addUser"));
 
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);
@@ -698,7 +698,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             String uri = fileUri("src/com/example/service/UserService.java");
             Map<String, Object> p = params(uri, 12, 13);
             p.put("superclassName", "BaseUserService");
-            p.put("memberNames", List.of("addUser"));
+            p.put("memberNames", List.of("users", "MAX_USERS", "addUser"));
 
             Object result = handler.execute(args(p), MONITOR);
             Map<String, Object> resultMap = asMap(result);

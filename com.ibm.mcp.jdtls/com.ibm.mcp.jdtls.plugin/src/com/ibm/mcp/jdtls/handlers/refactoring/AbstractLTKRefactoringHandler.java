@@ -29,6 +29,7 @@ import org.eclipse.ltk.core.refactoring.CompositeChange;
 import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.TextChange;
+import org.eclipse.ltk.core.refactoring.TextEditBasedChange;
 import org.eclipse.ltk.core.refactoring.TextFileChange;
 import org.eclipse.jdt.internal.corext.refactoring.changes.CreateCompilationUnitChange;
 import org.eclipse.text.edits.DeleteEdit;
@@ -96,7 +97,7 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
             return createErrorResult("Refactoring validation failed: "
                     + finalStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
         }
-        if (finalStatus.hasError()) {
+        if (isFinalConditionErrorBlocking() && finalStatus.hasError()) {
             return createErrorResult("Refactoring validation failed: "
                     + finalStatus.getMessageMatchingSeverity(RefactoringStatus.ERROR));
         }
@@ -112,14 +113,6 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
         }
 
         try {
-            if (hasUnconvertibleChanges(change)) {
-                List<Map<String, Object>> edits = performChangeAndComputeEdits(change, apply, monitor);
-                if (edits.isEmpty()) {
-                    return createErrorResult("Refactoring produced no text edits");
-                }
-                return createSuccessResult(edits, apply);
-            }
-
             List<Map<String, Object>> edits = convertChangeToEdits(change);
 
             if (edits.isEmpty()) {
@@ -165,50 +158,77 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
             for (Change child : ((CompositeChange) change).getChildren()) {
                 collectEdits(child, editsByUri);
             }
-        } else if (change instanceof TextChange) {
-            TextChange textChange = (TextChange) change;
-            TextEdit edit = textChange.getEdit();
-            if (edit == null) {
-                return;
-            }
+        } else if (change instanceof TextChange textChange) {
+            collectTextChangeEdits(textChange, editsByUri);
+        } else if (change instanceof CreateCompilationUnitChange createCUChange) {
+            collectCreateCUEdits(createCUChange, editsByUri);
+        } else if (change instanceof TextEditBasedChange tebChange) {
+            collectTextEditBasedChangeEdits(tebChange, editsByUri);
+        }
+    }
 
-            String uri = getChangeUri(change);
-            if (uri == null) {
-                return;
-            }
+    private void collectTextChangeEdits(TextChange textChange, Map<String, FileEdits> editsByUri) {
+        TextEdit edit = textChange.getEdit();
+        if (edit == null) {
+            return;
+        }
 
-            FileEdits fileEdits = editsByUri.computeIfAbsent(uri, k -> new FileEdits(k));
+        String uri = getChangeUri(textChange);
+        if (uri == null) {
+            return;
+        }
 
-            if (hasUnsupportedEdits(edit)) {
-                try {
-                    String current = textChange.getCurrentContent(new NullProgressMonitor());
-                    String preview = textChange.getPreviewContent(new NullProgressMonitor());
-                    if (preview != null && current != null && !preview.equals(current)) {
-                        fileEdits.textEdits.add(createTextEdit(current, 0, current.length(), preview));
-                    }
-                } catch (CoreException e) {
-                    // fall through
+        FileEdits fileEdits = editsByUri.computeIfAbsent(uri, k -> new FileEdits(k));
+
+        if (hasUnsupportedEdits(edit)) {
+            try {
+                String current = textChange.getCurrentContent(new NullProgressMonitor());
+                String preview = textChange.getPreviewContent(new NullProgressMonitor());
+                if (preview != null && current != null && !preview.equals(current)) {
+                    fileEdits.textEdits.add(createTextEdit(current, 0, current.length(), preview));
                 }
-            } else {
-                String source = null;
-                try {
-                    source = textChange.getCurrentContent(new NullProgressMonitor());
-                } catch (CoreException e) {
-                    // fall through with null source
-                }
-                collectTextEdits(edit, source, fileEdits.textEdits);
+            } catch (CoreException e) {
+                // fall through
             }
-        } else if (change instanceof CreateCompilationUnitChange) {
-            CreateCompilationUnitChange createCUChange = (CreateCompilationUnitChange) change;
-            ICompilationUnit cu = createCUChange.getCu();
-            if (cu != null && cu.getResource() != null) {
-                String uri = JdtUtils.toFileUri(cu.getResource());
-                String preview = createCUChange.getPreview();
-                if (uri != null && preview != null && !preview.isEmpty()) {
-                    FileEdits fileEdits = editsByUri.computeIfAbsent(uri, k -> new FileEdits(k));
-                    fileEdits.textEdits.add(createTextEdit("", 0, 0, preview));
-                }
+        } else {
+            String source = null;
+            try {
+                source = textChange.getCurrentContent(new NullProgressMonitor());
+            } catch (CoreException e) {
+                // fall through with null source
             }
+            collectTextEdits(edit, source, fileEdits.textEdits);
+        }
+    }
+
+    private void collectCreateCUEdits(CreateCompilationUnitChange createCUChange,
+            Map<String, FileEdits> editsByUri) {
+        ICompilationUnit cu = createCUChange.getCu();
+        if (cu != null && cu.getResource() != null) {
+            String uri = JdtUtils.toFileUri(cu.getResource());
+            String preview = createCUChange.getPreview();
+            if (uri != null && preview != null && !preview.isEmpty()) {
+                FileEdits fileEdits = editsByUri.computeIfAbsent(uri, k -> new FileEdits(k));
+                fileEdits.textEdits.add(createTextEdit("", 0, 0, preview));
+            }
+        }
+    }
+
+    private void collectTextEditBasedChangeEdits(TextEditBasedChange tebChange,
+            Map<String, FileEdits> editsByUri) {
+        String uri = getChangeUri(tebChange);
+        if (uri == null) {
+            return;
+        }
+        try {
+            String current = tebChange.getCurrentContent(new NullProgressMonitor());
+            String preview = tebChange.getPreviewContent(new NullProgressMonitor());
+            if (preview != null && current != null && !preview.equals(current)) {
+                FileEdits fileEdits = editsByUri.computeIfAbsent(uri, k -> new FileEdits(k));
+                fileEdits.textEdits.add(createTextEdit(current, 0, current.length(), preview));
+            }
+        } catch (CoreException e) {
+            // skip this change
         }
     }
 
@@ -276,26 +296,14 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
             }
         }
         Object modifiedElement = change.getModifiedElement();
-        if (modifiedElement instanceof ICompilationUnit) {
-            ICompilationUnit cu = (ICompilationUnit) modifiedElement;
+        if (modifiedElement instanceof ICompilationUnit cu) {
             if (cu.getResource() != null) {
                 return JdtUtils.toFileUri(cu.getResource());
             }
+        } else if (modifiedElement instanceof org.eclipse.core.resources.IFile file) {
+            return JdtUtils.toFileUri(file);
         }
         return null;
-    }
-
-    private boolean hasUnconvertibleChanges(Change change) {
-        if (change instanceof CompositeChange) {
-            for (Change child : ((CompositeChange) change).getChildren()) {
-                if (hasUnconvertibleChanges(child)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        return !(change instanceof TextChange)
-                && !(change instanceof CreateCompilationUnitChange);
     }
 
     private boolean hasUnsupportedEdits(TextEdit edit) {
@@ -335,8 +343,7 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
                 collectAffectedCUs(child, cus);
             }
         }
-        if (change instanceof TextFileChange) {
-            TextFileChange tfc = (TextFileChange) change;
+        if (change instanceof TextFileChange tfc) {
             if (tfc.getFile() != null) {
                 ICompilationUnit cu = JdtUtils.getCompilationUnit(JdtUtils.toFileUri(tfc.getFile()));
                 if (cu != null) {
@@ -351,98 +358,8 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
         }
     }
 
-    /**
-     * Fallback: perform the change, read affected files, compute diffs, then undo.
-     * Handles Change types that aren't TextChange (e.g., CreateCompilationUnitChange for new files)
-     * and MoveSourceEdit/MoveTargetEdit pairs that span different changes.
-     */
-    private List<Map<String, Object>> performChangeAndComputeEdits(Change change, boolean apply,
-            IProgressMonitor monitor) throws CoreException {
-        Map<String, String> contentBefore = new java.util.LinkedHashMap<>();
-        collectAffectedCompilationUnits(change, contentBefore);
-
-        Change undoChange = change.perform(monitor);
-        try {
-            List<Map<String, Object>> edits = new ArrayList<>();
-            for (Map.Entry<String, String> entry : contentBefore.entrySet()) {
-                String uri = entry.getKey();
-                String before = entry.getValue();
-                ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-                if (cu != null && cu.exists()) {
-                    String after = cu.getSource();
-                    if (after != null && !after.equals(before)) {
-                        edits.addAll(createWholeFileEdit(uri, before, after));
-                    }
-                }
-            }
-            return edits;
-        } finally {
-            if (!apply && undoChange != null) {
-                undoChange.perform(new NullProgressMonitor());
-                refreshAffectedResources(contentBefore);
-            }
-        }
-    }
-
-    private void collectAffectedCompilationUnits(Change change, Map<String, String> contentBefore) {
-        if (change instanceof CompositeChange) {
-            for (Change child : ((CompositeChange) change).getChildren()) {
-                collectAffectedCompilationUnits(child, contentBefore);
-            }
-        }
-        String uri = getChangeUri(change);
-        if (uri == null) {
-            Object element = change.getModifiedElement();
-            if (element instanceof ICompilationUnit) {
-                ICompilationUnit cu = (ICompilationUnit) element;
-                if (cu.getResource() != null) {
-                    uri = JdtUtils.toFileUri(cu.getResource());
-                }
-            } else if (element instanceof org.eclipse.core.resources.IResource) {
-                org.eclipse.core.resources.IResource resource = (org.eclipse.core.resources.IResource) element;
-                if (resource.getName().endsWith(".java")) {
-                    uri = JdtUtils.toFileUri(resource);
-                }
-            }
-        }
-        if (uri != null && !contentBefore.containsKey(uri)) {
-            try {
-                ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-                contentBefore.put(uri, (cu != null && cu.exists()) ? cu.getSource() : "");
-            } catch (Exception e) {
-                contentBefore.put(uri, "");
-            }
-        }
-    }
-
-    private void refreshAffectedResources(Map<String, String> contentBefore) {
-        java.util.Set<org.eclipse.core.resources.IContainer> parentFolders = new java.util.HashSet<>();
-        for (String uri : contentBefore.keySet()) {
-            try {
-                java.net.URI fileUri = java.net.URI.create(uri);
-                org.eclipse.core.resources.IFile[] files = org.eclipse.core.resources.ResourcesPlugin
-                        .getWorkspace().getRoot().findFilesForLocationURI(fileUri);
-                for (org.eclipse.core.resources.IFile file : files) {
-                    if (file.exists()) {
-                        file.refreshLocal(org.eclipse.core.resources.IResource.DEPTH_ZERO,
-                                new NullProgressMonitor());
-                    }
-                    if (file.getParent() != null) {
-                        parentFolders.add(file.getParent());
-                    }
-                }
-            } catch (Exception e) {
-                // best effort
-            }
-        }
-        for (org.eclipse.core.resources.IContainer folder : parentFolders) {
-            try {
-                folder.refreshLocal(org.eclipse.core.resources.IResource.DEPTH_ONE,
-                        new NullProgressMonitor());
-            } catch (Exception e) {
-                // best effort
-            }
-        }
+    protected boolean isFinalConditionErrorBlocking() {
+        return true;
     }
 
     // Same logic as JDT.LS PreferenceManager.getCodeGenerationSettings(ICompilationUnit)

@@ -34,6 +34,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.manipulation.JavaManipulation;
+import org.eclipse.jdt.internal.core.manipulation.MembersOrderPreferenceCacheCommon;
 import org.eclipse.text.templates.TemplateStoreCore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -104,6 +105,8 @@ public abstract class AbstractHandlerTest {
         prefs.put("org.eclipse.jdt.ui.ondemandthreshold", "99");
         prefs.put("org.eclipse.jdt.ui.staticondemandthreshold", "99");
         prefs.flush();
+
+        new MembersOrderPreferenceCacheCommon().install();
 
         // Wait for the Java model to build
         waitForBuild();
