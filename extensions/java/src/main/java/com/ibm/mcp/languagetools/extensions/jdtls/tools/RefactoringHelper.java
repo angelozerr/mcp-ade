@@ -75,4 +75,10 @@ final class RefactoringHelper {
             params.put("projectName", projectName);
         }
     }
+
+    static void putMaxResults(Map<String, Object> params, Integer maxResults) {
+        if (maxResults != null && maxResults > 0) {
+            params.put("maxResults", maxResults);
+        }
+    }
 }

@@ -29,4 +29,7 @@ public final class JavaToolArgDescriptions {
 
     public static final String PROJECT_NAME =
         "Project name to search in (used when scope='project', defaults to first Java project)";
+
+    public static final String MAX_RESULTS =
+        "Maximum number of results to return (0 or omit for unlimited). When truncated, response includes truncated=true";
 }

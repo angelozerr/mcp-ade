@@ -94,15 +94,64 @@ public abstract class AbstractConfiguration implements Configuration {
 
         try {
             String json = Files.readString(file);
+            json = stripJsonComments(json);
             TypeToken<Map<String, Object>> typeToken = new TypeToken<>() {
             };
             Map<String, Object> loaded = GSON.fromJson(json, typeToken.getType());
             LOG.infof("Loaded settings from %s", file);
             return loaded != null ? loaded : new HashMap<>();
-        } catch (IOException e) {
-            LOG.warnf(e, "Failed to load settings from %s", file);
+        } catch (Exception e) {
+            LOG.warnf("Failed to load settings from %s: %s", file, e.getMessage());
             return new HashMap<>();
         }
+    }
+
+    /**
+     * Strip JSONC features (single-line comments, block comments, trailing commas)
+     * to produce strict JSON that Gson can parse.
+     */
+    static String stripJsonComments(String jsonc) {
+        StringBuilder sb = new StringBuilder(jsonc.length());
+        int i = 0;
+        int len = jsonc.length();
+        while (i < len) {
+            char c = jsonc.charAt(i);
+            if (c == '"') {
+                // Copy quoted string as-is (skip escaped quotes)
+                sb.append(c);
+                i++;
+                while (i < len) {
+                    char sc = jsonc.charAt(i);
+                    sb.append(sc);
+                    if (sc == '\\' && i + 1 < len) {
+                        i++;
+                        sb.append(jsonc.charAt(i));
+                    } else if (sc == '"') {
+                        break;
+                    }
+                    i++;
+                }
+                i++;
+            } else if (c == '/' && i + 1 < len && jsonc.charAt(i + 1) == '/') {
+                // Single-line comment: skip until end of line
+                i += 2;
+                while (i < len && jsonc.charAt(i) != '\n') {
+                    i++;
+                }
+            } else if (c == '/' && i + 1 < len && jsonc.charAt(i + 1) == '*') {
+                // Block comment: skip until */
+                i += 2;
+                while (i + 1 < len && !(jsonc.charAt(i) == '*' && jsonc.charAt(i + 1) == '/')) {
+                    i++;
+                }
+                i += 2;
+            } else {
+                sb.append(c);
+                i++;
+            }
+        }
+        // Remove trailing commas before } or ]
+        return sb.toString().replaceAll(",\\s*([}\\]])", "$1");
     }
 
     /**

@@ -48,11 +48,11 @@ Without MCP LT, Claude would have to **rebuild the entire project** just to disc
 
 **Skeptic**: OK, but what can you actually do beyond diagnostics?
 
-**MCP LT**: Take Java as an example — there are [**80 dedicated Java tools**](../README.md#java-tools-79-tools-from-java-extension) covering analysis, navigation, refactoring, code generation, diagnostics, code quality, and even framework support for Spring/Jakarta endpoints and JPA models.
+**MCP LT**: Take Java as an example — there are [**60 dedicated Java tools**](../README.md#java-tools-60-tools-from-java-extension) covering analysis, navigation, refactoring, code generation, diagnostics, code quality, and even framework support for Spring/Jakarta endpoints and JPA models.
 
-**Skeptic**: 80 tools? Like what?
+**Skeptic**: 60 tools? Like what?
 
-**MCP LT**: Rename a symbol across the entire project. Extract a method, a variable, a constant. Inline a method. Pull members up to a superclass or push them down to subclasses. Change a method signature and update all call sites. Convert a class to a Java 16 record. Analyze cyclomatic complexity. Find circular dependencies. Generate constructors, equals/hashCode, toString — all powered by the Eclipse JDT.LS refactoring engine.
+**MCP LT**: Rename a symbol across the entire project. Extract a method, a variable, a constant. Inline a method. Pull members up to a superclass or push them down to subclasses. Change a method signature and update all call sites. Convert a class to a Java 16 record. Analyze files with complexity metrics. Find circular dependencies. Generate constructors, equals/hashCode, toString — all powered by the Eclipse JDT.LS refactoring engine.
 
 **Skeptic**: That's basically what IntelliJ or Eclipse can do...
 

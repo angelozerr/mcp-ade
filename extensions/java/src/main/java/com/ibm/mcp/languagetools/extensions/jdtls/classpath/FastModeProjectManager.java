@@ -146,6 +146,17 @@ public class FastModeProjectManager {
                 throw new RuntimeException(e);
             }
         }).thenCompose(info -> {
+            // Skip project creation for reactor POMs with no source code —
+            // creating a project at the workspace root would "claim" nested
+            // sub-module directories and prevent them from being resolved
+            // to their own projects.
+            if (info.sourceRoots().isEmpty() && info.classpathJars().isEmpty()
+                    && info.reactorModuleDeps().isEmpty()) {
+                LOG.infof("Skipping project creation for empty reactor POM: %s", info.moduleName());
+                setup.complete(info);
+                return CompletableFuture.completedFuture((Void) null);
+            }
+
             if (loadedFromCache.get()) {
                 progress.reportProgress("Classpath loaded from cache for " + info.moduleName() + ", setting up project...");
             }

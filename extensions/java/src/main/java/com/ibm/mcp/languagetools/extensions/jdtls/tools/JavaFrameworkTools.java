@@ -27,9 +27,6 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * MCP tools for Java framework analysis via JDT.LS delegate command handlers.
- *
- * <p>Tools adapted from <a href="https://github.com/pzalutski-pixel/javalens-mcp">javalens-mcp</a>
- * for JDT.LS delegate command handler architecture.</p>
  */
 @ApplicationScoped
 public class JavaFrameworkTools {
@@ -37,40 +34,30 @@ public class JavaFrameworkTools {
     @Inject
     JdtlsCommandExecutor executor;
 
-    @Tool(name = "java_get_http_endpoints",
-          description = "Find all HTTP endpoints (REST API routes) in a Java project")
-    public CompletableFuture<String> getHttpEndpoints(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_HTTP_ENDPOINTS,
-                Map.of(),
-                cancellation, progress);
-    }
+    private static final Map<String, String> KIND_TO_COMMAND = Map.of(
+            "endpoints", JdtlsCommands.GET_HTTP_ENDPOINTS,
+            "jpa", JdtlsCommands.GET_JPA_MODEL,
+            "di", JdtlsCommands.GET_DI_REGISTRATIONS
+    );
 
-    @Tool(name = "java_get_jpa_model",
-          description = "Get the JPA entity model from a Java project")
-    public CompletableFuture<String> getJpaModel(
+    @Tool(name = "java_get_framework_info",
+          description = "Get framework-specific information from a Java project. "
+                  + "kind: 'endpoints' (HTTP/REST routes), 'jpa' (JPA entity model), "
+                  + "'di' (dependency injection registrations - Spring, Jakarta CDI)")
+    public CompletableFuture<String> getFrameworkInfo(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_JPA_MODEL,
-                Map.of(),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_get_di_registrations",
-          description = "Find dependency injection registrations (Spring, Jakarta CDI)")
-    public CompletableFuture<String> getDiRegistrations(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
+            @ToolArg(description = "Kind: 'endpoints', 'jpa', or 'di'") String kind,
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             Cancellation cancellation,
             Progress progress) {
+        String commandId = KIND_TO_COMMAND.get(kind);
+        if (commandId == null) {
+            return CompletableFuture.completedFuture(
+                    "Error: invalid kind '" + kind + "'. Valid values: endpoints, jpa, di");
+        }
         Map<String, Object> args = new HashMap<>();
         RefactoringHelper.putScope(args, scope, projectName);
-        return executor.executeCommand(cwd, JdtlsCommands.GET_DI_REGISTRATIONS,
-                args,
-                cancellation, progress);
+        return executor.executeCommand(cwd, commandId, args, cancellation, progress);
     }
 }

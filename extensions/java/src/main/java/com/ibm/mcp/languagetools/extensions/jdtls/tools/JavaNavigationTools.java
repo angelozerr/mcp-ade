@@ -38,7 +38,8 @@ public class JavaNavigationTools {
     JdtlsCommandExecutor executor;
 
     @Tool(name = "java_go_to_definition",
-          description = "Navigate to the definition of a Java symbol")
+          description = "Navigate to the definition of a Java symbol. Prefer over Grep for finding "
+                  + "declarations -- resolves through JARs, generics, and type hierarchy.")
     public CompletableFuture<String> goToDefinition(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
@@ -52,7 +53,9 @@ public class JavaNavigationTools {
     }
 
     @Tool(name = "java_get_hover_info",
-          description = "Get rich hover information for a Java symbol (signature, Javadoc, type info)")
+          description = "Get rich hover information for a Java symbol at a position: resolved signature, "
+                  + "Javadoc, type info, enclosing element. Use this instead of reading the file when you "
+                  + "need to understand what a symbol is.")
     public CompletableFuture<String> getHoverInfo(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
@@ -61,90 +64,6 @@ public class JavaNavigationTools {
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_HOVER_INFO,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_get_javadoc",
-          description = "Get parsed Javadoc documentation for a Java symbol")
-    public CompletableFuture<String> getJavadoc(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_JAVADOC,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_get_symbol_info",
-          description = "Get detailed information about any Java symbol at a position")
-    public CompletableFuture<String> getSymbolInfo(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_SYMBOL_INFO,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_get_enclosing_element",
-          description = "Get the enclosing method, class, and package for a position")
-    public CompletableFuture<String> getEnclosingElement(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_ENCLOSING_ELEMENT,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_get_field_at_position",
-          description = "Get field information at a specific position in a Java file")
-    public CompletableFuture<String> getFieldAtPosition(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_FIELD_AT_POSITION,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_get_method_at_position",
-          description = "Get method information at a specific position in a Java file")
-    public CompletableFuture<String> getMethodAtPosition(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_METHOD_AT_POSITION,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_get_type_at_position",
-          description = "Get type information at a specific position in a Java file")
-    public CompletableFuture<String> getTypeAtPosition(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.GET_TYPE_AT_POSITION,
                 RefactoringHelper.positionParams(fileUri, line, character),
                 cancellation, progress);
     }

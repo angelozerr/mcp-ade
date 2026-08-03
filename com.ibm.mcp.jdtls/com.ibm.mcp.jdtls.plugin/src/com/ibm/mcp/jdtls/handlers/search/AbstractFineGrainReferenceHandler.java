@@ -63,14 +63,22 @@ public abstract class AbstractFineGrainReferenceHandler implements ICommandHandl
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         IType type = JdtUtils.resolveType(arguments, monitor);
         if (type == null || !type.exists()) {
             return Map.of("error", "Type not found");
         }
 
-        // Use string-based pattern (not IType-based) to avoid JDT internal ClassCastException
-        // with IntersectionCastTypeReference when scanning complex cast expressions.
+        int maxResults = 0;
+        if (arguments != null && !arguments.isEmpty() && arguments.get(0) instanceof Map) {
+            Object mr = ((Map<String, Object>) arguments.get(0)).get("maxResults");
+            if (mr instanceof Number n) {
+                maxResults = n.intValue();
+            }
+        }
+        final int limit = maxResults;
+
         String typeName = type.getFullyQualifiedName('$');
         SearchPattern pattern = SearchPattern.createPattern(
                 typeName,
@@ -81,11 +89,11 @@ public abstract class AbstractFineGrainReferenceHandler implements ICommandHandl
             return Map.of(typeLabel, type.getFullyQualifiedName(), resultKey, List.of());
         }
 
-        // Use source-only scope to avoid scanning JDK/library JARs
         IJavaSearchScope scope = SearchEngine.createJavaSearchScope(
                 new IJavaElement[]{type.getJavaProject()}, IJavaSearchScope.SOURCES);
         List<Map<String, Object>> usages = new ArrayList<>();
         Map<IResource, String> sourceCache = new HashMap<>();
+        final boolean[] truncated = {false};
 
         SearchEngine engine = new SearchEngine();
         engine.search(
@@ -95,6 +103,10 @@ public abstract class AbstractFineGrainReferenceHandler implements ICommandHandl
                 new SearchRequestor() {
                     @Override
                     public void acceptSearchMatch(SearchMatch match) {
+                        if (limit > 0 && usages.size() >= limit) {
+                            truncated[0] = true;
+                            return;
+                        }
                         if (!(match.getResource() instanceof IFile f)
                                 || !"java".equalsIgnoreCase(f.getFileExtension())) {
                             return;
@@ -107,6 +119,9 @@ public abstract class AbstractFineGrainReferenceHandler implements ICommandHandl
         Map<String, Object> result = new HashMap<>();
         result.put(typeLabel, type.getFullyQualifiedName());
         result.put("count", usages.size());
+        if (truncated[0]) {
+            result.put("truncated", true);
+        }
         result.put(resultKey, JdtUtils.groupResultsByUri(usages));
         return result;
     }

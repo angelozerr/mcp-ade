@@ -26,9 +26,6 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * MCP tools for Java reference search via JDT.LS delegate command handlers.
- *
- * <p>Tools adapted from <a href="https://github.com/pzalutski-pixel/javalens-mcp">javalens-mcp</a>
- * for JDT.LS delegate command handler architecture.</p>
  */
 @ApplicationScoped
 public class JavaReferenceSearchTools {
@@ -36,79 +33,31 @@ public class JavaReferenceSearchTools {
     @Inject
     JdtlsCommandExecutor executor;
 
-    @Tool(name = "java_find_casts",
-          description = "Find all cast expressions to a Java type")
-    public CompletableFuture<String> findCasts(
+    private static final Map<String, String> KIND_TO_COMMAND = Map.of(
+            "cast", JdtlsCommands.FIND_CASTS,
+            "catch", JdtlsCommands.FIND_CATCH_BLOCKS,
+            "instanceof", JdtlsCommands.FIND_INSTANCEOF_CHECKS,
+            "throws", JdtlsCommands.FIND_THROWS_DECLARATIONS,
+            "type_argument", JdtlsCommands.FIND_TYPE_ARGUMENTS
+    );
+
+    @Tool(name = "java_find_type_usages",
+          description = "Find specific usages of a Java type by kind: 'cast' (cast expressions), "
+                  + "'catch' (catch blocks), 'instanceof' (instanceof checks), 'throws' (throws declarations), "
+                  + "'type_argument' (generic type arguments)")
+    public CompletableFuture<String> findTypeUsages(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Fully qualified name of the type (e.g., 'java.lang.String')") String fullyQualifiedName,
+            @ToolArg(description = "Usage kind: 'cast', 'catch', 'instanceof', 'throws', or 'type_argument'") String kind,
             Cancellation cancellation,
             Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_CASTS,
+        String commandId = KIND_TO_COMMAND.get(kind);
+        if (commandId == null) {
+            return CompletableFuture.completedFuture(
+                    "Error: invalid kind '" + kind + "'. Valid values: cast, catch, instanceof, throws, type_argument");
+        }
+        return executor.executeCommand(cwd, commandId,
                 RefactoringHelper.fqnParams(fullyQualifiedName),
                 cancellation, progress);
-    }
-
-    @Tool(name = "java_find_catch_blocks",
-          description = "Find all catch blocks catching a Java exception type")
-    public CompletableFuture<String> findCatchBlocks(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Fully qualified name of the exception type") String fullyQualifiedName,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_CATCH_BLOCKS,
-                RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_find_instanceof_checks",
-          description = "Find all instanceof checks for a Java type")
-    public CompletableFuture<String> findInstanceofChecks(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Fully qualified name of the type") String fullyQualifiedName,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_INSTANCEOF_CHECKS,
-                RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_find_throws_declarations",
-          description = "Find all throws clause declarations of a Java exception type")
-    public CompletableFuture<String> findThrowsDeclarations(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Fully qualified name of the exception type") String fullyQualifiedName,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_THROWS_DECLARATIONS,
-                RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_find_type_arguments",
-          description = "Find all type argument usages of a Java type in generics")
-    public CompletableFuture<String> findTypeArguments(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Fully qualified name of the type") String fullyQualifiedName,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_TYPE_ARGUMENTS,
-                RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_find_method_references",
-          description = "Find all references to a method")
-    public CompletableFuture<String> findMethodReferences(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
-            @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
-            Cancellation cancellation,
-            Progress progress) {
-        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
-        RefactoringHelper.putScope(params, scope, projectName);
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_METHOD_REFERENCES, params, cancellation, progress);
     }
 }

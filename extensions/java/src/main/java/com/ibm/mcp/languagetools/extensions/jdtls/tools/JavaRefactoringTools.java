@@ -38,7 +38,8 @@ public class JavaRefactoringTools {
     JdtlsCommandExecutor executor;
 
     @Tool(name = "java_rename_symbol",
-          description = "Rename a Java symbol across the entire project")
+          description = "Rename a Java symbol across the entire project. Prefer over Edit for renaming "
+                  + "-- handles all references across files, import updates, and type hierarchy.")
     public CompletableFuture<String> renameSymbol(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,

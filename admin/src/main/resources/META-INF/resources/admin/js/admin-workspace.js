@@ -240,8 +240,16 @@
                             throw new Error('Failed to close workspace');
                         }
 
-                        // Reload workspaces list
-                        await loadWorkspaces();
+                        // Remove workspace from local list and re-render
+                        const idx = workspaces.findIndex(w => w.rootUri === uri);
+                        if (idx !== -1) {
+                            workspaces.splice(idx, 1);
+                            window.workspaces = workspaces;
+                        }
+                        if (selectedWorkspace === uri) {
+                            selectedWorkspace = workspaces.length > 0 ? workspaces[0].rootUri : null;
+                        }
+                        renderWorkspaces();
 
                     } catch (error) {
                         console.error('Failed to close workspace:', error);

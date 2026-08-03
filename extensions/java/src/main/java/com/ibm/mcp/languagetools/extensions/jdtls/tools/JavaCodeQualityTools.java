@@ -38,35 +38,6 @@ public class JavaCodeQualityTools {
     @Inject
     JdtlsCommandExecutor executor;
 
-    @Tool(name = "java_find_large_classes",
-          description = "Find Java classes exceeding size thresholds")
-    public CompletableFuture<String> findLargeClasses(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_LARGE_CLASSES,
-                Map.of(),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_find_naming_violations",
-          description = "Find naming convention violations in a Java file")
-    public CompletableFuture<String> findNamingViolations(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
-            Cancellation cancellation,
-            Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_NAMING_VIOLATIONS, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
-        }
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_NAMING_VIOLATIONS,
-                Map.of("uri", fileUri),
-                cancellation, progress);
-    }
-
     @Tool(name = "java_find_possible_bugs",
           description = "Find potential bug patterns in a Java file")
     public CompletableFuture<String> findPossibleBugs(
@@ -97,7 +68,7 @@ public class JavaCodeQualityTools {
     }
 
     @Tool(name = "java_code_quality_report",
-          description = "Run all quality checks on a Java file in one call (unused code, naming, bugs, complexity)")
+          description = "Run all quality checks on a Java file in one call (unused code, bugs, complexity)")
     public CompletableFuture<String> codeQualityReport(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
@@ -105,19 +76,17 @@ public class JavaCodeQualityTools {
             Progress progress) {
         Map<String, Object> uriArgs = Map.of("uri", fileUri);
         CompletableFuture<Object> unused = executor.executeCommandRaw(cwd, JdtlsCommands.FIND_UNUSED_CODE, uriArgs);
-        CompletableFuture<Object> naming = executor.executeCommandRaw(cwd, JdtlsCommands.FIND_NAMING_VIOLATIONS, uriArgs);
         CompletableFuture<Object> bugs = executor.executeCommandRaw(cwd, JdtlsCommands.FIND_POSSIBLE_BUGS, uriArgs);
         CompletableFuture<Object> complexity = executor.executeCommandRaw(cwd, JdtlsCommands.GET_COMPLEXITY_METRICS, uriArgs);
 
-        return CompletableFuture.allOf(unused, naming, bugs, complexity)
+        return CompletableFuture.allOf(unused, bugs, complexity)
                 .thenApply(v -> {
                     Map<String, Object> report = new LinkedHashMap<>();
                     report.put("fileUri", fileUri);
                     report.put("unusedCode", unused.join());
-                    report.put("namingViolations", naming.join());
                     report.put("possibleBugs", bugs.join());
                     report.put("complexity", complexity.join());
-                    return executor.formatResult(report);
+                    return executor.formatResult(report, cwd);
                 });
     }
 }

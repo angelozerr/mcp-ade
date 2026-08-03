@@ -46,8 +46,7 @@ public class JdtlsCommandExecutor {
 
     private static final String JDTLS_SERVER_ID = "jdtls";
 
-    private static final com.google.gson.Gson GSON =
-            new com.google.gson.GsonBuilder().setPrettyPrinting().create();
+    private static final com.google.gson.Gson GSON = new com.google.gson.Gson();
 
     @Inject
     Application application;
@@ -58,8 +57,9 @@ public class JdtlsCommandExecutor {
     @SuppressWarnings("unchecked")
     public CompletableFuture<String> executeCommand(String cwd, String commandId, Object arguments,
                                                      Cancellation cancellation, Progress progress) {
+        String fileUriPrefix = toFileUriPrefix(cwd);
         return executeCommandWithMetadata(cwd, commandId, arguments, null)
-                .thenApply(this::formatResult)
+                .thenApply(result -> formatResultWithPrefix(result, fileUriPrefix))
                 .exceptionally(ex -> {
                     LOG.errorf(ex, "Failed to execute command %s", commandId);
                     return "Error executing " + commandId + ": " + ex.getMessage();
@@ -147,16 +147,15 @@ public class JdtlsCommandExecutor {
     }
 
     private Object enrichResultWithMetadata(Object result, boolean indexing) {
+        if (!indexing) {
+            return result;
+        }
         Map<String, Object> enriched = new LinkedHashMap<>();
         enriched.put("importMode", "fast");
-        if (indexing) {
-            enriched.put("indexingStatus", "in_progress");
-            enriched.put("indexingNote",
-                    "Indexing is still in progress. Search-based results (find references, "
-                            + "type hierarchy, rename across files) may be incomplete.");
-        } else {
-            enriched.put("indexingStatus", "complete");
-        }
+        enriched.put("indexingStatus", "in_progress");
+        enriched.put("indexingNote",
+                "Indexing is still in progress. Search-based results (find references, "
+                        + "type hierarchy, rename across files) may be incomplete.");
         enriched.put("result", result);
         return enriched;
     }
@@ -166,6 +165,7 @@ public class JdtlsCommandExecutor {
                                                           Function<String, Object> argsBuilder,
                                                           Cancellation cancellation, Progress progress) {
         var workspace = application.getWorkspaceForPath(cwd);
+        String fileUriPrefix = toFileUriPrefix(cwd);
 
         return workspace.ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none())
                 .thenCompose(jdtls -> {
@@ -210,7 +210,7 @@ public class JdtlsCommandExecutor {
                                 }
                                 return chain;
                             })
-                            .thenApply(this::formatResult);
+                            .thenApply(result -> formatResultWithPrefix(result, fileUriPrefix));
                 })
                 .exceptionally(ex -> {
                     LOG.errorf(ex, "Failed to execute batch command %s", commandId);
@@ -218,17 +218,40 @@ public class JdtlsCommandExecutor {
                 });
     }
 
-    String formatResult(Object result) {
+    String formatResult(Object result, String cwd) {
+        return formatResultWithPrefix(result, toFileUriPrefix(cwd));
+    }
+
+    private String formatResultWithPrefix(Object result, String fileUriPrefix) {
         if (result == null) {
             return "No result";
         }
         if (result instanceof String s) {
-            return s;
+            return stripFileUriPrefix(s, fileUriPrefix);
         }
         try {
-            return GSON.toJson(result);
+            String json = GSON.toJson(result);
+            return stripFileUriPrefix(json, fileUriPrefix);
         } catch (Exception e) {
             return result.toString();
         }
+    }
+
+    private static String stripFileUriPrefix(String text, String fileUriPrefix) {
+        if (fileUriPrefix != null && text.contains(fileUriPrefix)) {
+            return text.replace(fileUriPrefix, "");
+        }
+        return text;
+    }
+
+    private static String toFileUriPrefix(String cwd) {
+        if (cwd == null) {
+            return null;
+        }
+        String normalized = cwd.replace('\\', '/');
+        if (!normalized.endsWith("/")) {
+            normalized += "/";
+        }
+        return "file:///" + normalized;
     }
 }

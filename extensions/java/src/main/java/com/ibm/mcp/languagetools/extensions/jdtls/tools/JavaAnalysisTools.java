@@ -113,24 +113,6 @@ public class JavaAnalysisTools {
         return executor.executeCommand(cwd, JdtlsCommands.FIND_TYPE_INSTANTIATIONS, params, cancellation, progress);
     }
 
-    @Tool(name = "java_get_complexity_metrics",
-          description = "Compute cyclomatic complexity and LOC per method in a Java file")
-    public CompletableFuture<String> getComplexityMetrics(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
-            Cancellation cancellation,
-            Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.GET_COMPLEXITY_METRICS, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
-        }
-        return executor.executeCommand(cwd, JdtlsCommands.GET_COMPLEXITY_METRICS,
-                Map.of("uri", fileUri),
-                cancellation, progress);
-    }
-
     @Tool(name = "java_analyze_file",
           description = "Get comprehensive analysis of a Java file (types, methods, fields, diagnostics, complexity)")
     public CompletableFuture<String> analyzeFile(
@@ -189,31 +171,4 @@ public class JavaAnalysisTools {
                 cancellation, progress);
     }
 
-    @Tool(name = "java_analyze_control_flow",
-          description = "Analyze control flow paths through a Java method")
-    public CompletableFuture<String> analyzeControlFlow(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_CONTROL_FLOW,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
-
-    @Tool(name = "java_analyze_data_flow",
-          description = "Track data flow through variables and parameters in a Java method")
-    public CompletableFuture<String> analyzeDataFlow(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
-            Cancellation cancellation,
-            Progress progress) {
-        return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_DATA_FLOW,
-                RefactoringHelper.positionParams(fileUri, line, character),
-                cancellation, progress);
-    }
 }

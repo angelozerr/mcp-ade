@@ -132,7 +132,7 @@ public class FindNamingViolationsHandler implements ICommandHandler {
             public boolean visit(PackageDeclaration node) {
                 String name = node.getName().getFullyQualifiedName();
                 if (!LOWERCASE_PACKAGE.matcher(name).matches()) {
-                    addViolation(violations, "package", "package", name,
+                    addViolation(violations, "package", name,
                             "all lowercase (e.g., com.example.mypackage)",
                             fileUri, ast.getLineNumber(node.getStartPosition()));
                 }
@@ -143,7 +143,7 @@ public class FindNamingViolationsHandler implements ICommandHandler {
             public boolean visit(TypeDeclaration node) {
                 String name = node.getName().getIdentifier();
                 if (!UPPER_CAMEL_CASE.matcher(name).matches()) {
-                    addViolation(violations, name, "type", name,
+                    addViolation(violations, "type", name,
                             "UpperCamelCase (e.g., MyClass)",
                             fileUri, ast.getLineNumber(node.getStartPosition()));
                 }
@@ -153,7 +153,7 @@ public class FindNamingViolationsHandler implements ICommandHandler {
                     if (tp instanceof TypeParameter typeParam) {
                         String tpName = typeParam.getName().getIdentifier();
                         if (!TYPE_PARAM.matcher(tpName).matches()) {
-                            addViolation(violations, tpName, "typeParameter", tpName,
+                            addViolation(violations, "typeParameter", tpName,
                                     "single uppercase letter or UpperCamelCase (e.g., T, E, KeyType)",
                                     fileUri, ast.getLineNumber(typeParam.getStartPosition()));
                         }
@@ -167,7 +167,7 @@ public class FindNamingViolationsHandler implements ICommandHandler {
                 String name = node.getName().getIdentifier();
                 // Skip constructors
                 if (!node.isConstructor() && !LOWER_CAMEL_CASE.matcher(name).matches()) {
-                    addViolation(violations, name, "method", name,
+                    addViolation(violations, "method", name,
                             "lowerCamelCase (e.g., myMethod)",
                             fileUri, ast.getLineNumber(node.getStartPosition()));
                 }
@@ -177,7 +177,7 @@ public class FindNamingViolationsHandler implements ICommandHandler {
                     if (param instanceof SingleVariableDeclaration svd) {
                         String paramName = svd.getName().getIdentifier();
                         if (!LOWER_CAMEL_CASE.matcher(paramName).matches()) {
-                            addViolation(violations, paramName, "parameter", paramName,
+                            addViolation(violations, "parameter", paramName,
                                     "lowerCamelCase (e.g., myParam)",
                                     fileUri, ast.getLineNumber(svd.getStartPosition()));
                         }
@@ -196,13 +196,13 @@ public class FindNamingViolationsHandler implements ICommandHandler {
                         String name = vdf.getName().getIdentifier();
                         if (isConstant) {
                             if (!UPPER_SNAKE_CASE.matcher(name).matches()) {
-                                addViolation(violations, name, "constant", name,
+                                addViolation(violations, "constant", name,
                                         "UPPER_SNAKE_CASE (e.g., MAX_VALUE)",
                                         fileUri, ast.getLineNumber(vdf.getStartPosition()));
                             }
                         } else {
                             if (!LOWER_CAMEL_CASE.matcher(name).matches()) {
-                                addViolation(violations, name, "field", name,
+                                addViolation(violations, "field", name,
                                         "lowerCamelCase (e.g., myField)",
                                         fileUri, ast.getLineNumber(vdf.getStartPosition()));
                             }
@@ -214,10 +214,9 @@ public class FindNamingViolationsHandler implements ICommandHandler {
         });
     }
 
-    private void addViolation(List<Map<String, Object>> violations, String element,
+    private void addViolation(List<Map<String, Object>> violations,
             String kind, String name, String expectedPattern, String uri, int line) {
         Map<String, Object> violation = new HashMap<>();
-        violation.put("element", element);
         violation.put("kind", kind);
         violation.put("name", name);
         violation.put("expectedPattern", expectedPattern);

@@ -88,7 +88,6 @@ public class FindUnusedCodeHandler implements ICommandHandler {
                 element.put("message", problem.getMessage());
                 element.put("line", problem.getSourceLineNumber() - 1);
                 element.put("character", astRoot.getColumnNumber(problem.getSourceStart()));
-                element.put("problemId", problem.getID());
                 unusedElements.add(element);
             }
         }

@@ -121,24 +121,6 @@ public class JavaCodeSearchTools {
                 cancellation, progress);
     }
 
-    @Tool(name = "java_find_reflection_usage",
-          description = "Find reflection API usage in a Java file")
-    public CompletableFuture<String> findReflectionUsage(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
-            Cancellation cancellation,
-            Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_REFLECTION_USAGE, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
-        }
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_REFLECTION_USAGE,
-                Map.of("uri", fileUri),
-                cancellation, progress);
-    }
-
     @Tool(name = "java_suggest_imports",
           description = "Find import candidates for an unresolved type name")
     public CompletableFuture<String> suggestImports(
@@ -176,7 +158,8 @@ public class JavaCodeSearchTools {
     }
 
     @Tool(name = "java_find_references",
-          description = "Find all references to a Java symbol")
+          description = "Find all references to a Java symbol (type, method, or field). Prefer over Grep "
+                  + "for Java symbol usages -- resolves through type hierarchy and finds all references semantically.")
     public CompletableFuture<String> findReferences(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
@@ -184,10 +167,12 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
+            @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
         Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
         RefactoringHelper.putScope(params, scope, projectName);
+        RefactoringHelper.putMaxResults(params, maxResults);
         return executor.executeCommand(cwd, JdtlsCommands.FIND_REFERENCES, params, cancellation, progress);
     }
 

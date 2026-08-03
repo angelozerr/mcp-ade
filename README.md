@@ -10,7 +10,7 @@ and exposes all their capabilities as MCP tools to any AI assistant.
 
 *— OK but what can it actually do?*
 
-Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [10+ more languages](docs/why-mcp-lt.md). Java alone has **80 dedicated tools** powered by Eclipse JDT.LS.
+Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [10+ more languages](docs/why-mcp-lt.md). Java alone has **60 dedicated tools** powered by Eclipse JDT.LS.
 
 *— [Read the full conversation with our skeptic →](docs/why-mcp-lt.md)*
 
@@ -72,9 +72,9 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 | `detach_from_process` | Detach without terminating the process |
 | `get_debug_statistics` | Get statistics about active debug sessions |
 
-### Java Tools (79 tools from Java extension)
+### Java Tools (60 tools from Java extension)
 
-These tools are inspired by [javalens-mcp](https://github.com/pzalutski-pixel/javalens-mcp) and provide deep Java analysis, navigation, refactoring, and code generation capabilities powered by [Eclipse JDT.LS](https://github.com/eclipse-jdtls/eclipse.jdt.ls).
+These tools are inspired by [javalens-mcp](https://github.com/pzalutski-pixel/javalens-mcp) and provide deep Java analysis, navigation, refactoring, and code generation capabilities powered by [Eclipse JDT.LS](https://github.com/eclipse-jdtls/eclipse.jdt.ls). Results use compact JSON with relative paths for token efficiency.
 
 #### Common Parameters
 
@@ -114,9 +114,9 @@ Several search tools support an optional `scope` parameter to limit search resul
 
 When using `scope: "project"`, you can optionally specify `projectName` to target a specific project in multi-project workspaces (defaults to the first Java project).
 
-These tools support the `scope` parameter: `java_find_references`, `java_find_method_references`, `java_find_field_writes`, `java_find_annotation_usages`, `java_find_type_instantiations`, `java_get_call_hierarchy_incoming`, `java_get_di_registrations`.
+These tools support the `scope` parameter: `java_find_references`, `java_find_field_writes`, `java_find_annotation_usages`, `java_find_type_instantiations`, `java_get_call_hierarchy_incoming`, `java_get_framework_info`.
 
-#### Analysis (12 tools)
+#### Analysis (9 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -125,56 +125,41 @@ These tools support the `scope` parameter: `java_find_references`, `java_find_me
 | `java_get_call_hierarchy_outgoing` | Find all methods called by a method |
 | `java_find_annotation_usages` | Find all usages of a Java annotation type |
 | `java_find_type_instantiations` | Find all `new Type()` instantiations of a Java type |
-| `java_get_complexity_metrics` | Compute cyclomatic complexity and LOC per method |
-| `java_analyze_file` | Get comprehensive analysis of a Java file |
-| `java_analyze_type` | Get comprehensive analysis of a Java type |
-| `java_analyze_method` | Get comprehensive analysis of a Java method |
+| `java_analyze_file` | Get comprehensive analysis of a Java file (types, methods, fields, diagnostics, complexity) |
+| `java_analyze_type` | Get comprehensive analysis of a Java type (hierarchy, members, references, complexity) |
+| `java_analyze_method` | Get comprehensive analysis of a Java method (complexity, callers, callees, overrides) |
 | `java_analyze_change_impact` | Analyze the ripple effect of changing a symbol |
-| `java_analyze_control_flow` | Analyze control flow paths through a Java method |
-| `java_analyze_data_flow` | Track data flow through variables and parameters |
 
-#### Navigation (11 tools)
+#### Navigation (5 tools)
 
 | Tool | Description |
 |------|-------------|
 | `java_go_to_definition` | Navigate to the definition of a Java symbol |
-| `java_get_hover_info` | Get rich hover information (signature, Javadoc, type info) |
-| `java_get_javadoc` | Get parsed Javadoc documentation for a symbol |
-| `java_get_symbol_info` | Get detailed information about any Java symbol |
-| `java_get_enclosing_element` | Get the enclosing method, class, and package for a position |
-| `java_get_field_at_position` | Get field information at a specific position |
-| `java_get_method_at_position` | Get method information at a specific position |
-| `java_get_type_at_position` | Get type information at a specific position |
+| `java_get_hover_info` | Get rich hover information for a Java symbol (signature, Javadoc, type info, enclosing element) |
 | `java_get_signature_help` | Get method signature help at a specific position |
 | `java_get_super_method` | Find the method that a Java method overrides or implements |
 | `java_get_document_symbols` | Get all symbols (types, methods, fields) in a Java file |
 
-#### Code Search (11 tools)
+#### Code Search (10 tools)
 
 | Tool | Description |
 |------|-------------|
-| `java_find_references` | Find all references to a Java symbol |
-| `java_find_implementations` | Find all implementations of an interface or abstract class |
+| `java_find_references` | Find all references to a Java symbol (type, method, or field). Prefer over Grep for Java symbol usages |
+| `java_find_implementations` | Find all implementations of a Java interface, abstract class, or method |
 | `java_find_field_writes` | Find all write accesses to a field |
-| `java_find_tests` | Find test methods in a Java file or across the workspace |
+| `java_find_tests` | Find test methods in a Java file (JUnit 4/5, TestNG) |
 | `java_find_affected_tests` | Find tests transitively affected by changes to a symbol |
-| `java_find_unused_code` | Find unused code (imports, private fields, methods, local variables) |
-| `java_find_unreachable_code` | Find unreachable code (dead code after return/throw) |
-| `java_find_reflection_usage` | Find reflection API usage in a Java file |
+| `java_find_unused_code` | Find unused code in a Java file (imports, private fields, methods, variables) |
+| `java_find_unreachable_code` | Find unreachable code in a Java file (dead code after return/throw) |
 | `java_suggest_imports` | Find import candidates for an unresolved type name |
 | `java_get_type_usage_summary` | Get a comprehensive usage summary for a Java type |
-| `java_search_symbols` | Search for Java symbols by name pattern |
+| `java_search_symbols` | Search for Java symbols by name pattern (supports glob, e.g. 'My*Service') |
 
-#### Reference Search (6 tools)
+#### Reference Search (1 tool)
 
 | Tool | Description |
 |------|-------------|
-| `java_find_method_references` | Find all references to a method |
-| `java_find_casts` | Find all cast expressions to a Java type |
-| `java_find_catch_blocks` | Find all catch blocks catching a Java exception type |
-| `java_find_instanceof_checks` | Find all instanceof checks for a Java type |
-| `java_find_throws_declarations` | Find all throws clause declarations of an exception type |
-| `java_find_type_arguments` | Find all type argument usages in generics |
+| `java_find_type_usages` | Find specific usages of a Java type by kind: `cast`, `catch`, `instanceof`, `throws`, `type_argument` |
 
 #### Refactoring (18 tools)
 
@@ -220,23 +205,19 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 | `java_diagnose_and_fix` | Diagnose problems and optionally apply safe auto-fixes |
 | `java_apply_cleanup` | Apply a code cleanup to a Java file |
 
-#### Code Quality (5 tools)
+#### Code Quality (3 tools)
 
 | Tool | Description |
 |------|-------------|
-| `java_find_large_classes` | Find classes exceeding size thresholds |
-| `java_find_naming_violations` | Find naming convention violations |
-| `java_find_possible_bugs` | Find potential bug patterns |
-| `java_find_circular_dependencies` | Find circular package dependencies |
-| `java_code_quality_report` | Run all quality checks on a file in one call (unused code, naming, bugs, complexity) |
+| `java_find_possible_bugs` | Find potential bug patterns in a Java file |
+| `java_find_circular_dependencies` | Find circular package dependencies in a Java project |
+| `java_code_quality_report` | Run all quality checks on a Java file in one call (unused code, bugs, complexity) |
 
-#### Framework (3 tools)
+#### Framework (1 tool)
 
 | Tool | Description |
 |------|-------------|
-| `java_get_http_endpoints` | Find all HTTP endpoints (REST API routes) |
-| `java_get_jpa_model` | Get the JPA entity model |
-| `java_get_di_registrations` | Find dependency injection registrations |
+| `java_get_framework_info` | Get framework-specific information from a Java project. `kind`: `endpoints` (HTTP/REST routes), `jpa` (JPA entity model), `di` (dependency injection registrations) |
 
 #### Project (4 tools)
 
@@ -251,17 +232,17 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 
 | Category | Count |
 |----------|-------|
-| Analysis | 12 |
-| Navigation | 11 |
-| Code Search | 11 |
-| Reference Search | 6 |
+| Analysis | 9 |
+| Navigation | 5 |
+| Code Search | 10 |
+| Reference Search | 1 |
 | Refactoring | 18 |
 | Code Generation | 5 |
 | Diagnostics & Fix | 4 |
-| Code Quality | 5 |
-| Framework | 3 |
+| Code Quality | 3 |
+| Framework | 1 |
 | Project | 4 |
-| **Total** | **80** *(including `java_get_type_members` and `java_get_dependency_graph`)* |
+| **Total** | **60** |
 
 ### Extension & Workspace Tools
 

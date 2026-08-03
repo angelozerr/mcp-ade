@@ -59,6 +59,13 @@ public class FindReferencesHandler implements ICommandHandler {
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
+        int maxResults = 0;
+        Object mr = params.get("maxResults");
+        if (mr instanceof Number n) {
+            maxResults = n.intValue();
+        }
+        final int limit = maxResults;
+
         ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
         if (cu == null) {
             return Map.of("error", "Compilation unit not found");
@@ -79,6 +86,7 @@ public class FindReferencesHandler implements ICommandHandler {
         IJavaSearchScope scope = JdtUtils.resolveSearchScope(arguments);
         List<Map<String, Object>> references = new ArrayList<>();
         Map<IResource, String> sourceCache = new HashMap<>();
+        final boolean[] truncated = {false};
 
         SearchEngine engine = new SearchEngine();
         engine.search(
@@ -88,6 +96,10 @@ public class FindReferencesHandler implements ICommandHandler {
                 new SearchRequestor() {
                     @Override
                     public void acceptSearchMatch(SearchMatch match) {
+                        if (limit > 0 && references.size() >= limit) {
+                            truncated[0] = true;
+                            return;
+                        }
                         references.add(JdtUtils.formatSearchMatch(match, sourceCache));
                     }
                 },
@@ -100,6 +112,9 @@ public class FindReferencesHandler implements ICommandHandler {
             result.put("declaringType", declaringType.getFullyQualifiedName());
         }
         result.put("count", references.size());
+        if (truncated[0]) {
+            result.put("truncated", true);
+        }
         result.put("references", JdtUtils.groupResultsByUri(references));
         return result;
     }
