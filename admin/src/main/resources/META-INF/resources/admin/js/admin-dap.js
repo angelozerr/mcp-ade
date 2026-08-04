@@ -71,9 +71,9 @@ async function createNewTestSession(dapServerId) {
         // Show error in console
         const consoleArea = document.getElementById('console-area');
         consoleArea.innerHTML = `
-            <div style="padding: 1rem;">
+            <div class="p-lg">
                 <h3 class="text-error">Failed to Create Session</h3>
-                <pre class="text-error" style="background: var(--bg-card); padding: 1rem; border-radius: 3px; font-family: monospace; white-space: pre-wrap;">${error.message}</pre>
+                <pre class="text-error bg-card p-lg rounded-sm font-mono text-pre-wrap">${error.message}</pre>
             </div>
         `;
     }
@@ -135,22 +135,22 @@ function showLaunchConfigForm(session, dapServerId) {
     const { statusText, statusClass } = getSessionStateInfo(session);
 
     const sessionHTML = `
-        <div style="padding: 1rem; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <div class="p-lg d-flex flex-column overflow-hidden" style="height: 100%;">
+            <div class="mb-lg">
+                <div class="d-flex align-center gap-sm mb-sm">
                     <h3 class="text-primary" style="margin: 0;">${session.sessionName || 'New Debug Session'}</h3>
                     <span id="dap-session-status-${sessionId}" class="session-server-status status-badge status-badge-compact ${statusClass}">${statusText}</span>
                 </div>
-                <p class="text-secondary" style="margin: 0; font-size: 0.85rem;">Server: ${session.serverId || session.dapServerId || dapServerId}</p>
-                <p class="text-dimmed" style="margin: 0; font-size: 0.75rem; font-family: monospace;">Session ID: ${sessionId}</p>
-                ${session.createdBy ? `<p class="text-dimmed" style="margin: 0; font-size: 0.75rem;">Created by: <span class="session-created-by">${formatSessionActor(session.createdBy)}</span>${session.createdAt ? ` at ${formatTimestamp(session.createdAt)}` : ''}</p>` : ''}
-                ${session.launchedBy ? `<p class="text-dimmed" style="margin: 0; font-size: 0.75rem;">Launched by: <span class="session-launched-by">${formatSessionActor(session.launchedBy)}</span>${session.launchedAt ? ` at ${formatTimestamp(session.launchedAt)}` : ''}</p>` : '<p class="text-dimmed" style="margin: 0; font-size: 0.75rem;">Launched by: <span class="session-launched-by">-</span></p>'}
+                <p class="text-secondary font-md" style="margin: 0;">Server: ${session.serverId || session.dapServerId || dapServerId}</p>
+                <p class="text-dimmed font-sm font-mono" style="margin: 0;">Session ID: ${sessionId}</p>
+                ${session.createdBy ? `<p class="text-dimmed font-sm" style="margin: 0;">Created by: <span class="session-created-by">${formatSessionActor(session.createdBy)}</span>${session.createdAt ? ` at ${formatTimestamp(session.createdAt)}` : ''}</p>` : ''}
+                ${session.launchedBy ? `<p class="text-dimmed font-sm" style="margin: 0;">Launched by: <span class="session-launched-by">${formatSessionActor(session.launchedBy)}</span>${session.launchedAt ? ` at ${formatTimestamp(session.launchedAt)}` : ''}</p>` : '<p class="text-dimmed font-sm" style="margin: 0;">Launched by: <span class="session-launched-by">-</span></p>'}
             </div>
 
-            <div style="margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <div class="mb-lg">
+                <div class="d-flex align-center gap-sm mb-sm">
                     <label class="text-primary" style="font-weight: 500;">Launch Configuration</label>
-                    <div style="display: flex; gap: 0;">
+                    <div class="d-flex" style="gap: 0;">
                         <button
                             id="dap-launch-btn-${sessionId}"
                             class="dap-toolbar-btn dap-toolbar-btn-run"
@@ -182,21 +182,21 @@ function showLaunchConfigForm(session, dapServerId) {
                     </div>
                     <select
                         id="launch-template-selector-${sessionId}"
-                        class="select-field"
+                        class="select-field font-md"
                         onchange="applyLaunchTemplate('${session.sessionId}', this.value)"
-                        style="padding: 0.2rem 0.4rem; font-size: 0.85rem;">
+                        style="padding: 0.2rem 0.4rem;">
                         <option value="">Select template...</option>
                     </select>
                 </div>
                 <textarea
                     id="launch-config-editor-${sessionId}"
-                    class="input-field"
-                    style="width: 100%; padding: 0.75rem; background: var(--bg-card); color: var(--text-code); border: 1px solid var(--border-subtle); border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.9rem; resize: vertical; height: 150px;"
+                    class="input-field w-100 p-md bg-card text-code rounded-sm font-mono font-base"
+                    style="border: 1px solid var(--border-subtle); resize: vertical; height: 150px;"
                 >${JSON.stringify(defaultConfig, null, 2)}</textarea>
             </div>
 
-            <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <div class="flex-1 d-flex flex-column min-h-0">
+                <div class="d-flex justify-between align-center mb-sm">
                     <label class="text-primary" style="font-weight: 500;">Console:</label>
                     <div class="console-controls">
                         ${TraceRenderer.renderTraceControls('dap-trace', 'off', `changeDapTraceLevel('${session.sessionId}', this.value)`, {
@@ -205,7 +205,7 @@ function showLaunchConfigForm(session, dapServerId) {
                         })}
                     </div>
                 </div>
-                <div id="dap-traces-container-${sessionId}" style="flex: 1; overflow-y: auto; background: var(--bg-card); padding: 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.85rem;">
+                <div id="dap-traces-container-${sessionId}" class="flex-1 bg-card p-sm rounded-sm font-mono font-md" style="overflow-y: auto;">
                     <div class="text-dimmed">Ready. Click ▶ to launch.</div>
                 </div>
             </div>
@@ -242,16 +242,13 @@ function showLaunchConfigForm(session, dapServerId) {
         const { canLaunch, canStop } = getSessionButtonStates(session.state);
 
         debugBtn.disabled = !canLaunch;
-        debugBtn.style.opacity = canLaunch ? '1' : '0.3';
-        debugBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+        debugBtn.classList.toggle('is-disabled', !canLaunch);
 
         launchBtn.disabled = !canLaunch;
-        launchBtn.style.opacity = canLaunch ? '1' : '0.3';
-        launchBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+        launchBtn.classList.toggle('is-disabled', !canLaunch);
 
         stopBtn.disabled = !canStop;
-        stopBtn.style.opacity = canStop ? '1' : '0.3';
-        stopBtn.style.cursor = canStop ? 'pointer' : 'not-allowed';
+        stopBtn.classList.toggle('is-disabled', !canStop);
     }
 
     // Clear DAP server selection
@@ -601,7 +598,7 @@ function renderDapServerItem(server) {
     const disabledClass = server.enabled === false ? 'server-disabled' : '';
     return `
         <div class="server-item ${isActive} ${disabledClass}" onclick="showDapServerDetails('${server.id}')">
-            <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="server-name d-flex align-center justify-between">
                 <span>
                     <span class="server-source-icon">🐛</span>
                     ${server.name}
@@ -720,7 +717,7 @@ async function showDapServerDetails(serverId) {
     const dapServersWithFlag = dapServers.map(s => ({...s, isDap: true}));
     const allServers = [...lspServers, ...dapServersWithFlag];
     const hasContributions = (server.contributions && Object.keys(server.contributions).length > 0) ||
-                            buildContributedByMap(allServers)[server.id]?.length > 0;
+                            buildGlobalContributedByMap(allServers)[server.id]?.length > 0;
 
     // Prepare contributions HTML and diagram data (only if has contributions)
     const contributionsHTML = hasContributions ? formatContributionsSection(server, allServers) : '';
@@ -734,31 +731,31 @@ async function showDapServerDetails(serverId) {
     const detailsHTML = `
         <h3 class="text-success" style="margin-top: 0;">Debug Adapter Information</h3>
 
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Server ID:</strong>
-            <p class="text-value" style="margin: 0.25rem 0;"><code>${server.id}</code></p>
+            <p class="text-value mt-xs mb-xs"><code>${server.id}</code></p>
         </div>
 
         ${server.description ? `
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Description:</strong>
-            <p class="text-value" style="margin: 0.25rem 0;">${server.description}</p>
+            <p class="text-value mt-xs mb-xs">${server.description}</p>
         </div>
         ` : ''}
 
         ${server.url ? `
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">URL:</strong>
-            <p style="margin: 0.25rem 0;"><a href="${server.url}" target="_blank" style="color: var(--accent-primary); text-decoration: none;">${server.url}</a></p>
+            <p class="mt-xs mb-xs"><a href="${server.url}" target="_blank" style="color: var(--accent-primary); text-decoration: none;">${server.url}</a></p>
         </div>
         ` : ''}
 
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
         </div>
 
-        <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-panel); border-left: 3px solid var(--color-success); border-radius: 4px;">
+        <div class="p-lg bg-panel rounded" style="margin-top: 2rem; border-left: 3px solid var(--color-success);">
             <strong>Note:</strong> Debuggers are started on-demand during debug sessions. They are not automatically started with workspaces.
         </div>
     `;
@@ -788,9 +785,9 @@ async function showDapServerDetails(serverId) {
             </div>
             ${hasContributions ? `
             <div id="dap-server-contributions-tab" class="tab-panel ${currentDapServerTab === 'contributions' ? 'active' : ''}">
-                <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); flex-shrink: 0;"></div>
+                <div id="server-diagram-container" class="w-100 bg-card" style="height: 400px; flex-shrink: 0;"></div>
                 <div class="diagram-resizer"></div>
-                <div class="details-panel text-primary" id="dap-contributions-content" style="padding: 2rem; overflow-y: auto; flex: 1; min-height: 0;">
+                <div class="details-panel text-primary flex-1 min-h-0" id="dap-contributions-content" style="padding: 2rem; overflow-y: auto;">
                     ${contributionsHTML}
                 </div>
             </div>
@@ -920,7 +917,7 @@ async function runDapInstaller(serverId, force) {
         const result = await response.json();
         outputDiv.innerHTML = `
             <div class="text-success">Installation started</div>
-            <pre class="text-value" style="margin-top: 0.5rem;">${JSON.stringify(result, null, 2)}</pre>
+            <pre class="text-value mt-sm">${JSON.stringify(result, null, 2)}</pre>
         `;
     } catch (error) {
         console.error('Failed to run DAP installer:', error);
@@ -1173,18 +1170,15 @@ function updateSessionStateInDOM(sessionId, newStatus, debugMode) {
 
         if (runBtn) {
             runBtn.disabled = !canLaunch;
-            runBtn.style.opacity = canLaunch ? '1' : '0.3';
-            runBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+            runBtn.classList.toggle('is-disabled', !canLaunch);
         }
         if (debugBtn) {
             debugBtn.disabled = !canLaunch;
-            debugBtn.style.opacity = canLaunch ? '1' : '0.3';
-            debugBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+            debugBtn.classList.toggle('is-disabled', !canLaunch);
         }
         if (stopBtn) {
             stopBtn.disabled = !canStop;
-            stopBtn.style.opacity = canStop ? '1' : '0.3';
-            stopBtn.style.cursor = canStop ? 'pointer' : 'not-allowed';
+            stopBtn.classList.toggle('is-disabled', !canStop);
         }
     }
 
@@ -1212,16 +1206,13 @@ function updateSessionStateInDOM(sessionId, newStatus, debugMode) {
             const { canLaunch, canStop } = getSessionButtonStates(newStatus);
 
             debugBtn.disabled = !canLaunch;
-            debugBtn.style.opacity = canLaunch ? '1' : '0.3';
-            debugBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+            debugBtn.classList.toggle('is-disabled', !canLaunch);
 
             launchBtn.disabled = !canLaunch;
-            launchBtn.style.opacity = canLaunch ? '1' : '0.3';
-            launchBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+            launchBtn.classList.toggle('is-disabled', !canLaunch);
 
             stopBtn.disabled = !canStop;
-            stopBtn.style.opacity = canStop ? '1' : '0.3';
-            stopBtn.style.cursor = canStop ? 'pointer' : 'not-allowed';
+            stopBtn.classList.toggle('is-disabled', !canStop);
         }
     }
 }
@@ -1355,18 +1346,15 @@ async function updateSessionInDOM(message) {
 
             // Update Debug button (same state as Launch)
             debugBtn.disabled = !canLaunch;
-            debugBtn.style.opacity = canLaunch ? '1' : '0.3';
-            debugBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+            debugBtn.classList.toggle('is-disabled', !canLaunch);
 
             // Update Launch button
             launchBtn.disabled = !canLaunch;
-            launchBtn.style.opacity = canLaunch ? '1' : '0.3';
-            launchBtn.style.cursor = canLaunch ? 'pointer' : 'not-allowed';
+            launchBtn.classList.toggle('is-disabled', !canLaunch);
 
             // Update Stop button
             stopBtn.disabled = !canStop;
-            stopBtn.style.opacity = canStop ? '1' : '0.3';
-            stopBtn.style.cursor = canStop ? 'pointer' : 'not-allowed';
+            stopBtn.classList.toggle('is-disabled', !canStop);
         }
 
         console.log('[DAP] Session status updated in DOM:', message.sessionId, message.oldStatus, '->', message.newStatus);
@@ -1412,8 +1400,7 @@ function disableSessionButtons(sessionId) {
         const buttons = sessionElement.querySelectorAll('.session-run-btn, .session-debug-btn, .session-stop-btn');
         buttons.forEach(btn => {
             btn.disabled = true;
-            btn.style.opacity = '0.3';
-            btn.style.cursor = 'not-allowed';
+            btn.classList.add('is-disabled');
         });
     }
 
@@ -1424,18 +1411,15 @@ function disableSessionButtons(sessionId) {
 
     if (runBtn) {
         runBtn.disabled = true;
-        runBtn.style.opacity = '0.3';
-        runBtn.style.cursor = 'not-allowed';
+        runBtn.classList.add('is-disabled');
     }
     if (debugBtn) {
         debugBtn.disabled = true;
-        debugBtn.style.opacity = '0.3';
-        debugBtn.style.cursor = 'not-allowed';
+        debugBtn.classList.add('is-disabled');
     }
     if (stopBtn) {
         stopBtn.disabled = true;
-        stopBtn.style.opacity = '0.3';
-        stopBtn.style.cursor = 'not-allowed';
+        stopBtn.classList.add('is-disabled');
     }
 }
 
@@ -1514,29 +1498,29 @@ function createSessionHTML(session) {
     const { canLaunch, canStop } = getSessionButtonStates(session.state);
 
     // Always show all 3 buttons, grayed/enabled based on state
-    const runStyle = canLaunch ? 'opacity: 1; cursor: pointer;' : 'opacity: 0.3; cursor: not-allowed;';
-    const debugStyle = canLaunch ? 'opacity: 1; cursor: pointer;' : 'opacity: 0.3; cursor: not-allowed;';
-    const stopStyle = canStop ? 'opacity: 1; cursor: pointer;' : 'opacity: 0.3; cursor: not-allowed;';
+    const runDisabledClass = canLaunch ? '' : ' is-disabled';
+    const debugDisabledClass = canLaunch ? '' : ' is-disabled';
+    const stopDisabledClass = canStop ? '' : ' is-disabled';
 
     const actions = `
-        <button class="server-action-btn session-run-btn" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} onclick='event.stopPropagation(); if(!this.disabled) { selectDapSession("${session.sessionId}"); launchDapSession("${session.sessionId}"); }' title="Run (without debugging)" style="font-size: 0.7rem; padding: 0.15rem 0.3rem; ${runStyle}">▶</button>
-        <button class="server-action-btn session-debug-btn" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} onclick='event.stopPropagation(); if(!this.disabled) { selectDapSession("${session.sessionId}"); debugDapSession("${session.sessionId}"); }' title="Debug (with breakpoints)" style="font-size: 0.7rem; padding: 0.15rem 0.3rem; ${debugStyle}">🐛</button>
-        <button class="server-action-btn session-stop-btn" data-session-id="${session.sessionId}" ${canStop ? '' : 'disabled'} onclick='event.stopPropagation(); if(!this.disabled) { selectDapSession("${session.sessionId}"); stopDapSession("${session.sessionId}"); }' title="Stop" style="font-size: 0.7rem; padding: 0.15rem 0.3rem; ${stopStyle}">⏹</button>
+        <button class="server-action-btn session-run-btn${runDisabledClass}" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} onclick='event.stopPropagation(); if(!this.disabled) { selectDapSession("${session.sessionId}"); launchDapSession("${session.sessionId}"); }' title="Run (without debugging)" style="font-size: 0.7rem; padding: 0.15rem 0.3rem;">▶</button>
+        <button class="server-action-btn session-debug-btn${debugDisabledClass}" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} onclick='event.stopPropagation(); if(!this.disabled) { selectDapSession("${session.sessionId}"); debugDapSession("${session.sessionId}"); }' title="Debug (with breakpoints)" style="font-size: 0.7rem; padding: 0.15rem 0.3rem;">🐛</button>
+        <button class="server-action-btn session-stop-btn${stopDisabledClass}" data-session-id="${session.sessionId}" ${canStop ? '' : 'disabled'} onclick='event.stopPropagation(); if(!this.disabled) { selectDapSession("${session.sessionId}"); stopDapSession("${session.sessionId}"); }' title="Stop" style="font-size: 0.7rem; padding: 0.15rem 0.3rem;">⏹</button>
     `;
 
     // Add creator icon
     console.log('[DAP] Session createdBy:', session.sessionId, session.createdBy);
     const creatorIcon = session.createdBy === 'AI_AGENT'
-        ? '<span style="font-size: 0.75rem; opacity: 0.7;" title="Created by AI Agent">🤖</span>'
+        ? '<span class="font-sm" style="opacity: 0.7;" title="Created by AI Agent">🤖</span>'
         : session.createdBy === 'MANUAL'
-        ? '<span style="font-size: 0.75rem; opacity: 0.7;" title="Created manually">👤</span>'
-        : '<span class="text-dimmed" style="font-size: 0.75rem; opacity: 0.5;" title="Creator unknown">❓</span>';
+        ? '<span class="font-sm" style="opacity: 0.7;" title="Created manually">👤</span>'
+        : '<span class="text-dimmed font-sm" style="opacity: 0.5;" title="Creator unknown">❓</span>';
 
     return `
-        <div data-session-id="${session.sessionId}" class="dap-session-item" style="margin-left: 2rem; padding: 0.25rem 0.5rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; opacity: 0.9; border-radius: 4px; transition: background-color 0.2s;" onclick="selectDapSession('${session.sessionId}')">
+        <div data-session-id="${session.sessionId}" class="dap-session-item d-flex align-center gap-sm cursor-pointer font-md rounded" style="margin-left: 2rem; padding: 0.25rem 0.5rem; opacity: 0.9; transition: background-color 0.2s;" onclick="selectDapSession('${session.sessionId}')">
             ${stateIcon}
             ${creatorIcon}
-            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${session.sessionName}</span>
+            <span class="flex-1 truncate">${session.sessionName}</span>
             <span class="status-badge status-badge-compact ${statusClass}">${statusText}</span>
             ${actions}
         </div>

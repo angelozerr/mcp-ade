@@ -22,12 +22,12 @@ function formatErrorWithFolding(title, errorData) {
     const body = (message === type || !message || message === 'null') ? stackTrace.trim() : (message + '\n' + stackTrace).trim();
 
     return `
-        <div style="margin-bottom: 1rem; font-family: 'Consolas', 'Monaco', monospace;">
-            <div class="trace-header folded" onclick="window.toggleErrorTrace('${traceId}')" style="padding: 0.25rem; cursor: pointer; user-select: none; display: flex; align-items: center;">
-                <span class="trace-toggle text-error" style="margin-right: 0.25rem;">▶</span>
-                <span class="trace-header-text text-error" style="font-weight: bold;">${title} - ${type}</span>
+        <div class="mb-lg font-mono">
+            <div class="trace-header folded p-xs cursor-pointer d-flex align-center" onclick="window.toggleErrorTrace('${traceId}')" style="user-select: none;">
+                <span class="trace-toggle text-error mr-xs">▶</span>
+                <span class="trace-header-text text-error font-bold">${title} - ${type}</span>
             </div>
-            <div id="${traceId}" class="trace-body collapsed text-error" style="padding-left: 1.5rem; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">${body}</div>
+            <div id="${traceId}" class="trace-body collapsed text-error font-md text-pre-wrap" style="padding-left: 1.5rem; word-wrap: break-word;">${body}</div>
         </div>
     `;
 }

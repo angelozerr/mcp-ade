@@ -18,10 +18,10 @@ function renderLspServerItem(server, contributedByMap) {
     const disabledClass = server.enabled === false ? 'server-disabled' : '';
     const extensionBadge = server.isExtension ? ' <span class="text-secondary" style="font-size: 0.85em;">(Extension)</span>' : '';
     const serverIcon = server.isExtension ? '🧩' : '🚀';
-    const contributeInfo = formatContributeInfo(server, contributedByMap);
+    const contributeInfo = formatGlobalContributeInfo(server, contributedByMap);
     return `
         <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" onclick="showServerDetails('${server.id}')">
-            <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="server-name d-flex align-center justify-between">
                 <span>
                     <span class="server-source-icon">${serverIcon}</span>
                     ${server.name}${extensionBadge}
@@ -52,7 +52,7 @@ async function loadAllLspServers(serverIdToSelect) {
             lspLanguageFilter = new LanguageFilter(container, () => window.lspConfigs, () => loadAllLspServers(selectedAllServer));
         }
 
-        const contributedByMap = buildContributedByMap(allServers);
+        const contributedByMap = buildGlobalContributedByMap(allServers);
         const filteredServers = lspLanguageFilter.filterServers(lspServers);
 
         lspLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
@@ -88,7 +88,7 @@ async function showServerDetails(serverId) {
     const lspServers = Object.values(window.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const dapServers = Object.values(window.dapConfigs || {}).map(s => ({...s, isDap: true}));
     const allServers = [...lspServers, ...dapServers];
-    const contributedByMap = buildContributedByMap(allServers);
+    const contributedByMap = buildGlobalContributedByMap(allServers);
 
     if (lspLanguageFilter) {
         const filteredServers = lspLanguageFilter.filterServers(lspServers);
@@ -139,17 +139,17 @@ async function showServerDetails(serverId) {
             </div>
             <div class="tab-content">
                 <div id="server-overview-tab" class="tab-panel ${currentServerTab === 'overview' ? 'active' : ''}">
-                    <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto;">
+                    <div class="details-panel text-primary overflow-auto" style="padding: 2rem;">
                         ${detailsHTML}
-                        <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-panel); border-left: 3px solid var(--accent-primary); border-radius: 4px;">
+                        <div class="p-lg bg-panel rounded-sm" style="margin-top: 2rem; border-left: 3px solid var(--accent-primary);">
                             <strong>Note:</strong> To run this server, open a workspace using an MCP client.
                         </div>
                     </div>
                 </div>
                 <div id="server-contributions-tab" class="tab-panel ${currentServerTab === 'contributions' ? 'active' : ''}">
-                    <div id="server-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); flex-shrink: 0;"></div>
+                    <div id="server-diagram-container" class="w-100 bg-card" style="height: 400px; flex-shrink: 0;"></div>
                     <div class="diagram-resizer"></div>
-                    <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto; flex: 1; min-height: 0;">
+                    <div class="details-panel text-primary flex-1 min-h-0 overflow-auto" style="padding: 2rem;">
                         ${contributionsHTML || '<p class="detail-value">No contributions</p>'}
                     </div>
                 </div>
@@ -228,7 +228,7 @@ function buildServerDetailsHTML(details, allServers) {
             commandHTML = `<code>${details.command}</code>`;
         } else {
             commandHTML = Object.entries(details.command).map(([os, cmd]) =>
-                `<div style="margin-bottom: 0.25rem;"><strong>${os}:</strong> <code>${cmd}</code></div>`
+                `<div class="mb-xs"><strong>${os}:</strong> <code>${cmd}</code></div>`
             ).join('');
         }
     }
@@ -317,10 +317,10 @@ function buildSettingsHTML(details) {
         }
 
         const descHTML = setting.description
-            ? `<span class="text-dimmed" style="font-size: 0.8rem; margin-left: 0.5rem;">${setting.description}</span>`
+            ? `<span class="text-dimmed ml-sm" style="font-size: 0.8rem;">${setting.description}</span>`
             : '';
 
-        return `<div style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+        return `<div class="mb-md d-flex align-center gap-md">
                     <strong class="text-label" style="min-width: 120px;">${setting.label}:</strong>
                     ${controlHTML}
                     ${descHTML}
@@ -329,7 +329,7 @@ function buildSettingsHTML(details) {
 
     return `
         <div style="margin-bottom: 1.5rem;">
-            <h3 class="text-label" style="margin-top: 1rem;">Settings</h3>
+            <h3 class="text-label mt-lg">Settings</h3>
             ${controlsHTML}
         </div>
     `;
@@ -483,11 +483,11 @@ async function runInstaller(serverId, force) {
 
     const label = force ? 'Force installing' : 'Installing';
     outputDiv.innerHTML = `
-        <div class="install-output-header text-success" style="margin-bottom: 0.5rem;">${label} ${serverId}...</div>
-        <div id="install-progress-bar" style="height: 4px; background: var(--bg-input); border-radius: 2px; margin-bottom: 0.5rem; display: none;">
+        <div class="install-output-header text-success mb-sm">${label} ${serverId}...</div>
+        <div id="install-progress-bar" class="bg-input mb-sm d-none" style="height: 4px; border-radius: 2px;">
             <div id="install-progress-fill" style="height: 100%; background: var(--color-success); border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
         </div>
-        <div id="install-traces" style="font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; background: var(--bg-card); padding: 0.5rem; border-radius: 4px;"></div>
+        <div id="install-traces" class="font-mono bg-card p-sm rounded-sm" style="font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
     `;
 
     window.installOutputServerId = serverId;
@@ -569,7 +569,7 @@ function updateInstallProgress(msg) {
 /**
  * Helper: Build contributedBy map.
  */
-function buildContributedByMap(servers) {
+function buildGlobalContributedByMap(servers) {
     const map = {};
     servers.forEach(server => {
         if (server.contributes && server.contributes.contributeServerConfigurations) {
@@ -585,7 +585,7 @@ function buildContributedByMap(servers) {
 /**
  * Helper: Format contribute info for server list.
  */
-function formatContributeInfo(server, contributedByMap) {
+function formatGlobalContributeInfo(server, contributedByMap) {
     const contributors = contributedByMap[server.id] || [];
     if (contributors.length === 0) return { text: '', tooltip: '' };
 
@@ -642,7 +642,7 @@ window.resetInstallerJson = resetInstallerJson;
 window.runInstaller = runInstaller;
 window.appendInstallTrace = appendInstallTrace;
 window.updateInstallProgress = updateInstallProgress;
-window.buildContributedByMap = buildContributedByMap;
-window.formatContributeInfo = formatContributeInfo;
+window.buildGlobalContributedByMap = buildGlobalContributedByMap;
+window.formatGlobalContributeInfo = formatGlobalContributeInfo;
 window.renderServerDiagram = renderServerDiagram;
 window.changeLspServerTraceLevel = changeLspServerTraceLevel;

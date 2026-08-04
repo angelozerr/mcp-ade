@@ -123,8 +123,8 @@
 
                 return `
                 <div class="workspace-item ${ws.rootUri === selectedWorkspace ? 'active' : ''}" onclick="selectWorkspace('${ws.rootUri}')">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div class="workspace-uri" title="${ws.rootUri}" style="flex: 1;">📂 ${folderName}</div>
+                    <div class="d-flex justify-between align-center">
+                        <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div>
                         <button class="close-workspace-btn" onclick="event.stopPropagation(); closeWorkspace('${ws.rootUri}')" title="Close workspace and stop all servers">×</button>
                     </div>
                     ${ws.mcpClients && ws.mcpClients.length > 0 ? `
@@ -217,17 +217,17 @@
             showConfirmModal(
                 'Close Workspace',
                 `
-                    <div style="margin-bottom: 1rem; font-size: 1.05rem;"><strong>⚠️ This will shut down all LSP servers for this workspace</strong></div>
-                    <div style="margin-bottom: 0.75rem;">Specifically:</div>
+                    <div class="mb-lg" style="font-size: 1.05rem;"><strong>⚠️ This will shut down all LSP servers for this workspace</strong></div>
+                    <div class="mb-md">Specifically:</div>
                     <ul style="margin: 0 0 1rem 1.5rem; text-align: left; line-height: 1.6;">
                         <li><strong>Stop all running language servers</strong></li>
                         <li>Disconnect any IDE connections</li>
                         <li>Remove the workspace from memory</li>
                         <li>Clear all cached data</li>
                     </ul>
-                    <div class="callout-info" style="margin-top: 1rem;">
+                    <div class="callout-info mt-lg">
                         <div><strong>Workspace:</strong> ${folderName}</div>
-                        <div class="text-primary" style="margin-top: 0.5rem; font-size: 0.85rem;">💡 The workspace will automatically reappear when an MCP client accesses it again.</div>
+                        <div class="text-primary mt-sm font-md">💡 The workspace will automatically reappear when an MCP client accesses it again.</div>
                     </div>
                 `,
                 async () => {
@@ -283,31 +283,6 @@
             }
         }
 
-        function formatStatusLabel(status, externalInstance) {
-            const labels = {
-                'STARTING': 'Starting',
-                'RUNNING': 'Running',
-                'STOPPING': 'Stopping',
-                'STOPPED': 'Stopped',
-                'INSTALLING': 'Installing',
-                'INSTALL_FAILED': 'Install Failed',
-                'START_FAILED': 'Start Failed',
-                'ERROR': 'Error',
-                'SWITCHING': 'Switching',
-                'CONNECTING_TO_IDE': 'Connecting to IDE',
-                'CONNECTED_TO_IDE': 'Connected to IDE',
-                'DISCONNECTING': 'Disconnecting'
-            };
-
-            // If connected to IDE and we have client info, show it
-            if (status === 'CONNECTED_TO_IDE' && externalInstance && externalInstance.clientName) {
-                const version = externalInstance.clientVersion ? ` ${externalInstance.clientVersion}` : '';
-                return `Connected to ${externalInstance.clientName}${version}`;
-            }
-
-            return labels[status] || status;
-        }
-
         function renderStatusBadge(server) {
             const statusClass = server.status === 'RUNNING' && !server.isReady ? 'status-running-not-ready' : 'status-' + server.status.toLowerCase();
             const label = formatStatusLabel(server.status, server.externalInstance);
@@ -329,23 +304,23 @@
             // Build workspace header (compact, same level as left sidebar)
             const workspaceName = workspace ? (workspace.rootUri.split('/').filter(p => p).pop() || workspace.rootUri) : '';
             const headerHTML = `
-                <div style="padding: 0.75rem 1rem calc(0.75rem + 2px); background: var(--bg-card); border-bottom: 1px solid var(--border-primary); display: flex; align-items: center;">
-                    <span class="text-primary" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2px;">📂 ${workspaceName}</span>
+                <div class="d-flex align-center" style="padding: 0.75rem 1rem calc(0.75rem + 2px); background: var(--bg-card); border-bottom: 1px solid var(--border-primary);">
+                    <span class="text-primary font-bold" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.2px;">📂 ${workspaceName}</span>
                 </div>
             `;
 
             // Build tabs header
             const tabsHTML = `
-                <div class="tabs" style="background: var(--bg-panel); border-bottom: 1px solid var(--bg-card);">
-                    <div class="tab ${currentWorkspaceTab === 'servers' ? 'active' : ''}" style="flex: 1; text-align: center;" onclick="switchWorkspaceTab('servers')">Servers</div>
-                    <div class="tab ${currentWorkspaceTab === 'debuggers' ? 'active' : ''}" style="flex: 1; text-align: center;" onclick="switchWorkspaceTab('debuggers')">Debuggers</div>
+                <div class="tabs bg-panel" style="border-bottom: 1px solid var(--bg-card);">
+                    <div class="tab flex-1 text-center ${currentWorkspaceTab === 'servers' ? 'active' : ''}" onclick="switchWorkspaceTab('servers')">Servers</div>
+                    <div class="tab flex-1 text-center ${currentWorkspaceTab === 'debuggers' ? 'active' : ''}" onclick="switchWorkspaceTab('debuggers')">Debuggers</div>
                 </div>
             `;
 
             // Filter bar
             const filterHTML = `
-                <div style="display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--bg-panel); border-bottom: 1px solid var(--border-primary); font-size: 0.8rem;">
-                    <label class="text-secondary" style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; user-select: none;">
+                <div class="d-flex align-center bg-panel" style="padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border-primary); font-size: 0.8rem;">
+                    <label class="text-secondary d-flex align-center cursor-pointer" style="gap: 0.4rem; user-select: none;">
                         <input type="checkbox" onchange="toggleShowActiveServers()" ${showOnlyActiveServers ? 'checked' : ''}>
                         Show active only
                     </label>
@@ -456,7 +431,7 @@
             }
 
             // Calculate contributedBy for all servers
-            const contributedByMap = buildContributedByMap(servers);
+            const contributedByMap = buildWorkspaceContributedByMap(servers);
 
             // Auto-select server logic:
             // ONLY auto-switch if user has NOT explicitly selected a server
@@ -546,14 +521,14 @@
                     }
 
                     const tooltipText = server.command ? `Command: ${server.command}` : '';
-                    const contributedInfo = formatContributeInfo(server, contributedByMap);
+                    const contributedInfo = formatWorkspaceContributeInfo(server, contributedByMap);
 
                     return `
                         <div class="server-item ${serverClass} ${extensionClass} ${disabledClass} ${selectedServer?.id === server.id ? 'active' : ''}"
                              data-server-id="${server.id}"
                              onclick='selectServer(${JSON.stringify(server)}, true)'
                              ${tooltipText ? `title="${tooltipText.replace(/"/g, '&quot;')}"` : ''}>
-                            <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="server-name d-flex align-center justify-between">
                                 <span>
                                     <span class="server-source-icon" title="${sourceLabel}">${sourceIcon}</span>
                                     ${server.name}${extensionBadge}
@@ -566,7 +541,7 @@
                             <div class="server-id" ${contributedInfo.tooltip ? `title="${contributedInfo.tooltip}"` : ''}>${server.id}${contributedInfo.text}</div>
                             <div class="server-status-badge-container">
                                 ${renderStatusBadge(server)}
-                                ${server.statusMessage ? `<span class="server-status-message text-secondary" style="font-size: 0.85rem; margin-left: 0.5rem;">${escapeHtml(server.statusMessage)}</span>` : ''}
+                                ${server.statusMessage ? `<span class="server-status-message text-secondary font-md ml-sm">${escapeHtml(server.statusMessage)}</span>` : ''}
                                 ${!server.isExtension ? ideInfo : ''}
                                 ${!server.isExtension && server.pid ? `<span class="server-ide-info"><span title="Process ID">${server.pid}</span></span>` : ''}
                             </div>
@@ -614,8 +589,8 @@
                     const disabledClass = server.enabled === false ? 'server-disabled' : '';
 
                     return `
-                        <div class="server-item ${disabledClass} ${selectedServer?.id === server.id ? 'active' : ''}" data-dap-server="${server.id}" onclick='selectDapServer(${JSON.stringify(server)})' style="cursor: pointer;">
-                            <div class="server-name" style="display: flex; align-items: center; justify-content: space-between;">
+                        <div class="server-item ${disabledClass} ${selectedServer?.id === server.id ? 'active' : ''} cursor-pointer" data-dap-server="${server.id}" onclick='selectDapServer(${JSON.stringify(server)})'>
+                            <div class="server-name d-flex align-center justify-between">
                                 <span>
                                     <span class="server-source-icon">🐛</span>
                                     ${server.name}
@@ -769,7 +744,7 @@
             const dapServersWithFlag = (Object.values(window.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
             const allServers = workspace ? [...(workspace.lspServers || []), ...dapServersWithFlag] : [];
             const hasContributions = (server.contributions && Object.keys(server.contributions).length > 0) ||
-                                    buildContributedByMap(allServers)[server.id]?.length > 0;
+                                    buildWorkspaceContributedByMap(allServers)[server.id]?.length > 0;
 
             // Extensions and DAP servers don't have LSP traces - default to overview
             if ((server.isExtension || server.isDap) && currentConsoleTab === 'traces') {
@@ -822,9 +797,9 @@
                         </div>
                         ${hasContributions ? `
                         <div id="contributions-tab" class="tab-panel ${currentConsoleTab === 'contributions' ? 'active' : ''}">
-                            <div id="workspace-diagram-container" style="width: 100%; height: 400px; background: var(--bg-card); flex-shrink: 0;"></div>
+                            <div id="workspace-diagram-container" class="w-100 bg-card" style="height: 400px; flex-shrink: 0;"></div>
                             <div class="diagram-resizer"></div>
-                            <div class="details-panel text-primary" id="contributions-content" style="padding: 2rem; overflow-y: auto; flex: 1; min-height: 0;">
+                            <div class="details-panel text-primary flex-1 min-h-0" id="contributions-content" style="padding: 2rem; overflow-y: auto;">
                                 <p>Loading...</p>
                             </div>
                         </div>
@@ -1069,11 +1044,11 @@
                 }
 
                 const descHTML = setting.description
-                    ? `<div class="text-dimmed" style="font-size: 0.8rem; margin-top: 0.25rem;">${setting.description}</div>`
+                    ? `<div class="text-dimmed mt-xs" style="font-size: 0.8rem;">${setting.description}</div>`
                     : '';
 
-                return `<div class="detail-item" style="flex-direction: column; align-items: flex-start;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem; width: 100%;">
+                return `<div class="detail-item flex-column align-start">
+                            <div class="d-flex align-center gap-md w-100">
                                 <span class="detail-label">${setting.label}:</span>
                                 ${controlHTML}
                             </div>
@@ -1105,7 +1080,7 @@
                 const dapServersWithFlag = (Object.values(window.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
                 allServers = workspace ? [...(workspace.lspServers || []), ...dapServersWithFlag] : [];
             }
-            const contributedByMap = buildContributedByMap(allServers);
+            const contributedByMap = buildWorkspaceContributedByMap(allServers);
             const contributedBy = contributedByMap[server.id] || [];
             console.log('  contributesTo:', contributesTo, 'contributedBy:', contributedBy);
 
@@ -1118,19 +1093,19 @@
             // Show "Contributes To" section
             if (contributesTo.length > 0) {
                 html += '<div class="contribution-subsection">';
-                html += '<h5 class="text-success" style="margin-bottom: 0.5rem;">→ Contributes To</h5>';
+                html += '<h5 class="text-success mb-sm">→ Contributes To</h5>';
 
                 for (const targetServerId of contributesTo) {
                     const contributionData = server.contributions[targetServerId];
-                    html += `<div class="contribution-target" style="margin-bottom: 1rem;">`;
-                    html += `<div class="text-label-alt" style="font-weight: bold; margin-bottom: 0.25rem;">${targetServerId}</div>`;
+                    html += `<div class="contribution-target mb-lg">`;
+                    html += `<div class="text-label-alt mb-xs" style="font-weight: bold;">${targetServerId}</div>`;
 
                     // Show each contribution type (bundles, classpath, bindRequest, etc.)
                     for (const [type, items] of Object.entries(contributionData)) {
                         if (items && items.length > 0) {
-                            html += `<div style="margin-left: 1rem; margin-bottom: 0.5rem;">`;
+                            html += `<div class="mb-sm" style="margin-left: 1rem;">`;
                             html += `<span class="text-secondary">${type}:</span>`;
-                            html += `<ul class="text-secondary" style="margin: 0.25rem 0 0 1.5rem; padding: 0; font-size: 0.9rem;">`;
+                            html += `<ul class="text-secondary p-0 font-base" style="margin: 0.25rem 0 0 1.5rem;">`;
                             items.forEach(item => {
                                 const displayValue = typeof item === 'string' ? item : JSON.stringify(item);
                                 const isError = displayValue.startsWith('ERROR:');
@@ -1152,8 +1127,8 @@
 
             // Show "Contributed By" section grouped by contribution type
             if (contributedBy.length > 0) {
-                html += '<div class="contribution-subsection" style="margin-top: 1rem;">';
-                html += '<h5 class="text-string" style="margin-bottom: 0.5rem;">← Contributed By</h5>';
+                html += '<div class="contribution-subsection mt-lg">';
+                html += '<h5 class="text-string mb-sm">← Contributed By</h5>';
 
                 // Group contributions by type (bundles, bindRequest, classpath, etc.)
                 const contributionsByType = {};
@@ -1189,8 +1164,8 @@
 
                 // Display grouped by type
                 for (const [type, contributions] of Object.entries(contributionsByType)) {
-                    html += `<div style="margin-bottom: 1rem;">`;
-                    html += `<div class="text-secondary" style="font-weight: bold; margin-bottom: 0.5rem;">${type} <span class="text-dimmed">(Total: ${contributions.length})</span></div>`;
+                    html += `<div class="mb-lg">`;
+                    html += `<div class="text-secondary mb-sm" style="font-weight: bold;">${type} <span class="text-dimmed">(Total: ${contributions.length})</span></div>`;
                     html += `<div style="margin-left: 1rem;">`;
 
                     contributions.forEach(contrib => {
@@ -1202,8 +1177,8 @@
                             ? 'word-break: break-all; font-weight: bold; cursor: help;'
                             : 'word-break: break-all;';
                         const title = isError ? 'File not found or pattern did not match any files' : '';
-                        html += `<div class="text-secondary" style="margin-bottom: 0.3rem; font-size: 0.9rem;">`;
-                        html += `<span class="text-label-alt" style="display: inline-block; min-width: 120px;">${contrib.server}</span>`;
+                        html += `<div class="text-secondary font-base" style="margin-bottom: 0.3rem;">`;
+                        html += `<span class="text-label-alt d-inline-block" style="min-width: 120px;">${contrib.server}</span>`;
                         html += `<span class="text-label">•</span> `;
                         html += `<span class="${valueClass}" style="${valueStyle}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</span>`;
                         html += `</div>`;
@@ -1287,7 +1262,7 @@
                 const message = currentTraceLevel === 'off'
                     ? 'Traces are disabled (level: off)'
                     : 'No LSP trace messages yet.';
-                container.innerHTML = `<div class="text-secondary" style="text-align: center; padding: 2rem;">${message}</div>`;
+                container.innerHTML = `<div class="text-secondary text-center" style="padding: 2rem;">${message}</div>`;
                 return;
             }
 
@@ -1311,7 +1286,7 @@
                 if (currentTraceLevel === 'messages') {
                     return `
                         <div class="trace-line">
-                            <div class="${traceTypeClass}" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
+                            <div class="${traceTypeClass} font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
@@ -1325,7 +1300,7 @@
                 if (!hasBody) {
                     return `
                         <div class="trace-line">
-                            <div class="${traceTypeClass}" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
+                            <div class="${traceTypeClass} font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
@@ -1356,14 +1331,13 @@
 
                 return `
                     <div class="trace-line" onmouseenter="showTooltip(event, ${index}, true)" onmouseleave="hideTooltip(${index})">
-                        <div class="trace-header folded" id="header-${index}"
+                        <div class="trace-header folded font-mono-sm p-xs" id="header-${index}"
                              onmousedown="onHeaderMouseDown(${index})"
-                             onmouseup="onHeaderMouseUp(${index})"
-                             style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">
-                            <span class="trace-toggle" id="toggle-${index}" style="margin-right: 0.5rem;">▶</span>
+                             onmouseup="onHeaderMouseUp(${index})">
+                            <span class="trace-toggle mr-sm" id="toggle-${index}">▶</span>
                             <span class="trace-header-text ${traceTypeClass}">${escapeHtml(headerLine)}</span>
                         </div>
-                        <div class="trace-body collapsed text-primary" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; white-space: pre-wrap;">${bodyHtml}</div>
+                        <div class="trace-body collapsed text-primary font-mono-sm text-pre-wrap" id="body-${index}">${bodyHtml}</div>
                         <div class="trace-tooltip" id="tooltip-${index}">${escapeHtml(fullContent)}</div>
                     </div>
                 `;
@@ -1693,7 +1667,7 @@
                 const message = currentTraceLevel === 'off'
                     ? 'Traces are disabled (level: off)'
                     : 'No LSP trace messages yet.';
-                container.innerHTML = `<div class="text-secondary" style="text-align: center; padding: 2rem;">${message}</div>`;
+                container.innerHTML = `<div class="text-secondary text-center" style="padding: 2rem;">${message}</div>`;
                 return;
             }
 
@@ -1719,7 +1693,7 @@
                 const message = currentTraceLevel === 'off'
                     ? 'Traces are disabled (level: off)'
                     : 'No LSP trace messages yet.';
-                container.innerHTML = `<div class="text-secondary" style="text-align: center; padding: 2rem;">${message}</div>`;
+                container.innerHTML = `<div class="text-secondary text-center" style="padding: 2rem;">${message}</div>`;
                 return;
             }
 
@@ -1734,7 +1708,7 @@
                 if (currentTraceLevel === 'messages') {
                     return `
                         <div class="trace-line">
-                            <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
+                            <div class="text-primary font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
@@ -1748,18 +1722,18 @@
                 if (!hasBody) {
                     return `
                         <div class="trace-line">
-                            <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(headerLine)}</div>
+                            <div class="text-primary font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
                         </div>
                     `;
                 }
 
                 return `
                     <div class="trace-line">
-                        <div class="trace-header folded" onclick="toggleTrace(${index})" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">
-                            <span class="trace-toggle" id="toggle-${index}" style="margin-right: 0.5rem;">▶</span>
+                        <div class="trace-header folded font-mono-sm p-xs" onclick="toggleTrace(${index})">
+                            <span class="trace-toggle mr-sm" id="toggle-${index}">▶</span>
                             <span class="trace-header-text text-primary">${escapeHtml(headerLine)}</span>
                         </div>
-                        <div class="trace-body collapsed text-primary" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${escapeHtml(body)}</div>
+                        <div class="trace-body collapsed text-primary font-mono-sm" id="body-${index}">${escapeHtml(body)}</div>
                     </div>
                 `;
             }).join('');

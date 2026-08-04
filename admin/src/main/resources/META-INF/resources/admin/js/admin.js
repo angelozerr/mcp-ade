@@ -150,6 +150,7 @@
 
             return labels[status] || status;
         }
+        window.formatStatusLabel = formatStatusLabel;
 
         /**
          * Load global LSP configurations (called once at startup).
@@ -245,7 +246,7 @@
         /**
          * Build contributedBy map (inverse of contributesTo)
          */
-        function buildContributedByMap(servers) {
+        function buildWorkspaceContributedByMap(servers) {
             const map = {};
             for (const server of servers) {
                 // contributions is now a Map<targetServerId, Map<contributionType, List<?>>>
@@ -262,7 +263,7 @@
         /**
          * Format contribute info for display (contributesTo or contributedBy)
          */
-        function formatContributeInfo(server, contributedByMap) {
+        function formatWorkspaceContributeInfo(server, contributedByMap) {
             // Extract contributesTo from contributions map
             const contributesTo = server.contributions ? Object.keys(server.contributions) : [];
             const contributedBy = contributedByMap[server.id] || [];
@@ -276,7 +277,7 @@
                 const displayStyled = full.length > 20
                     ? contributesTo.slice(0, 1).map(id => `<span class="text-secondary">${id}</span>`).join('') + ', <span class="text-secondary">...</span>'
                     : styled;
-                text = ` <span class="text-muted" style="font-size: 1.3rem; font-weight: bold;">→</span> ${displayStyled}`;
+                text = ` <span class="text-muted font-2xl font-bold">→</span> ${displayStyled}`;
                 if (full.length > 20) {
                     tooltip = `Contributes to: ${full}`;
                 }
@@ -286,7 +287,7 @@
                 const displayStyled = full.length > 20
                     ? contributedBy.slice(0, 1).map(id => `<span class="text-secondary">${id}</span>`).join('') + ', <span class="text-secondary">...</span>'
                     : styled;
-                text = ` <span class="text-muted" style="font-size: 1.3rem; font-weight: bold;">←</span> ${displayStyled}`;
+                text = ` <span class="text-muted font-2xl font-bold">←</span> ${displayStyled}`;
                 if (full.length > 20) {
                     tooltip = `Contributed by: ${full}`;
                 }
@@ -351,13 +352,13 @@
                     }
                     break;
                 case 'mcp-trace':
-                    handleMcpTrace(message);
+                    window.handleMcpTrace(message);
                     break;
                 case 'workspaces-update':
                     handleWorkspacesUpdate(message.workspaces);
                     break;
                 case 'mcp-clients-update':
-                    handleMcpClientsUpdate(message.clients);
+                    window.handleMcpClientsUpdate(message.clients);
                     break;
                 case 'server-status-changed':
                     handleServerStatusChanged(message);
@@ -537,40 +538,6 @@
         }
 
         /**
-         * Handle MCP trace message from WebSocket.
-         */
-        function handleMcpTrace(trace) {
-            const connectionId = trace.connectionId;
-            if (!mcpTracesByClient[connectionId]) {
-                mcpTracesByClient[connectionId] = [];
-            }
-
-            // Check if this is an UPDATE message (replaces previous line)
-            if (trace.messageType === 'UPDATE') {
-                const traces = mcpTracesByClient[connectionId];
-                const lastTrace = traces[traces.length - 1];
-                // Replace last trace if it was also an UPDATE
-                if (lastTrace && lastTrace.messageType === 'UPDATE') {
-                    traces[traces.length - 1] = trace;
-                } else {
-                    traces.push(trace);
-                }
-            } else {
-                mcpTracesByClient[connectionId].push(trace);
-            }
-
-            // Keep only last 500 traces per client
-            if (mcpTracesByClient[connectionId].length > 500) {
-                mcpTracesByClient[connectionId].shift();
-            }
-
-            // Refresh MCP console if this trace is for the currently selected client
-            if (connectionId === selectedMcpClient) {
-                renderMcpConsole();
-            }
-        }
-
-        /**
          * Handle workspaces update from WebSocket.
          */
         function handleWorkspacesUpdate(newWorkspaces) {
@@ -608,17 +575,6 @@
                     console.log('Auto-selecting first workspace');
                     selectWorkspace(workspaces[0].rootUri);
                 }
-            }
-        }
-
-        /**
-         * Handle MCP clients update from WebSocket.
-         */
-        function handleMcpClientsUpdate(newClients) {
-            // Only update if data actually changed
-            if (JSON.stringify(newClients) !== JSON.stringify(mcpClients)) {
-                mcpClients = newClients;
-                renderMcpClients();
             }
         }
 
@@ -760,7 +716,7 @@
                 const statusClass = formatStatusClass(server.status, server.isReady);
                 const label = formatStatusLabel(server.status, server.externalInstance);
                 const statusMessageHTML = server.statusMessage
-                    ? `<span class="server-status-message text-secondary" style="font-size: 0.85rem; margin-left: 0.5rem;">${escapeHtml(server.statusMessage)}</span>`
+                    ? `<span class="server-status-message text-secondary font-md ml-sm">${escapeHtml(server.statusMessage)}</span>`
                     : '';
                 statusBadgeContainer.innerHTML = `<span class="status-badge ${statusClass}">${label}</span>${statusMessageHTML}`;
             }
@@ -853,12 +809,16 @@
             const serversColumn = document.querySelector('.servers-sidebar');
             const consoleColumn = document.querySelector('.console-container');
 
+            // Helper to show one sidebar panel and hide the rest
+            function showSidebarPanel(activeId) {
+                const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'extensions-container', 'mcp-traces-list'];
+                panels.forEach(id => {
+                    document.getElementById(id).classList.toggle('d-none', id !== activeId);
+                });
+            }
+
             if (tab === 'workspaces') {
-                document.getElementById('workspaces-list').style.display = 'block';
-                document.getElementById('lsp-servers-list').style.display = 'none';
-                document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-container').style.display = 'none';
-                document.getElementById('mcp-traces-list').style.display = 'none';
+                showSidebarPanel('workspaces-list');
                 serversColumn.style.display = 'flex';
                 consoleColumn.style.display = 'flex';
                 // 3 columns layout: workspaces | servers | console
@@ -891,11 +851,7 @@
                     updateSearchBoxVisibility(false);
                 }
             } else if (tab === 'lsp-servers') {
-                document.getElementById('workspaces-list').style.display = 'none';
-                document.getElementById('lsp-servers-list').style.display = '';
-                document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-container').style.display = 'none';
-                document.getElementById('mcp-traces-list').style.display = 'none';
+                showSidebarPanel('lsp-servers-list');
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';
                 // 2 columns layout: servers | console
@@ -907,11 +863,7 @@
                 loadAllLspServers(options.serverId);
                 // Search box will be shown/hidden by loadAllLspServers -> selectServer -> loadConsole
             } else if (tab === 'dap-servers') {
-                document.getElementById('workspaces-list').style.display = 'none';
-                document.getElementById('lsp-servers-list').style.display = 'none';
-                document.getElementById('dap-servers-list').style.display = '';
-                document.getElementById('extensions-container').style.display = 'none';
-                document.getElementById('mcp-traces-list').style.display = 'none';
+                showSidebarPanel('dap-servers-list');
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';
                 // 2 columns layout: servers | console
@@ -924,11 +876,7 @@
                 // DAP now supports search via TraceRenderer
                 // Search box visibility will be updated when session detail is shown
             } else if (tab === 'extensions') {
-                document.getElementById('workspaces-list').style.display = 'none';
-                document.getElementById('lsp-servers-list').style.display = 'none';
-                document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-container').style.display = 'flex';
-                document.getElementById('mcp-traces-list').style.display = 'none';
+                showSidebarPanel('extensions-container');
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';
                 appContainer.style.gridTemplateColumns = '400px 1fr';
@@ -937,11 +885,7 @@
                 loadAllExtensions();
                 updateSearchBoxVisibility(false);
             } else if (tab === 'mcp-traces') {
-                document.getElementById('workspaces-list').style.display = 'none';
-                document.getElementById('lsp-servers-list').style.display = 'none';
-                document.getElementById('dap-servers-list').style.display = 'none';
-                document.getElementById('extensions-container').style.display = 'none';
-                document.getElementById('mcp-traces-list').style.display = 'block';
+                showSidebarPanel('mcp-traces-list');
                 serversColumn.style.display = 'none';
                 consoleColumn.style.display = 'flex';
                 // 2 columns layout: mcp info | console

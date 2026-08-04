@@ -27,7 +27,7 @@ const TraceRenderer = (function() {
             // Single line trace
             return `
                 <div class="trace-line">
-                    <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${highlightText(content, searchQuery)}</div>
+                    <div class="text-primary p-xs font-mono-sm">${highlightText(content, searchQuery)}</div>
                 </div>
             `;
         }
@@ -42,7 +42,7 @@ const TraceRenderer = (function() {
         if (traceLevel === 'messages') {
             return `
                 <div class="trace-line">
-                    <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${highlightText(headerLine, searchQuery)}</div>
+                    <div class="text-primary p-xs font-mono-sm">${highlightText(headerLine, searchQuery)}</div>
                 </div>
             `;
         }
@@ -51,7 +51,7 @@ const TraceRenderer = (function() {
         if (!body) {
             return `
                 <div class="trace-line">
-                    <div class="text-primary" style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">${highlightText(headerLine, searchQuery)}</div>
+                    <div class="text-primary p-xs font-mono-sm">${highlightText(headerLine, searchQuery)}</div>
                 </div>
             `;
         }
@@ -64,14 +64,13 @@ const TraceRenderer = (function() {
 
         return `
             <div class="trace-line" onmouseenter="showTooltip(event, ${index}, ${!hasMatch})" onmouseleave="hideTooltip(${index})">
-                <div class="${headerClass}" id="header-${index}"
+                <div class="${headerClass} p-xs font-mono-sm" id="header-${index}"
                      onmousedown="onHeaderMouseDown(${index})"
-                     onmouseup="onHeaderMouseUp(${index})"
-                     style="padding: 0.25rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem;">
-                    <span class="trace-toggle" id="toggle-${index}" style="margin-right: 0.5rem;">${toggleIcon}</span>
+                     onmouseup="onHeaderMouseUp(${index})">
+                    <span class="trace-toggle mr-sm" id="toggle-${index}">${toggleIcon}</span>
                     <span class="trace-header-text text-primary">${highlightText(headerLine, searchQuery)}</span>
                 </div>
-                <div class="trace-body ${foldState} text-primary" id="body-${index}" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; white-space: pre-wrap;">${highlightText(body, searchQuery)}</div>
+                <div class="trace-body ${foldState} text-primary font-mono-sm text-pre-wrap" id="body-${index}">${highlightText(body, searchQuery)}</div>
                 <div class="trace-tooltip" id="tooltip-${index}">${escapeHtml(fullContent)}</div>
             </div>
         `;
@@ -395,9 +394,9 @@ const TraceRenderer = (function() {
      * @returns {string} HTML string
      */
     function renderTraceControls(id, level, onchange, buttons) {
-        let html = `<label class="text-primary" style="font-size: 0.85rem;">
+        let html = `<label class="text-primary font-md">
                 Trace Level:
-                <select id="${id}-level" onchange="${onchange}" class="select-field" style="margin-left: 0.5rem;">
+                <select id="${id}-level" onchange="${onchange}" class="select-field ml-sm">
                     <option value="off" ${level === 'off' ? 'selected' : ''}>Off</option>
                     <option value="messages" ${level === 'messages' ? 'selected' : ''}>Messages</option>
                     <option value="verbose" ${level === 'verbose' ? 'selected' : ''}>Verbose</option>

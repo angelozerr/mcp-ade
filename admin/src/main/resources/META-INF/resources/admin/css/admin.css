@@ -25,6 +25,7 @@
 
 /* ── Utility classes for JS-generated HTML ── */
 
+/* Text colors */
 .text-label { color: var(--color-label); }
 .text-label-alt { color: var(--color-label-alt); }
 .text-value { color: var(--text-code); }
@@ -43,12 +44,115 @@
 .text-server-id { color: var(--text-server-id); }
 .text-code { color: var(--text-code); font-family: 'Courier New', monospace; }
 
+/* Background colors */
 .bg-body { background: var(--bg-body); }
 .bg-panel { background: var(--bg-panel); }
 .bg-card { background: var(--bg-card); }
 .bg-card-alt { background: var(--bg-card-alt); }
 .bg-input { background: var(--bg-input); }
 .bg-console { background: var(--bg-console); }
+
+/* ── Layout utilities ── */
+.d-flex { display: flex; }
+.d-none { display: none !important; }
+.d-block { display: block; }
+.d-inline-block { display: inline-block; }
+.d-inline-flex { display: inline-flex; }
+.flex-column { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1; }
+.align-center { align-items: center; }
+.align-start { align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+
+/* ── Spacing utilities ── */
+.gap-xs { gap: 0.25rem; }
+.gap-sm { gap: 0.5rem; }
+.gap-md { gap: 0.75rem; }
+.gap-lg { gap: 1rem; }
+.mb-0 { margin-bottom: 0; }
+.mb-xs { margin-bottom: 0.25rem; }
+.mb-sm { margin-bottom: 0.5rem; }
+.mb-md { margin-bottom: 0.75rem; }
+.mb-lg { margin-bottom: 1rem; }
+.mb-xl { margin-bottom: 1.5rem; }
+.mt-xs { margin-top: 0.25rem; }
+.mt-sm { margin-top: 0.5rem; }
+.mt-md { margin-top: 0.75rem; }
+.mt-lg { margin-top: 1rem; }
+.mr-xs { margin-right: 0.25rem; }
+.mr-sm { margin-right: 0.5rem; }
+.ml-xs { margin-left: 0.25rem; }
+.ml-sm { margin-left: 0.5rem; }
+.p-0 { padding: 0; }
+.p-xs { padding: 0.25rem; }
+.p-sm { padding: 0.5rem; }
+.p-md { padding: 0.75rem; }
+.p-lg { padding: 1rem; }
+.p-xl { padding: 1.5rem; }
+.px-sm { padding-left: 0.5rem; padding-right: 0.5rem; }
+.px-lg { padding-left: 1rem; padding-right: 1rem; }
+.py-sm { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+
+/* ── Typography utilities ── */
+.font-xs { font-size: 0.65rem; }
+.font-sm { font-size: 0.75rem; }
+.font-md { font-size: 0.85rem; }
+.font-base { font-size: 0.9rem; }
+.font-lg { font-size: 0.95rem; }
+.font-xl { font-size: 1.1rem; }
+.font-2xl { font-size: 1.25rem; }
+.font-bold { font-weight: 600; }
+.font-normal { font-weight: 400; }
+.font-mono { font-family: 'Courier New', monospace; }
+.font-mono-sm { font-family: 'Courier New', monospace; font-size: 0.85rem; }
+.font-italic { font-style: italic; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-nowrap { white-space: nowrap; }
+.text-pre-wrap { white-space: pre-wrap; }
+.truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── State utilities ── */
+.is-disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.cursor-pointer { cursor: pointer; }
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow-y: auto; }
+.min-h-0 { min-height: 0; }
+.w-100 { width: 100%; }
+
+/* ── Border utilities ── */
+.border-bottom { border-bottom: 1px solid var(--border-primary); }
+.border-bottom-subtle { border-bottom: 1px solid var(--border-subtle); }
+.border-top-subtle { border-top: 1px solid var(--border-subtle); }
+.rounded { border-radius: 4px; }
+.rounded-sm { border-radius: 3px; }
+
+/* ── Component patterns (used in JS templates) ── */
+.detail-row {
+    display: flex;
+    margin-bottom: 0.5rem;
+}
+
+.section-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.mcp-clients-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.mcp-clients-title {
+    margin-bottom: 0.25rem;
+}
+
+.mcp-clients-subtitle {
+    font-size: 0.75rem;
+}
 
 .border-subtle { border-color: var(--border-subtle); }
 .border-primary { border-color: var(--border-primary); }
@@ -221,6 +325,40 @@ body {
     display: grid;
     grid-template-columns: 400px 300px 1fr;
     height: calc(100vh - 2rem);
+}
+
+/* ── Responsive breakpoints ── */
+
+@media (max-width: 1200px) {
+    .app-container {
+        grid-template-columns: 300px 250px 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .app-container {
+        grid-template-columns: 250px 1fr;
+    }
+
+    .servers-sidebar {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .app-container {
+        grid-template-columns: 1fr;
+    }
+
+    .servers-sidebar,
+    .console-container {
+        display: none;
+    }
+
+    .tab {
+        font-size: 0.6rem;
+        padding: 0.5rem 0.35rem;
+    }
 }
 
 /* Left sidebar - Workspaces */

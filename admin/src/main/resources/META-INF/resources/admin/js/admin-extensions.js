@@ -31,7 +31,7 @@ function renderExtensionsList() {
 
         return `
             <div class="extension-item ${isActive} ${disabledClass}" onclick="showExtensionDetails('${ext.id}')">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div class="d-flex align-center justify-between">
                     <span class="extension-name">${ext.id}${sourceBadge}</span>
                     <label class="toggle-switch" onclick="event.stopPropagation()">
                         <input type="checkbox" ${ext.enabled ? 'checked' : ''} onchange="toggleExtensionEnabled('${ext.id}', this.checked)">
@@ -101,7 +101,7 @@ function showExtensionDetails(extensionId) {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
                 <div class="extension-server-item ${disabledClass}">
-                    <span style="cursor: pointer;" onclick="switchTab('lsp-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🚀</span> ${server.name} <span class="text-dimmed" style="font-size: 0.75rem;">(${server.id})</span></span>
+                    <span class="cursor-pointer" onclick="switchTab('lsp-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🚀</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
                     <label class="toggle-switch">
                         <input type="checkbox" ${server.enabled ? 'checked' : ''} onchange="toggleExtensionServerEnabled('lsp', '${server.id}', this.checked)">
                         <span class="toggle-slider"></span>
@@ -117,7 +117,7 @@ function showExtensionDetails(extensionId) {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
                 <div class="extension-server-item ${disabledClass}">
-                    <span style="cursor: pointer;" onclick="switchTab('dap-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🐛</span> ${server.name} <span class="text-dimmed" style="font-size: 0.75rem;">(${server.id})</span></span>
+                    <span class="cursor-pointer" onclick="switchTab('dap-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🐛</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
                     <label class="toggle-switch">
                         <input type="checkbox" ${server.enabled ? 'checked' : ''} onchange="toggleExtensionServerEnabled('dap', '${server.id}', this.checked)">
                         <span class="toggle-slider"></span>
@@ -128,7 +128,7 @@ function showExtensionDetails(extensionId) {
     }
 
     if (!serversHTML) {
-        serversHTML = '<p class="text-dimmed" style="margin-top: 1rem;">No servers in this extension.</p>';
+        serversHTML = '<p class="text-dimmed mt-lg">No servers in this extension.</p>';
     }
 
     // Remove button (only for USER extensions)
@@ -151,19 +151,19 @@ function showExtensionDetails(extensionId) {
         <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto;">
             <h3 class="text-label" style="margin-top: 0;">Extension Information</h3>
 
-            <div style="margin-bottom: 1rem;">
+            <div class="mb-lg">
                 <strong class="text-label">ID:</strong>
-                <span class="text-value" style="margin-left: 0.5rem;">${ext.id}</span>
+                <span class="text-value ml-sm">${ext.id}</span>
             </div>
 
-            <div style="margin-bottom: 1rem;">
+            <div class="mb-lg">
                 <strong class="text-label">Source:</strong>
-                <span style="margin-left: 0.5rem;">${sourceBadge}</span>
+                <span class="ml-sm">${sourceBadge}</span>
             </div>
 
-            <div style="margin-bottom: 1rem;">
+            <div class="mb-lg">
                 <strong class="text-label">Status:</strong>
-                <span class="${ext.enabled ? 'text-success' : 'text-error'}" style="margin-left: 0.5rem;">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
+                <span class="${ext.enabled ? 'text-success' : 'text-error'} ml-sm">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
             </div>
 
             ${serversHTML}
@@ -200,23 +200,23 @@ function showAddExtensionForm() {
             </p>
 
             <div style="margin-bottom: 1.25rem;">
-                <label class="text-label" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Extension ID</label>
+                <label class="text-label d-block" style="margin-bottom: 0.35rem; font-weight: 500;">Extension ID</label>
                 <input type="text" id="add-ext-id" placeholder="e.g. my-extension"
-                       class="input-field" style="width: 100%; max-width: 400px; font-size: 0.9rem;">
+                       class="input-field w-100 font-base" style="max-width: 400px;">
             </div>
 
             <div id="drop-zone" class="drop-zone" onclick="document.getElementById('add-ext-file').click()">
-                <input type="file" id="add-ext-file" accept=".zip,.jar" style="display: none;" onchange="handleFileSelect(this)">
+                <input type="file" id="add-ext-file" accept=".zip,.jar" class="d-none" onchange="handleFileSelect(this)">
                 <div class="drop-zone-icon">📦</div>
                 <div class="drop-zone-text">Drop a ZIP or JAR file here</div>
                 <div class="drop-zone-hint">or click to browse</div>
             </div>
 
             <div id="selected-file-info" style="display: none; margin-bottom: 1.25rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 3px; max-width: 400px;">
+                <div class="d-flex align-center gap-sm bg-card-alt" style="padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); border-radius: 3px; max-width: 400px;">
                     <span class="text-success">📄</span>
-                    <span id="selected-file-name" class="text-value" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
-                    <span class="text-dimmed" style="cursor: pointer; font-size: 1.1rem;" onclick="clearSelectedFile()" title="Remove file">×</span>
+                    <span id="selected-file-name" class="text-value flex-1 truncate"></span>
+                    <span class="text-dimmed cursor-pointer font-xl" onclick="clearSelectedFile()" title="Remove file">×</span>
                 </div>
             </div>
 
@@ -224,7 +224,7 @@ function showAddExtensionForm() {
                 Add Extension
             </button>
 
-            <div id="add-ext-result" style="margin-top: 1rem;"></div>
+            <div id="add-ext-result" class="mt-lg"></div>
         </div>
     `;
 

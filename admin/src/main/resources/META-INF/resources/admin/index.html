@@ -33,7 +33,7 @@
         })();
     </script>
     <!-- vis.js for network diagrams (local copy for offline support) -->
-    <script type="text/javascript" src="js/vis-network.min.js"></script>
+    <script defer src="js/vis-network.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -50,18 +50,18 @@
                 </div>
             </div>
             <div id="workspaces-list"></div>
-            <div id="lsp-servers-list" style="display: none;"></div>
-            <div id="dap-servers-list" style="display: none;"></div>
-            <div id="extensions-container" style="display: none;">
+            <div id="lsp-servers-list" class="d-none"></div>
+            <div id="dap-servers-list" class="d-none"></div>
+            <div id="extensions-container" class="d-none">
                 <div class="add-extension-bar">
                     <button onclick="showAddExtensionForm()">+ Add Extension</button>
                 </div>
                 <div id="extensions-list"></div>
             </div>
-            <div id="mcp-traces-list" style="display: none;">
-                <div style="padding: 1rem; border-bottom: 1px solid var(--border-primary);">
-                    <h3 class="text-primary" style="margin-bottom: 0.25rem;">AI Clients</h3>
-                    <p class="text-dimmed" style="font-size: 0.75rem;">Connected via MCP</p>
+            <div id="mcp-traces-list" class="d-none">
+                <div class="mcp-clients-header">
+                    <h3 class="text-primary mcp-clients-title">AI Clients</h3>
+                    <p class="text-dimmed mcp-clients-subtitle">Connected via MCP</p>
                 </div>
                 <div id="mcp-clients-list"></div>
             </div>
@@ -128,7 +128,7 @@
             <button onclick="toggleProgressPanel()">&#10005;</button>
         </div>
         <div id="progress-panel-content" class="progress-panel-content">
-            <div class="text-secondary" style="text-align: center; padding: 2rem;">No active tasks</div>
+            <div class="text-secondary text-center p-xl">No active tasks</div>
         </div>
     </div>
 

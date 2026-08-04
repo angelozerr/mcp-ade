@@ -48,7 +48,7 @@ async function loadMcpClients() {
     } catch (e) {
         console.error('Failed to load MCP clients:', e);
         document.getElementById('mcp-clients-list').innerHTML =
-            '<div class="text-secondary" style="padding: 1rem;">Failed to load clients</div>';
+            '<div class="text-secondary p-lg">Failed to load clients</div>';
     }
 }
 
@@ -57,7 +57,7 @@ function renderMcpClients() {
     if (!list) return;
 
     if (mcpClients.length === 0) {
-        list.innerHTML = '<div class="text-secondary" style="padding: 1rem;">No clients connected</div>';
+        list.innerHTML = '<div class="text-secondary p-lg">No clients connected</div>';
         return;
     }
 
@@ -66,14 +66,13 @@ function renderMcpClients() {
         const shortId = client.id.substring(0, 8) + '...';
 
         return `
-            <div class="workspace-item ${client.id === selectedMcpClient ? 'active' : ''}"
+            <div class="workspace-item cursor-pointer ${client.id === selectedMcpClient ? 'active' : ''}"
                  onclick="selectMcpClient('${client.id}')"
-                 style="cursor: pointer;"
                  title="${window.escapeHtml ? window.escapeHtml(client.id) : client.id}">
-                <div style="font-weight: 600; margin-bottom: 0.25rem;">
+                <div class="mb-xs" style="font-weight: 600;">
                     📱 ${window.escapeHtml ? window.escapeHtml(client.name) : client.name}
                 </div>
-                <div class="text-dimmed" style="font-size: 0.75rem; padding-left: 1.5rem;">
+                <div class="text-dimmed font-sm" style="padding-left: 1.5rem;">
                     Session: ${window.escapeHtml ? window.escapeHtml(shortId) : shortId}
                 </div>
             </div>
@@ -262,7 +261,7 @@ function renderMcpConsole() {
     if (!output) return;
 
     if (mcpTraceLevel === 'off') {
-        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">Traces disabled (level: off)</div>';
+        output.innerHTML = '<div class="text-secondary p-lg">Traces disabled (level: off)</div>';
         return;
     }
 
@@ -270,7 +269,7 @@ function renderMcpConsole() {
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
 
     if (clientTraces.length === 0) {
-        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">No MCP traces yet...</div>';
+        output.innerHTML = '<div class="text-secondary p-lg">No MCP traces yet...</div>';
         return;
     }
 
@@ -292,7 +291,7 @@ function renderMcpConsoleWithHighlights() {
     if (!output) return;
 
     if (mcpTraceLevel === 'off') {
-        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">Traces disabled (level: off)</div>';
+        output.innerHTML = '<div class="text-secondary p-lg">Traces disabled (level: off)</div>';
         return;
     }
 
@@ -300,7 +299,7 @@ function renderMcpConsoleWithHighlights() {
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
 
     if (clientTraces.length === 0) {
-        output.innerHTML = '<div class="text-secondary" style="padding: 1rem;">No MCP traces yet...</div>';
+        output.innerHTML = '<div class="text-secondary p-lg">No MCP traces yet...</div>';
         return;
     }
 
@@ -353,16 +352,13 @@ async function clearMcpConsole() {
 function handleMcpTrace(trace) {
     const connectionId = trace.connectionId;
 
-    // Store trace
     if (!mcpTracesByClient[connectionId]) {
         mcpTracesByClient[connectionId] = [];
     }
 
-    // Check if this is an UPDATE message (replaces previous line)
     if (trace.messageType === 'UPDATE') {
         const traces = mcpTracesByClient[connectionId];
         const lastTrace = traces[traces.length - 1];
-        // Replace last trace if it was also an UPDATE
         if (lastTrace && lastTrace.messageType === 'UPDATE') {
             traces[traces.length - 1] = trace;
         } else {
@@ -372,7 +368,6 @@ function handleMcpTrace(trace) {
         mcpTracesByClient[connectionId].push(trace);
     }
 
-    // Re-render console if this trace is for the currently selected client
     if (selectedMcpClient === connectionId) {
         renderMcpConsole();
     }
@@ -382,21 +377,17 @@ function handleMcpTrace(trace) {
  * Handle MCP clients update from WebSocket.
  */
 function handleMcpClientsUpdate(newClients) {
-    // Check if data actually changed
     if (JSON.stringify(newClients) !== JSON.stringify(mcpClients)) {
         mcpClients = newClients;
         renderMcpClients();
 
-        // Auto-select first client if none selected
         if (mcpClients.length > 0 && !selectedMcpClient) {
             selectMcpClient(mcpClients[0].id);
         }
 
-        // Check if previously selected client still exists
         if (selectedMcpClient) {
             const stillExists = mcpClients.find(c => c.id === selectedMcpClient);
             if (!stillExists) {
-                // Previously selected client disconnected
                 selectedMcpClient = null;
                 if (mcpClients.length > 0) {
                     selectMcpClient(mcpClients[0].id);
@@ -424,7 +415,7 @@ async function loadMcpTools() {
         console.error('Failed to load MCP tools:', e);
         const list = document.getElementById('mcp-tools-list');
         if (list) {
-            list.innerHTML = '<div class="text-secondary" style="padding: 1rem;">Failed to load tools</div>';
+            list.innerHTML = '<div class="text-secondary p-lg">Failed to load tools</div>';
         }
     }
 }
@@ -455,8 +446,8 @@ function renderMcpTools() {
 
     if (filtered.length === 0) {
         list.innerHTML = mcpToolsFilter
-            ? '<div class="text-secondary" style="padding: 1rem;">No tools matching filter</div>'
-            : '<div class="text-secondary" style="padding: 1rem;">No MCP tools registered</div>';
+            ? '<div class="text-secondary p-lg">No tools matching filter</div>'
+            : '<div class="text-secondary p-lg">No MCP tools registered</div>';
         return;
     }
 
@@ -526,7 +517,7 @@ function renderMcpToolItem(tool) {
         ? tool.args.map(arg =>
             `<span class="mcp-tool-arg ${arg.required ? 'mcp-tool-arg-required' : 'mcp-tool-arg-optional'}" title="${esc(arg.description || '')}&#10;Type: ${esc(arg.type)}${arg.required ? '' : ' (optional)'}">${esc(arg.name)}</span>`
         ).join('')
-        : '<span class="text-dimmed" style="font-size: 0.75rem;">No arguments</span>';
+        : '<span class="text-dimmed font-sm">No arguments</span>';
 
     return `
         <div class="mcp-tool-item" onclick="toggleMcpToolDetail(this)">
@@ -546,7 +537,7 @@ function renderMcpToolItem(tool) {
 function renderMcpToolDetail(tool) {
     const esc = window.escapeHtml || (s => s);
     if (!tool.args || tool.args.length === 0) {
-        return '<div class="text-dimmed" style="padding: 0.5rem 0;">No arguments</div>';
+        return '<div class="text-dimmed py-sm">No arguments</div>';
     }
     return `
         <table class="mcp-tool-args-table">
