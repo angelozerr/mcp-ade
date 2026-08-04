@@ -359,7 +359,7 @@ function updateServerStatusBadge(serverId, server) {
 
     const statusBadgeContainer = serverElement.querySelector('.server-status-badge-container');
     if (statusBadgeContainer) {
-        const statusClass = formatStatusClass(server.status, server.isReady);
+        const statusClass = formatStatusClass(server.status);
         const label = formatStatusLabel(server.status, server.externalInstance);
         const statusMessageHTML = server.statusMessage
             ? `<span class="server-status-message text-secondary font-md ml-sm">${escapeHtml(server.statusMessage)}</span>`
@@ -391,7 +391,7 @@ function updateDetailPanelStatusBadge(server) {
     const progressElement = document.getElementById('server-detail-progress');
     if (!progressElement) return;
 
-    const statusClass = server.status === 'RUNNING' && !server.isReady ? 'status-running-not-ready' : 'status-' + server.status.toLowerCase();
+    const statusClass = formatStatusClass(server.status);
     const label = formatStatusLabel(server.status, server.externalInstance);
 
     if ((server.status === 'INSTALLING' || server.status === 'STARTING') && server.installProgress != null) {

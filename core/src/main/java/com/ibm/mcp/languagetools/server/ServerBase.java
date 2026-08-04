@@ -453,6 +453,17 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         if (!ready && wasReady) {
             readyFuture = new CompletableFuture<>();
         }
+
+        // Notify listeners so the UI updates the badge color
+        if (wasReady != ready && !statusChangeListeners.isEmpty()) {
+            for (StatusChangeListener listener : statusChangeListeners) {
+                try {
+                    listener.onStatusChanged(this.status, this.status);
+                } catch (Exception e) {
+                    LOG.warnf(e, "Error in status change listener for %s", config.getServerId());
+                }
+            }
+        }
     }
 
     /**
@@ -499,7 +510,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
      */
     protected boolean checkAndPrepareStart() {
         // Don't restart if already running or starting
-        if (getStatus() == ServerStatus.RUNNING || getStatus() == ServerStatus.STARTING) {
+        if (getStatus() == ServerStatus.RUNNING || getStatus() == ServerStatus.INDEXING || getStatus() == ServerStatus.STARTING) {
             LOG.warnf("Server already running/starting (status: %s), ignoring start call", getStatus());
             return false;
         }

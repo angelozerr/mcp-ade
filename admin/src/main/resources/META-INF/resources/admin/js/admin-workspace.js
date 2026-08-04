@@ -297,7 +297,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         function renderStatusBadge(server) {
-            const statusClass = server.status === 'RUNNING' && !server.isReady ? 'status-running-not-ready' : 'status-' + server.status.toLowerCase();
+            const statusClass = formatStatusClass(server.status);
             const label = formatStatusLabel(server.status, server.externalInstance);
 
             // In server list, show simple badge (progress bar is shown in detail panel only)

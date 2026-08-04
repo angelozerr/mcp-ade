@@ -16,6 +16,7 @@ package com.ibm.mcp.languagetools.extensions.jdtls.lsp;
 import com.ibm.mcp.languagetools.ContributionManager;
 import com.ibm.mcp.languagetools.extensions.jdtls.classpath.FastModeProjectManager;
 import com.ibm.mcp.languagetools.extensions.jdtls.classpath.ServerStatusProgressMonitor;
+import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.extensions.jdtls.tools.JdtlsCommands;
 import com.ibm.mcp.languagetools.installer.InstallerEvent;
 import com.ibm.mcp.languagetools.installer.InstallerListener;
@@ -206,6 +207,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
     }
 
     void onServiceReady() {
+        setStatus(ServerStatus.RUNNING);
         setReady(true);
     }
 
@@ -347,6 +349,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         return super.initialize()
                 .thenRun(() -> {
                     setReady(false);
+                    setStatus(ServerStatus.INDEXING);
                     LOG.infof("JDT.LS initialized for workspace: %s (waiting for ServiceReady notification)", workspaceRoot);
                 });
     }

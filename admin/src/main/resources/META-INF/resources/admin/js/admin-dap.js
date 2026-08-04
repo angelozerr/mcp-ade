@@ -12,7 +12,7 @@ import { formatErrorWithFolding } from './error-formatter.js';
 import { LanguageFilter } from './language-filter.js';
 import {
     renderTraceControls, updateTraceControls, renderTracesInContainer,
-    getCurrentSearchQuery, toggleAllTraces, clearHighlights
+    getCurrentSearchQuery, toggleAllTraces, clearHighlights, initTraceContainer
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
 
@@ -244,6 +244,9 @@ function showLaunchConfigForm(session, dapServerId) {
 
     // Load existing traces for this session (renderDapTracesForSession will be called by WebSocket when traces arrive)
     renderDapTracesForSession(sessionId);
+
+    // Initialize trace container event delegation (mousedown/mouseup for fold/unfold)
+    initTraceContainer(`dap-traces-container-${sessionId}`);
 
     // Initialize trace level combo and buttons from WebSocket-provided data
     updateTraceControls('dap-trace', getDapTraceLevel());

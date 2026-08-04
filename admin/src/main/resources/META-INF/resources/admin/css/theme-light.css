@@ -134,9 +134,9 @@
 
     /* ── Status badges ── */
     --status-starting-bg: #e69500;
+    --status-indexing-bg: #b8c625;
+    --status-indexing-color: #333333;
     --status-running-bg: #1a8a2e;
-    --status-running-not-ready-bg: #b8c625;
-    --status-running-not-ready-color: #333333;
     --status-stopping-bg: #cc7a00;
     --status-stopped-bg: #6c757d;
     --status-installing-bg: #d4a017;

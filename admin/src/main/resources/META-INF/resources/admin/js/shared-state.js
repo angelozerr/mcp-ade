@@ -50,10 +50,7 @@ export function traceKey(workspaceUri, serverId) {
     return (workspaceUri || '') + '|' + serverId;
 }
 
-export function formatStatusClass(status, isReady) {
-    if (status === 'RUNNING' && !isReady) {
-        return 'status-running-not-ready';
-    }
+export function formatStatusClass(status) {
     return 'status-' + status.toLowerCase();
 }
 
@@ -64,6 +61,7 @@ export function formatStatusLabel(status, externalInstance) {
         'INSTALL_FAILED': 'Install Failed',
         'STARTING': 'Starting',
         'START_FAILED': 'Start Failed',
+        'INDEXING': 'Indexing',
         'RUNNING': 'Running',
         'STOPPING': 'Stopping',
         'STOPPED': 'Stopped',

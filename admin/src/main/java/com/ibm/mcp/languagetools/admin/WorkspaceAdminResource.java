@@ -163,15 +163,22 @@ public class WorkspaceAdminResource {
         }
 
         StringBuilder result = new StringBuilder();
+        LOG.infof("Refreshing workspace %s, %d servers", uri, workspace.getLspServers().size());
         for (var server : workspace.getLspServers()) {
+            LOG.infof("Server %s: status=%s, ready=%s", server.getId(), server.getStatus(), server.isReady());
             if (server.getStatus() == com.ibm.mcp.languagetools.server.ServerStatus.RUNNING && server.isReady()) {
                 try {
                     String serverResult = server.refreshWorkspace()
                             .get(30, java.util.concurrent.TimeUnit.SECONDS);
+                    LOG.infof("Refresh result for %s: %s", server.getId(), serverResult);
                     result.append(server.getId()).append(": ").append(serverResult).append("\n");
                 } catch (Exception e) {
+                    LOG.errorf(e, "Refresh failed for %s", server.getId());
                     result.append(server.getId()).append(": error - ").append(e.getMessage()).append("\n");
                 }
+            } else {
+                result.append(server.getId()).append(": skipped (status=").append(server.getStatus())
+                        .append(", ready=").append(server.isReady()).append(")\n");
             }
         }
 

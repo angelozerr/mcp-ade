@@ -31,7 +31,12 @@ public enum ServerStatus {
     STARTING,
 
     /**
-     * Server is running and initialized.
+     * Server is running but indexing the workspace (not yet ready to handle requests).
+     */
+    INDEXING,
+
+    /**
+     * Server is running and ready.
      */
     RUNNING,
 
