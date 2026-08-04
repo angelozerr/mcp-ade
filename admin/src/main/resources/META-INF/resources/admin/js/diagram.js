@@ -1,20 +1,15 @@
-/**
- * Server dependency diagram using vis.js
- */
-
 let serverDiagramNetwork = null;
 let workspaceDiagramNetwork = null;
+let diagramCallbacks = {};
 
-/**
- * Read a CSS custom property value from the current theme.
- */
+export function setDiagramCallbacks(cbs) {
+    diagramCallbacks = cbs;
+}
+
 function getThemeColor(varName) {
     return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
-/**
- * Build the color palette from CSS variables for vis.js diagrams.
- */
 function getDiagramColors() {
     return {
         nodeLsp: getThemeColor('--diagram-node-lsp'),
@@ -36,9 +31,6 @@ function getDiagramColors() {
     };
 }
 
-/**
- * Get the node color based on server type and selection state.
- */
 function getNodeColor(server, currentServerId, colors) {
     if (server.id === currentServerId) {
         if (server.isDap) return colors.nodeDapSelected;
@@ -50,9 +42,6 @@ function getNodeColor(server, currentServerId, colors) {
     return colors.nodeLsp;
 }
 
-/**
- * Build vis.js nodes from filtered servers.
- */
 function buildNodes(filteredServers, currentServerId, colors) {
     return filteredServers.map(server => {
         const icon = server.isExtension ? '🧩' : (server.isDap ? '🐛' : '🚀');
@@ -74,9 +63,6 @@ function buildNodes(filteredServers, currentServerId, colors) {
     });
 }
 
-/**
- * Build vis.js edges from filtered servers.
- */
 function buildEdges(filteredServers, colors) {
     const edgeColors = {
         bundles: colors.edgeBundle,
@@ -156,9 +142,6 @@ function buildEdges(filteredServers, colors) {
     return edges;
 }
 
-/**
- * Build vis.js options.
- */
 function buildDiagramOptions(colors) {
     return {
         layout: {
@@ -216,20 +199,12 @@ function buildDiagramOptions(colors) {
     };
 }
 
-/**
- * Render server dependency diagram.
- * Shows only the current server + its direct dependencies.
- */
-function renderServerDiagram(servers, currentServerId) {
+export function renderServerDiagram(servers, currentServerId) {
     const container = document.getElementById('server-diagram-container');
-    if (!container) {
-        console.error('Diagram container not found');
-        return;
-    }
+    if (!container) return;
 
     const colors = getDiagramColors();
 
-    // Filter: only current server + direct dependencies
     const relevantServerIds = new Set([currentServerId]);
 
     const currentServer = servers.find(s => s.id === currentServerId);
@@ -275,23 +250,13 @@ function renderServerDiagram(servers, currentServerId) {
     serverDiagramNetwork.on('doubleClick', function(params) {
         if (params.nodes.length > 0) {
             const clickedServerId = params.nodes[0];
-
-            if (clickedServerId === currentServerId) {
-                console.log('Already viewing this server:', clickedServerId);
-                return;
-            }
-
-            console.log('Double-clicked on server:', clickedServerId);
+            if (clickedServerId === currentServerId) return;
 
             const clickedServer = servers.find(s => s.id === clickedServerId);
             if (clickedServer?.isDap) {
-                if (window.switchTab) {
-                    window.switchTab('dap-servers', null, { serverId: clickedServerId });
-                }
+                diagramCallbacks.switchTab?.('dap-servers', null, { serverId: clickedServerId });
             } else {
-                if (window.switchTab) {
-                    window.switchTab('lsp-servers', null, { serverId: clickedServerId });
-                }
+                diagramCallbacks.switchTab?.('lsp-servers', null, { serverId: clickedServerId });
             }
         }
     });
@@ -305,25 +270,15 @@ function renderServerDiagram(servers, currentServerId) {
         });
     }, 100);
 
-    console.log('Server diagram rendered with', nodes.length, 'nodes and', edges.length, 'edges');
-
     initDiagramResizer('server-diagram-container');
 }
 
-/**
- * Render workspace server diagram.
- * Shows only servers that have at least one contribution.
- */
-function renderWorkspaceDiagram(servers, currentServerId) {
+export function renderWorkspaceDiagram(servers, currentServerId) {
     const container = document.getElementById('workspace-diagram-container');
-    if (!container) {
-        console.error('Workspace diagram container not found');
-        return;
-    }
+    if (!container) return;
 
     const colors = getDiagramColors();
 
-    // Filter: only servers with contributions
     const connectedServerIds = new Set();
 
     servers.forEach(server => {
@@ -365,32 +320,15 @@ function renderWorkspaceDiagram(servers, currentServerId) {
     workspaceDiagramNetwork.on('doubleClick', function(params) {
         if (params.nodes.length > 0) {
             const clickedServerId = params.nodes[0];
-
-            if (clickedServerId === currentServerId) {
-                console.log('Already viewing this server:', clickedServerId);
-                return;
-            }
-
-            console.log('Double-clicked on workspace server:', clickedServerId);
+            if (clickedServerId === currentServerId) return;
 
             const clickedServer = servers.find(s => s.id === clickedServerId);
             if (clickedServer?.isDap) {
-                if (window.switchWorkspaceTab) {
-                    window.switchWorkspaceTab('debuggers');
-                }
-                if (window.selectDapSessionByServerId) {
-                    window.selectDapSessionByServerId(clickedServerId);
-                }
+                diagramCallbacks.switchWorkspaceTab?.('debuggers');
+                diagramCallbacks.selectDapSessionByServerId?.(clickedServerId);
             } else {
-                if (window.switchWorkspaceTab) {
-                    window.switchWorkspaceTab('servers');
-                }
-                if (window.selectServer) {
-                    window.selectServer(clickedServer);
-                } else {
-                    switchConsoleTab('overview');
-                    loadServerDetails(clickedServerId);
-                }
+                diagramCallbacks.switchWorkspaceTab?.('servers');
+                diagramCallbacks.selectServer?.(clickedServer);
             }
         }
     });
@@ -404,15 +342,9 @@ function renderWorkspaceDiagram(servers, currentServerId) {
         });
     }, 100);
 
-    console.log('Workspace diagram rendered with', nodes.length, 'nodes and', edges.length, 'edges');
-
     initDiagramResizer('workspace-diagram-container');
 }
 
-/**
- * Initialize a draggable resizer between a diagram container and the content below it.
- * The resizer element must be a sibling between the diagram container and the content panel.
- */
 function initDiagramResizer(diagramContainerId) {
     const diagramContainer = document.getElementById(diagramContainerId);
     if (!diagramContainer) return;

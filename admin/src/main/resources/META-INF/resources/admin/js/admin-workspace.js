@@ -1,3 +1,17 @@
+import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, updateSearchBoxVisibility } from './shared-state.js';
+import { confirmAction, showAlert, showConfirmModal, hideConfirmModal } from './shared-ui.js';
+import { formatContributionsSection } from './shared-contributions.js';
+import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
+import { renderProgressBadge } from './progress-renderer.js';
+import {
+    renderTrace, renderTraceControls, updateTraceControls,
+    isScrolledToBottom, saveExpandedState, restoreExpandedState,
+    getCurrentSearchQuery, toggleAllTraces, highlightText, escapeHtml,
+    initSearchListeners, initTraceContainer, toggleTrace, showTooltip, hideTooltip
+} from './trace-renderer.js';
+import { registerActions } from './event-delegation.js';
+import { selectDapSession as selectDapSessionImpl, createNewTestSession as createNewTestSessionImpl } from './admin-dap.js';
+
         // Global variable to store DAP sessions
         let dapSessions = [];
 
@@ -7,15 +21,32 @@
         // Filter to show only active (non-STOPPED) servers
         let showOnlyActiveServers = false;
 
+        // Cross-module callbacks
+        let createSessionHTMLFn = null;
+        export function setCreateSessionHTMLFn(fn) { createSessionHTMLFn = fn; }
+
+        let installerCallbacks = {};
+        export function setInstallerCallbacks(cbs) { installerCallbacks = cbs; }
+
+        let changeDapServerTraceLevelFn = null;
+        export function setChangeDapServerTraceLevelFn(fn) { changeDapServerTraceLevelFn = fn; }
+
+        // Callbacks for search re-rendering
+        let renderDapTracesForSessionFn = null;
+        export function setRenderDapTracesForSessionFn(fn) { renderDapTracesForSessionFn = fn; }
+
+        let renderMcpConsoleWithHighlightsFn = null;
+        export function setRenderMcpConsoleWithHighlightsFn(fn) { renderMcpConsoleWithHighlightsFn = fn; }
+
         async function toggleWorkspaceLspServerEnabled(serverId, enabled) {
             const action = enabled ? 'enable' : 'disable';
             try {
                 const response = await fetch(`/api/admin/extensions/lsp/servers/${serverId}/${action}`, { method: 'POST' });
                 if (response.ok) {
-                    if (window.lspConfigs[serverId]) {
-                        window.lspConfigs[serverId].enabled = enabled;
+                    if (state.lspConfigs[serverId]) {
+                        state.lspConfigs[serverId].enabled = enabled;
                     }
-                    const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
+                    const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
                     if (workspace && workspace.lspServers) {
                         const srv = workspace.lspServers.find(s => s.id === serverId);
                         if (srv) srv.enabled = enabled;
@@ -39,8 +70,8 @@
             try {
                 const response = await fetch(`/api/admin/extensions/dap/servers/${serverId}/${action}`, { method: 'POST' });
                 if (response.ok) {
-                    if (window.dapConfigs && window.dapConfigs[serverId]) {
-                        window.dapConfigs[serverId].enabled = enabled;
+                    if (state.dapConfigs && state.dapConfigs[serverId]) {
+                        state.dapConfigs[serverId].enabled = enabled;
                     }
                     const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`);
                     if (serverElement) {
@@ -58,11 +89,11 @@
 
         function toggleShowActiveServers() {
             showOnlyActiveServers = !showOnlyActiveServers;
-            const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
+            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             if (!workspace) return;
 
-            if (currentWorkspaceTab === 'debuggers') {
-                const sessions = window.dapSessions || [];
+            if (state.currentWorkspaceTab === 'debuggers') {
+                const sessions = state.dapSessions || [];
                 renderServers([], sessions, workspace);
             } else {
                 renderServers(workspace.lspServers || [], [], workspace);
@@ -82,10 +113,10 @@
             }
         }
 
-        function renderWorkspaces() {
+        export function renderWorkspaces() {
             const container = document.getElementById('workspaces-list');
 
-            if (workspaces.length === 0) {
+            if (state.workspaces.length === 0) {
                 container.innerHTML = `
                     <div class="empty-workspaces">
                         <div class="empty-workspaces-title">No Workspaces Yet</div>
@@ -104,9 +135,8 @@
                 `;
 
                 // Clear servers and console
-                selectedWorkspace = null;
-                window.selectedWorkspace = null;
-                selectedServer = null;
+                state.selectedWorkspace = null;
+                state.selectedServer = null;
                 document.getElementById('servers-list').innerHTML = '<div class="servers-placeholder">No workspaces selected</div>';
                 document.getElementById('console-area').innerHTML = `
                     <div class="placeholder">
@@ -117,19 +147,19 @@
                 return;
             }
 
-            container.innerHTML = workspaces.map(ws => {
+            container.innerHTML = state.workspaces.map(ws => {
                 // Extract folder name from URI
                 const folderName = ws.rootUri.split('/').filter(p => p).pop() || ws.rootUri;
 
                 return `
-                <div class="workspace-item ${ws.rootUri === selectedWorkspace ? 'active' : ''}" onclick="selectWorkspace('${ws.rootUri}')">
+                <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
                     <div class="d-flex justify-between align-center">
                         <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div>
-                        <button class="close-workspace-btn" onclick="event.stopPropagation(); closeWorkspace('${ws.rootUri}')" title="Close workspace and stop all servers">×</button>
+                        <button class="close-workspace-btn" data-action="closeWorkspace" data-uri="${ws.rootUri}" data-stop-propagation title="Close workspace and stop all servers">×</button>
                     </div>
                     ${ws.mcpClients && ws.mcpClients.length > 0 ? `
                         <div class="workspace-section">
-                            <div class="workspace-section-title">AI Clients</div>
+                            <div class="workspace-section-title">AI Agents</div>
                             ${ws.mcpClients.map(client => {
                                 let timeStr = '';
                                 if (client.connectedAt) {
@@ -155,60 +185,31 @@
             }).join('');
         }
 
-        // Expose renderWorkspaces globally for use in admin.js
-        window.renderWorkspaces = renderWorkspaces;
-
-        function selectWorkspace(uri) {
+        export function selectWorkspace(uri) {
             // Only reset server selection if we're changing workspace
-            if (selectedWorkspace !== uri) {
-                selectedServer = null;
+            if (state.selectedWorkspace !== uri) {
+                state.selectedServer = null;
                 userExplicitlySelectedServer = false; // Reset explicit selection when changing workspace
             }
 
-            selectedWorkspace = uri;
-            window.selectedWorkspace = uri;
+            state.selectedWorkspace = uri;
 
             // Clear DAP session when selecting a workspace (we're now in LSP context)
-            window.currentDapSessionId = null;
+            state.currentDapSessionId = null;
 
             renderWorkspaces();
 
             // Find workspace in local data (already received via WebSocket)
-            const workspace = workspaces.find(w => w.rootUri === uri);
+            const workspace = state.workspaces.find(w => w.rootUri === uri);
             console.log('Found workspace in selectWorkspace:', workspace);
             if (workspace) {
                 // Render the current tab (will lazy load servers/sessions as needed)
-                switchWorkspaceTab(currentWorkspaceTab || 'servers');
+                switchWorkspaceTab(state.currentWorkspaceTab || 'servers');
             } else {
                 console.log('Workspace not found, showing placeholder');
                 document.getElementById('servers-list').innerHTML = '<div class="servers-placeholder">No LSP servers</div>';
                 showPlaceholder();
             }
-        }
-
-        function showConfirmModal(title, message, onConfirm) {
-            const titleEl = document.getElementById('confirm-modal-title');
-            const messageEl = document.getElementById('confirm-modal-message');
-            const modalEl = document.getElementById('confirm-modal');
-
-            if (!titleEl || !messageEl || !modalEl) {
-                console.error('Confirm modal elements not found!');
-                return;
-            }
-
-            titleEl.textContent = title;
-            messageEl.innerHTML = message;
-            modalEl.classList.add('visible');
-
-            const confirmBtn = document.getElementById('modal-confirm-btn');
-            confirmBtn.onclick = () => {
-                hideConfirmModal();
-                onConfirm();
-            };
-        }
-
-        function hideConfirmModal() {
-            document.getElementById('confirm-modal').classList.remove('visible');
         }
 
         async function closeWorkspace(uri) {
@@ -241,13 +242,12 @@
                         }
 
                         // Remove workspace from local list and re-render
-                        const idx = workspaces.findIndex(w => w.rootUri === uri);
+                        const idx = state.workspaces.findIndex(w => w.rootUri === uri);
                         if (idx !== -1) {
-                            workspaces.splice(idx, 1);
-                            window.workspaces = workspaces;
+                            state.workspaces.splice(idx, 1);
                         }
-                        if (selectedWorkspace === uri) {
-                            selectedWorkspace = workspaces.length > 0 ? workspaces[0].rootUri : null;
+                        if (state.selectedWorkspace === uri) {
+                            state.selectedWorkspace = state.workspaces.length > 0 ? state.workspaces[0].rootUri : null;
                         }
                         renderWorkspaces();
 
@@ -261,9 +261,9 @@
 
         let lastServersData = null;
 
-        async function loadServers(uri) {
+        export async function loadServers(uri) {
             // Find workspace in local data (already received via WebSocket)
-            const workspace = workspaces.find(w => w.rootUri === uri);
+            const workspace = state.workspaces.find(w => w.rootUri === uri);
             if (workspace) {
                 // Load LSP servers if not already loaded (lazy loading)
                 if (!workspace.lspServers) {
@@ -291,7 +291,7 @@
             return `<span class="status-badge ${statusClass}">${label}</span>`;
         }
 
-        function renderServers(lspServers, dapSessions = [], workspace = null) {
+        export function renderServers(lspServers, dapSessions = [], workspace = null) {
             const container = document.getElementById('servers-list');
             console.log('renderServers called - lspServers:', lspServers?.length, 'dapSessions:', dapSessions?.length, 'workspace:', workspace?.rootUri);
             console.trace('renderServers call stack');
@@ -312,8 +312,8 @@
             // Build tabs header
             const tabsHTML = `
                 <div class="tabs bg-panel" style="border-bottom: 1px solid var(--bg-card);">
-                    <div class="tab flex-1 text-center ${currentWorkspaceTab === 'servers' ? 'active' : ''}" onclick="switchWorkspaceTab('servers')">Servers</div>
-                    <div class="tab flex-1 text-center ${currentWorkspaceTab === 'debuggers' ? 'active' : ''}" onclick="switchWorkspaceTab('debuggers')">Debuggers</div>
+                    <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'servers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="servers">Servers</div>
+                    <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'debuggers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="debuggers">Debuggers</div>
                 </div>
             `;
 
@@ -321,7 +321,7 @@
             const filterHTML = `
                 <div class="d-flex align-center bg-panel" style="padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border-primary); font-size: 0.8rem;">
                     <label class="text-secondary d-flex align-center cursor-pointer" style="gap: 0.4rem; user-select: none;">
-                        <input type="checkbox" onchange="toggleShowActiveServers()" ${showOnlyActiveServers ? 'checked' : ''}>
+                        <input type="checkbox" data-action="toggleShowActiveServers" ${showOnlyActiveServers ? 'checked' : ''}>
                         Show active only
                     </label>
                 </div>
@@ -329,11 +329,11 @@
 
             // Render content based on active tab
             let contentHTML = '';
-            if (currentWorkspaceTab === 'servers') {
+            if (state.currentWorkspaceTab === 'servers') {
                 contentHTML = (lspServers && lspServers.length > 0) ? renderLspServers(lspServers) : '<div class="servers-placeholder">No LSP servers</div>';
             } else {
                 // Use global DAP configs (like LSP lspConfigs), not per-workspace
-                const dapServers = Object.values(window.dapConfigs || {});
+                const dapServers = Object.values(state.dapConfigs || {});
                 contentHTML = (dapServers.length > 0 || dapSessions.length > 0)
                     ? renderDapServers(dapServers, dapSessions)
                     : '<div class="servers-placeholder">No debug adapters</div>';
@@ -344,21 +344,20 @@
                 '<div class="workspace-servers-content">' + contentHTML + '</div>';
 
             // Auto-select first DAP server after rendering (not session)
-            if (currentWorkspaceTab === 'debuggers' && Object.values(window.dapConfigs || {}) && Object.values(window.dapConfigs || {}).length > 0) {
-                const isDapServerSelected = selectedServer && Object.values(window.dapConfigs || {}).find(s => s.id === selectedServer.id);
+            if (state.currentWorkspaceTab === 'debuggers' && Object.values(state.dapConfigs || {}) && Object.values(state.dapConfigs || {}).length > 0) {
+                const isDapServerSelected = state.selectedServer && Object.values(state.dapConfigs || {}).find(s => s.id === state.selectedServer.id);
 
                 if (!isDapServerSelected) {
                     // Select first DAP server
-                    const firstDapServer = Object.values(window.dapConfigs || {})[0];
+                    const firstDapServer = Object.values(state.dapConfigs || {})[0];
                     selectDapServer(firstDapServer);
                 }
             }
         }
 
-        async function switchWorkspaceTab(tab) {
-            currentWorkspaceTab = tab;
-            window.currentWorkspaceTab = tab; // Update global
-            const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
+        export async function switchWorkspaceTab(tab) {
+            state.currentWorkspaceTab = tab;
+            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             if (!workspace) return;
 
             if (tab === 'servers') {
@@ -380,7 +379,7 @@
                 if (response.ok) {
                     const servers = await response.json();
                     // Merge runtime data with configs (for name, description, etc.)
-                    workspace.lspServers = servers.map(s => window.mergeServerData(s));
+                    workspace.lspServers = servers.map(s => mergeServerData(s));
                 }
             } catch (error) {
                 console.error('Failed to load LSP servers:', error);
@@ -388,29 +387,26 @@
             }
         }
 
-        async function loadDapSessionsForWorkspace() {
-            if (!selectedWorkspace) {
+        export async function loadDapSessionsForWorkspace() {
+            if (!state.selectedWorkspace) {
                 dapSessions = [];
-                window.dapSessions = [];
+                state.dapSessions = [];
                 return;
             }
 
             try {
-                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(selectedWorkspace)}/dap-sessions`);
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(state.selectedWorkspace)}/dap-sessions`);
                 if (response.ok) {
                     dapSessions = await response.json();
-                    window.dapSessions = dapSessions; // Sync with global variable for admin-dap.js
-                    console.log('Loaded DAP sessions for workspace:', selectedWorkspace, 'count:', dapSessions.length);
+                    state.dapSessions = dapSessions; // Sync with state for admin-dap.js
+                    console.log('Loaded DAP sessions for workspace:', state.selectedWorkspace, 'count:', dapSessions.length);
                 }
             } catch (error) {
                 console.error('Failed to load DAP sessions:', error);
                 dapSessions = [];
-                window.dapSessions = [];
+                state.dapSessions = [];
             }
         }
-
-        // Expose for diagram navigation
-        window.switchWorkspaceTab = switchWorkspaceTab;
 
         function renderLspServers(serversRuntime) {
             if (serversRuntime.length === 0) {
@@ -440,8 +436,8 @@
             // 3. Otherwise, select first non-STOPPED server
             // 4. Otherwise, select first server
 
-            if (selectedServer) {
-                const currentServer = servers.find(s => s.id === selectedServer.id);
+            if (state.selectedServer) {
+                const currentServer = servers.find(s => s.id === state.selectedServer.id);
                 if (currentServer) {
                     // Only auto-switch if user has NOT explicitly selected
                     if (!userExplicitlySelectedServer && currentServer.status === 'STOPPED') {
@@ -449,21 +445,21 @@
                         const runningServer = servers.find(s => s.status === 'RUNNING');
                         const activeServer = runningServer || servers.find(s => s.status !== 'STOPPED');
                         if (activeServer) {
-                            console.log('Auto-switching from', selectedServer.id, '(STOPPED) to active server:', activeServer.id, '(status:', activeServer.status, ')');
+                            console.log('Auto-switching from', state.selectedServer.id, '(STOPPED) to active server:', activeServer.id, '(status:', activeServer.status, ')');
                             selectServer(activeServer, false); // false = not a user action
                         }
                     } else {
-                        console.log('Keeping selected server:', selectedServer.id, '(status:', currentServer.status, ', userExplicit:', userExplicitlySelectedServer, ')');
+                        console.log('Keeping selected server:', state.selectedServer.id, '(status:', currentServer.status, ', userExplicit:', userExplicitlySelectedServer, ')');
                     }
                 } else {
                     console.log('Selected server no longer exists, auto-selecting...');
-                    selectedServer = null;
+                    state.selectedServer = null;
                     userExplicitlySelectedServer = false; // Reset since server disappeared
                 }
             }
 
             // If no server selected, auto-select first non-STOPPED server
-            if (!selectedServer && servers.length > 0) {
+            if (!state.selectedServer && servers.length > 0) {
                 console.log('Auto-selecting server - selectedServer is null, servers:', servers.length);
                 const runningServer = servers.find(s => s.status === 'RUNNING');
                 const activeServer = runningServer || servers.find(s => s.status !== 'STOPPED');
@@ -487,19 +483,19 @@
                         if (isExternal) {
                             actions = `
                                 <button class="server-action-btn server-action-disconnect"
-                                        onclick='event.stopPropagation(); disconnectFromIdeAction("${server.id}")'
+                                        data-action="disconnectFromIdeAction" data-server-id="${server.id}" data-stop-propagation
                                         title="Disconnect from IDE">⏏</button>
                             `;
                         } else {
                             if (server.status === 'RUNNING' || server.status === 'STARTING') {
                                 actions = `
-                                    <button class="server-action-btn" onclick='event.stopPropagation(); restartServerAction("${server.id}")' title="Restart">↻</button>
-                                    <button class="server-action-btn" onclick='event.stopPropagation(); stopServerAction("${server.id}")' title="Stop">■</button>
+                                    <button class="server-action-btn" data-action="restartServerAction" data-server-id="${server.id}" data-stop-propagation title="Restart">↻</button>
+                                    <button class="server-action-btn" data-action="stopServerAction" data-server-id="${server.id}" data-stop-propagation title="Stop">■</button>
                                 `;
                             } else if (server.status === 'STOPPED' || server.status === 'START_FAILED' || server.status === 'INSTALL_FAILED' || server.status === 'ERROR') {
                                 actions = `
-                                    <button class="server-action-btn" onclick='event.stopPropagation(); startManagedServerAction("${server.id}")' title="Start MCP-managed server">▶</button>
-                                    <button class="server-action-btn" onclick='event.stopPropagation(); connectToIdeAction("${server.id}")' title="Try to connect to IDE instance">🔗</button>
+                                    <button class="server-action-btn" data-action="startManagedServerAction" data-server-id="${server.id}" data-stop-propagation title="Start MCP-managed server">▶</button>
+                                    <button class="server-action-btn" data-action="connectToIdeAction" data-server-id="${server.id}" data-stop-propagation title="Try to connect to IDE instance">🔗</button>
                                 `;
                             }
                         }
@@ -524,9 +520,9 @@
                     const contributedInfo = formatWorkspaceContributeInfo(server, contributedByMap);
 
                     return `
-                        <div class="server-item ${serverClass} ${extensionClass} ${disabledClass} ${selectedServer?.id === server.id ? 'active' : ''}"
+                        <div class="server-item ${serverClass} ${extensionClass} ${disabledClass} ${state.selectedServer?.id === server.id ? 'active' : ''}"
                              data-server-id="${server.id}"
-                             onclick='selectServer(${JSON.stringify(server)}, true)'
+                             data-action="selectServerItem"
                              ${tooltipText ? `title="${tooltipText.replace(/"/g, '&quot;')}"` : ''}>
                             <div class="server-name d-flex align-center justify-between">
                                 <span>
@@ -534,7 +530,7 @@
                                     ${server.name}${extensionBadge}
                                 </span>
                                 <label class="toggle-switch" onclick="event.stopPropagation()">
-                                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleWorkspaceLspServerEnabled('${server.id}', this.checked)">
+                                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleWorkspaceLspServerEnabled" data-server-id="${server.id}">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -583,20 +579,20 @@
 
                     // Actions for debugger (like LSP servers)
                     let actions = `
-                        <button class="server-action-btn" onclick='event.stopPropagation(); createNewTestSession("${server.id}")' title="New Test Launch">+</button>
+                        <button class="server-action-btn" data-action="createNewTestSession" data-server-id="${server.id}" data-stop-propagation title="New Test Launch">+</button>
                     `;
 
                     const disabledClass = server.enabled === false ? 'server-disabled' : '';
 
                     return `
-                        <div class="server-item ${disabledClass} ${selectedServer?.id === server.id ? 'active' : ''} cursor-pointer" data-dap-server="${server.id}" onclick='selectDapServer(${JSON.stringify(server)})'>
+                        <div class="server-item ${disabledClass} ${state.selectedServer?.id === server.id ? 'active' : ''} cursor-pointer" data-dap-server="${server.id}" data-action="selectDapServerItem" data-server-id="${server.id}">
                             <div class="server-name d-flex align-center justify-between">
                                 <span>
                                     <span class="server-source-icon">🐛</span>
                                     ${server.name}
                                 </span>
                                 <label class="toggle-switch" onclick="event.stopPropagation()">
-                                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleWorkspaceDapServerEnabled('${server.id}', this.checked)">
+                                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleWorkspaceDapServerEnabled" data-server-id="${server.id}">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -606,9 +602,9 @@
                             </div>
                         </div>
                         ${sessions.map(session => {
-                            // Use createSessionHTML from admin-dap.js if available, otherwise fallback
-                            if (typeof window.createSessionHTML === 'function') {
-                                return window.createSessionHTML(session);
+                            // Use createSessionHTMLFn callback if available, otherwise fallback
+                            if (createSessionHTMLFn) {
+                                return createSessionHTMLFn(session);
                             }
                             // Fallback (should not happen if admin-dap.js is loaded)
                             return `<div data-session-id="${session.sessionId}" class="dap-session-item">${session.sessionName}</div>`;
@@ -619,26 +615,23 @@
         }
 
         function selectDapSession(sessionId) {
-            selectedServer = null;
-            // Forward to admin-dap.js
-            if (typeof window.selectDapSession === 'function') {
-                window.selectDapSession(sessionId);
-            }
+            state.selectedServer = null;
+            selectDapSessionImpl(sessionId);
         }
 
-        function selectDapServer(dapServer) {
-            selectedServer = {...dapServer, isDap: true};
-            // Sync local variable with global (may have been updated by DELETED handler)
-            dapSessions = window.dapSessions || [];
-            const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
+        export function selectDapServer(dapServer) {
+            state.selectedServer = {...dapServer, isDap: true};
+            // Sync local variable with state (may have been updated by DELETED handler)
+            dapSessions = state.dapSessions || [];
+            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             renderServers([], dapSessions, workspace);
             loadConsole({...dapServer, isDap: true});
         }
 
-        function selectDapSessionByServerId(serverId) {
+        export function selectDapSessionByServerId(serverId) {
             // Find the DAP server from workspace
-            const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
-            const dapServer = Object.values(window.dapConfigs || {})?.find(s => s.id === serverId);
+            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+            const dapServer = Object.values(state.dapConfigs || {})?.find(s => s.id === serverId);
 
             if (dapServer) {
                 // Select the DAP server
@@ -649,12 +642,9 @@
             }
         }
 
-        // Expose for diagram navigation
-        window.selectDapSessionByServerId = selectDapSessionByServerId;
-
-        function selectServer(server, isUserAction = false) {
-            const wasAlreadySelected = selectedServer && selectedServer.id === server.id;
-            selectedServer = server;
+        export function selectServer(server, isUserAction = false) {
+            const wasAlreadySelected = state.selectedServer && state.selectedServer.id === server.id;
+            state.selectedServer = server;
 
             // Track if this is an explicit user action
             if (isUserAction) {
@@ -663,7 +653,7 @@
             }
 
             // Clear DAP session when selecting an LSP server
-            window.currentDapSessionId = null;
+            state.currentDapSessionId = null;
 
             // Update active class without full re-render to preserve scroll position
             document.querySelectorAll('.server-item').forEach(el => {
@@ -680,9 +670,6 @@
             }
         }
 
-        // Expose for diagram navigation
-        window.selectServer = selectServer;
-
         function showPlaceholder() {
             document.getElementById('console-area').innerHTML = `
                 <div class="placeholder">
@@ -692,21 +679,23 @@
         }
 
         let currentTraceLevel = 'verbose';
-        // window.currentServerId is declared in admin.js and used globally
+        let currentServerTab = 'overview';
 
         async function changeTraceLevel(level) {
             currentTraceLevel = level;
             updateTracesButtonsState(level);
             renderConsole();
 
-            if (selectedServer && selectedServer.isDap) {
-                changeDapServerTraceLevel(selectedServer.id, level);
-            } else if (window.currentServerId) {
-                if (window.traceLevels) {
-                    window.traceLevels['lsp.' + window.currentServerId] = level;
+            if (state.selectedServer && state.selectedServer.isDap) {
+                if (changeDapServerTraceLevelFn) {
+                    changeDapServerTraceLevelFn(state.selectedServer.id, level);
+                }
+            } else if (state.currentServerId) {
+                if (state.traceLevels) {
+                    state.traceLevels['lsp.' + state.currentServerId] = level;
                 }
                 try {
-                    await fetch(`/api/admin/traces/lsp/${window.currentServerId}`, {
+                    await fetch(`/api/admin/traces/lsp/${state.currentServerId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ traceLevel: level })
@@ -718,7 +707,7 @@
         }
 
         function updateTracesButtonsState(level) {
-            TraceRenderer.updateTraceControls('trace', level);
+            updateTraceControls('trace', level);
         }
 
         /**
@@ -737,23 +726,23 @@
             return true;
         }
 
-        async function loadConsole(server) {
+        export async function loadConsole(server) {
             // Check if server has contributions
-            const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
+            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             // Include both LSP and DAP servers for contribution detection (mark DAP servers)
-            const dapServersWithFlag = (Object.values(window.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
+            const dapServersWithFlag = (Object.values(state.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
             const allServers = workspace ? [...(workspace.lspServers || []), ...dapServersWithFlag] : [];
             const hasContributions = (server.contributions && Object.keys(server.contributions).length > 0) ||
                                     buildWorkspaceContributedByMap(allServers)[server.id]?.length > 0;
 
             // Extensions and DAP servers don't have LSP traces - default to overview
-            if ((server.isExtension || server.isDap) && currentConsoleTab === 'traces') {
-                currentConsoleTab = 'overview';
+            if ((server.isExtension || server.isDap) && state.currentConsoleTab === 'traces') {
+                state.currentConsoleTab = 'overview';
             }
 
             // If current tab is contributions but there are none, switch to appropriate default
-            if (!hasContributions && currentConsoleTab === 'contributions') {
-                currentConsoleTab = (server.isExtension || server.isDap) ? 'overview' : 'traces';
+            if (!hasContributions && state.currentConsoleTab === 'contributions') {
+                state.currentConsoleTab = (server.isExtension || server.isDap) ? 'overview' : 'traces';
             }
 
             // Build icon for console title
@@ -772,31 +761,31 @@
                             <span class="status-indicator" id="sse-status"></span>
                         </div>
                         <div class="console-tabs">
-                            ${!server.isExtension && !server.isDap ? `<button class="tab-button ${currentConsoleTab === 'traces' ? 'active' : ''}" onclick="switchConsoleTab('traces')">Traces</button>` : ''}
-                            <button class="tab-button ${currentConsoleTab === 'overview' ? 'active' : ''}" onclick="switchConsoleTab('overview')">Overview</button>
-                            ${hasContributions ? `<button class="tab-button ${currentConsoleTab === 'contributions' ? 'active' : ''}" onclick="switchConsoleTab('contributions')">Contributions</button>` : ''}
-                            <button class="tab-button ${currentConsoleTab === 'install' ? 'active' : ''}" onclick="switchConsoleTab('install')">Install</button>
+                            ${!server.isExtension && !server.isDap ? `<button class="tab-button ${state.currentConsoleTab === 'traces' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="traces">Traces</button>` : ''}
+                            <button class="tab-button ${state.currentConsoleTab === 'overview' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="overview">Overview</button>
+                            ${hasContributions ? `<button class="tab-button ${state.currentConsoleTab === 'contributions' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="contributions">Contributions</button>` : ''}
+                            <button class="tab-button ${state.currentConsoleTab === 'install' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="install">Install</button>
                         </div>
                         <div class="console-controls">
-                            ${TraceRenderer.renderTraceControls('trace', currentTraceLevel, 'changeTraceLevel(this.value)', {
-                                onFold: 'toggleAllTraces()',
-                                onClear: 'clearConsole()',
+                            ${renderTraceControls('trace', currentTraceLevel, 'changeTraceLevel', {
+                                foldAction: 'toggleAllTracesWorkspace',
+                                clearAction: 'clearConsole',
                                 wrapperId: 'traces-controls',
-                                wrapperDisplay: currentConsoleTab === 'traces' ? 'contents' : 'none'
+                                wrapperDisplay: state.currentConsoleTab === 'traces' ? 'contents' : 'none'
                             })}
                         </div>
                     </div>
                     <div class="tab-content">
-                        <div id="traces-tab" class="tab-panel ${currentConsoleTab === 'traces' ? 'active' : ''}">
+                        <div id="traces-tab" class="tab-panel ${state.currentConsoleTab === 'traces' ? 'active' : ''}">
                             <div class="console" id="console-output" tabindex="0"></div>
                         </div>
-                        <div id="overview-tab" class="tab-panel ${currentConsoleTab === 'overview' ? 'active' : ''}">
+                        <div id="overview-tab" class="tab-panel ${state.currentConsoleTab === 'overview' ? 'active' : ''}">
                             <div class="details-panel" id="overview-content">
                                 <p>Loading...</p>
                             </div>
                         </div>
                         ${hasContributions ? `
-                        <div id="contributions-tab" class="tab-panel ${currentConsoleTab === 'contributions' ? 'active' : ''}">
+                        <div id="contributions-tab" class="tab-panel ${state.currentConsoleTab === 'contributions' ? 'active' : ''}">
                             <div id="workspace-diagram-container" class="w-100 bg-card" style="height: 400px; flex-shrink: 0;"></div>
                             <div class="diagram-resizer"></div>
                             <div class="details-panel text-primary flex-1 min-h-0" id="contributions-content" style="padding: 2rem; overflow-y: auto;">
@@ -804,7 +793,7 @@
                             </div>
                         </div>
                         ` : ''}
-                        <div id="install-tab" class="tab-panel ${currentConsoleTab === 'install' ? 'active' : ''}">
+                        <div id="install-tab" class="tab-panel ${state.currentConsoleTab === 'install' ? 'active' : ''}">
                             <div class="install-panel">
                                 <h3>Installer Configuration</h3>
                                 <div class="install-info">
@@ -815,11 +804,11 @@
                                     <div class="editor-header">
                                         <span>installer.json</span>
                                         <div class="editor-actions">
-                                            <button class="editor-btn" onclick="saveInstallerJson('${server.id}')" title="Save">💾 Save</button>
-                                            <button class="editor-btn" onclick="resetInstallerJson('${server.id}')" title="Reset">↻ Reset</button>
+                                            <button class="editor-btn" data-action="saveInstallerJson" data-server-id="${server.id}" title="Save">💾 Save</button>
+                                            <button class="editor-btn" data-action="resetInstallerJson" data-server-id="${server.id}" title="Reset">↻ Reset</button>
                                             <span class="editor-separator"></span>
-                                            <button class="editor-btn install-run-btn" onclick="runInstaller('${server.id}', false)" title="Install (check first, skip if already installed)">▶ Install</button>
-                                            <button class="editor-btn install-force-btn" onclick="runInstaller('${server.id}', true)" title="Force Install (skip check, always re-install)">⟳ Force Install</button>
+                                            <button class="editor-btn install-run-btn" data-action="runInstaller" data-server-id="${server.id}" data-force="false" title="Install (check first, skip if already installed)">▶ Install</button>
+                                            <button class="editor-btn install-force-btn" data-action="runInstaller" data-server-id="${server.id}" data-force="true" title="Force Install (skip check, always re-install)">⟳ Force Install</button>
                                         </div>
                                     </div>
                                     <textarea id="installer-json-editor" class="json-editor" spellcheck="false"></textarea>
@@ -831,23 +820,23 @@
                 </div>
             `;
 
-            window.currentServerId = server.id;
+            state.currentServerId = server.id;
 
             // Store servers data for diagram rendering (include both LSP and DAP)
-            const currentWorkspace = workspaces.find(w => w.rootUri === selectedWorkspace);
+            const currentWorkspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             if (currentWorkspace) {
-                window.currentWorkspaceDiagramServers = allServers;
-                window.currentWorkspaceDiagramServerId = server.id;
+                state.currentWorkspaceDiagramServers = allServers;
+                state.currentWorkspaceDiagramServerId = server.id;
             }
 
             // If contributions tab is active, render diagram immediately
-            if (currentConsoleTab === 'contributions' && currentWorkspace) {
+            if (state.currentConsoleTab === 'contributions' && currentWorkspace) {
                 setTimeout(() => renderWorkspaceDiagram(allServers, server.id), 100);
             }
 
             // Initialize trace level selector from WebSocket-provided data
-            const traceKey = server.isDap ? 'dap.' + server.id : 'lsp.' + server.id;
-            const savedTraceLevel = window.traceLevels && window.traceLevels[traceKey];
+            const tk = server.isDap ? 'dap.' + server.id : 'lsp.' + server.id;
+            const savedTraceLevel = state.traceLevels && state.traceLevels[tk];
             currentTraceLevel = savedTraceLevel || 'off';
             const traceLevelSelect = document.getElementById('trace-level');
             if (traceLevelSelect) {
@@ -858,8 +847,8 @@
             // Load traces for specific workspace + server
             try {
                 // Traces are populated via WebSocket (history on connect + real-time updates)
-                if (!tracesByServer[window.traceKey(selectedWorkspace, server.id)]) {
-                    tracesByServer[window.traceKey(selectedWorkspace, server.id)] = [];
+                if (!state.tracesByServer[traceKey(state.selectedWorkspace, server.id)]) {
+                    state.tracesByServer[traceKey(state.selectedWorkspace, server.id)] = [];
                 }
                 renderConsole();
             } catch (error) {
@@ -870,7 +859,9 @@
             loadServerDetails(server.id);
 
             // Load installer.json
-            loadInstallerJson(server.id);
+            if (installerCallbacks.loadInstallerJson) {
+                installerCallbacks.loadInstallerJson(server.id);
+            }
         }
 
 
@@ -884,14 +875,14 @@
                 }
                 console.log('detailsContent found, fetching details...');
 
-                const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
+                const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
 
                 // Check if this is a DAP server
-                const dapServer = Object.values(window.dapConfigs || {})?.find(s => s.id === serverId);
+                const dapServer = Object.values(state.dapConfigs || {})?.find(s => s.id === serverId);
 
                 if (dapServer) {
                     // DAP server - display its details directly
-                    const dapServersWithFlag = (Object.values(window.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
+                    const dapServersWithFlag = (Object.values(state.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
                     const allServers = [...(workspace.lspServers || []), ...dapServersWithFlag];
 
                     detailsContent.innerHTML = `
@@ -1026,7 +1017,7 @@
                         const selected = v === currentValue ? 'selected' : '';
                         return `<option value="${v}" ${selected}>${label}</option>`;
                     }).join('');
-                    controlHTML = `<select class="select-field" onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+                    controlHTML = `<select class="select-field" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
                                            style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">
                                        ${options}
                                    </select>`;
@@ -1034,12 +1025,12 @@
                     const checked = currentValue === 'true' ? 'checked' : '';
                     controlHTML = `<label class="toggle-switch">
                                        <input type="checkbox" ${checked}
-                                              onchange="updateServerSetting('${serverId}', '${setting.key}', this.checked ? 'true' : 'false')">
+                                              data-action="updateServerSettingBool" data-server-id="${serverId}" data-setting-key="${setting.key}">
                                        <span class="toggle-slider"></span>
                                    </label>`;
                 } else {
                     controlHTML = `<input type="text" class="input-field" value="${currentValue}"
-                                          onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+                                          data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
                                           style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">`;
                 }
 
@@ -1064,144 +1055,16 @@
             `;
         }
 
-        /**
-         * Format contributions section for server details view.
-         * Shows both "Contributes To" and "Contributed By" with contribution details.
-         * @param {Object} server - The server object with contributions
-         * @param {Array} allServers - All servers list for calculating contributedBy (optional, will fetch from workspace if not provided)
-         */
-        function formatContributionsSection(server, allServers = null) {
-            console.log('formatContributionsSection - server:', server.id, 'contributions:', server.contributions);
-            const contributesTo = server.contributions ? Object.keys(server.contributions) : [];
-
-            // Calculate contributedBy from all servers (include both LSP and DAP, mark DAP servers)
-            if (!allServers) {
-                const workspace = workspaces.find(w => w.rootUri === selectedWorkspace);
-                const dapServersWithFlag = (Object.values(window.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
-                allServers = workspace ? [...(workspace.lspServers || []), ...dapServersWithFlag] : [];
-            }
-            const contributedByMap = buildWorkspaceContributedByMap(allServers);
-            const contributedBy = contributedByMap[server.id] || [];
-            console.log('  contributesTo:', contributesTo, 'contributedBy:', contributedBy);
-
-            if (contributesTo.length === 0 && contributedBy.length === 0) {
-                return ''; // No contributions section if nothing to show
-            }
-
-            let html = '<div class="details-section"><h4>Contributions</h4>';
-
-            // Show "Contributes To" section
-            if (contributesTo.length > 0) {
-                html += '<div class="contribution-subsection">';
-                html += '<h5 class="text-success mb-sm">→ Contributes To</h5>';
-
-                for (const targetServerId of contributesTo) {
-                    const contributionData = server.contributions[targetServerId];
-                    html += `<div class="contribution-target mb-lg">`;
-                    html += `<div class="text-label-alt mb-xs" style="font-weight: bold;">${targetServerId}</div>`;
-
-                    // Show each contribution type (bundles, classpath, bindRequest, etc.)
-                    for (const [type, items] of Object.entries(contributionData)) {
-                        if (items && items.length > 0) {
-                            html += `<div class="mb-sm" style="margin-left: 1rem;">`;
-                            html += `<span class="text-secondary">${type}:</span>`;
-                            html += `<ul class="text-secondary p-0 font-base" style="margin: 0.25rem 0 0 1.5rem;">`;
-                            items.forEach(item => {
-                                const displayValue = typeof item === 'string' ? item : JSON.stringify(item);
-                                const isError = displayValue.startsWith('ERROR:');
-                                const cleanValue = isError ? displayValue.substring(6) : displayValue;
-                                const errorClass = isError ? 'text-error-light' : '';
-                                const style = isError
-                                    ? 'font-weight: bold; cursor: help;'
-                                    : '';
-                                const title = isError ? 'File not found or pattern did not match any files' : '';
-                                html += `<li class="${errorClass}" style="margin-bottom: 0.2rem; word-break: break-all; ${style}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</li>`;
-                            });
-                            html += `</ul></div>`;
-                        }
-                    }
-                    html += `</div>`;
-                }
-                html += '</div>';
-            }
-
-            // Show "Contributed By" section grouped by contribution type
-            if (contributedBy.length > 0) {
-                html += '<div class="contribution-subsection mt-lg">';
-                html += '<h5 class="text-string mb-sm">← Contributed By</h5>';
-
-                // Group contributions by type (bundles, bindRequest, classpath, etc.)
-                const contributionsByType = {};
-
-                contributedBy.forEach(contributorServerId => {
-                    // Find the contributor server in allServers to get its contributions
-                    const contributorServer = allServers.find(s => s.id === contributorServerId);
-                    if (!contributorServer || !contributorServer.contributions) {
-                        return;
-                    }
-
-                    // Get what this contributor gives to the current server
-                    const contributionData = contributorServer.contributions[server.id];
-                    if (!contributionData) {
-                        return;
-                    }
-
-                    // Group by type
-                    for (const [type, items] of Object.entries(contributionData)) {
-                        if (items && items.length > 0) {
-                            if (!contributionsByType[type]) {
-                                contributionsByType[type] = [];
-                            }
-                            items.forEach(item => {
-                                contributionsByType[type].push({
-                                    server: contributorServerId,
-                                    value: item
-                                });
-                            });
-                        }
-                    }
-                });
-
-                // Display grouped by type
-                for (const [type, contributions] of Object.entries(contributionsByType)) {
-                    html += `<div class="mb-lg">`;
-                    html += `<div class="text-secondary mb-sm" style="font-weight: bold;">${type} <span class="text-dimmed">(Total: ${contributions.length})</span></div>`;
-                    html += `<div style="margin-left: 1rem;">`;
-
-                    contributions.forEach(contrib => {
-                        const displayValue = typeof contrib.value === 'string' ? contrib.value : JSON.stringify(contrib.value);
-                        const isError = displayValue.startsWith('ERROR:');
-                        const cleanValue = isError ? displayValue.substring(6) : displayValue;
-                        const valueClass = isError ? 'text-error-light' : '';
-                        const valueStyle = isError
-                            ? 'word-break: break-all; font-weight: bold; cursor: help;'
-                            : 'word-break: break-all;';
-                        const title = isError ? 'File not found or pattern did not match any files' : '';
-                        html += `<div class="text-secondary font-base" style="margin-bottom: 0.3rem;">`;
-                        html += `<span class="text-label-alt d-inline-block" style="min-width: 120px;">${contrib.server}</span>`;
-                        html += `<span class="text-label">•</span> `;
-                        html += `<span class="${valueClass}" style="${valueStyle}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</span>`;
-                        html += `</div>`;
-                    });
-
-                    html += `</div></div>`;
-                }
-
-                html += '</div>';
-            }
-
-            html += '</div>';
-            return html;
-        }
-
         function switchConsoleTab(tabName) {
-            currentConsoleTab = tabName; // Save current tab
+            state.currentConsoleTab = tabName; // Save current tab
 
             // Update tab buttons
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            // Find the clicked button by data-tab attribute
+            const clickedBtn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+            if (clickedBtn) clickedBtn.classList.add('active');
 
             // Update tab panels
             document.querySelectorAll('.tab-panel').forEach(panel => {
@@ -1216,13 +1079,11 @@
             }
 
             // Show/hide search box (only visible in traces tab)
-            if (typeof updateSearchBoxVisibility === 'function') {
-                updateSearchBoxVisibility(tabName === 'traces');
-            }
+            updateSearchBoxVisibility(tabName === 'traces');
 
             // Render diagram when switching to contributions tab
-            if (tabName === 'contributions' && window.currentWorkspaceDiagramServers) {
-                renderWorkspaceDiagram(window.currentWorkspaceDiagramServers, window.currentWorkspaceDiagramServerId);
+            if (tabName === 'contributions' && state.currentWorkspaceDiagramServers) {
+                renderWorkspaceDiagram(state.currentWorkspaceDiagramServers, state.currentWorkspaceDiagramServerId);
             }
         }
 
@@ -1233,7 +1094,9 @@
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            // Find the clicked button
+            const clickedBtn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+            if (clickedBtn) clickedBtn.classList.add('active');
 
             // Update tab panels
             document.querySelectorAll('.tab-panel').forEach(panel => {
@@ -1242,18 +1105,18 @@
             document.getElementById('server-' + tabName + '-tab').classList.add('active');
 
             // Render diagram when switching to contributions tab
-            if (tabName === 'contributions' && window.currentDiagramServers) {
-                renderServerDiagram(window.currentDiagramServers, window.currentDiagramServerId);
+            if (tabName === 'contributions' && state.currentDiagramServers) {
+                renderServerDiagram(state.currentDiagramServers, state.currentDiagramServerId);
             }
         }
 
 
-        function renderConsole() {
+        export function renderConsole() {
             const container = document.getElementById('console-output');
             if (!container) return;
 
             // Get traces for current workspace + server
-            const traces = tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] || [];
+            const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
 
             // Filter traces based on current level
             const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
@@ -1266,91 +1129,21 @@
                 return;
             }
 
-            const wasAtBottom = TraceRenderer.isScrolledToBottom(container);
-            const expandedIds = TraceRenderer.saveExpandedState(container);
+            const wasAtBottom = isScrolledToBottom(container);
+            const expandedIds = saveExpandedState(container);
 
-            container.innerHTML = filteredTraces.map((trace, index) => {
-                const content = trace.content;
+            container.innerHTML = filteredTraces.map((trace, index) =>
+                renderTrace(trace, index, currentTraceLevel, getCurrentSearchQuery())
+            ).join('');
 
-                // Parse the trace: first line is header, rest is body
-                const lines = content.split('\n');
-                const headerLine = lines[0]; // [Trace - HH:mm:ss] ...
+            initTraceContainer('console-output');
 
-                // Detect trace type for coloring
-                const isError = headerLine.startsWith('[Error') || trace.messageType === 'ERROR';
-                const isInfo = trace.messageType === 'INFO';
-                const isUpdate = trace.messageType === 'UPDATE';
-                const traceTypeClass = isError ? 'trace-type-error' : isInfo ? 'trace-type-info' : isUpdate ? 'trace-type-update' : 'trace-type-default';
-
-                // Messages mode: show only header line, no folding
-                if (currentTraceLevel === 'messages') {
-                    return `
-                        <div class="trace-line">
-                            <div class="${traceTypeClass} font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
-                        </div>
-                    `;
-                }
-
-                // Verbose mode: header + body folded by default
-                const bodyLines = lines.slice(1);
-                const body = bodyLines.join('\n').trim();
-                const hasBody = body.length > 0;
-
-                // If no body, display like messages mode (no toggle arrow)
-                if (!hasBody) {
-                    return `
-                        <div class="trace-line">
-                            <div class="${traceTypeClass} font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
-                        </div>
-                    `;
-                }
-
-                // Filter out trailing empty lines
-                let trimmedBodyLines = bodyLines;
-                while (trimmedBodyLines.length > 0 && trimmedBodyLines[trimmedBodyLines.length - 1].trim() === '') {
-                    trimmedBodyLines = trimmedBodyLines.slice(0, -1);
-                }
-
-                // Colorize stack trace lines in body
-                let bodyHtml = '';
-                for (let i = 0; i < trimmedBodyLines.length; i++) {
-                    const line = trimmedBodyLines[i];
-                    const trimmed = line.trim();
-                    if (isError && trimmed.startsWith('at ') && trimmed.includes('(') && trimmed.includes(')')) {
-                        bodyHtml += `<span class="text-error-light">${escapeHtml(line)}</span>`;
-                    } else {
-                        bodyHtml += escapeHtml(line);
-                    }
-                    // Add newline except for last line
-                    if (i < trimmedBodyLines.length - 1) {
-                        bodyHtml += '\n';
-                    }
-                }
-
-                const fullContent = headerLine + '\n' + body;
-
-                return `
-                    <div class="trace-line" onmouseenter="showTooltip(event, ${index}, true)" onmouseleave="hideTooltip(${index})">
-                        <div class="trace-header folded font-mono-sm p-xs" id="header-${index}"
-                             onmousedown="onHeaderMouseDown(${index})"
-                             onmouseup="onHeaderMouseUp(${index})">
-                            <span class="trace-toggle mr-sm" id="toggle-${index}">▶</span>
-                            <span class="trace-header-text ${traceTypeClass}">${escapeHtml(headerLine)}</span>
-                        </div>
-                        <div class="trace-body collapsed text-primary font-mono-sm text-pre-wrap" id="body-${index}">${bodyHtml}</div>
-                        <div class="trace-tooltip" id="tooltip-${index}">${escapeHtml(fullContent)}</div>
-                    </div>
-                `;
-            }).join('');
-
-            TraceRenderer.restoreExpandedState(container, expandedIds);
+            restoreExpandedState(container, expandedIds);
 
             if (wasAtBottom) {
                 container.scrollTop = container.scrollHeight;
             }
         }
-
-        // escapeHtml, showTooltip, hideTooltip, toggleTrace now provided by TraceRenderer
 
         let mouseDownTime = 0;
         let mouseDownIndex = -1;
@@ -1367,7 +1160,7 @@
                 // Vérifier si du texte a été sélectionné
                 const selection = window.getSelection();
                 if (!selection || selection.toString().length === 0) {
-                    window.toggleTrace(index); // Use global function from TraceRenderer
+                    toggleTrace(index);
                 }
             }
             mouseDownIndex = -1;
@@ -1409,7 +1202,7 @@
             }
         }
 
-        function toggleAllTraces() {
+        function toggleAllTracesWorkspace() {
             toggleAllTracesGeneric('console-output', 'trace-body', 'trace-toggle', 'trace-fold-button', {
                 get value() { return allFolded; },
                 set value(v) { allFolded = v; }
@@ -1468,8 +1261,8 @@
                 await fetch('/api/admin/traces/lsp', { method: 'DELETE' });
 
                 // Clear traces for current workspace + server only
-                if (window.currentServerId) {
-                    tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] = [];
+                if (state.currentServerId) {
+                    state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] = [];
                 }
 
                 renderConsole();
@@ -1487,9 +1280,9 @@
         }
 
         async function stopServerAction(serverId) {
-            if (!selectedWorkspace) return;
+            if (!state.selectedWorkspace) return;
 
-            const server = workspaces.find(w => w.rootUri === selectedWorkspace)?.lspServers.find(s => s.id === serverId);
+            const server = state.workspaces.find(w => w.rootUri === state.selectedWorkspace)?.lspServers.find(s => s.id === serverId);
             if (!server) return;
 
             const confirmed = await confirmAction(
@@ -1503,7 +1296,7 @@
             clearServerActions(serverId);
             try {
                 const response = await fetch(
-                    `/api/admin/lsp/servers/${encodeURIComponent(selectedWorkspace)}/${serverId}/stop`,
+                    `/api/admin/lsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/stop`,
                     { method: 'POST' }
                 );
 
@@ -1518,15 +1311,15 @@
         }
 
         async function startManagedServerAction(serverId) {
-            if (!selectedWorkspace) return;
+            if (!state.selectedWorkspace) return;
 
-            const server = workspaces.find(w => w.rootUri === selectedWorkspace)?.lspServers.find(s => s.id === serverId);
+            const server = state.workspaces.find(w => w.rootUri === state.selectedWorkspace)?.lspServers.find(s => s.id === serverId);
             if (!server) return;
 
             clearServerActions(serverId);
             try {
                 const response = await fetch(
-                    `/api/admin/lsp/servers/${encodeURIComponent(selectedWorkspace)}/${serverId}/start-managed`,
+                    `/api/admin/lsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/start-managed`,
                     { method: 'POST' }
                 );
 
@@ -1541,9 +1334,9 @@
         }
 
         async function restartServerAction(serverId) {
-            if (!selectedWorkspace) return;
+            if (!state.selectedWorkspace) return;
 
-            const server = workspaces.find(w => w.rootUri === selectedWorkspace)?.lspServers.find(s => s.id === serverId);
+            const server = state.workspaces.find(w => w.rootUri === state.selectedWorkspace)?.lspServers.find(s => s.id === serverId);
             if (!server) return;
 
             const confirmed = await confirmAction(
@@ -1557,7 +1350,7 @@
             clearServerActions(serverId);
             try {
                 const response = await fetch(
-                    `/api/admin/lsp/servers/${encodeURIComponent(selectedWorkspace)}/${serverId}/restart`,
+                    `/api/admin/lsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/restart`,
                     { method: 'POST' }
                 );
 
@@ -1572,9 +1365,9 @@
         }
 
         async function disconnectFromIdeAction(serverId) {
-            if (!selectedWorkspace) return;
+            if (!state.selectedWorkspace) return;
 
-            const server = workspaces.find(w => w.rootUri === selectedWorkspace)?.lspServers.find(s => s.id === serverId);
+            const server = state.workspaces.find(w => w.rootUri === state.selectedWorkspace)?.lspServers.find(s => s.id === serverId);
             if (!server) return;
 
             const confirmed = await confirmAction(
@@ -1588,7 +1381,7 @@
             clearServerActions(serverId);
             try {
                 const response = await fetch(
-                    `/api/admin/lsp/servers/${encodeURIComponent(selectedWorkspace)}/${serverId}/disconnect`,
+                    `/api/admin/lsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/disconnect`,
                     { method: 'POST' }
                 );
 
@@ -1603,15 +1396,15 @@
         }
 
         async function connectToIdeAction(serverId) {
-            if (!selectedWorkspace) return;
+            if (!state.selectedWorkspace) return;
 
-            const server = workspaces.find(w => w.rootUri === selectedWorkspace)?.lspServers.find(s => s.id === serverId);
+            const server = state.workspaces.find(w => w.rootUri === state.selectedWorkspace)?.lspServers.find(s => s.id === serverId);
             if (!server) return;
 
             clearServerActions(serverId);
             try {
                 const response = await fetch(
-                    `/api/admin/lsp/servers/${encodeURIComponent(selectedWorkspace)}/${serverId}/connect-ide`,
+                    `/api/admin/lsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/connect-ide`,
                     { method: 'POST' }
                 );
 
@@ -1634,16 +1427,16 @@
 
         // Search functionality - delegate to TraceRenderer
         // Initialize search listeners with render callback
-        TraceRenderer.initSearchListeners((query) => {
+        initSearchListeners((query) => {
             // Re-render with highlighting based on active console
             // Check DAP first (by currentDapSessionId presence, not tab name)
-            if (window.currentDapSessionId) {
-                if (window.renderDapTracesForSession) {
-                    window.renderDapTracesForSession(window.currentDapSessionId);
+            if (state.currentDapSessionId) {
+                if (renderDapTracesForSessionFn) {
+                    renderDapTracesForSessionFn(state.currentDapSessionId);
                 }
-            } else if (window.currentTab === 'mcp-traces') {
-                if (window.renderMcpConsoleWithHighlights) {
-                    window.renderMcpConsoleWithHighlights();
+            } else if (state.currentTab === 'mcp-traces') {
+                if (renderMcpConsoleWithHighlightsFn) {
+                    renderMcpConsoleWithHighlightsFn();
                 }
             } else {
                 // LSP traces
@@ -1651,16 +1444,11 @@
             }
         });
 
-        // Aliases to TraceRenderer utilities for local use
-        const highlightText = TraceRenderer.highlightText;
-        const escapeHtml = TraceRenderer.escapeHtml;
-        const escapeRegex = TraceRenderer.escapeRegex;
-
         function renderConsoleWithHighlights() {
             const container = document.getElementById('console-output');
             if (!container) return;
 
-            const traces = tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] || [];
+            const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
             const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
 
             if (filteredTraces.length === 0) {
@@ -1673,7 +1461,7 @@
 
             // Use TraceRenderer for rendering traces
             container.innerHTML = filteredTraces.map((trace, index) =>
-                TraceRenderer.renderTrace(trace, index, currentTraceLevel, TraceRenderer.getCurrentSearchQuery())
+                renderTrace(trace, index, currentTraceLevel, getCurrentSearchQuery())
             ).join('');
         }
 
@@ -1684,7 +1472,7 @@
             if (!container) return;
 
             // Get traces for current workspace + server
-            const traces = tracesByServer[window.traceKey(selectedWorkspace, window.currentServerId)] || [];
+            const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
 
             // Filter traces based on current level
             const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
@@ -1729,7 +1517,7 @@
 
                 return `
                     <div class="trace-line">
-                        <div class="trace-header folded font-mono-sm p-xs" onclick="toggleTrace(${index})">
+                        <div class="trace-header folded font-mono-sm p-xs" data-trace-toggle="${index}">
                             <span class="trace-toggle mr-sm" id="toggle-${index}">▶</span>
                             <span class="trace-header-text text-primary">${escapeHtml(headerLine)}</span>
                         </div>
@@ -1739,79 +1527,55 @@
             }).join('');
         }
 
-        // Modal functions
-        function showModal(title, message, buttons) {
-            const modal = document.getElementById('modal-overlay');
-            const modalTitle = document.getElementById('modal-title');
-            const modalMessage = document.getElementById('modal-message');
-            const modalButtons = document.getElementById('modal-buttons');
-
-            modalTitle.textContent = title;
-            modalMessage.textContent = message;
-
-            modalButtons.innerHTML = buttons.map(btn => `
-                <button class="modal-button ${btn.type || 'secondary'}"
-                        onclick="${btn.onclick}">${btn.label}</button>
-            `).join('');
-
-            modal.classList.add('visible');
+        async function createNewTestSession(serverId) {
+            createNewTestSessionImpl(serverId);
         }
 
-        function hideModal() {
-            document.getElementById('modal-overlay').classList.remove('visible');
-        }
-
-        async function confirmAction(title, message, confirmLabel, isDanger = false) {
-            return new Promise((resolve) => {
-                showModal(title, message, [
-                    {
-                        label: 'Cancel',
-                        type: 'secondary',
-                        onclick: `hideModal(); window.modalResolve(false);`
-                    },
-                    {
-                        label: confirmLabel,
-                        type: isDanger ? 'danger' : 'primary',
-                        onclick: `hideModal(); window.modalResolve(true);`
-                    }
-                ]);
-
-                window.modalResolve = resolve;
-            });
-        }
-
-        function showAlert(title, message) {
-            showModal(title, message, [
-                {
-                    label: 'OK',
-                    type: 'primary',
-                    onclick: 'hideModal()'
+        // Register all event delegation actions
+        registerActions('click', {
+            selectWorkspace: (el) => selectWorkspace(el.dataset.uri),
+            closeWorkspace: (el) => closeWorkspace(el.dataset.uri),
+            selectServerItem: (el) => {
+                const serverId = el.dataset.serverId;
+                const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+                if (workspace && workspace.lspServers) {
+                    const server = workspace.lspServers.find(s => s.id === serverId);
+                    if (server) selectServer(server, true);
                 }
-            ]);
-        }
+            },
+            selectDapServerItem: (el) => {
+                const serverId = el.dataset.serverId;
+                const dapServer = Object.values(state.dapConfigs || {}).find(s => s.id === serverId);
+                if (dapServer) selectDapServer(dapServer);
+            },
+            switchWorkspaceTab: (el) => switchWorkspaceTab(el.dataset.tab),
+            switchConsoleTab: (el) => switchConsoleTab(el.dataset.tab),
+            stopServerAction: (el) => stopServerAction(el.dataset.serverId),
+            restartServerAction: (el) => restartServerAction(el.dataset.serverId),
+            startManagedServerAction: (el) => startManagedServerAction(el.dataset.serverId),
+            disconnectFromIdeAction: (el) => disconnectFromIdeAction(el.dataset.serverId),
+            connectToIdeAction: (el) => connectToIdeAction(el.dataset.serverId),
+            createNewTestSession: (el) => createNewTestSession(el.dataset.serverId),
+            toggleAllTracesWorkspace: () => toggleAllTracesWorkspace(),
+            clearConsole: () => clearConsole(),
+            saveInstallerJson: (el) => {
+                if (installerCallbacks.saveInstallerJson) installerCallbacks.saveInstallerJson(el.dataset.serverId);
+            },
+            resetInstallerJson: (el) => {
+                if (installerCallbacks.resetInstallerJson) installerCallbacks.resetInstallerJson(el.dataset.serverId);
+            },
+            runInstaller: (el) => {
+                if (installerCallbacks.runInstaller) installerCallbacks.runInstaller(el.dataset.serverId, el.dataset.force === 'true');
+            },
+        });
 
-        // Close modal on overlay click (if modal exists)
-        const modalOverlay = document.getElementById('modal-overlay');
-        if (modalOverlay) {
-            modalOverlay.addEventListener('click', (e) => {
-                if (e.target.id === 'modal-overlay') {
-                    hideModal();
-                    if (window.modalResolve) {
-                        window.modalResolve(false);
-                    }
-                }
-            });
-        }
-
-        // Expose globally for DAP session updates
-        window.loadDapSessionsForWorkspace = loadDapSessionsForWorkspace;
-        window.renderServers = renderServers;
-
-
-// Expose globally
-window.loadDapSessions = loadDapSessions;
-
-// Expose renderWorkspaces at global scope (needed by admin.js)
-if (typeof renderWorkspaces !== 'undefined') {
-    window.renderWorkspaces = renderWorkspaces;
-}
+        registerActions('change', {
+            toggleShowActiveServers: () => toggleShowActiveServers(),
+            toggleWorkspaceLspServerEnabled: (el) => {
+                toggleWorkspaceLspServerEnabled(el.dataset.serverId, el.checked);
+            },
+            toggleWorkspaceDapServerEnabled: (el) => {
+                toggleWorkspaceDapServerEnabled(el.dataset.serverId, el.checked);
+            },
+            changeTraceLevel: (el) => changeTraceLevel(el.value),
+        });

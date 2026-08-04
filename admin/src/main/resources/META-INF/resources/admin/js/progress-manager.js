@@ -1,23 +1,18 @@
-/**
- * Global Progress Manager for Admin UI
- * Tracks multiple concurrent tasks and displays them in a footer panel.
- * Supports dual progress bars: global (overall) + step detail (toggle-able).
- */
+import { state } from './shared-state.js';
+import { escapeHtml } from './trace-renderer.js';
+import { registerActions } from './event-delegation.js';
 
-// Map of active tasks: taskId -> task object
 const activeTasks = new Map();
-
-// Map of step definitions per task: taskId -> { steps: [...] }
 const taskSteps = new Map();
-
-// Set of task IDs with detail expanded
 const taskDetailExpanded = new Set();
 
-/**
- * Add or update a task in the progress manager
- * @param {Object} task - Task object with: { id, serverId, title, percent, message, status, stepId, stepProgress }
- */
-function updateTask(task) {
+let installProgressCallback = null;
+
+export function setInstallProgressCallback(cb) {
+    installProgressCallback = cb;
+}
+
+export function updateTask(task) {
     if (!task || !task.id) return;
 
     activeTasks.set(task.id, {
@@ -29,11 +24,7 @@ function updateTask(task) {
     refreshProgressPanel();
 }
 
-/**
- * Remove a task from the progress manager
- * @param {string} taskId - Unique task ID
- */
-function removeTask(taskId) {
+export function removeTask(taskId) {
     activeTasks.delete(taskId);
     taskSteps.delete(taskId);
     taskDetailExpanded.delete(taskId);
@@ -41,10 +32,7 @@ function removeTask(taskId) {
     refreshProgressPanel();
 }
 
-/**
- * Clear all tasks
- */
-function clearAllTasks() {
+export function clearAllTasks() {
     activeTasks.clear();
     taskSteps.clear();
     taskDetailExpanded.clear();
@@ -52,9 +40,6 @@ function clearAllTasks() {
     refreshProgressPanel();
 }
 
-/**
- * Refresh the footer status
- */
 function refreshProgressFooter() {
     const statusEl = document.getElementById('progress-status');
     const countEl = document.getElementById('progress-count');
@@ -79,9 +64,6 @@ function refreshProgressFooter() {
     }
 }
 
-/**
- * Refresh the progress panel content
- */
 function refreshProgressPanel() {
     const content = document.getElementById('progress-panel-content');
 
@@ -145,7 +127,7 @@ function refreshProgressPanel() {
 
             const cancellable = hasSteps && stepDefs.cancellable;
             const cancelBtn = cancellable
-                ? `<button class="progress-task-cancel" onclick="cancelProgressTask('${task.id}')" title="Cancel this task">Cancel</button>`
+                ? `<button class="progress-task-cancel" data-action="cancelProgressTask" data-task-id="${task.id}" title="Cancel this task">Cancel</button>`
                 : '';
 
             return `
@@ -171,18 +153,12 @@ function refreshProgressPanel() {
     content.innerHTML = tasksHtml;
 }
 
-/**
- * Toggle the progress panel visibility
- */
-function toggleProgressPanel() {
+export function toggleProgressPanel() {
     const panel = document.getElementById('progress-panel');
     panel.classList.toggle('visible');
 }
 
-/**
- * Handle progress-init messages from WebSocket (step definitions)
- */
-function handleProgressInit(msg) {
+export function handleProgressInit(msg) {
     if (msg.taskId && msg.steps) {
         taskSteps.set(msg.taskId, {
             steps: msg.steps,
@@ -193,11 +169,6 @@ function handleProgressInit(msg) {
     }
 }
 
-/**
- * Get the display label for a step ID with step numbering (e.g., "Installing (1/4)").
- * Uses step definitions from progress-init to compute position and total.
- * Falls back to the raw step ID if no init data is available.
- */
 function getStepLabel(taskId, stepId) {
     const stepDefs = taskSteps.get(taskId);
     if (stepDefs && stepDefs.steps) {
@@ -211,20 +182,14 @@ function getStepLabel(taskId, stepId) {
     return stepId;
 }
 
-/**
- * Handle progress update messages from WebSocket
- */
-function handleProgressUpdate(msg) {
-    // Forward to install output panel if this server is being installed
-    if (window.installOutputServerId === msg.serverId && typeof updateInstallProgress === 'function') {
-        updateInstallProgress(msg);
+export function handleProgressUpdate(msg) {
+    if (state.installOutputServerId === msg.serverId && installProgressCallback) {
+        installProgressCallback(msg);
     }
 
     if (msg.status === 'completed' || msg.status === 'failed') {
-        // Remove task after a short delay
         setTimeout(() => removeTask(msg.taskId), 2000);
     } else {
-        // Update or create task
         updateTask({
             id: msg.taskId,
             serverId: msg.serverId,
@@ -238,10 +203,7 @@ function handleProgressUpdate(msg) {
     }
 }
 
-/**
- * Cancel a progress task via REST API (Admin-only cancellation).
- */
-async function cancelProgressTask(taskId) {
+export async function cancelProgressTask(taskId) {
     try {
         const response = await fetch(`/api/admin/lsp/progress/${encodeURIComponent(taskId)}/cancel`, {
             method: 'POST'
@@ -255,5 +217,7 @@ async function cancelProgressTask(taskId) {
     }
 }
 
-// Tasks are removed when the backend sends status "completed" or "failed"
-// (handled in handleProgressUpdate with a 2-second delay).
+registerActions('click', {
+    cancelProgressTask: (el) => cancelProgressTask(el.dataset.taskId),
+    toggleProgressPanel: () => toggleProgressPanel(),
+});

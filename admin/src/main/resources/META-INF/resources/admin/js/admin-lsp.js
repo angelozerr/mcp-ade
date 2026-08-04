@@ -4,6 +4,16 @@
  * Handles global LSP server listing with Overview/Install tabs
  */
 
+import { state, getServerApiBase } from './shared-state.js';
+import { showAlert } from './shared-ui.js';
+import { formatContributionsSection } from './shared-contributions.js';
+import { renderServerDiagram } from './diagram.js';
+import { LanguageFilter } from './language-filter.js';
+import {
+    renderTraceControls, updateTraceControls, escapeHtml
+} from './trace-renderer.js';
+import { registerActions } from './event-delegation.js';
+
 let selectedAllServer = null; // Track selected server in global Servers tab
 let currentServerTab = 'overview'; // Track current tab: overview, contributions, install
 let allServersLoaded = false;
@@ -20,14 +30,14 @@ function renderLspServerItem(server, contributedByMap) {
     const serverIcon = server.isExtension ? '🧩' : '🚀';
     const contributeInfo = formatGlobalContributeInfo(server, contributedByMap);
     return `
-        <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" onclick="showServerDetails('${server.id}')">
+        <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" data-action="showServerDetails" data-server-id="${server.id}">
             <div class="server-name d-flex align-center justify-between">
                 <span>
                     <span class="server-source-icon">${serverIcon}</span>
                     ${server.name}${extensionBadge}
                 </span>
                 <label class="toggle-switch" onclick="event.stopPropagation()">
-                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} onchange="toggleLspServerEnabled('${server.id}', this.checked)">
+                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleLspServerEnabled" data-server-id="${server.id}">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -36,10 +46,10 @@ function renderLspServerItem(server, contributedByMap) {
     `;
 }
 
-async function loadAllLspServers(serverIdToSelect) {
+export async function loadAllLspServers(serverIdToSelect) {
     try {
-        const lspServers = Object.values(window.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        const dapServers = Object.values(window.dapConfigs || {}).map(s => ({...s, isDap: true}));
+        const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        const dapServers = Object.values(state.dapConfigs || {}).map(s => ({...s, isDap: true}));
         const allServers = [...lspServers, ...dapServers];
 
         const container = document.getElementById('lsp-servers-list');
@@ -49,7 +59,7 @@ async function loadAllLspServers(serverIdToSelect) {
         }
 
         if (!lspLanguageFilter) {
-            lspLanguageFilter = new LanguageFilter(container, () => window.lspConfigs, () => loadAllLspServers(selectedAllServer));
+            lspLanguageFilter = new LanguageFilter(container, () => state.lspConfigs, () => loadAllLspServers(selectedAllServer));
         }
 
         const contributedByMap = buildGlobalContributedByMap(allServers);
@@ -80,13 +90,13 @@ async function loadAllLspServers(serverIdToSelect) {
 /**
  * Show details for a global LSP server with Overview/Contributions/Install tabs.
  */
-async function showServerDetails(serverId) {
+export async function showServerDetails(serverId) {
     // Update selected server
     selectedAllServer = serverId;
 
     // Re-render server list to update active state
-    const lspServers = Object.values(window.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    const dapServers = Object.values(window.dapConfigs || {}).map(s => ({...s, isDap: true}));
+    const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const dapServers = Object.values(state.dapConfigs || {}).map(s => ({...s, isDap: true}));
     const allServers = [...lspServers, ...dapServers];
     const contributedByMap = buildGlobalContributedByMap(allServers);
 
@@ -97,7 +107,7 @@ async function showServerDetails(serverId) {
         ).join('');
     }
 
-    const details = window.lspConfigs[serverId];
+    const details = state.lspConfigs[serverId];
     if (!details) {
         console.error('Server not found:', serverId);
         return;
@@ -120,7 +130,7 @@ async function showServerDetails(serverId) {
         // Contributions tab content (use same function as workspace, pass allServers)
         const contributionsHTML = formatContributionsSection(details, allServers);
 
-        const lspTraceLevel = (window.traceLevels && window.traceLevels['lsp.' + serverId]) || 'off';
+        const lspTraceLevel = (state.traceLevels && state.traceLevels['lsp.' + serverId]) || 'off';
 
         const html = `
             <div class="console-header">
@@ -129,12 +139,12 @@ async function showServerDetails(serverId) {
                     ${details.name || details.id}
                 </div>
                 <div class="console-tabs">
-                    <button class="tab-button ${currentServerTab === 'overview' ? 'active' : ''}" onclick="switchServerTab('overview')">Overview</button>
-                    <button class="tab-button ${currentServerTab === 'contributions' ? 'active' : ''}" onclick="switchServerTab('contributions')">Contributions</button>
-                    <button class="tab-button ${currentServerTab === 'install' ? 'active' : ''}" onclick="switchServerTab('install')">Install</button>
+                    <button class="tab-button ${currentServerTab === 'overview' ? 'active' : ''}" data-action="switchServerTab" data-tab="overview">Overview</button>
+                    <button class="tab-button ${currentServerTab === 'contributions' ? 'active' : ''}" data-action="switchServerTab" data-tab="contributions">Contributions</button>
+                    <button class="tab-button ${currentServerTab === 'install' ? 'active' : ''}" data-action="switchServerTab" data-tab="install">Install</button>
                 </div>
                 <div class="console-controls">
-                    ${TraceRenderer.renderTraceControls('lsp-server-trace', lspTraceLevel, `changeLspServerTraceLevel('${serverId}', this.value)`)}
+                    ${renderTraceControls('lsp-server-trace', lspTraceLevel, 'changeLspServerTraceLevel')}
                 </div>
             </div>
             <div class="tab-content">
@@ -164,11 +174,11 @@ async function showServerDetails(serverId) {
                             <div class="editor-header">
                                 <span>installer.json</span>
                                 <div class="editor-actions">
-                                    <button class="editor-btn" onclick="saveInstallerJson('${details.id}')" title="Save">💾 Save</button>
-                                    <button class="editor-btn" onclick="resetInstallerJson('${details.id}')" title="Reset">↻ Reset</button>
+                                    <button class="editor-btn" data-action="saveInstallerJson" data-server-id="${details.id}" title="Save">💾 Save</button>
+                                    <button class="editor-btn" data-action="resetInstallerJson" data-server-id="${details.id}" title="Reset">↻ Reset</button>
                                     <span class="editor-separator"></span>
-                                    <button class="editor-btn install-run-btn" onclick="runInstaller('${details.id}', false)" title="Install (check first, skip if already installed)">▶ Install</button>
-                                    <button class="editor-btn install-force-btn" onclick="runInstaller('${details.id}', true)" title="Force Install (skip check, always re-install)">⟳ Force Install</button>
+                                    <button class="editor-btn install-run-btn" data-action="runInstaller" data-server-id="${details.id}" data-force="false" title="Install (check first, skip if already installed)">▶ Install</button>
+                                    <button class="editor-btn install-force-btn" data-action="runInstaller" data-server-id="${details.id}" data-force="true" title="Force Install (skip check, always re-install)">⟳ Force Install</button>
                                 </div>
                             </div>
                             <textarea id="installer-json-editor" class="json-editor" spellcheck="false"></textarea>
@@ -187,8 +197,8 @@ async function showServerDetails(serverId) {
 
         // Render diagram (will be called when switching to diagram tab)
         // Store servers data for diagram rendering (include both LSP and DAP)
-        window.currentDiagramServers = allServers;
-        window.currentDiagramServerId = details.id;
+        state.currentDiagramServers = allServers;
+        state.currentDiagramServerId = details.id;
 
         // If contributions tab is active, render diagram immediately
         if (currentServerTab === 'contributions') {
@@ -299,7 +309,7 @@ function buildSettingsHTML(details) {
                 const selected = v === currentValue ? 'selected' : '';
                 return `<option value="${v}" ${selected}>${label}</option>`;
             }).join('');
-            controlHTML = `<select class="select-field" onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+            controlHTML = `<select class="select-field" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
                                    style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">
                                ${options}
                            </select>`;
@@ -307,12 +317,12 @@ function buildSettingsHTML(details) {
             const checked = currentValue === 'true' ? 'checked' : '';
             controlHTML = `<label class="toggle-switch">
                                <input type="checkbox" ${checked}
-                                      onchange="updateServerSetting('${serverId}', '${setting.key}', this.checked ? 'true' : 'false')">
+                                      data-action="updateServerSettingBool" data-server-id="${serverId}" data-setting-key="${setting.key}">
                                <span class="toggle-slider"></span>
                            </label>`;
         } else {
             controlHTML = `<input type="text" class="input-field" value="${currentValue}"
-                                  onchange="updateServerSetting('${serverId}', '${setting.key}', this.value)"
+                                  data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
                                   style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">`;
         }
 
@@ -352,7 +362,7 @@ function updateServerSetting(serverId, settingKey, value) {
             console.error('Failed to update setting:', persistKey, response.statusText);
             return;
         }
-        const config = window.lspConfigs && window.lspConfigs[serverId];
+        const config = state.lspConfigs && state.lspConfigs[serverId];
         if (config && config.settings) {
             const setting = config.settings.find(s => s.key === settingKey);
             if (setting) {
@@ -398,7 +408,7 @@ function buildContributionsHTML(details) {
 /**
  * Switch between LSP server tabs (Overview/Contributions/Install).
  */
-function switchServerTab(tabName) {
+export function switchServerTab(tabName) {
     currentServerTab = tabName;
 
     // Re-render current server to update tabs
@@ -407,15 +417,15 @@ function switchServerTab(tabName) {
     }
 
     // Render diagram when switching to contributions tab
-    if (tabName === 'contributions' && window.currentDiagramServers && window.currentDiagramServerId) {
-        setTimeout(() => renderServerDiagram(window.currentDiagramServers, window.currentDiagramServerId), 100);
+    if (tabName === 'contributions' && state.currentDiagramServers && state.currentDiagramServerId) {
+        setTimeout(() => renderServerDiagram(state.currentDiagramServers, state.currentDiagramServerId), 100);
     }
 }
 
 /**
  * Load installer.json for an LSP or DAP server.
  */
-async function loadInstallerJson(serverId) {
+export async function loadInstallerJson(serverId) {
     try {
         const response = await fetch(`${getServerApiBase(serverId)}/${serverId}/installer`);
         if (!response.ok) {
@@ -439,7 +449,7 @@ async function loadInstallerJson(serverId) {
 /**
  * Save installer.json for an LSP or DAP server.
  */
-async function saveInstallerJson(serverId) {
+export async function saveInstallerJson(serverId) {
     const editor = document.getElementById('installer-json-editor');
     if (!editor) return;
 
@@ -456,28 +466,24 @@ async function saveInstallerJson(serverId) {
             throw new Error('Failed to save installer.json');
         }
 
-        if (window.showAlert) {
-            window.showAlert('Success', 'Installer configuration saved successfully.');
-        }
+        showAlert('Success', 'Installer configuration saved successfully.');
     } catch (error) {
         console.error('Failed to save installer.json:', error);
-        if (window.showAlert) {
-            window.showAlert('Error', 'Failed to save installer.json: ' + error.message);
-        }
+        showAlert('Error', 'Failed to save installer.json: ' + error.message);
     }
 }
 
 /**
  * Reset installer.json to original.
  */
-function resetInstallerJson(serverId) {
+export function resetInstallerJson(serverId) {
     loadInstallerJson(serverId);
 }
 
 /**
  * Run installer for an LSP server.
  */
-async function runInstaller(serverId, force) {
+export async function runInstaller(serverId, force) {
     const outputDiv = document.getElementById('install-output');
     if (!outputDiv) return;
 
@@ -490,19 +496,19 @@ async function runInstaller(serverId, force) {
         <div id="install-traces" class="font-mono bg-card p-sm rounded-sm" style="font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
     `;
 
-    window.installOutputServerId = serverId;
+    state.installOutputServerId = serverId;
 
     try {
         const url = `${getServerApiBase(serverId)}/${serverId}/install${force ? '?force=true' : ''}`;
         const response = await fetch(url, { method: 'POST' });
 
         if (!response.ok) {
-            window.installOutputServerId = null;
+            state.installOutputServerId = null;
             throw new Error('Installation failed');
         }
     } catch (error) {
         console.error('Failed to run installer:', error);
-        window.installOutputServerId = null;
+        state.installOutputServerId = null;
         outputDiv.innerHTML = `<div class="text-error">✗ Installation failed: ${error.message}</div>`;
     }
 }
@@ -510,7 +516,7 @@ async function runInstaller(serverId, force) {
 /**
  * Append an installation trace to the install output panel.
  */
-function appendInstallTrace(trace) {
+export function appendInstallTrace(trace) {
     const tracesDiv = document.getElementById('install-traces');
     if (!tracesDiv) return;
 
@@ -539,7 +545,7 @@ function appendInstallTrace(trace) {
 /**
  * Update the install output progress bar.
  */
-function updateInstallProgress(msg) {
+export function updateInstallProgress(msg) {
     const bar = document.getElementById('install-progress-bar');
     const fill = document.getElementById('install-progress-fill');
     const header = document.querySelector('.install-output-header');
@@ -550,14 +556,14 @@ function updateInstallProgress(msg) {
     }
 
     if (msg.status === 'completed') {
-        window.installOutputServerId = null;
+        state.installOutputServerId = null;
         if (fill) fill.style.background = 'var(--color-success)';
         if (header) {
             header.style.color = 'var(--color-success)';
             header.textContent = `✓ Installation completed`;
         }
     } else if (msg.status === 'failed') {
-        window.installOutputServerId = null;
+        state.installOutputServerId = null;
         if (fill) fill.style.background = 'var(--color-error-text)';
         if (header) {
             header.style.color = 'var(--color-error-text)';
@@ -594,11 +600,9 @@ function formatGlobalContributeInfo(server, contributedByMap) {
     return { text, tooltip };
 }
 
-// renderServerDiagram() is defined in diagram.js - do not override it here
-
 async function changeLspServerTraceLevel(serverId, level) {
-    if (window.traceLevels) {
-        window.traceLevels['lsp.' + serverId] = level;
+    if (state.traceLevels) {
+        state.traceLevels['lsp.' + serverId] = level;
     }
     try {
         await fetch(`/api/admin/traces/lsp/${serverId}`, {
@@ -620,8 +624,8 @@ async function toggleLspServerEnabled(serverId, enabled) {
         const response = await fetch(`/api/admin/extensions/lsp/servers/${serverId}/${action}`, { method: 'POST' });
         if (response.ok) {
             // Update cached config
-            if (window.lspConfigs[serverId]) {
-                window.lspConfigs[serverId].enabled = enabled;
+            if (state.lspConfigs[serverId]) {
+                state.lspConfigs[serverId].enabled = enabled;
             }
             // Re-render the list
             loadAllLspServers(selectedAllServer);
@@ -631,18 +635,21 @@ async function toggleLspServerEnabled(serverId, enabled) {
     }
 }
 
-// Expose functions globally
-window.toggleLspServerEnabled = toggleLspServerEnabled;
-window.loadAllLspServers = loadAllLspServers;
-window.showServerDetails = showServerDetails;
-window.switchServerTab = switchServerTab;
-window.loadInstallerJson = loadInstallerJson;
-window.saveInstallerJson = saveInstallerJson;
-window.resetInstallerJson = resetInstallerJson;
-window.runInstaller = runInstaller;
-window.appendInstallTrace = appendInstallTrace;
-window.updateInstallProgress = updateInstallProgress;
-window.buildGlobalContributedByMap = buildGlobalContributedByMap;
-window.formatGlobalContributeInfo = formatGlobalContributeInfo;
-window.renderServerDiagram = renderServerDiagram;
-window.changeLspServerTraceLevel = changeLspServerTraceLevel;
+// Register event delegation actions
+registerActions('click', {
+    showServerDetails: (el) => showServerDetails(el.dataset.serverId),
+    switchServerTab: (el) => switchServerTab(el.dataset.tab),
+    saveInstallerJson: (el) => saveInstallerJson(el.dataset.serverId),
+    resetInstallerJson: (el) => resetInstallerJson(el.dataset.serverId),
+    runInstaller: (el) => runInstaller(el.dataset.serverId, el.dataset.force === 'true'),
+});
+
+registerActions('change', {
+    toggleLspServerEnabled: (el) => toggleLspServerEnabled(el.dataset.serverId, el.checked),
+    changeLspServerTraceLevel: (el) => {
+        const serverId = selectedAllServer;
+        if (serverId) changeLspServerTraceLevel(serverId, el.value);
+    },
+    updateServerSetting: (el) => updateServerSetting(el.dataset.serverId, el.dataset.settingKey, el.value),
+    updateServerSettingBool: (el) => updateServerSetting(el.dataset.serverId, el.dataset.settingKey, el.checked ? 'true' : 'false'),
+});

@@ -5,6 +5,13 @@
  * and their individual LSP/DAP servers.
  */
 
+import { confirmAction, showAlert } from './shared-ui.js';
+import { loadLspConfigs, loadDapConfigs } from './shared-state.js';
+import { registerActions } from './event-delegation.js';
+
+let switchTabCallback = null;
+export function setSwitchTabCallback(cb) { switchTabCallback = cb; }
+
 let selectedExtension = null;
 let extensionsData = [];
 
@@ -30,11 +37,11 @@ function renderExtensionsList() {
         const serverCount = (ext.lspServers?.length || 0) + (ext.dapServers?.length || 0);
 
         return `
-            <div class="extension-item ${isActive} ${disabledClass}" onclick="showExtensionDetails('${ext.id}')">
+            <div class="extension-item ${isActive} ${disabledClass}" data-action="showExtensionDetails" data-extension-id="${ext.id}">
                 <div class="d-flex align-center justify-between">
                     <span class="extension-name">${ext.id}${sourceBadge}</span>
                     <label class="toggle-switch" onclick="event.stopPropagation()">
-                        <input type="checkbox" ${ext.enabled ? 'checked' : ''} onchange="toggleExtensionEnabled('${ext.id}', this.checked)">
+                        <input type="checkbox" ${ext.enabled ? 'checked' : ''} data-action="toggleExtensionEnabled" data-extension-id="${ext.id}">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -49,7 +56,7 @@ function renderExtensionsList() {
 /**
  * Load extensions from API and render.
  */
-async function loadAllExtensions(extensionIdToSelect) {
+export async function loadAllExtensions(extensionIdToSelect) {
     try {
         const response = await fetch('/api/admin/extensions');
         if (!response.ok) throw new Error('Failed to load extensions');
@@ -76,7 +83,7 @@ async function loadAllExtensions(extensionIdToSelect) {
 /**
  * Show details for an extension in the console panel.
  */
-function showExtensionDetails(extensionId) {
+export function showExtensionDetails(extensionId) {
     selectedExtension = extensionId;
 
     // Re-render list to update active state (no re-fetch)
@@ -101,9 +108,9 @@ function showExtensionDetails(extensionId) {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
                 <div class="extension-server-item ${disabledClass}">
-                    <span class="cursor-pointer" onclick="switchTab('lsp-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🚀</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
+                    <span class="cursor-pointer" data-action="switchToLspServer" data-server-id="${server.id}"><span class="server-source-icon">🚀</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
                     <label class="toggle-switch">
-                        <input type="checkbox" ${server.enabled ? 'checked' : ''} onchange="toggleExtensionServerEnabled('lsp', '${server.id}', this.checked)">
+                        <input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="lsp" data-server-id="${server.id}">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -117,9 +124,9 @@ function showExtensionDetails(extensionId) {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
                 <div class="extension-server-item ${disabledClass}">
-                    <span class="cursor-pointer" onclick="switchTab('dap-servers', null, {serverId: '${server.id}'})"><span class="server-source-icon">🐛</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
+                    <span class="cursor-pointer" data-action="switchToDapServer" data-server-id="${server.id}"><span class="server-source-icon">🐛</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
                     <label class="toggle-switch">
-                        <input type="checkbox" ${server.enabled ? 'checked' : ''} onchange="toggleExtensionServerEnabled('dap', '${server.id}', this.checked)">
+                        <input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="dap" data-server-id="${server.id}">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -134,7 +141,7 @@ function showExtensionDetails(extensionId) {
     // Remove button (only for USER extensions)
     const removeButton = ext.source === 'USER' ? `
         <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle);">
-            <button class="btn-danger" onclick="removeExtension('${ext.id}')">
+            <button class="btn-danger" data-action="removeExtension" data-extension-id="${ext.id}">
                 Remove Extension
             </button>
         </div>
@@ -175,7 +182,7 @@ function showExtensionDetails(extensionId) {
 /**
  * Show the add extension form in the console panel.
  */
-function showAddExtensionForm() {
+export function showAddExtensionForm() {
     selectedExtension = null;
     renderExtensionsList();
 
@@ -205,8 +212,8 @@ function showAddExtensionForm() {
                        class="input-field w-100 font-base" style="max-width: 400px;">
             </div>
 
-            <div id="drop-zone" class="drop-zone" onclick="document.getElementById('add-ext-file').click()">
-                <input type="file" id="add-ext-file" accept=".zip,.jar" class="d-none" onchange="handleFileSelect(this)">
+            <div id="drop-zone" class="drop-zone" data-action="triggerFileInput">
+                <input type="file" id="add-ext-file" accept=".zip,.jar" class="d-none" data-action="handleFileSelect">
                 <div class="drop-zone-icon">📦</div>
                 <div class="drop-zone-text">Drop a ZIP or JAR file here</div>
                 <div class="drop-zone-hint">or click to browse</div>
@@ -216,11 +223,11 @@ function showAddExtensionForm() {
                 <div class="d-flex align-center gap-sm bg-card-alt" style="padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); border-radius: 3px; max-width: 400px;">
                     <span class="text-success">📄</span>
                     <span id="selected-file-name" class="text-value flex-1 truncate"></span>
-                    <span class="text-dimmed cursor-pointer font-xl" onclick="clearSelectedFile()" title="Remove file">×</span>
+                    <span class="text-dimmed cursor-pointer font-xl" data-action="clearSelectedFile" title="Remove file">×</span>
                 </div>
             </div>
 
-            <button class="btn-primary" onclick="addExtension()">
+            <button class="btn-primary" data-action="addExtension">
                 Add Extension
             </button>
 
@@ -334,8 +341,8 @@ async function addExtension() {
         if (response.ok) {
             if (resultDiv) resultDiv.innerHTML = '<div class="text-success">Extension added successfully.</div>';
             selectedFile = null;
-            if (window.loadLspConfigs) await window.loadLspConfigs();
-            if (window.loadDapConfigs) await window.loadDapConfigs();
+            await loadLspConfigs();
+            await loadDapConfigs();
             loadAllExtensions(extensionId);
         } else {
             if (resultDiv) resultDiv.innerHTML = `<div class="text-error">Failed: ${result.error || 'Unknown error'}</div>`;
@@ -350,9 +357,7 @@ async function addExtension() {
  * Remove an extension (USER only).
  */
 async function removeExtension(extensionId) {
-    if (!window.confirmAction) return;
-
-    const confirmed = await window.confirmAction(
+    const confirmed = await confirmAction(
         'Remove Extension',
         `Remove extension "${extensionId}"?\n\nAll its servers will be unregistered.`,
         'Remove',
@@ -366,15 +371,15 @@ async function removeExtension(extensionId) {
 
         if (response.ok) {
             selectedExtension = null;
-            if (window.loadLspConfigs) await window.loadLspConfigs();
-            if (window.loadDapConfigs) await window.loadDapConfigs();
+            await loadLspConfigs();
+            await loadDapConfigs();
             loadAllExtensions();
         } else {
-            if (window.showAlert) window.showAlert('Error', result.error || 'Failed to remove extension');
+            showAlert('Error', result.error || 'Failed to remove extension');
         }
     } catch (error) {
         console.error('Failed to remove extension:', error);
-        if (window.showAlert) window.showAlert('Error', error.message);
+        showAlert('Error', error.message);
     }
 }
 
@@ -418,11 +423,19 @@ async function toggleExtensionServerEnabled(type, serverId, enabled) {
     }
 }
 
-// Expose functions globally
-window.loadAllExtensions = loadAllExtensions;
-window.showExtensionDetails = showExtensionDetails;
-window.showAddExtensionForm = showAddExtensionForm;
-window.addExtension = addExtension;
-window.removeExtension = removeExtension;
-window.toggleExtensionEnabled = toggleExtensionEnabled;
-window.toggleExtensionServerEnabled = toggleExtensionServerEnabled;
+registerActions('click', {
+    showExtensionDetails: (el) => showExtensionDetails(el.dataset.extensionId),
+    removeExtension: (el) => removeExtension(el.dataset.extensionId),
+    switchToLspServer: (el) => switchTabCallback?.('lsp-servers', null, {serverId: el.dataset.serverId}),
+    switchToDapServer: (el) => switchTabCallback?.('dap-servers', null, {serverId: el.dataset.serverId}),
+    clearSelectedFile: () => clearSelectedFile(),
+    addExtension: () => addExtension(),
+    handleFileSelect: (el) => handleFileSelect(el),
+    triggerFileInput: () => document.getElementById('add-ext-file').click(),
+    showAddExtensionForm: () => showAddExtensionForm(),
+});
+
+registerActions('change', {
+    toggleExtensionEnabled: (el) => toggleExtensionEnabled(el.dataset.extensionId, el.checked),
+    toggleExtensionServerEnabled: (el) => toggleExtensionServerEnabled(el.dataset.serverType, el.dataset.serverId, el.checked),
+});

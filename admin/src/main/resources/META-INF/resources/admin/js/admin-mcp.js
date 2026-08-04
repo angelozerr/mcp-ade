@@ -1,43 +1,38 @@
-/**
- * Admin UI - MCP (Model Context Protocol) Traces Management
- *
- * Handles MCP client listing and trace visualization
- */
+import { state, updateSearchBoxVisibility } from './shared-state.js';
+import {
+    renderTrace, renderTraceControls, updateTraceControls,
+    isScrolledToBottom, saveExpandedState, restoreExpandedState,
+    getCurrentSearchQuery, escapeHtml, initTraceContainer, toggleAllTraces
+} from './trace-renderer.js';
+import { registerActions } from './event-delegation.js';
 
 let mcpTraces = [];
 let mcpTraceLevel = 'off';
 let mcpClients = [];
 let mcpAllFolded = true;
 let selectedMcpClient = null;
-let mcpTracesByClient = {}; // Store traces per client: {connectionId: [...traces]}
-let mcpTracesLoaded = false; // Track if MCP traces have been loaded
-let mcpTools = []; // Registered MCP tools
+let mcpTracesByClient = {};
+let mcpTracesLoaded = false;
+let mcpTools = [];
 let mcpToolsLoaded = false;
 let mcpToolsFilter = '';
 
-/**
- * Load MCP clients.
- */
-async function loadMcpClients() {
+export async function loadMcpClients() {
     try {
         const response = await fetch('/api/admin/mcp/clients');
         const newClients = await response.json();
 
-        // Check if data actually changed to avoid unnecessary re-renders
         if (JSON.stringify(newClients) !== JSON.stringify(mcpClients)) {
             mcpClients = newClients;
             renderMcpClients();
 
-            // Auto-select first client if none selected
             if (mcpClients.length > 0 && !selectedMcpClient) {
                 selectMcpClient(mcpClients[0].id);
             }
 
-            // Check if previously selected client still exists
             if (selectedMcpClient) {
                 const stillExists = mcpClients.find(c => c.id === selectedMcpClient);
                 if (!stillExists) {
-                    // Previously selected client disconnected
                     selectedMcpClient = null;
                     if (mcpClients.length > 0) {
                         selectMcpClient(mcpClients[0].id);
@@ -62,33 +57,28 @@ function renderMcpClients() {
     }
 
     list.innerHTML = mcpClients.map(client => {
-        // Shorten connection ID for display (first 8 chars)
         const shortId = client.id.substring(0, 8) + '...';
 
         return `
             <div class="workspace-item cursor-pointer ${client.id === selectedMcpClient ? 'active' : ''}"
-                 onclick="selectMcpClient('${client.id}')"
-                 title="${window.escapeHtml ? window.escapeHtml(client.id) : client.id}">
+                 data-action="selectMcpClient" data-client-id="${client.id}"
+                 title="${escapeHtml(client.id)}">
                 <div class="mb-xs" style="font-weight: 600;">
-                    📱 ${window.escapeHtml ? window.escapeHtml(client.name) : client.name}
+                    📱 ${escapeHtml(client.name)}
                 </div>
                 <div class="text-dimmed font-sm" style="padding-left: 1.5rem;">
-                    Session: ${window.escapeHtml ? window.escapeHtml(shortId) : shortId}
+                    Session: ${escapeHtml(shortId)}
                 </div>
             </div>
         `;
     }).join('');
 
-    // Auto-select first client if none selected and clients exist
-    // BUT only if we're on the MCP tab
-    if (window.currentTab === 'mcp-traces') {
+    if (state.currentTab === 'mcp-traces') {
         if (!selectedMcpClient && mcpClients.length > 0) {
             selectMcpClient(mcpClients[0].id);
         } else if (selectedMcpClient) {
-            // Verify selected client still exists
             const stillExists = mcpClients.find(c => c.id === selectedMcpClient);
             if (!stillExists) {
-                // Selected client disconnected, select first available or show placeholder
                 if (mcpClients.length > 0) {
                     selectMcpClient(mcpClients[0].id);
                 } else {
@@ -100,28 +90,22 @@ function renderMcpClients() {
     }
 }
 
-function selectMcpClient(clientId) {
+export function selectMcpClient(clientId) {
     selectedMcpClient = clientId;
     renderMcpClients();
-
-    // Initialize traces if not already done
     loadInitialMcpTraces();
-
-    loadMcpConsole(clientId);
+    if (state.currentTab === 'mcp-traces') {
+        loadMcpConsole(clientId);
+    }
 }
 
-/**
- * Initialize MCP traces (called once when accessing MCP tab).
- * Trace history is received via WebSocket on connect.
- */
 function loadInitialMcpTraces() {
     if (mcpTracesLoaded) return;
     mcpTracesLoaded = true;
 }
 
-function loadMcpTracesConsole() {
-    // Initialize trace level from WebSocket-provided data
-    const savedMcpLevel = window.traceLevels && window.traceLevels['mcp'];
+export function loadMcpTracesConsole() {
+    const savedMcpLevel = state.traceLevels['mcp'];
     mcpTraceLevel = savedMcpLevel || 'off';
     const consoleArea = document.getElementById('console-area');
 
@@ -129,11 +113,11 @@ function loadMcpTracesConsole() {
         <div class="console-wrapper">
             <div class="console-header">
                 <div class="console-tabs">
-                    <button class="tab-button active" onclick="switchMcpConsoleTab('traces', this)">Traces</button>
-                    <button class="tab-button" onclick="switchMcpConsoleTab('tools', this)">Tools</button>
+                    <button class="tab-button active" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
+                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
                 </div>
                 <div class="console-controls" id="mcp-traces-controls">
-                    ${TraceRenderer.renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel(this.value)')}
+                    ${renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel')}
                 </div>
             </div>
             <div class="tab-content">
@@ -146,7 +130,7 @@ function loadMcpTracesConsole() {
                     <div class="mcp-tools-panel">
                         <div class="mcp-tools-toolbar">
                             <input type="text" class="input-field mcp-tools-search" placeholder="Filter tools..."
-                                   oninput="filterMcpTools(this.value)" />
+                                   data-action="filterMcpTools" />
                             <span class="mcp-tools-count" id="mcp-tools-count"></span>
                         </div>
                         <div class="mcp-tools-list" id="mcp-tools-list"></div>
@@ -157,29 +141,26 @@ function loadMcpTracesConsole() {
     `;
 }
 
-function loadMcpConsole(clientId) {
-    // Initialize trace level from WebSocket-provided data
-    const savedMcpLevel2 = window.traceLevels && window.traceLevels['mcp'];
+export function loadMcpConsole(clientId) {
+    const savedMcpLevel2 = state.traceLevels['mcp'];
     mcpTraceLevel = savedMcpLevel2 || 'off';
 
     const consoleArea = document.getElementById('console-area');
 
-    // Find client info
     const client = mcpClients.find(c => c.id === clientId);
     const clientName = client ? client.name : 'MCP Client';
 
-    // Render console with tabs (exact same structure as LSP)
     consoleArea.innerHTML = `
         <div class="console-wrapper">
             <div class="console-header">
                 <div class="console-tabs">
-                    <button class="tab-button active" onclick="switchMcpConsoleTab('traces', this)">Traces</button>
-                    <button class="tab-button" onclick="switchMcpConsoleTab('tools', this)">Tools</button>
+                    <button class="tab-button active" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
+                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
                 </div>
                 <div class="console-controls" id="mcp-traces-controls">
-                    ${TraceRenderer.renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel(this.value)', {
-                        onFold: 'toggleAllMcpTraces()',
-                        onClear: 'clearMcpConsole()'
+                    ${renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel', {
+                        foldAction: 'toggleAllMcpTraces',
+                        clearAction: 'clearMcpConsole'
                     })}
                 </div>
             </div>
@@ -191,7 +172,7 @@ function loadMcpConsole(clientId) {
                     <div class="mcp-tools-panel">
                         <div class="mcp-tools-toolbar">
                             <input type="text" class="input-field mcp-tools-search" placeholder="Filter tools..."
-                                   oninput="filterMcpTools(this.value)" />
+                                   data-action="filterMcpTools" />
                             <span class="mcp-tools-count" id="mcp-tools-count"></span>
                         </div>
                         <div class="mcp-tools-list" id="mcp-tools-list"></div>
@@ -202,14 +183,13 @@ function loadMcpConsole(clientId) {
     `;
 
     renderMcpConsole();
+    initTraceContainer('mcp-console-output');
 }
 
 async function changeMcpTraceLevel(newLevel) {
     mcpTraceLevel = newLevel;
-    if (window.traceLevels) {
-        window.traceLevels['mcp'] = newLevel;
-    }
-    TraceRenderer.updateTraceControls('mcp-trace', newLevel);
+    state.traceLevels['mcp'] = newLevel;
+    updateTraceControls('mcp-trace', newLevel);
     renderMcpConsole();
 
     try {
@@ -224,7 +204,6 @@ async function changeMcpTraceLevel(newLevel) {
 }
 
 function switchMcpConsoleTab(tab, clickedBtn) {
-    // Update tab buttons
     document.querySelectorAll('#console-area .tab-button').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -232,31 +211,23 @@ function switchMcpConsoleTab(tab, clickedBtn) {
         clickedBtn.classList.add('active');
     }
 
-    // Update tab panels
     document.querySelectorAll('#console-area .tab-panel').forEach(panel => {
         panel.classList.remove('active');
     });
 
-    // Show selected tab
     if (tab === 'traces') {
         document.getElementById('mcp-traces-tab').classList.add('active');
         document.getElementById('mcp-traces-controls').style.display = 'flex';
-        // Show search box for traces
-        if (window.updateSearchBoxVisibility) {
-            window.updateSearchBoxVisibility(true);
-        }
+        updateSearchBoxVisibility(true);
     } else if (tab === 'tools') {
         document.getElementById('mcp-tools-tab').classList.add('active');
         document.getElementById('mcp-traces-controls').style.display = 'none';
-        // Hide search box for tools
-        if (window.updateSearchBoxVisibility) {
-            window.updateSearchBoxVisibility(false);
-        }
+        updateSearchBoxVisibility(false);
         loadMcpTools();
     }
 }
 
-function renderMcpConsole() {
+export function renderMcpConsole() {
     const output = document.getElementById('mcp-console-output');
     if (!output) return;
 
@@ -265,7 +236,6 @@ function renderMcpConsole() {
         return;
     }
 
-    // Get traces for the selected client
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
 
     if (clientTraces.length === 0) {
@@ -273,20 +243,20 @@ function renderMcpConsole() {
         return;
     }
 
-    const wasAtBottom = TraceRenderer.isScrolledToBottom(output);
-    const expandedIds = TraceRenderer.saveExpandedState(output);
+    const wasAtBottom = isScrolledToBottom(output);
+    const expandedIds = saveExpandedState(output);
 
     const html = clientTraces.map((trace, index) => formatMcpTrace(trace, index, '')).join('');
     output.innerHTML = html;
 
-    TraceRenderer.restoreExpandedState(output, expandedIds);
+    restoreExpandedState(output, expandedIds);
 
     if (wasAtBottom) {
         output.scrollTop = output.scrollHeight;
     }
 }
 
-function renderMcpConsoleWithHighlights() {
+export function renderMcpConsoleWithHighlights() {
     const output = document.getElementById('mcp-console-output');
     if (!output) return;
 
@@ -295,7 +265,6 @@ function renderMcpConsoleWithHighlights() {
         return;
     }
 
-    // Get traces for the selected client
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
 
     if (clientTraces.length === 0) {
@@ -303,39 +272,22 @@ function renderMcpConsoleWithHighlights() {
         return;
     }
 
-    const expandedIds = TraceRenderer.saveExpandedState(output);
+    const expandedIds = saveExpandedState(output);
 
-    const html = clientTraces.map((trace, index) => formatMcpTrace(trace, index, TraceRenderer.getCurrentSearchQuery())).join('');
+    const html = clientTraces.map((trace, index) => formatMcpTrace(trace, index, getCurrentSearchQuery())).join('');
     output.innerHTML = html;
 
-    TraceRenderer.restoreExpandedState(output, expandedIds);
+    restoreExpandedState(output, expandedIds);
 }
 
 function formatMcpTrace(trace, index, searchQuery = '') {
-    // Delegate to TraceRenderer for consistent rendering
-    return TraceRenderer.renderTrace(trace, index, mcpTraceLevel, searchQuery);
-}
-
-// Tooltip, toggle, and toggleAll functions now provided by TraceRenderer (via window.*)
-
-function toggleAllMcpTraces() {
-    // Use TraceRenderer's toggleAllTraces with MCP console container
-    const expand = mcpAllFolded;
-    TraceRenderer.toggleAllTraces('mcp-console-output', expand);
-    mcpAllFolded = !mcpAllFolded;
-
-    // Update button text
-    const foldButton = document.getElementById('mcp-trace-fold-button');
-    if (foldButton) {
-        foldButton.textContent = mcpAllFolded ? 'Unfold All' : 'Fold All';
-    }
+    return renderTrace(trace, index, mcpTraceLevel, searchQuery);
 }
 
 async function clearMcpConsole() {
     try {
         await fetch('/api/admin/traces/mcp', { method: 'DELETE' });
 
-        // Clear traces for current client only
         if (selectedMcpClient) {
             mcpTracesByClient[selectedMcpClient] = [];
         }
@@ -346,10 +298,7 @@ async function clearMcpConsole() {
     }
 }
 
-/**
- * Handle incoming MCP trace from WebSocket.
- */
-function handleMcpTrace(trace) {
+export function handleMcpTrace(trace) {
     const connectionId = trace.connectionId;
 
     if (!mcpTracesByClient[connectionId]) {
@@ -373,10 +322,7 @@ function handleMcpTrace(trace) {
     }
 }
 
-/**
- * Handle MCP clients update from WebSocket.
- */
-function handleMcpClientsUpdate(newClients) {
+export function handleMcpClientsUpdate(newClients) {
     if (JSON.stringify(newClients) !== JSON.stringify(mcpClients)) {
         mcpClients = newClients;
         renderMcpClients();
@@ -391,12 +337,32 @@ function handleMcpClientsUpdate(newClients) {
                 selectedMcpClient = null;
                 if (mcpClients.length > 0) {
                     selectMcpClient(mcpClients[0].id);
-                } else {
+                } else if (state.currentTab === 'mcp-traces') {
                     loadMcpTracesConsole();
                 }
             }
         }
     }
+}
+
+export function getMcpClients() {
+    return mcpClients;
+}
+
+export function getSelectedMcpClient() {
+    return selectedMcpClient;
+}
+
+export function getMcpTracesByClient() {
+    return mcpTracesByClient;
+}
+
+export function getMcpTraceLevel() {
+    return mcpTraceLevel;
+}
+
+export function setMcpTraceLevel(level) {
+    mcpTraceLevel = level;
 }
 
 // ========== MCP Tools ==========
@@ -451,7 +417,6 @@ function renderMcpTools() {
         return;
     }
 
-    // Build hierarchy: group -> subGroup -> tools
     const hierarchy = {};
     for (const tool of filtered) {
         const g = tool.group || 'Other';
@@ -462,7 +427,7 @@ function renderMcpTools() {
         hierarchy[g][subKey].push(tool);
     }
 
-    const esc = window.escapeHtml || (s => s);
+    const esc = escapeHtml;
     const expanded = !!mcpToolsFilter;
     const toggleIcon = expanded ? '&#9660;' : '&#9654;';
     const collapsedClass = expanded ? '' : ' collapsed';
@@ -480,7 +445,7 @@ function renderMcpTools() {
                 const toolsHtml = tools.map(tool => renderMcpToolItem(tool)).join('');
                 return `
                     <div class="mcp-tool-subgroup${collapsedClass}">
-                        <div class="mcp-tool-subgroup-header" onclick="toggleMcpToolGroup(this)">
+                        <div class="mcp-tool-subgroup-header" data-action="toggleMcpToolGroup">
                             <span class="mcp-tool-group-toggle">${toggleIcon}</span>
                             <span class="mcp-tool-subgroup-name">${esc(subName)}</span>
                             <span class="mcp-tool-subgroup-count">${tools.length}</span>
@@ -497,7 +462,7 @@ function renderMcpTools() {
 
         return `
             <div class="mcp-tool-group${collapsedClass}">
-                <div class="mcp-tool-group-header" onclick="toggleMcpToolGroup(this)">
+                <div class="mcp-tool-group-header" data-action="toggleMcpToolGroup">
                     <span class="mcp-tool-group-toggle">${toggleIcon}</span>
                     <span class="mcp-tool-group-name">${esc(group)}</span>
                     <span class="mcp-tool-group-count">${groupToolCount}</span>
@@ -511,7 +476,7 @@ function renderMcpTools() {
 }
 
 function renderMcpToolItem(tool) {
-    const esc = window.escapeHtml || (s => s);
+    const esc = escapeHtml;
     const argCount = tool.args ? tool.args.length : 0;
     const argsHtml = argCount > 0
         ? tool.args.map(arg =>
@@ -520,7 +485,7 @@ function renderMcpToolItem(tool) {
         : '<span class="text-dimmed font-sm">No arguments</span>';
 
     return `
-        <div class="mcp-tool-item" onclick="toggleMcpToolDetail(this)">
+        <div class="mcp-tool-item" data-action="toggleMcpToolDetail">
             <div class="mcp-tool-header">
                 <div class="mcp-tool-name">${esc(tool.name)}</div>
                 <div class="mcp-tool-arg-count">${argCount === 0 ? 'No args' : argCount === 1 ? '1 arg' : argCount + ' args'}</div>
@@ -535,7 +500,7 @@ function renderMcpToolItem(tool) {
 }
 
 function renderMcpToolDetail(tool) {
-    const esc = window.escapeHtml || (s => s);
+    const esc = escapeHtml;
     if (!tool.args || tool.args.length === 0) {
         return '<div class="text-dimmed py-sm">No arguments</div>';
     }
@@ -564,15 +529,18 @@ function renderMcpToolDetail(tool) {
 }
 
 function toggleMcpToolDetail(el) {
-    const detail = el.querySelector('.mcp-tool-detail');
+    const item = el.closest('.mcp-tool-item');
+    if (!item) return;
+    const detail = item.querySelector('.mcp-tool-detail');
     if (!detail) return;
     const isVisible = detail.style.display !== 'none';
     detail.style.display = isVisible ? 'none' : 'block';
-    el.classList.toggle('expanded', !isVisible);
+    item.classList.toggle('expanded', !isVisible);
 }
 
 function toggleMcpToolGroup(headerEl) {
-    const group = headerEl.parentElement;
+    const group = headerEl.closest('.mcp-tool-group, .mcp-tool-subgroup');
+    if (!group) return;
     const body = group.querySelector('.mcp-tool-group-body');
     const toggle = headerEl.querySelector('.mcp-tool-group-toggle');
     if (!body) return;
@@ -582,19 +550,27 @@ function toggleMcpToolGroup(headerEl) {
     group.classList.toggle('collapsed', !isCollapsed);
 }
 
-// Expose functions globally
-window.loadMcpClients = loadMcpClients;
-window.selectMcpClient = selectMcpClient;
-window.loadMcpTracesConsole = loadMcpTracesConsole;
-window.changeMcpTraceLevel = changeMcpTraceLevel;
-window.switchMcpConsoleTab = switchMcpConsoleTab;
-// toggleMcpTrace, showMcpTooltip, hideMcpTooltip now provided by TraceRenderer
-window.toggleAllMcpTraces = toggleAllMcpTraces;
-window.clearMcpConsole = clearMcpConsole;
-window.handleMcpTrace = handleMcpTrace;
-window.handleMcpClientsUpdate = handleMcpClientsUpdate;
-window.renderMcpConsoleWithHighlights = renderMcpConsoleWithHighlights;
-window.loadMcpTools = loadMcpTools;
-window.filterMcpTools = filterMcpTools;
-window.toggleMcpToolDetail = toggleMcpToolDetail;
-window.toggleMcpToolGroup = toggleMcpToolGroup;
+registerActions('click', {
+    selectMcpClient: (el) => selectMcpClient(el.dataset.clientId),
+    switchMcpConsoleTab: (el) => switchMcpConsoleTab(el.dataset.tab, el),
+    toggleAllMcpTraces: () => {
+        const expand = mcpAllFolded;
+        toggleAllTraces('mcp-console-output', expand);
+        mcpAllFolded = !mcpAllFolded;
+        const foldButton = document.getElementById('mcp-trace-fold-button');
+        if (foldButton) {
+            foldButton.textContent = mcpAllFolded ? 'Unfold All' : 'Fold All';
+        }
+    },
+    clearMcpConsole: () => clearMcpConsole(),
+    toggleMcpToolDetail: (el) => toggleMcpToolDetail(el),
+    toggleMcpToolGroup: (el) => toggleMcpToolGroup(el),
+});
+
+registerActions('change', {
+    changeMcpTraceLevel: (el) => changeMcpTraceLevel(el.value),
+});
+
+registerActions('input', {
+    filterMcpTools: (el) => filterMcpTools(el.value),
+});

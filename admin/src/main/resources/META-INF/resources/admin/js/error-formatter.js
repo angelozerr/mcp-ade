@@ -1,30 +1,18 @@
-/**
- * Common error formatting for all admin consoles (LSP, DAP, MCP).
- * Provides consistent error display with message and foldable stack trace.
- */
+import { registerActions } from './event-delegation.js';
 
-/**
- * Format an error response with consistent styling and folding.
- *
- * @param {string} title - Error title (e.g., "Failed to Launch")
- * @param {object} errorData - Error object with {message, type, stackTrace}
- * @returns {string} HTML for the formatted error
- */
-function formatErrorWithFolding(title, errorData) {
+export function formatErrorWithFolding(title, errorData) {
     const message = errorData.message || 'Unknown error';
     const type = errorData.type || '';
     const stackTrace = errorData.stackTrace || '';
 
     const traceId = 'error-' + Date.now();
 
-    // Format: Title + Type on first line, then foldable stack trace
-    // Don't repeat the message if it's the same as type
     const body = (message === type || !message || message === 'null') ? stackTrace.trim() : (message + '\n' + stackTrace).trim();
 
     return `
         <div class="mb-lg font-mono">
-            <div class="trace-header folded p-xs cursor-pointer d-flex align-center" onclick="window.toggleErrorTrace('${traceId}')" style="user-select: none;">
-                <span class="trace-toggle text-error mr-xs">▶</span>
+            <div class="trace-header folded p-xs cursor-pointer d-flex align-center" data-action="toggleErrorTrace" data-trace-id="${traceId}" style="user-select: none;">
+                <span class="trace-toggle text-error mr-xs">&#x25B6;</span>
                 <span class="trace-header-text text-error font-bold">${title} - ${type}</span>
             </div>
             <div id="${traceId}" class="trace-body collapsed text-error font-md text-pre-wrap" style="padding-left: 1.5rem; word-wrap: break-word;">${body}</div>
@@ -32,10 +20,7 @@ function formatErrorWithFolding(title, errorData) {
     `;
 }
 
-/**
- * Toggle an error trace body between collapsed and expanded.
- */
-function toggleErrorTrace(traceId) {
+export function toggleErrorTrace(traceId) {
     const body = document.getElementById(traceId);
     if (!body) return;
 
@@ -55,9 +40,6 @@ function toggleErrorTrace(traceId) {
     }
 }
 
-// Expose globally (ensure it's available)
-if (typeof window !== 'undefined') {
-    window.formatErrorWithFolding = formatErrorWithFolding;
-    window.toggleErrorTrace = toggleErrorTrace;
-    console.log('Error formatter loaded');
-}
+registerActions('click', {
+    toggleErrorTrace: (el) => toggleErrorTrace(el.dataset.traceId)
+});

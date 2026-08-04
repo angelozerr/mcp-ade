@@ -1,12 +1,4 @@
-/**
- * Reusable chip-based language filter for server lists (LSP / DAP).
- *
- * Usage:
- *   const filter = new LanguageFilter(container, () => window.lspConfigs, () => reRenderList());
- *   const filtered = filter.filterServers(allServers);
- *   filter.getItemsContainer().innerHTML = filtered.map(...).join('');
- */
-class LanguageFilter {
+export class LanguageFilter {
 
     constructor(parentContainer, getConfigs, onFilterChange) {
         this._parent = parentContainer;
@@ -35,12 +27,9 @@ class LanguageFilter {
         });
     }
 
-    // ── private ──────────────────────────────────────────
-
     _createDOM() {
         this._parent.classList.add('language-filter-active');
 
-        // Filter bar
         this._bar = document.createElement('div');
         this._bar.className = 'language-filter-bar';
 
@@ -60,11 +49,9 @@ class LanguageFilter {
         this._bar.appendChild(this._inputContainer);
         this._bar.appendChild(this._dropdown);
 
-        // Items container
         this._itemsContainer = document.createElement('div');
         this._itemsContainer.className = 'language-filter-items';
 
-        // Move existing children into items container
         while (this._parent.firstChild) {
             this._itemsContainer.appendChild(this._parent.firstChild);
         }
@@ -82,7 +69,6 @@ class LanguageFilter {
             this._showDropdown(this._input.value);
         });
 
-        // Defer focus listener so the initial focus() doesn't open the dropdown
         requestAnimationFrame(() => {
             this._input.addEventListener('focus', () => {
                 if (this._suppressFocusDropdown) {
@@ -116,7 +102,6 @@ class LanguageFilter {
             }
         });
 
-        // Close dropdown on outside click
         document.addEventListener('mousedown', (e) => {
             if (!this._bar.contains(e.target)) {
                 this._hideDropdown();
@@ -155,7 +140,6 @@ class LanguageFilter {
         ).join('');
         this._dropdown.classList.add('visible');
 
-        // Bind click on each option
         this._dropdown.querySelectorAll('.language-filter-option').forEach(el => {
             el.addEventListener('mousedown', (e) => {
                 e.preventDefault();
