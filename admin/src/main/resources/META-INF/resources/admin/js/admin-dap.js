@@ -1254,7 +1254,7 @@ async function updateSessionInDOM(message) {
             stateIcon = '<span>▶️</span>';
         } else if (message.newStatus === 'PAUSED') {
             statusText = 'Paused';
-            statusClass = 'status-running-not-ready';
+            statusClass = 'status-paused';
             stateIcon = '<span>⏸️</span>';
         } else if (message.newStatus === 'LAUNCH_FAILED') {
             statusText = 'Launch Failed';
@@ -1440,7 +1440,7 @@ function getSessionStateInfo(session) {
     } else if (session.state === 'PAUSED') {
         stateIcon = '<span>⏸️</span>';
         statusText = 'Paused';
-        statusClass = 'status-running-not-ready';
+        statusClass = 'status-paused';
     } else if (session.state === 'TERMINATED') {
         stateIcon = '<span>⏹️</span>';
         statusText = 'Terminated';

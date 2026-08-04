@@ -137,6 +137,8 @@
     --status-indexing-bg: #b8c625;
     --status-indexing-color: #333333;
     --status-running-bg: #1a8a2e;
+    --status-paused-bg: #f9c800;
+    --status-paused-color: #333333;
     --status-stopping-bg: #cc7a00;
     --status-stopped-bg: #6c757d;
     --status-installing-bg: #d4a017;

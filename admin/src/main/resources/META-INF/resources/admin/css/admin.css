@@ -799,6 +799,7 @@ body {
 .status-starting { background: var(--status-starting-bg); color: var(--text-on-accent); }
 .status-indexing { background: var(--status-indexing-bg); color: var(--status-indexing-color); }
 .status-running { background: var(--status-running-bg); color: var(--text-on-accent); }
+.status-paused { background: var(--status-paused-bg); color: var(--status-paused-color); }
 .status-stopping { background: var(--status-stopping-bg); color: var(--text-on-accent); }
 .status-stopped { background: var(--status-stopped-bg); color: var(--text-on-accent); }
 .status-installing { background: var(--status-installing-bg); color: var(--status-installing-color); }
