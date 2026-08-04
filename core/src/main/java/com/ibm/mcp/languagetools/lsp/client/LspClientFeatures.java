@@ -17,12 +17,16 @@ import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
 import com.ibm.mcp.languagetools.lsp.client.capabilities.*;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
+import org.eclipse.lsp4j.DidChangeWatchedFilesRegistrationOptions;
+import org.eclipse.lsp4j.FileSystemWatcher;
 import org.eclipse.lsp4j.RegistrationParams;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.UnregistrationParams;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * LSP client features - manages server capabilities (static and dynamic).
@@ -45,6 +49,9 @@ public class LspClientFeatures {
 
     // Dynamic capabilities registered via client/registerCapability
     private final Map<String, Runnable> dynamicRegistrations = new ConcurrentHashMap<>();
+
+    // File watcher patterns registered via workspace/didChangeWatchedFiles
+    private final List<FileSystemWatcher> fileWatchers = new CopyOnWriteArrayList<>();
 
     public LspClientFeatures(LspServerConfig config) {
         this.config = config;
@@ -167,6 +174,15 @@ public class LspClientFeatures {
                     var options = renameRegistry.registerCapability(jsonOptions);
                     dynamicRegistrations.put(id, () -> renameRegistry.unregisterCapability(options));
                 }
+                case LspRequestConstants.WORKSPACE_DID_CHANGE_WATCHED_FILES -> {
+                    DidChangeWatchedFilesRegistrationOptions options =
+                            com.ibm.mcp.languagetools.utils.JsonUtils.toModel(jsonOptions, DidChangeWatchedFilesRegistrationOptions.class);
+                    if (options != null && options.getWatchers() != null) {
+                        List<FileSystemWatcher> watchers = options.getWatchers();
+                        fileWatchers.addAll(watchers);
+                        dynamicRegistrations.put(id, () -> fileWatchers.removeAll(watchers));
+                    }
+                }
             }
         });
     }
@@ -191,5 +207,9 @@ public class LspClientFeatures {
 
     public ReferencesCapabilityRegistry getReferencesRegistry() {
         return referencesRegistry;
+    }
+
+    public List<FileSystemWatcher> getFileWatchers() {
+        return fileWatchers;
     }
 }

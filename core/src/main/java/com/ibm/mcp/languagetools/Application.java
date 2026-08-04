@@ -188,6 +188,7 @@ public class Application {
             });
 
             LOG.infof("Created workspace %s", uri);
+            ws.startFileWatcherIfEnabled();
             return ws;
         });
 

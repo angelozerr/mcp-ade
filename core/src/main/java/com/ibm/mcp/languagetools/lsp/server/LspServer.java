@@ -304,6 +304,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
         WorkspaceClientCapabilities workspace = new WorkspaceClientCapabilities();
         workspace.setWorkspaceFolders(true);
         workspace.setConfiguration(true);
+        DidChangeWatchedFilesCapabilities didChangeWatchedFiles = new DidChangeWatchedFilesCapabilities();
+        didChangeWatchedFiles.setDynamicRegistration(true);
+        workspace.setDidChangeWatchedFiles(didChangeWatchedFiles);
         capabilities.setWorkspace(workspace);
 
         TextDocumentClientCapabilities textDocument = createTextDocumentClientCapabilities();
@@ -885,6 +888,31 @@ public class LspServer extends ServerBase<LspServerConfig> {
      */
     public LspClientFeatures getClientFeatures() {
         return clientFeatures;
+    }
+
+    /**
+     * Send workspace/didChangeWatchedFiles notification to the language server.
+     *
+     * @param changes list of file events (created, changed, deleted)
+     */
+    public void sendDidChangeWatchedFiles(List<FileEvent> changes) {
+        if (languageServer == null || changes == null || changes.isEmpty()) {
+            return;
+        }
+        DidChangeWatchedFilesParams params = new DidChangeWatchedFilesParams();
+        params.setChanges(changes);
+        languageServer.getWorkspaceService().didChangeWatchedFiles(params);
+    }
+
+    /**
+     * Refresh the workspace for this language server.
+     * Subclasses can override to add server-specific refresh logic
+     * (e.g., JDT.LS needs project.refreshLocal to sync Eclipse workspace model).
+     *
+     * @return a future that completes with a status message
+     */
+    public CompletableFuture<String> refreshWorkspace() {
+        return CompletableFuture.completedFuture("OK");
     }
 
 }

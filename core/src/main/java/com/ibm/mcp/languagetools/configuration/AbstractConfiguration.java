@@ -186,7 +186,13 @@ public abstract class AbstractConfiguration implements Configuration {
 
     public boolean getBoolean(String key, boolean defaultValue) {
         Object value = get(key);
-        return value instanceof Boolean ? (Boolean) value : defaultValue;
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        if (value instanceof String s) {
+            return Boolean.parseBoolean(s);
+        }
+        return defaultValue;
     }
 
     public int getInt(String key, int defaultValue) {

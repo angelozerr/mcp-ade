@@ -21,6 +21,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,6 +37,8 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
     private static final String FIELD_INITIALIZATION_OPTIONS = "initializationOptions";
     private static final String FIELD_TOOLS_REQUEST = "toolsRequest";
     private static final String FIELD_SKIP_DID_OPEN = "skipDidOpen";
+    private static final String FIELD_FILE_WATCHERS = "fileWatchers";
+    private static final String FIELD_GLOB_PATTERN = "globPattern";
 
     @Override
     public String getRoot() {
@@ -71,6 +75,19 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
             if (toolsRequest.has(FIELD_SKIP_DID_OPEN)) {
                 config.setSkipDidOpen(toolsRequest.get(FIELD_SKIP_DID_OPEN).getAsBoolean());
             }
+        }
+
+        // Static file watcher patterns
+        if (jsonObject.has(FIELD_FILE_WATCHERS)) {
+            List<LspServerConfig.FileWatcherPattern> patterns = new ArrayList<>();
+            jsonObject.getAsJsonArray(FIELD_FILE_WATCHERS).forEach(el -> {
+                JsonObject obj = el.getAsJsonObject();
+                if (obj.has(FIELD_GLOB_PATTERN)) {
+                    patterns.add(new LspServerConfig.FileWatcherPattern(
+                            obj.get(FIELD_GLOB_PATTERN).getAsString()));
+                }
+            });
+            config.setFileWatchers(patterns);
         }
 
         return jsonObject;

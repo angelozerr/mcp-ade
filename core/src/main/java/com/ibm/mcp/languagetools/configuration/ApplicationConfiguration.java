@@ -68,6 +68,11 @@ public class ApplicationConfiguration extends AbstractConfiguration {
         save();
     }
 
+    public synchronized void setBoolean(String key, boolean value) {
+        getSettings().put(key, value);
+        save();
+    }
+
     public synchronized void save() {
         try {
             Files.createDirectories(getSettingsFile().getParent());

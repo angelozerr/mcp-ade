@@ -333,6 +333,15 @@ public class JdtLsServer extends LspServer implements InstallerListener {
     }
 
     @Override
+    public CompletableFuture<String> refreshWorkspace() {
+        if (!isReady()) {
+            return CompletableFuture.completedFuture("JDT.LS is not ready");
+        }
+        return executeCommand(JdtlsCommands.REFRESH_PROJECT, List.of())
+                .thenApply(result -> "JDT.LS workspace refreshed: " + result);
+    }
+
+    @Override
     public CompletableFuture<Void> initialize() {
         resolveImportMode();
         return super.initialize()

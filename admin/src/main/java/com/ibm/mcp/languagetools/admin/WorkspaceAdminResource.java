@@ -150,6 +150,70 @@ public class WorkspaceAdminResource {
                 .build();
     }
 
+    /**
+     * Refresh a workspace: sync file system changes with all running language servers.
+     */
+    @POST
+    @Path("/workspaces/{uri}/refresh")
+    public Response refreshWorkspace(@PathParam("uri") String uriParam) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (var server : workspace.getLspServers()) {
+            if (server.getStatus() == com.ibm.mcp.languagetools.server.ServerStatus.RUNNING && server.isReady()) {
+                try {
+                    String serverResult = server.refreshWorkspace()
+                            .get(30, java.util.concurrent.TimeUnit.SECONDS);
+                    result.append(server.getId()).append(": ").append(serverResult).append("\n");
+                } catch (Exception e) {
+                    result.append(server.getId()).append(": error - ").append(e.getMessage()).append("\n");
+                }
+            }
+        }
+
+        return Response.ok()
+                .entity(Map.of("status", "refreshed", "details", result.toString()))
+                .build();
+    }
+
+    /**
+     * Toggle file watcher for a workspace.
+     */
+    @POST
+    @Path("/workspaces/{uri}/file-watcher")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response toggleFileWatcher(@PathParam("uri") String uriParam, Map<String, Object> body) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+
+        boolean enabled = Boolean.TRUE.equals(body.get("enabled"));
+        // Persist the global setting
+        var config = application.getConfiguration();
+        if (config instanceof com.ibm.mcp.languagetools.configuration.ApplicationConfiguration appConfig) {
+            appConfig.setBoolean("fileWatchers.enabled", enabled);
+        }
+
+        // Apply to all workspaces (global setting)
+        for (Workspace ws : application.getWorkspaces()) {
+            if (enabled) {
+                ws.startFileWatcherIfEnabled();
+            } else {
+                ws.stopFileWatcher();
+            }
+        }
+
+        return Response.ok()
+                .entity(Map.of("fileWatcherEnabled", enabled, "fileWatcherRunning", workspace.isFileWatcherRunning()))
+                .build();
+    }
+
     private WorkspaceDTO toDTO(Workspace workspace) {
         var uri = workspace.getNormalizedUri();
 
@@ -162,7 +226,9 @@ public class WorkspaceAdminResource {
                 ))
                 .toList();
 
-        LOG.infof("Workspace %s - mcpClients: %s", uri, mcpClients);
-        return new WorkspaceDTO(uri, mcpClients);
+        boolean fileWatcherEnabled = application.getConfiguration() == null
+                || application.getConfiguration().getBoolean("fileWatchers.enabled", true);
+
+        return new WorkspaceDTO(uri, mcpClients, fileWatcherEnabled, workspace.isFileWatcherRunning());
     }
 }

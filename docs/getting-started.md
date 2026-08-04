@@ -254,6 +254,41 @@ Check `extensions/` folder for available extensions:
 - `go`, `rust`, `c`, `dart`, `kotlin`, `php`, `lua`, `yaml`, `dockerfile`
 - `microprofile`, `quarkus`, `liberty`
 
+### File Watcher & Workspace Refresh
+
+When an AI agent creates, modifies, or deletes files, language servers need to be notified.
+MCP Language Tools provides two mechanisms:
+
+**1. File Watcher (automatic, local workspaces)**
+
+Enable in `settings.json`:
+```json
+{
+  "fileWatchers": {
+    "enabled": true,
+    "excludePatterns": "dist,out,.cache"
+  }
+}
+```
+
+Or toggle via Admin UI: Workspace header → File Watcher toggle.
+
+**2. `refresh_workspace` tool (explicit, works everywhere)**
+
+The AI agent calls `refresh_workspace` after creating/modifying files — equivalent to F5/Refresh in Eclipse IDE:
+```
+"After creating the new Java class, call refresh_workspace to sync language servers."
+```
+
+This is essential before debugging to avoid `ClassNotFoundException`.
+
+**3. `notify_file_changes` tool (programmatic)**
+
+For fine-grained control, the agent can notify specific file changes:
+```
+notify_file_changes with changes: ["src/Main.java:created", "src/Old.java:deleted"]
+```
+
 ### Try Advanced Features
 - Ask Claude to fix validation errors
 - Request code navigation (references, definitions)

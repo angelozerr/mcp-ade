@@ -18,7 +18,9 @@ import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,6 +39,8 @@ public class LspServerConfig extends ServerConfigBase {
      * Defaults to false (didOpen is sent). Set to true for servers that index the whole project (e.g. JDTLS, pyright).
      */
     private boolean skipDidOpen;
+
+    private List<FileWatcherPattern> fileWatchers;
 
     public LspServerConfig(String serverId, Extension extension) {
         super(serverId, computeServerHome(serverId, extension), extension);
@@ -96,6 +100,27 @@ public class LspServerConfig extends ServerConfigBase {
 
     public void setSkipDidOpen(boolean skipDidOpen) {
         this.skipDidOpen = skipDidOpen;
+    }
+
+    public List<FileWatcherPattern> getFileWatchers() {
+        return fileWatchers;
+    }
+
+    public void setFileWatchers(List<FileWatcherPattern> fileWatchers) {
+        this.fileWatchers = fileWatchers;
+    }
+
+    public static class FileWatcherPattern {
+
+        private final String globPattern;
+
+        public FileWatcherPattern(String globPattern) {
+            this.globPattern = globPattern;
+        }
+
+        public String getGlobPattern() {
+            return globPattern;
+        }
     }
 
     @Override

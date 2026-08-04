@@ -11,6 +11,15 @@
       "language": "java"
     }
   ],
+  "fileWatchers": [
+    { "globPattern": "**/*.java" },
+    { "globPattern": "**/pom.xml" },
+    { "globPattern": "**/.classpath" },
+    { "globPattern": "**/.project" },
+    { "globPattern": "**/.settings/*.prefs" },
+    { "globPattern": "**/gradle.build" },
+    { "globPattern": "**/gradle.build.kts" }
+  ],
   "settings": [
     {
       "key": "java.import.mode",

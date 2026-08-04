@@ -17,7 +17,9 @@ import java.util.List;
 
 public record WorkspaceDTO(
     String rootUri,
-    List<McpClientInfo> mcpClients
+    List<McpClientInfo> mcpClients,
+    boolean fileWatcherEnabled,
+    boolean fileWatcherRunning
 ) {
     public record McpClientInfo(
         String name,

@@ -557,6 +557,8 @@ public class AdminWebSocketEndpoint {
                 .toList();
 
         var uri = workspace.getNormalizedUri();
-        return new WorkspaceDTO(uri, mcpClients);
+        boolean fileWatcherEnabled = application.getConfiguration() == null
+                || application.getConfiguration().getBoolean("fileWatchers.enabled", true);
+        return new WorkspaceDTO(uri, mcpClients, fileWatcherEnabled, workspace.isFileWatcherRunning());
     }
 }

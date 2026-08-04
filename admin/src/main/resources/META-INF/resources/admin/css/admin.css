@@ -810,6 +810,41 @@ body {
 .status-connected_to_ide { background: var(--status-connected-bg); color: var(--text-on-accent); font-weight: 600; }
 .status-disconnecting { background: var(--status-disconnecting-bg); color: var(--text-on-accent); }
 
+/* File watcher toggle switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    vertical-align: middle;
+    cursor: pointer;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--status-stopped-bg);
+    border-radius: 18px;
+    transition: background 0.2s;
+}
+.toggle-slider::before {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--status-running-bg);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(14px);
+}
+
 .servers-placeholder {
     padding: 2rem 1rem;
     text-align: center;

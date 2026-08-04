@@ -32,6 +32,7 @@ public class LspRequestConstants {
 
     // workspace/* LSP requests
     public static final String WORKSPACE_SYMBOL = "workspace/symbol";
+    public static final String WORKSPACE_DID_CHANGE_WATCHED_FILES = "workspace/didChangeWatchedFiles";
 
     private LspRequestConstants() {
     }

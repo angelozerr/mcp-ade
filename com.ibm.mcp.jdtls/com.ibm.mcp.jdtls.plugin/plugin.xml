@@ -96,6 +96,7 @@
             <command id="mcp.jdtls.getClasspathInfo"/>
             <command id="mcp.jdtls.setupProject"/>
             <command id="mcp.jdtls.getIndexingStatus"/>
+            <command id="mcp.jdtls.refreshProject"/>
         </delegateCommandHandler>
     </extension>
 </plugin>

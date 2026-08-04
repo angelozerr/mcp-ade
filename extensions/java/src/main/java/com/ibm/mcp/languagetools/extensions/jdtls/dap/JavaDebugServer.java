@@ -385,7 +385,7 @@ public class JavaDebugServer extends DapServer {
 
     private CompletableFuture<Object> buildWorkspace(String mainClass, String sessionId) {
         // Build workspace expects a JSON string (not a structured object)
-        String buildArg = String.format("{\"mainClass\":\"%s\",\"isFullBuild\":false}", mainClass);
+        String buildArg = String.format("{\"mainClass\":\"%s\",\"isFullBuild\":true}", mainClass);
 
         return request(CMD_BUILD_WORKSPACE, List.of(buildArg))
                 .handle((result, ex) -> {

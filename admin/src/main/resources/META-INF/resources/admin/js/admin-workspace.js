@@ -149,12 +149,26 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             container.innerHTML = state.workspaces.map(ws => {
                 // Extract folder name from URI
                 const folderName = ws.rootUri.split('/').filter(p => p).pop() || ws.rootUri;
+                const fwEnabled = ws.fileWatcherEnabled || false;
+                const fwRunning = ws.fileWatcherRunning || false;
+                const fwBadge = fwRunning
+                    ? '<span class="status-badge status-running" style="font-size:0.6rem;padding:0.1rem 0.3rem">watching</span>'
+                    : '';
 
                 return `
                 <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
                     <div class="d-flex justify-between align-center">
                         <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div>
                         <button class="close-workspace-btn" data-action="closeWorkspace" data-uri="${ws.rootUri}" data-stop-propagation title="Close workspace and stop all servers">×</button>
+                    </div>
+                    <div class="d-flex align-center gap-sm" style="margin-top:4px;padding-left:4px">
+                        <label class="toggle-switch" onclick="event.stopPropagation()" data-stop-propagation title="${fwEnabled ? 'Disable' : 'Enable'} file watcher">
+                            <input type="checkbox" ${fwEnabled ? 'checked' : ''} data-action="toggleFileWatcherFromList" data-uri="${ws.rootUri}">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="text-dimmed" style="font-size:0.65rem">File watcher</span>
+                        ${fwBadge}
+                        <button class="btn-sm" data-action="refreshWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Refresh workspace" style="margin-left:auto;font-size:0.7rem;padding:0.1rem 0.35rem">↻</button>
                     </div>
                     ${ws.mcpClients && ws.mcpClients.length > 0 ? `
                         <div class="workspace-section">
@@ -1403,6 +1417,58 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             renderTracesInContainer('console-output', traces, currentTraceLevel, getCurrentSearchQuery());
         }
 
+        async function refreshWorkspaceAction() {
+            if (!state.selectedWorkspace) return;
+            try {
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(state.selectedWorkspace)}/refresh`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Workspace refreshed:', result);
+                }
+            } catch (error) {
+                console.error('Failed to refresh workspace:', error);
+            }
+        }
+
+        async function toggleFileWatcherFromListAction(uri) {
+            const workspace = state.workspaces?.find(w => w.rootUri === uri);
+            const newEnabled = !(workspace?.fileWatcherEnabled || false);
+            try {
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/file-watcher`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: newEnabled })
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('File watcher toggled:', result);
+                    if (workspace) {
+                        workspace.fileWatcherEnabled = result.fileWatcherEnabled;
+                        workspace.fileWatcherRunning = result.fileWatcherRunning;
+                    }
+                    renderWorkspaces();
+                }
+            } catch (error) {
+                console.error('Failed to toggle file watcher:', error);
+            }
+        }
+
+        async function refreshWorkspaceFromListAction(uri) {
+            try {
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/refresh`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Workspace refreshed:', result);
+                }
+            } catch (error) {
+                console.error('Failed to refresh workspace:', error);
+            }
+        }
+
         async function createNewTestSession(serverId) {
             createNewTestSessionImpl(serverId);
         }
@@ -1432,6 +1498,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             disconnectFromIdeAction: (el) => disconnectFromIdeAction(el.dataset.serverId),
             connectToIdeAction: (el) => connectToIdeAction(el.dataset.serverId),
             createNewTestSession: (el) => createNewTestSession(el.dataset.serverId),
+            refreshWorkspace: () => refreshWorkspaceAction(),
+            refreshWorkspaceFromList: (el) => refreshWorkspaceFromListAction(el.dataset.uri),
             toggleAllTracesWorkspace: () => toggleAllTracesWorkspace(),
             clearConsole: () => clearConsole(),
             saveInstallerJson: (el) => {
@@ -1447,6 +1515,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         registerActions('change', {
             toggleShowActiveServers: () => toggleShowActiveServers(),
+            toggleFileWatcherFromList: (el) => toggleFileWatcherFromListAction(el.dataset.uri),
             toggleWorkspaceLspServerEnabled: (el) => {
                 toggleWorkspaceLspServerEnabled(el.dataset.serverId, el.checked);
             },

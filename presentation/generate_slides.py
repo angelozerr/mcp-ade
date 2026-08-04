@@ -726,7 +726,71 @@ slide_title(slide, "Admin: Workspace / Debuggers", "Per-workspace debug adapter 
 add_screenshot(slide, 'admin-workspace-debuggers.png')
 
 # ============================================================
-# SLIDE 21 — Roadmap
+# SLIDE 21 — File Watcher: Keeping Language Servers in Sync
+# ============================================================
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+set_slide_bg(slide)
+slide_title(slide, "File Watcher: Keeping Language Servers in Sync",
+            "When an AI agent creates files, language servers must know about them")
+
+# Problem card
+add_card(slide, 0.8, 2.2, 5.5, 2.0, RGBColor(0x3A, 0x1A, 0x1A))
+add_text_box(slide, 1.2, 2.3, 5, 0.4, "The Problem", font_size=18, bold=True, color=RED)
+add_bullet_list(slide, 1.2, 2.8, 5, 1.3, [
+    "AI agent creates Java file on disk",
+    "JDT.LS doesn't know about it → ClassNotFoundException",
+    "Root cause: workspace/didChangeWatchedFiles was not implemented",
+], font_size=14, bullet_color=RED)
+
+# Solution card
+add_card(slide, 7.0, 2.2, 5.5, 2.0, RGBColor(0x1A, 0x3A, 0x1A))
+add_text_box(slide, 7.4, 2.3, 5, 0.4, "The Solution: 3 Mechanisms", font_size=18, bold=True, color=ACCENT2)
+add_bullet_list(slide, 7.4, 2.8, 5, 1.3, [
+    "File Watcher — automatic, local workspaces (Java NIO)",
+    "refresh_workspace — explicit, like F5 in Eclipse IDE",
+    "notify_file_changes — programmatic, works with remote too",
+], font_size=14, bullet_color=ACCENT2)
+
+# Architecture diagram at bottom
+add_card(slide, 0.8, 4.5, 11.7, 2.8, RGBColor(0x1A, 0x3A, 0x5C))
+add_text_box(slide, 1.2, 4.6, 11, 0.35, "How it works", font_size=16, bold=True, color=ACCENT)
+
+# File system box
+add_card(slide, 1.2, 5.1, 2.2, 0.8)
+add_text_box(slide, 1.2, 5.15, 2.2, 0.35, "File System", font_size=14, bold=True, color=TEXT_WHITE, alignment=PP_ALIGN.CENTER)
+add_text_box(slide, 1.2, 5.5, 2.2, 0.3, "*.java, pom.xml...", font_size=10, color=TEXT_GRAY, alignment=PP_ALIGN.CENTER)
+
+# Arrow
+add_text_box(slide, 3.5, 5.2, 1.5, 0.4, "→ events →", font_size=12, color=TEXT_YELLOW, bold=True, alignment=PP_ALIGN.CENTER)
+
+# File Watcher box
+add_card(slide, 5.0, 5.1, 2.5, 0.8)
+add_text_box(slide, 5.0, 5.15, 2.5, 0.35, "WorkspaceFileWatcher", font_size=12, bold=True, color=ACCENT2, alignment=PP_ALIGN.CENTER)
+add_text_box(slide, 5.0, 5.5, 2.5, 0.3, "batch 500ms + glob filter", font_size=10, color=TEXT_GRAY, alignment=PP_ALIGN.CENTER)
+
+# Arrow
+add_text_box(slide, 7.6, 5.2, 1.5, 0.4, "→ LSP →", font_size=12, color=TEXT_YELLOW, bold=True, alignment=PP_ALIGN.CENTER)
+
+# Language Servers box
+add_card(slide, 9.0, 5.1, 3.2, 0.8)
+add_text_box(slide, 9.0, 5.15, 3.2, 0.35, "Language Servers", font_size=14, bold=True, color=ACCENT, alignment=PP_ALIGN.CENTER)
+add_text_box(slide, 9.0, 5.5, 3.2, 0.3, "didChangeWatchedFiles", font_size=10, color=TEXT_GRAY, alignment=PP_ALIGN.CENTER)
+
+# Key features
+add_text_box(slide, 1.2, 6.2, 5, 0.9,
+    "Static patterns (server.json) + dynamic (registerCapability)\n"
+    "Event queuing when server stopped → replay on restart\n"
+    "Configurable excludes (fileWatchers.excludePatterns)",
+    font_size=11, color=TEXT_GRAY)
+
+add_text_box(slide, 7.0, 6.2, 5, 0.9,
+    "JDT.LS: also needs project.refreshLocal() via mcp-jdtls\n"
+    "→ refresh_workspace calls both LSP + server-specific refresh\n"
+    "No auto-refresh on restart — explicit action by agent or admin",
+    font_size=11, color=TEXT_GRAY)
+
+# ============================================================
+# SLIDE 22 — Roadmap  (was 21)
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(slide)
@@ -752,7 +816,7 @@ add_bullet_list(slide, 7.4, 3.0, 5, 3.8, [
 ], font_size=14, bullet_color=ACCENT)
 
 # ============================================================
-# SLIDE 22 — Getting Started
+# SLIDE 23 — Getting Started  (was 22)
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(slide)
@@ -776,7 +840,7 @@ add_text_box(slide, 1.2, 6.2, 11, 0.4, "3. Ask your AI assistant to work on Java
 
 
 # ============================================================
-# SLIDE 23 — Thank You
+# SLIDE 24 — Thank You  (was 23)
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(slide)

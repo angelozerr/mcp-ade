@@ -22,8 +22,11 @@ import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.lsp4j.FileChangeType;
+import org.eclipse.lsp4j.FileEvent;
 import org.jboss.logging.Logger;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -63,9 +66,10 @@ public class WorkspaceTools {
 
     @Tool(
             name = "refresh_workspace",
-            description = "Re-evaluate activation conditions for all language servers in a workspace. " +
-                        "Use this after project configuration changes (e.g., adding angular.json) " +
-                        "to activate or deactivate language servers accordingly.")
+            description = "Refresh all running language servers in a workspace to synchronize with file system changes. " +
+                        "Call this after creating, modifying or deleting files (e.g., new Java classes) " +
+                        "so that language servers detect the changes and update their internal model. " +
+                        "This is essential before debugging or building when files were created outside of LSP.")
     public String refreshWorkspace(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
         try {
@@ -73,8 +77,27 @@ public class WorkspaceTools {
             if (workspace == null) {
                 return "No workspace found for: " + cwd;
             }
+
             workspace.refreshActivationCache();
-            return "Workspace refreshed: " + workspace.getRootUri();
+
+            StringBuilder result = new StringBuilder();
+            result.append("Workspace refreshed: ").append(workspace.getRootUri());
+
+            for (LspServer server : workspace.getLspServers()) {
+                if (server.getStatus() != ServerStatus.RUNNING || !server.isReady()) {
+                    continue;
+                }
+                try {
+                    String serverResult = server.refreshWorkspace()
+                            .get(30, java.util.concurrent.TimeUnit.SECONDS);
+                    result.append("\n- ").append(server.getId()).append(": ").append(serverResult);
+                } catch (Exception e) {
+                    LOG.warnf(e, "Failed to refresh server %s", server.getId());
+                    result.append("\n- ").append(server.getId()).append(": error - ").append(e.getMessage());
+                }
+            }
+
+            return result.toString();
         } catch (Exception e) {
             LOG.error("Failed to refresh workspace", e);
             return "Failed to refresh workspace: " + e.getMessage();
@@ -143,6 +166,56 @@ public class WorkspaceTools {
             }
 
             return result;
+        }
+    }
+
+    @Tool(
+            name = "notify_file_changes",
+            description = "Notify language servers about file changes on the file system. " +
+                        "Use this when you have created, modified, or deleted files and want to " +
+                        "inform language servers immediately without waiting for the file watcher. " +
+                        "Each change should specify the file path and change type (created/changed/deleted).")
+    public String notifyFileChanges(
+            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
+            @ToolArg(description = "List of file changes. Each entry: 'path:type' where type is 'created', 'changed', or 'deleted'. Example: 'src/Main.java:created'") List<String> changes) {
+        try {
+            Workspace workspace = application.getWorkspaceForPath(cwd);
+            if (workspace == null) {
+                return "No workspace found for: " + cwd;
+            }
+
+            List<FileEvent> events = new ArrayList<>();
+            for (String change : changes) {
+                int colonIdx = change.lastIndexOf(':');
+                if (colonIdx <= 0) {
+                    continue;
+                }
+                String filePath = change.substring(0, colonIdx).trim();
+                String type = change.substring(colonIdx + 1).trim().toLowerCase();
+
+                FileChangeType changeType = switch (type) {
+                    case "created" -> FileChangeType.Created;
+                    case "changed" -> FileChangeType.Changed;
+                    case "deleted" -> FileChangeType.Deleted;
+                    default -> null;
+                };
+                if (changeType == null) {
+                    continue;
+                }
+
+                String uri = workspace.getRootPath().resolve(filePath).toUri().toString();
+                events.add(new FileEvent(uri, changeType));
+            }
+
+            if (events.isEmpty()) {
+                return "No valid file changes provided";
+            }
+
+            workspace.notifyFileChanges(events);
+            return String.format("Notified %d file change(s) to language servers", events.size());
+        } catch (Exception e) {
+            LOG.error("Failed to notify file changes", e);
+            return "Failed to notify file changes: " + e.getMessage();
         }
     }
 }

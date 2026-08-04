@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.configuration.Configuration;
 import com.ibm.mcp.languagetools.installer.InstallationException;
 import com.ibm.mcp.languagetools.lsp.LspInstanceRegistry;
+import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.lsp.server.LspServerFactoryRegistry;
@@ -29,15 +30,21 @@ import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
+import com.ibm.mcp.languagetools.watcher.WorkspaceFileWatcher;
+import org.eclipse.lsp4j.FileEvent;
+import org.eclipse.lsp4j.FileSystemWatcher;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
@@ -65,6 +72,10 @@ public class Workspace {
 
     // Activation condition cache: serverId -> whether the server should be activated for this workspace
     private final Map<String, Boolean> activationCache = new ConcurrentHashMap<>();
+
+    // File watcher
+    private WorkspaceFileWatcher fileWatcher;
+    private final Map<String, List<FileEvent>> pendingServerEvents = new ConcurrentHashMap<>();
 
     public record McpClientInfo(
             String connectionId,
@@ -109,6 +120,9 @@ public class Workspace {
                         oldStatus,
                         newStatus
                 ));
+            }
+            if (newStatus == ServerStatus.RUNNING && server.isReady()) {
+                replayPendingFileEvents(server.getId());
             }
         });
     }
@@ -354,6 +368,7 @@ public class Workspace {
         return CompletableFuture
                 .allOf(futures.toArray(new CompletableFuture[0]))
                 .thenRun(() -> {
+                    stopFileWatcher();
                     lspServers.clear();
                     configuration.unwatch();
                     LOG.infof("Workspace shut down: %s", rootUri);
@@ -516,6 +531,149 @@ public class Workspace {
         // Register status change callback
         registerServerStatusCallback(newServer);
         return newServer;
+    }
+
+    // ===== File Watcher =====
+
+    /**
+     * Start the file watcher for this workspace if enabled in settings.
+     */
+    public void startFileWatcherIfEnabled() {
+        if (fileWatcher != null && fileWatcher.isRunning()) {
+            return;
+        }
+        var config = application.getConfiguration();
+        boolean enabled = config == null || config.getBoolean("fileWatchers.enabled", true);
+        if (!enabled) {
+            LOG.debugf("File watchers disabled for workspace: %s", rootUri);
+            return;
+        }
+        if (!"file".equals(rootUri.getScheme())) {
+            LOG.infof("File watchers not supported for remote workspace: %s", rootUri);
+            return;
+        }
+        Set<String> additionalExcludes = null;
+        if (config != null) {
+            String excludePatterns = config.getString("fileWatchers.excludePatterns", null);
+            if (excludePatterns != null && !excludePatterns.isBlank()) {
+                additionalExcludes = new HashSet<>(Arrays.asList(excludePatterns.split(",")));
+                additionalExcludes.removeIf(String::isBlank);
+            }
+        }
+        fileWatcher = new WorkspaceFileWatcher(rootPath, this::onFileChanges, additionalExcludes);
+        fileWatcher.start();
+    }
+
+    /**
+     * Stop the file watcher.
+     */
+    public void stopFileWatcher() {
+        if (fileWatcher != null) {
+            fileWatcher.stop();
+            fileWatcher = null;
+        }
+    }
+
+    /**
+     * Check if the file watcher is running.
+     */
+    public boolean isFileWatcherRunning() {
+        return fileWatcher != null && fileWatcher.isRunning();
+    }
+
+    private void onFileChanges(List<FileEvent> events) {
+        LOG.infof("File watcher detected %d events, dispatching to %d servers", events.size(), lspServers.size());
+        for (LspServer server : lspServers.values()) {
+            List<FileEvent> matchingEvents = filterByPatterns(events, server);
+            if (matchingEvents.isEmpty()) {
+                LOG.debugf("No matching events for server %s after pattern filtering", server.getId());
+                continue;
+            }
+
+            if (server.getStatus() == ServerStatus.RUNNING && server.isReady()) {
+                LOG.infof("Sending %d didChangeWatchedFiles to server %s", matchingEvents.size(), server.getId());
+                server.sendDidChangeWatchedFiles(matchingEvents);
+                List<FileEvent> pending = pendingServerEvents.remove(server.getId());
+                if (pending != null && !pending.isEmpty()) {
+                    LOG.infof("Replaying %d pending events for server %s", pending.size(), server.getId());
+                    server.sendDidChangeWatchedFiles(pending);
+                }
+            } else {
+                LOG.infof("Server %s not ready (status=%s, ready=%s), queuing %d events",
+                        server.getId(), server.getStatus(), server.isReady(), matchingEvents.size());
+                pendingServerEvents.computeIfAbsent(server.getId(), k -> new CopyOnWriteArrayList<>())
+                        .addAll(matchingEvents);
+            }
+        }
+    }
+
+    /**
+     * Replay pending file events for a server that just became ready.
+     * Called from server status change listener.
+     */
+    public void replayPendingFileEvents(String serverId) {
+        List<FileEvent> pending = pendingServerEvents.remove(serverId);
+        if (pending == null || pending.isEmpty()) {
+            return;
+        }
+        LspServer server = getLspServer(serverId);
+        if (server != null && server.getStatus() == ServerStatus.RUNNING && server.isReady()) {
+            LOG.infof("Replaying %d pending file events for server: %s", pending.size(), serverId);
+            server.sendDidChangeWatchedFiles(pending);
+        }
+    }
+
+    private List<FileEvent> filterByPatterns(List<FileEvent> events, LspServer server) {
+        List<PathMatcher> matchers = new ArrayList<>();
+
+        // Dynamic patterns from registerCapability
+        LspClientFeatures features = server.getClientFeatures();
+        for (FileSystemWatcher w : features.getFileWatchers()) {
+            String pattern = w.getGlobPattern().getLeft();
+            if (pattern == null) {
+                continue;
+            }
+            try {
+                matchers.add(FileSystems.getDefault().getPathMatcher("glob:" + pattern));
+            } catch (Exception e) {
+                // invalid pattern
+            }
+        }
+
+        // Static patterns from server.json fileWatchers
+        LspServerConfig config = server.getConfig();
+        if (config.getFileWatchers() != null) {
+            for (LspServerConfig.FileWatcherPattern p : config.getFileWatchers()) {
+                try {
+                    matchers.add(FileSystems.getDefault().getPathMatcher("glob:" + p.getGlobPattern()));
+                } catch (Exception e) {
+                    // invalid pattern
+                }
+            }
+        }
+
+        if (matchers.isEmpty()) {
+            return events;
+        }
+
+        return events.stream()
+                .filter(event -> {
+                    try {
+                        Path filePath = rootPath.relativize(Path.of(URI.create(event.getUri())));
+                        return matchers.stream().anyMatch(m -> m.matches(filePath));
+                    } catch (Exception e) {
+                        return true;
+                    }
+                })
+                .toList();
+    }
+
+    /**
+     * Notify this workspace of external file changes (from agent or admin).
+     * Sends didChangeWatchedFiles to all matching running servers.
+     */
+    public void notifyFileChanges(List<FileEvent> events) {
+        onFileChanges(events);
     }
 
     // DAP servers
