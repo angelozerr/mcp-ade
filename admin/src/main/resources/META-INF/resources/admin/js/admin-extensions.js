@@ -103,7 +103,7 @@ export function showExtensionDetails(extensionId) {
     // Build servers list HTML
     let serversHTML = '';
     if (ext.lspServers && ext.lspServers.length > 0) {
-        serversHTML += '<h4 class="text-label" style="margin-top: 1.5rem;">LSP Servers</h4>';
+        serversHTML += '<h4 class="text-label mt-xl">LSP Servers</h4>';
         serversHTML += ext.lspServers.map(server => {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
@@ -119,7 +119,7 @@ export function showExtensionDetails(extensionId) {
     }
 
     if (ext.dapServers && ext.dapServers.length > 0) {
-        serversHTML += '<h4 class="text-success" style="margin-top: 1.5rem;">DAP Servers</h4>';
+        serversHTML += '<h4 class="text-success mt-xl">DAP Servers</h4>';
         serversHTML += ext.dapServers.map(server => {
             const disabledClass = !server.enabled ? 'server-disabled' : '';
             return `
@@ -140,7 +140,7 @@ export function showExtensionDetails(extensionId) {
 
     // Remove button (only for USER extensions)
     const removeButton = ext.source === 'USER' ? `
-        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle);">
+        <div class="mt-2xl border-top-subtle" style="padding-top: 1.5rem;">
             <button class="btn-danger" data-action="removeExtension" data-extension-id="${ext.id}">
                 Remove Extension
             </button>
@@ -155,8 +155,8 @@ export function showExtensionDetails(extensionId) {
                 ${ext.id} ${sourceBadge}
             </div>
         </div>
-        <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto;">
-            <h3 class="text-label" style="margin-top: 0;">Extension Information</h3>
+        <div class="details-panel text-primary detail-content">
+            <h3 class="text-label mt-0">Extension Information</h3>
 
             <div class="mb-lg">
                 <strong class="text-label">ID:</strong>
@@ -200,14 +200,14 @@ export function showAddExtensionForm() {
                 Add Extension
             </div>
         </div>
-        <div class="details-panel text-primary" style="padding: 2rem;">
-            <h3 class="text-label" style="margin-top: 0;">Add a New Extension</h3>
-            <p class="text-secondary" style="margin-bottom: 1.5rem;">
+        <div class="details-panel text-primary p-2xl">
+            <h3 class="text-label mt-0">Add a New Extension</h3>
+            <p class="text-secondary mb-xl">
                 Upload a ZIP or JAR file containing lsp/ and/or dap/ subdirectories with server configurations.
             </p>
 
-            <div style="margin-bottom: 1.25rem;">
-                <label class="text-label d-block" style="margin-bottom: 0.35rem; font-weight: 500;">Extension ID</label>
+            <div class="mb-xl">
+                <label class="text-label d-block mb-xs font-medium">Extension ID</label>
                 <input type="text" id="add-ext-id" placeholder="e.g. my-extension"
                        class="input-field w-100 font-base" style="max-width: 400px;">
             </div>
@@ -219,8 +219,8 @@ export function showAddExtensionForm() {
                 <div class="drop-zone-hint">or click to browse</div>
             </div>
 
-            <div id="selected-file-info" style="display: none; margin-bottom: 1.25rem;">
-                <div class="d-flex align-center gap-sm bg-card-alt" style="padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); border-radius: 3px; max-width: 400px;">
+            <div id="selected-file-info" class="d-none mb-xl">
+                <div class="d-flex align-center gap-sm bg-card-alt rounded" style="padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); max-width: 400px;">
                     <span class="text-success">📄</span>
                     <span id="selected-file-name" class="text-value flex-1 truncate"></span>
                     <span class="text-dimmed cursor-pointer font-xl" data-action="clearSelectedFile" title="Remove file">×</span>

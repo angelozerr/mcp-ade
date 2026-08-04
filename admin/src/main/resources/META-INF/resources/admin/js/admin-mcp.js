@@ -1,7 +1,6 @@
 import { state, updateSearchBoxVisibility } from './shared-state.js';
 import {
-    renderTrace, renderTraceControls, updateTraceControls,
-    isScrolledToBottom, saveExpandedState, restoreExpandedState,
+    renderTraceControls, updateTraceControls, renderTracesInContainer,
     getCurrentSearchQuery, escapeHtml, initTraceContainer, toggleAllTraces
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
@@ -63,7 +62,7 @@ function renderMcpClients() {
             <div class="workspace-item cursor-pointer ${client.id === selectedMcpClient ? 'active' : ''}"
                  data-action="selectMcpClient" data-client-id="${client.id}"
                  title="${escapeHtml(client.id)}">
-                <div class="mb-xs" style="font-weight: 600;">
+                <div class="mb-xs font-bold">
                     📱 ${escapeHtml(client.name)}
                 </div>
                 <div class="text-dimmed font-sm" style="padding-left: 1.5rem;">
@@ -228,60 +227,13 @@ function switchMcpConsoleTab(tab, clickedBtn) {
 }
 
 export function renderMcpConsole() {
-    const output = document.getElementById('mcp-console-output');
-    if (!output) return;
-
-    if (mcpTraceLevel === 'off') {
-        output.innerHTML = '<div class="text-secondary p-lg">Traces disabled (level: off)</div>';
-        return;
-    }
-
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
-
-    if (clientTraces.length === 0) {
-        output.innerHTML = '<div class="text-secondary p-lg">No MCP traces yet...</div>';
-        return;
-    }
-
-    const wasAtBottom = isScrolledToBottom(output);
-    const expandedIds = saveExpandedState(output);
-
-    const html = clientTraces.map((trace, index) => formatMcpTrace(trace, index, '')).join('');
-    output.innerHTML = html;
-
-    restoreExpandedState(output, expandedIds);
-
-    if (wasAtBottom) {
-        output.scrollTop = output.scrollHeight;
-    }
+    renderTracesInContainer('mcp-console-output', clientTraces, mcpTraceLevel, '');
 }
 
 export function renderMcpConsoleWithHighlights() {
-    const output = document.getElementById('mcp-console-output');
-    if (!output) return;
-
-    if (mcpTraceLevel === 'off') {
-        output.innerHTML = '<div class="text-secondary p-lg">Traces disabled (level: off)</div>';
-        return;
-    }
-
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
-
-    if (clientTraces.length === 0) {
-        output.innerHTML = '<div class="text-secondary p-lg">No MCP traces yet...</div>';
-        return;
-    }
-
-    const expandedIds = saveExpandedState(output);
-
-    const html = clientTraces.map((trace, index) => formatMcpTrace(trace, index, getCurrentSearchQuery())).join('');
-    output.innerHTML = html;
-
-    restoreExpandedState(output, expandedIds);
-}
-
-function formatMcpTrace(trace, index, searchQuery = '') {
-    return renderTrace(trace, index, mcpTraceLevel, searchQuery);
+    renderTracesInContainer('mcp-console-output', clientTraces, mcpTraceLevel, getCurrentSearchQuery());
 }
 
 async function clearMcpConsole() {

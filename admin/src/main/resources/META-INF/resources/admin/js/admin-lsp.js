@@ -26,7 +26,7 @@ function renderLspServerItem(server, contributedByMap) {
     const isActive = selectedAllServer === server.id ? 'active' : '';
     const extensionClass = server.isExtension ? 'server-extension' : '';
     const disabledClass = server.enabled === false ? 'server-disabled' : '';
-    const extensionBadge = server.isExtension ? ' <span class="text-secondary" style="font-size: 0.85em;">(Extension)</span>' : '';
+    const extensionBadge = server.isExtension ? ' <span class="text-secondary font-md">(Extension)</span>' : '';
     const serverIcon = server.isExtension ? '🧩' : '🚀';
     const contributeInfo = formatGlobalContributeInfo(server, contributedByMap);
     return `
@@ -149,17 +149,17 @@ export async function showServerDetails(serverId) {
             </div>
             <div class="tab-content">
                 <div id="server-overview-tab" class="tab-panel ${currentServerTab === 'overview' ? 'active' : ''}">
-                    <div class="details-panel text-primary overflow-auto" style="padding: 2rem;">
+                    <div class="details-panel text-primary overflow-auto p-2xl">
                         ${detailsHTML}
-                        <div class="p-lg bg-panel rounded-sm" style="margin-top: 2rem; border-left: 3px solid var(--accent-primary);">
+                        <div class="p-lg bg-panel rounded-sm mt-2xl border-left-accent">
                             <strong>Note:</strong> To run this server, open a workspace using an MCP client.
                         </div>
                     </div>
                 </div>
                 <div id="server-contributions-tab" class="tab-panel ${currentServerTab === 'contributions' ? 'active' : ''}">
-                    <div id="server-diagram-container" class="w-100 bg-card" style="height: 400px; flex-shrink: 0;"></div>
+                    <div id="server-diagram-container" class="w-100 bg-card diagram-container"></div>
                     <div class="diagram-resizer"></div>
-                    <div class="details-panel text-primary flex-1 min-h-0 overflow-auto" style="padding: 2rem;">
+                    <div class="details-panel text-primary flex-1 min-h-0 overflow-auto p-2xl">
                         ${contributionsHTML || '<p class="detail-value">No contributions</p>'}
                     </div>
                 </div>
@@ -244,42 +244,42 @@ function buildServerDetailsHTML(details, allServers) {
     }
 
     return `
-        <h3 class="text-label" style="margin-top: 0;">Server Information</h3>
+        <h3 class="text-label mt-0">Server Information</h3>
 
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Server ID:</strong>
-            <p class="text-value" style="margin: 0.25rem 0;"><code>${details.id}</code></p>
+            <p class="text-value mt-xs mb-xs"><code>${details.id}</code></p>
         </div>
 
         ${details.description ? `
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Description:</strong>
-            <p class="text-value" style="margin: 0.25rem 0;">${details.description}</p>
+            <p class="text-value mt-xs mb-xs">${details.description}</p>
         </div>
         ` : ''}
 
         ${details.url ? `
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">URL:</strong>
-            <p style="margin: 0.25rem 0;"><a href="${details.url}" target="_blank" style="color: var(--accent-primary); text-decoration: none;">${details.url}</a></p>
+            <p class="mt-xs mb-xs"><a href="${details.url}" target="_blank" class="link-accent">${details.url}</a></p>
         </div>
         ` : ''}
 
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Command:</strong>
-            <p class="text-value" style="margin: 0.25rem 0;">${commandHTML}</p>
+            <p class="text-value mt-xs mb-xs">${commandHTML}</p>
         </div>
 
         ${details.args && details.args.length > 0 ? `
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Arguments:</strong>
-            <ul class="text-value" style="margin: 0.5rem 0; padding-left: 1.5rem;">
+            <ul class="text-value mt-sm mb-sm" style="padding-left: 1.5rem;">
                 ${details.args.map(arg => `<li><code>${arg}</code></li>`).join('')}
             </ul>
         </div>
         ` : ''}
 
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
         </div>
@@ -309,8 +309,7 @@ function buildSettingsHTML(details) {
                 const selected = v === currentValue ? 'selected' : '';
                 return `<option value="${v}" ${selected}>${label}</option>`;
             }).join('');
-            controlHTML = `<select class="select-field" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
-                                   style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">
+            controlHTML = `<select class="select-field settings-input" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">
                                ${options}
                            </select>`;
         } else if (setting.type === 'boolean') {
@@ -321,24 +320,23 @@ function buildSettingsHTML(details) {
                                <span class="toggle-slider"></span>
                            </label>`;
         } else {
-            controlHTML = `<input type="text" class="input-field" value="${currentValue}"
-                                  data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
-                                  style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">`;
+            controlHTML = `<input type="text" class="input-field settings-input" value="${currentValue}"
+                                  data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">`;
         }
 
         const descHTML = setting.description
-            ? `<span class="text-dimmed ml-sm" style="font-size: 0.8rem;">${setting.description}</span>`
+            ? `<span class="text-dimmed ml-sm settings-description">${setting.description}</span>`
             : '';
 
         return `<div class="mb-md d-flex align-center gap-md">
-                    <strong class="text-label" style="min-width: 120px;">${setting.label}:</strong>
+                    <strong class="text-label contribution-label">${setting.label}:</strong>
                     ${controlHTML}
                     ${descHTML}
                 </div>`;
     }).join('');
 
     return `
-        <div style="margin-bottom: 1.5rem;">
+        <div class="mb-xl">
             <h3 class="text-label mt-lg">Settings</h3>
             ${controlsHTML}
         </div>
@@ -378,13 +376,13 @@ function updateServerSetting(serverId, settingKey, value) {
 function buildContributionsHTML(details) {
     if (!details.contributes) return '';
 
-    let html = '<h3 class="text-success" style="margin-top: 0;">Contributions</h3>';
+    let html = '<h3 class="text-success mt-0">Contributions</h3>';
 
     if (details.contributes.languages) {
         html += `
-            <div style="margin-bottom: 1.5rem;">
+            <div class="mb-xl">
                 <strong class="text-label">Languages:</strong>
-                <ul class="text-value" style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <ul class="text-value mt-sm mb-sm" style="padding-left: 1.5rem;">
                     ${details.contributes.languages.map(lang =>
                         `<li><strong>${lang.id}</strong>${lang.extensions ? ` (${lang.extensions.join(', ')})` : ''}</li>`
                     ).join('')}
@@ -395,9 +393,9 @@ function buildContributionsHTML(details) {
 
     if (details.contributes.snippets) {
         html += `
-            <div style="margin-bottom: 1.5rem;">
+            <div class="mb-xl">
                 <strong class="text-label">Snippets:</strong>
-                <p class="text-value" style="margin: 0.25rem 0;">${details.contributes.snippets.length} snippet file(s)</p>
+                <p class="text-value mt-xs mb-xs">${details.contributes.snippets.length} snippet file(s)</p>
             </div>
         `;
     }
@@ -493,7 +491,7 @@ export async function runInstaller(serverId, force) {
         <div id="install-progress-bar" class="bg-input mb-sm d-none" style="height: 4px; border-radius: 2px;">
             <div id="install-progress-fill" style="height: 100%; background: var(--color-success); border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
         </div>
-        <div id="install-traces" class="font-mono bg-card p-sm rounded-sm" style="font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
+        <div id="install-traces" class="font-mono bg-card p-sm rounded-sm font-sm overflow-auto" style="max-height: 300px;"></div>
     `;
 
     state.installOutputServerId = serverId;

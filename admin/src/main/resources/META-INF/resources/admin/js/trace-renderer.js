@@ -5,13 +5,22 @@ let currentMatchIndex = -1;
 let currentSearchQuery = '';
 let renderCallback = null;
 
+function getTraceColorClass(trace) {
+    if (trace.messageType === 'ERROR') return 'trace-type-error';
+    if (trace.messageType === 'INFO') return 'trace-type-info';
+    if (trace.messageType === 'UPDATE') return 'trace-type-update';
+    return '';
+}
+
 export function renderTrace(trace, index, traceLevel, searchQuery) {
     const content = trace.content;
     const firstNewline = content.indexOf('\n');
+    const colorClass = getTraceColorClass(trace);
+    const lineClass = 'trace-line' + (colorClass ? ' ' + colorClass : '');
 
     if (firstNewline === -1) {
         return `
-            <div class="trace-line">
+            <div class="${lineClass}">
                 <div class="text-primary p-xs font-mono-sm">${highlightText(content, searchQuery)}</div>
             </div>
         `;
@@ -24,7 +33,7 @@ export function renderTrace(trace, index, traceLevel, searchQuery) {
 
     if (traceLevel === 'messages') {
         return `
-            <div class="trace-line">
+            <div class="${lineClass}">
                 <div class="text-primary p-xs font-mono-sm">${highlightText(headerLine, searchQuery)}</div>
             </div>
         `;
@@ -32,7 +41,7 @@ export function renderTrace(trace, index, traceLevel, searchQuery) {
 
     if (!body) {
         return `
-            <div class="trace-line">
+            <div class="${lineClass}">
                 <div class="text-primary p-xs font-mono-sm">${highlightText(headerLine, searchQuery)}</div>
             </div>
         `;
@@ -44,7 +53,7 @@ export function renderTrace(trace, index, traceLevel, searchQuery) {
     const fullContent = headerLine + '\n' + body;
 
     return `
-        <div class="trace-line" data-trace-tooltip="${index}" data-folded="${!hasMatch}">
+        <div class="${lineClass}" data-trace-tooltip="${index}" data-folded="${!hasMatch}">
             <div class="${headerClass} p-xs font-mono-sm" id="header-${index}"
                  data-trace-toggle="${index}">
                 <span class="trace-toggle mr-sm" id="toggle-${index}">${toggleIcon}</span>
@@ -349,6 +358,36 @@ export function restoreExpandedState(container, expandedIds) {
         const header = document.getElementById('header-' + idx);
         if (header) header.classList.remove('folded');
     });
+}
+
+// ========== Render Traces in Container ==========
+
+export function renderTracesInContainer(containerId, traces, traceLevel, searchQuery, emptyMessage) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (traceLevel === 'off') {
+        container.innerHTML = `<div class="text-secondary text-center p-2xl">Traces are disabled (level: off)</div>`;
+        return;
+    }
+
+    if (traces.length === 0) {
+        container.innerHTML = `<div class="text-secondary text-center p-2xl">${emptyMessage || 'No traces yet.'}</div>`;
+        return;
+    }
+
+    const wasAtBottom = isScrolledToBottom(container);
+    const expandedIds = saveExpandedState(container);
+
+    container.innerHTML = traces.map((trace, index) =>
+        renderTrace(trace, index, traceLevel, searchQuery)
+    ).join('');
+
+    restoreExpandedState(container, expandedIds);
+
+    if (wasAtBottom) {
+        container.scrollTop = container.scrollHeight;
+    }
 }
 
 // ========== Container Event Delegation ==========

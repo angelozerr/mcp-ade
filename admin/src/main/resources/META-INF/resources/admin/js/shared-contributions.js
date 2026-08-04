@@ -25,13 +25,13 @@ export function formatContributionsSection(server, allServers = null) {
         for (const targetServerId of contributesTo) {
             const contributionData = server.contributions[targetServerId];
             html += `<div class="contribution-target mb-lg">`;
-            html += `<div class="text-label-alt mb-xs" style="font-weight: bold;">${targetServerId}</div>`;
+            html += `<div class="text-label-alt mb-xs font-bold">${targetServerId}</div>`;
 
             for (const [type, items] of Object.entries(contributionData)) {
                 if (items && items.length > 0) {
-                    html += `<div class="mb-sm" style="margin-left: 1rem;">`;
+                    html += `<div class="mb-sm ml-lg">`;
                     html += `<span class="text-secondary">${type}:</span>`;
-                    html += `<ul class="text-secondary p-0 font-base" style="margin: 0.25rem 0 0 1.5rem;">`;
+                    html += `<ul class="text-secondary p-0 font-base mt-xs mb-0 ml-xl">`;
                     items.forEach(item => {
                         const displayValue = typeof item === 'string' ? item : JSON.stringify(item);
                         const isError = displayValue.startsWith('ERROR:');
@@ -74,8 +74,8 @@ export function formatContributionsSection(server, allServers = null) {
 
         for (const [type, contributions] of Object.entries(contributionsByType)) {
             html += `<div class="mb-lg">`;
-            html += `<div class="text-secondary mb-sm" style="font-weight: bold;">${type} <span class="text-dimmed">(Total: ${contributions.length})</span></div>`;
-            html += `<div style="margin-left: 1rem;">`;
+            html += `<div class="text-secondary mb-sm font-bold">${type} <span class="text-dimmed">(Total: ${contributions.length})</span></div>`;
+            html += `<div class="ml-lg">`;
 
             contributions.forEach(contrib => {
                 const displayValue = typeof contrib.value === 'string' ? contrib.value : JSON.stringify(contrib.value);
@@ -84,8 +84,8 @@ export function formatContributionsSection(server, allServers = null) {
                 const valueClass = isError ? 'text-error-light' : '';
                 const valueStyle = isError ? 'word-break: break-all; font-weight: bold; cursor: help;' : 'word-break: break-all;';
                 const title = isError ? 'File not found or pattern did not match any files' : '';
-                html += `<div class="text-secondary font-base" style="margin-bottom: 0.3rem;">`;
-                html += `<span class="text-label-alt d-inline-block" style="min-width: 120px;">${contrib.server}</span>`;
+                html += `<div class="text-secondary font-base mb-xs">`;
+                html += `<span class="text-label-alt d-inline-block contribution-label">${contrib.server}</span>`;
                 html += `<span class="text-label">•</span> `;
                 html += `<span class="${valueClass}" style="${valueStyle}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</span>`;
                 html += `</div>`;

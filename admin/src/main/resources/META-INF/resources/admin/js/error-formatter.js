@@ -11,11 +11,11 @@ export function formatErrorWithFolding(title, errorData) {
 
     return `
         <div class="mb-lg font-mono">
-            <div class="trace-header folded p-xs cursor-pointer d-flex align-center" data-action="toggleErrorTrace" data-trace-id="${traceId}" style="user-select: none;">
+            <div class="trace-header folded p-xs cursor-pointer d-flex align-center user-select-none" data-action="toggleErrorTrace" data-trace-id="${traceId}">
                 <span class="trace-toggle text-error mr-xs">&#x25B6;</span>
                 <span class="trace-header-text text-error font-bold">${title} - ${type}</span>
             </div>
-            <div id="${traceId}" class="trace-body collapsed text-error font-md text-pre-wrap" style="padding-left: 1.5rem; word-wrap: break-word;">${body}</div>
+            <div id="${traceId}" class="trace-body collapsed text-error font-md text-pre-wrap word-break-all" style="padding-left: 1.5rem;">${body}</div>
         </div>
     `;
 }

@@ -369,7 +369,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
                             addTrace(String.format("[Error - %s] %s stderr: %s",
                                 stackTraceTimestamp,
                                 config.getName(),
-                                stackTraceBuffer.toString().trim()));
+                                stackTraceBuffer.toString().trim()), TraceCollector.MessageType.ERROR);
                             stackTraceBuffer.setLength(0);
                             stackTraceTimestamp = null;
                         }
@@ -377,7 +377,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
                         addTrace(String.format("[Error - %s] %s stderr: %s",
                             java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")),
                             config.getName(),
-                            line));
+                            line), TraceCollector.MessageType.ERROR);
                     }
                 }
 
@@ -385,7 +385,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
                     addTrace(String.format("[Error - %s] %s stderr: %s",
                         stackTraceTimestamp,
                         config.getName(),
-                        stackTraceBuffer.toString().trim()));
+                        stackTraceBuffer.toString().trim()), TraceCollector.MessageType.ERROR);
                 }
 
                 LOG.infof("Stderr monitor for %s ended", config.getServerId());
@@ -537,7 +537,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         }
 
         try {
-            addTrace(stackTrace.toString());
+            addTrace(stackTrace.toString(), TraceCollector.MessageType.ERROR);
         } catch (Exception traceEx) {
             LOG.errorf(traceEx, "Failed to add trace for error!");
         }

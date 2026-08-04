@@ -11,8 +11,7 @@ import { renderServerDiagram } from './diagram.js';
 import { formatErrorWithFolding } from './error-formatter.js';
 import { LanguageFilter } from './language-filter.js';
 import {
-    renderTrace, renderTraceControls, updateTraceControls,
-    isScrolledToBottom, saveExpandedState, restoreExpandedState,
+    renderTraceControls, updateTraceControls, renderTracesInContainer,
     getCurrentSearchQuery, toggleAllTraces, clearHighlights
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
@@ -154,19 +153,19 @@ function showLaunchConfigForm(session, dapServerId) {
         <div class="p-lg d-flex flex-column overflow-hidden" style="height: 100%;">
             <div class="mb-lg">
                 <div class="d-flex align-center gap-sm mb-sm">
-                    <h3 class="text-primary" style="margin: 0;">${session.sessionName || 'New Debug Session'}</h3>
+                    <h3 class="text-primary mt-0 mb-0">${session.sessionName || 'New Debug Session'}</h3>
                     <span id="dap-session-status-${sessionId}" class="session-server-status status-badge status-badge-compact ${statusClass}">${statusText}</span>
                 </div>
-                <p class="text-secondary font-md" style="margin: 0;">Server: ${session.serverId || session.dapServerId || dapServerId}</p>
-                <p class="text-dimmed font-sm font-mono" style="margin: 0;">Session ID: ${sessionId}</p>
-                ${session.createdBy ? `<p class="text-dimmed font-sm" style="margin: 0;">Created by: <span class="session-created-by">${formatSessionActor(session.createdBy)}</span>${session.createdAt ? ` at ${formatTimestamp(session.createdAt)}` : ''}</p>` : ''}
-                ${session.launchedBy ? `<p class="text-dimmed font-sm" style="margin: 0;">Launched by: <span class="session-launched-by">${formatSessionActor(session.launchedBy)}</span>${session.launchedAt ? ` at ${formatTimestamp(session.launchedAt)}` : ''}</p>` : '<p class="text-dimmed font-sm" style="margin: 0;">Launched by: <span class="session-launched-by">-</span></p>'}
+                <p class="text-secondary font-md mt-0 mb-0">Server: ${session.serverId || session.dapServerId || dapServerId}</p>
+                <p class="text-dimmed font-sm font-mono mt-0 mb-0">Session ID: ${sessionId}</p>
+                ${session.createdBy ? `<p class="text-dimmed font-sm mt-0 mb-0">Created by: <span class="session-created-by">${formatSessionActor(session.createdBy)}</span>${session.createdAt ? ` at ${formatTimestamp(session.createdAt)}` : ''}</p>` : ''}
+                ${session.launchedBy ? `<p class="text-dimmed font-sm mt-0 mb-0">Launched by: <span class="session-launched-by">${formatSessionActor(session.launchedBy)}</span>${session.launchedAt ? ` at ${formatTimestamp(session.launchedAt)}` : ''}</p>` : '<p class="text-dimmed font-sm mt-0 mb-0">Launched by: <span class="session-launched-by">-</span></p>'}
             </div>
 
             <div class="mb-lg">
                 <div class="d-flex align-center gap-sm mb-sm">
-                    <label class="text-primary" style="font-weight: 500;">Launch Configuration</label>
-                    <div class="d-flex" style="gap: 0;">
+                    <label class="text-primary font-medium">Launch Configuration</label>
+                    <div class="d-flex gap-0">
                         <button
                             id="dap-launch-btn-${sessionId}"
                             class="dap-toolbar-btn dap-toolbar-btn-run"
@@ -213,7 +212,7 @@ function showLaunchConfigForm(session, dapServerId) {
 
             <div class="flex-1 d-flex flex-column min-h-0">
                 <div class="d-flex justify-between align-center mb-sm">
-                    <label class="text-primary" style="font-weight: 500;">Console:</label>
+                    <label class="text-primary font-medium">Console:</label>
                     <div class="console-controls">
                         ${renderTraceControls('dap-trace', 'off', 'changeDapTraceLevel', {
                             foldAction: 'toggleAllDapTraces',
@@ -221,7 +220,7 @@ function showLaunchConfigForm(session, dapServerId) {
                         })}
                     </div>
                 </div>
-                <div id="dap-traces-container-${sessionId}" class="flex-1 bg-card p-sm rounded-sm font-mono font-md" style="overflow-y: auto;">
+                <div id="dap-traces-container-${sessionId}" class="flex-1 bg-card p-sm rounded-sm font-mono font-md overflow-auto">
                     <div class="text-dimmed">Ready. Click ▶ to launch.</div>
                 </div>
             </div>
@@ -526,40 +525,6 @@ function getDapTraceLevel() {
     return 'off';
 }
 
-function renderDapTraces(traces, sessionId) {
-    const level = getDapTraceLevel();
-
-    const html = traces.map((trace, index) => {
-        // Filter based on trace level
-        if (!shouldShowDapTrace(trace)) {
-            return ''; // Don't show if level is 'off'
-        }
-
-        // Use renderTrace for consistent rendering
-        let rendered = renderTrace(trace, index, level, getCurrentSearchQuery());
-
-        // Apply DAP-specific CSS classes based on messageType
-        if (trace.messageType) {
-            let traceClass = '';
-            if (trace.messageType === 'ERROR') {
-                traceClass = 'trace-type-dap-error';
-            } else if (trace.messageType === 'INFO') {
-                traceClass = 'trace-type-dap-info';
-            } else if (trace.messageType === 'UPDATE') {
-                traceClass = 'trace-type-dap-update';
-            }
-            if (traceClass) {
-                // Add CSS class to the trace-line element
-                rendered = rendered.replace(/class="trace-line/, `class="trace-line ${traceClass}`);
-            }
-        }
-
-        return rendered;
-    }).join('');
-
-    return html;
-}
-
 /**
  * Refresh traces display for the current session (called by handleDapTrace).
  */
@@ -568,27 +533,13 @@ export function renderDapTracesForSession(sessionId) {
         return;
     }
 
-    const container = document.getElementById(`dap-traces-container-${sessionId}`);
-    if (!container) {
-        return;
-    }
-
-    // Merge installation traces (by serverId) + protocol traces (by sessionId)
+    const containerId = `dap-traces-container-${sessionId}`;
     const serverId = state.currentDapServerId;
     const serverTraces = (serverId && state.dapTracesByServer?.[serverId]) || [];
     const sessionTraces = state.dapTracesBySession?.[sessionId] || [];
     const traces = [...serverTraces, ...sessionTraces];
 
-    const wasAtBottom = isScrolledToBottom(container);
-    const expandedIds = saveExpandedState(container);
-
-    container.innerHTML = traces.length > 0 ? renderDapTraces(traces, sessionId) : '<div class="text-dimmed">No traces yet.</div>';
-
-    restoreExpandedState(container, expandedIds);
-
-    if (wasAtBottom) {
-        container.scrollTop = container.scrollHeight;
-    }
+    renderTracesInContainer(containerId, traces, getDapTraceLevel(), getCurrentSearchQuery());
 }
 
 /**
@@ -755,7 +706,7 @@ export async function showDapServerDetails(serverId) {
     }
 
     const detailsHTML = `
-        <h3 class="text-success" style="margin-top: 0;">Debug Adapter Information</h3>
+        <h3 class="text-success mt-0">Debug Adapter Information</h3>
 
         <div class="mb-xl">
             <strong class="text-label">Server ID:</strong>
@@ -772,7 +723,7 @@ export async function showDapServerDetails(serverId) {
         ${server.url ? `
         <div class="mb-xl">
             <strong class="text-label">URL:</strong>
-            <p class="mt-xs mb-xs"><a href="${server.url}" target="_blank" style="color: var(--accent-primary); text-decoration: none;">${server.url}</a></p>
+            <p class="mt-xs mb-xs"><a href="${server.url}" target="_blank" class="link-accent">${server.url}</a></p>
         </div>
         ` : ''}
 
@@ -781,7 +732,7 @@ export async function showDapServerDetails(serverId) {
             ${docSelectorHTML}
         </div>
 
-        <div class="p-lg bg-panel rounded" style="margin-top: 2rem; border-left: 3px solid var(--color-success);">
+        <div class="p-lg bg-panel rounded mt-2xl border-left-success">
             <strong>Note:</strong> Debuggers are started on-demand during debug sessions. They are not automatically started with workspaces.
         </div>
     `;
@@ -805,15 +756,15 @@ export async function showDapServerDetails(serverId) {
         </div>
         <div class="tab-content">
             <div id="dap-server-overview-tab" class="tab-panel ${currentDapServerTab === 'overview' ? 'active' : ''}">
-                <div class="details-panel text-primary" style="padding: 2rem; overflow-y: auto;">
+                <div class="details-panel text-primary detail-content">
                     ${detailsHTML}
                 </div>
             </div>
             ${hasContributions ? `
             <div id="dap-server-contributions-tab" class="tab-panel ${currentDapServerTab === 'contributions' ? 'active' : ''}">
-                <div id="server-diagram-container" class="w-100 bg-card" style="height: 400px; flex-shrink: 0;"></div>
+                <div id="server-diagram-container" class="w-100 bg-card diagram-container"></div>
                 <div class="diagram-resizer"></div>
-                <div class="details-panel text-primary flex-1 min-h-0" id="dap-contributions-content" style="padding: 2rem; overflow-y: auto;">
+                <div class="details-panel text-primary flex-1 min-h-0 detail-content" id="dap-contributions-content">
                     ${contributionsHTML}
                 </div>
             </div>
@@ -1018,13 +969,6 @@ export async function changeDapTraceLevel(sessionId, level) {
     renderDapTracesForSession(sessionId);
 }
 
-function shouldShowDapTrace(trace) {
-    if (trace.messageType === 'INFO' || trace.messageType === 'ERROR') {
-        return true;
-    }
-    const level = getDapTraceLevel();
-    return level !== 'off';
-}
 
 /**
  * Handle DAP session update from WebSocket.
@@ -1525,21 +1469,21 @@ export function createSessionHTML(session) {
     const stopDisabledClass = canStop ? '' : ' is-disabled';
 
     const actions = `
-        <button class="server-action-btn session-run-btn${runDisabledClass}" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} data-action="sessionRunBtn" data-stop-propagation title="Run (without debugging)" style="font-size: 0.7rem; padding: 0.15rem 0.3rem;">▶</button>
-        <button class="server-action-btn session-debug-btn${debugDisabledClass}" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} data-action="sessionDebugBtn" data-stop-propagation title="Debug (with breakpoints)" style="font-size: 0.7rem; padding: 0.15rem 0.3rem;">🐛</button>
-        <button class="server-action-btn session-stop-btn${stopDisabledClass}" data-session-id="${session.sessionId}" ${canStop ? '' : 'disabled'} data-action="sessionStopBtn" data-stop-propagation title="Stop" style="font-size: 0.7rem; padding: 0.15rem 0.3rem;">⏹</button>
+        <button class="server-action-btn session-run-btn session-btn-sm${runDisabledClass}" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} data-action="sessionRunBtn" data-stop-propagation title="Run (without debugging)">▶</button>
+        <button class="server-action-btn session-debug-btn session-btn-sm${debugDisabledClass}" data-session-id="${session.sessionId}" ${canLaunch ? '' : 'disabled'} data-action="sessionDebugBtn" data-stop-propagation title="Debug (with breakpoints)">🐛</button>
+        <button class="server-action-btn session-stop-btn session-btn-sm${stopDisabledClass}" data-session-id="${session.sessionId}" ${canStop ? '' : 'disabled'} data-action="sessionStopBtn" data-stop-propagation title="Stop">⏹</button>
     `;
 
     // Add creator icon
     console.log('[DAP] Session createdBy:', session.sessionId, session.createdBy);
     const creatorIcon = session.createdBy === 'AI_AGENT'
-        ? '<span class="font-sm" style="opacity: 0.7;" title="Created by AI Agent">🤖</span>'
+        ? '<span class="font-sm opacity-70" title="Created by AI Agent">🤖</span>'
         : session.createdBy === 'MANUAL'
-        ? '<span class="font-sm" style="opacity: 0.7;" title="Created manually">👤</span>'
-        : '<span class="text-dimmed font-sm" style="opacity: 0.5;" title="Creator unknown">❓</span>';
+        ? '<span class="font-sm opacity-70" title="Created manually">👤</span>'
+        : '<span class="text-dimmed font-sm opacity-50" title="Creator unknown">❓</span>';
 
     return `
-        <div data-session-id="${session.sessionId}" class="dap-session-item d-flex align-center gap-sm cursor-pointer font-md rounded" style="margin-left: 2rem; padding: 0.25rem 0.5rem; opacity: 0.9; transition: background-color 0.2s;" data-action="selectDapSession">
+        <div data-session-id="${session.sessionId}" class="dap-session-item d-flex align-center gap-sm cursor-pointer font-md rounded template-selector" data-action="selectDapSession">
             ${stateIcon}
             ${creatorIcon}
             <span class="flex-1 truncate">${session.sessionName}</span>

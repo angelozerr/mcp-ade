@@ -4,8 +4,7 @@ import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
 import {
-    renderTrace, renderTraceControls, updateTraceControls,
-    isScrolledToBottom, saveExpandedState, restoreExpandedState,
+    renderTraceControls, updateTraceControls, renderTracesInContainer,
     getCurrentSearchQuery, toggleAllTraces, highlightText, escapeHtml,
     initSearchListeners, initTraceContainer, toggleTrace, showTooltip, hideTooltip
 } from './trace-renderer.js';
@@ -174,7 +173,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                                 return `
                                     <div class="workspace-section-item" title="Session: ${client.connectionId || 'N/A'}">
                                         <div>📱 ${client.name}${timeStr ? ` <span class="client-time">@ ${timeStr}</span>` : ''}</div>
-                                        ${shortId ? `<div class="text-dimmed" style="font-size: 0.7rem; margin-left: 1.5rem; margin-top: 0.15rem;">Session: ${shortId}</div>` : ''}
+                                        ${shortId ? `<div class="text-dimmed font-sm ml-xl mt-xs">Session: ${shortId}</div>` : ''}
                                     </div>
                                 `;
                             }).join('')}
@@ -218,9 +217,9 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             showConfirmModal(
                 'Close Workspace',
                 `
-                    <div class="mb-lg" style="font-size: 1.05rem;"><strong>⚠️ This will shut down all LSP servers for this workspace</strong></div>
+                    <div class="mb-lg font-xl"><strong>⚠️ This will shut down all LSP servers for this workspace</strong></div>
                     <div class="mb-md">Specifically:</div>
-                    <ul style="margin: 0 0 1rem 1.5rem; text-align: left; line-height: 1.6;">
+                    <ul class="mt-0 mb-lg ml-xl text-left line-height-relaxed">
                         <li><strong>Stop all running language servers</strong></li>
                         <li>Disconnect any IDE connections</li>
                         <li>Remove the workspace from memory</li>
@@ -304,8 +303,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             // Build workspace header (compact, same level as left sidebar)
             const workspaceName = workspace ? (workspace.rootUri.split('/').filter(p => p).pop() || workspace.rootUri) : '';
             const headerHTML = `
-                <div class="d-flex align-center" style="padding: 0.75rem 1rem calc(0.75rem + 2px); background: var(--bg-card); border-bottom: 1px solid var(--border-primary);">
-                    <span class="text-primary font-bold" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.2px;">📂 ${workspaceName}</span>
+                <div class="d-flex align-center detail-section-header">
+                    <span class="text-primary font-bold tab-label-sm">📂 ${workspaceName}</span>
                 </div>
             `;
 
@@ -319,8 +318,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
             // Filter bar
             const filterHTML = `
-                <div class="d-flex align-center bg-panel" style="padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border-primary); font-size: 0.8rem;">
-                    <label class="text-secondary d-flex align-center cursor-pointer" style="gap: 0.4rem; user-select: none;">
+                <div class="d-flex align-center bg-panel console-line">
+                    <label class="text-secondary d-flex align-center cursor-pointer gap-sm user-select-none">
                         <input type="checkbox" data-action="toggleShowActiveServers" ${showOnlyActiveServers ? 'checked' : ''}>
                         Show active only
                     </label>
@@ -476,7 +475,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     const serverClass = isExternal ? 'server-item-external' : 'server-item-managed';
                     const extensionClass = server.isExtension ? 'server-extension' : '';
                     const disabledClass = server.enabled === false ? 'server-disabled' : '';
-                    const extensionBadge = server.isExtension ? ' <span class="text-secondary" style="font-size: 0.85em;">(Extension)</span>' : '';
+                    const extensionBadge = server.isExtension ? ' <span class="text-secondary font-md">(Extension)</span>' : '';
 
                     let actions = '';
                     if (!server.isExtension) {
@@ -710,21 +709,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             updateTraceControls('trace', level);
         }
 
-        /**
-         * Filter traces based on trace level.
-         * - off: show nothing
-         * - messages: show all messages (header only, no body)
-         * - verbose: show everything (header + body)
-         */
-        function shouldShowTrace(trace, level) {
-            if (level === 'off') {
-                return false;
-            }
-
-            // Both 'messages' and 'verbose' show all traces
-            // The difference is in how they're displayed (header only vs header+body)
-            return true;
-        }
 
         export async function loadConsole(server) {
             // Check if server has contributions
@@ -786,9 +770,9 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         </div>
                         ${hasContributions ? `
                         <div id="contributions-tab" class="tab-panel ${state.currentConsoleTab === 'contributions' ? 'active' : ''}">
-                            <div id="workspace-diagram-container" class="w-100 bg-card" style="height: 400px; flex-shrink: 0;"></div>
+                            <div id="workspace-diagram-container" class="w-100 bg-card diagram-container"></div>
                             <div class="diagram-resizer"></div>
-                            <div class="details-panel text-primary flex-1 min-h-0" id="contributions-content" style="padding: 2rem; overflow-y: auto;">
+                            <div class="details-panel text-primary flex-1 min-h-0 detail-content" id="contributions-content">
                                 <p>Loading...</p>
                             </div>
                         </div>
@@ -1017,8 +1001,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         const selected = v === currentValue ? 'selected' : '';
                         return `<option value="${v}" ${selected}>${label}</option>`;
                     }).join('');
-                    controlHTML = `<select class="select-field" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
-                                           style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">
+                    controlHTML = `<select class="select-field settings-input" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">
                                        ${options}
                                    </select>`;
                 } else if (setting.type === 'boolean') {
@@ -1029,13 +1012,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                                        <span class="toggle-slider"></span>
                                    </label>`;
                 } else {
-                    controlHTML = `<input type="text" class="input-field" value="${currentValue}"
-                                          data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}"
-                                          style="padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px;">`;
+                    controlHTML = `<input type="text" class="input-field settings-input" value="${currentValue}"
+                                          data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">`;
                 }
 
                 const descHTML = setting.description
-                    ? `<div class="text-dimmed mt-xs" style="font-size: 0.8rem;">${setting.description}</div>`
+                    ? `<div class="text-dimmed mt-xs settings-description">${setting.description}</div>`
                     : '';
 
                 return `<div class="detail-item flex-column align-start">
@@ -1112,37 +1094,9 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
 
         export function renderConsole() {
-            const container = document.getElementById('console-output');
-            if (!container) return;
-
-            // Get traces for current workspace + server
             const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
-
-            // Filter traces based on current level
-            const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
-
-            if (filteredTraces.length === 0) {
-                const message = currentTraceLevel === 'off'
-                    ? 'Traces are disabled (level: off)'
-                    : 'No LSP trace messages yet.';
-                container.innerHTML = `<div class="text-secondary text-center" style="padding: 2rem;">${message}</div>`;
-                return;
-            }
-
-            const wasAtBottom = isScrolledToBottom(container);
-            const expandedIds = saveExpandedState(container);
-
-            container.innerHTML = filteredTraces.map((trace, index) =>
-                renderTrace(trace, index, currentTraceLevel, getCurrentSearchQuery())
-            ).join('');
-
+            renderTracesInContainer('console-output', traces, currentTraceLevel, getCurrentSearchQuery());
             initTraceContainer('console-output');
-
-            restoreExpandedState(container, expandedIds);
-
-            if (wasAtBottom) {
-                container.scrollTop = container.scrollHeight;
-            }
         }
 
         let mouseDownTime = 0;
@@ -1445,86 +1399,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         });
 
         function renderConsoleWithHighlights() {
-            const container = document.getElementById('console-output');
-            if (!container) return;
-
             const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
-            const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
-
-            if (filteredTraces.length === 0) {
-                const message = currentTraceLevel === 'off'
-                    ? 'Traces are disabled (level: off)'
-                    : 'No LSP trace messages yet.';
-                container.innerHTML = `<div class="text-secondary text-center" style="padding: 2rem;">${message}</div>`;
-                return;
-            }
-
-            // Use TraceRenderer for rendering traces
-            container.innerHTML = filteredTraces.map((trace, index) =>
-                renderTrace(trace, index, currentTraceLevel, getCurrentSearchQuery())
-            ).join('');
-        }
-
-        // Search functions delegated to TraceRenderer (see initSearchListeners above)
-
-        function renderConsoleWithoutScroll() {
-            const container = document.getElementById('console-output');
-            if (!container) return;
-
-            // Get traces for current workspace + server
-            const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
-
-            // Filter traces based on current level
-            const filteredTraces = traces.filter(trace => shouldShowTrace(trace, currentTraceLevel));
-
-            if (filteredTraces.length === 0) {
-                const message = currentTraceLevel === 'off'
-                    ? 'Traces are disabled (level: off)'
-                    : 'No LSP trace messages yet.';
-                container.innerHTML = `<div class="text-secondary text-center" style="padding: 2rem;">${message}</div>`;
-                return;
-            }
-
-            container.innerHTML = filteredTraces.map((trace, index) => {
-                const content = trace.content;
-
-                // Parse the trace: first line is header, rest is body
-                const lines = content.split('\n');
-                const headerLine = lines[0]; // [Trace - HH:mm:ss] ...
-
-                // Messages mode: show only header line, no folding
-                if (currentTraceLevel === 'messages') {
-                    return `
-                        <div class="trace-line">
-                            <div class="text-primary font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
-                        </div>
-                    `;
-                }
-
-                // Verbose mode: header + body folded by default
-                const bodyLines = lines.slice(1);
-                const body = bodyLines.join('\n').trim();
-                const hasBody = body.length > 0;
-
-                // If no body, display like messages mode (no toggle arrow)
-                if (!hasBody) {
-                    return `
-                        <div class="trace-line">
-                            <div class="text-primary font-mono-sm p-xs">${escapeHtml(headerLine)}</div>
-                        </div>
-                    `;
-                }
-
-                return `
-                    <div class="trace-line">
-                        <div class="trace-header folded font-mono-sm p-xs" data-trace-toggle="${index}">
-                            <span class="trace-toggle mr-sm" id="toggle-${index}">▶</span>
-                            <span class="trace-header-text text-primary">${escapeHtml(headerLine)}</span>
-                        </div>
-                        <div class="trace-body collapsed text-primary font-mono-sm" id="body-${index}">${escapeHtml(body)}</div>
-                    </div>
-                `;
-            }).join('');
+            renderTracesInContainer('console-output', traces, currentTraceLevel, getCurrentSearchQuery());
         }
 
         async function createNewTestSession(serverId) {

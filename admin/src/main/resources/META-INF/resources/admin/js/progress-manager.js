@@ -68,7 +68,7 @@ function refreshProgressPanel() {
     const content = document.getElementById('progress-panel-content');
 
     if (activeTasks.size === 0) {
-        content.innerHTML = '<div class="text-secondary" style="text-align: center; padding: 2rem;">No active tasks</div>';
+        content.innerHTML = '<div class="text-secondary text-center p-2xl">No active tasks</div>';
         return;
     }
 
@@ -134,7 +134,7 @@ function refreshProgressPanel() {
                 <div class="progress-task-item">
                     <div class="progress-task-header">
                         <div class="progress-task-title">${escapeHtml(task.title)}</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="d-flex align-center gap-sm">
                             ${stepLabel}
                             <div class="progress-task-percent">${percent}%</div>
                             ${cancelBtn}

@@ -78,20 +78,26 @@
 .mb-md { margin-bottom: 0.75rem; }
 .mb-lg { margin-bottom: 1rem; }
 .mb-xl { margin-bottom: 1.5rem; }
+.mt-0 { margin-top: 0; }
 .mt-xs { margin-top: 0.25rem; }
 .mt-sm { margin-top: 0.5rem; }
 .mt-md { margin-top: 0.75rem; }
 .mt-lg { margin-top: 1rem; }
+.mt-xl { margin-top: 1.5rem; }
+.mt-2xl { margin-top: 2rem; }
 .mr-xs { margin-right: 0.25rem; }
 .mr-sm { margin-right: 0.5rem; }
 .ml-xs { margin-left: 0.25rem; }
 .ml-sm { margin-left: 0.5rem; }
+.ml-lg { margin-left: 1rem; }
+.ml-xl { margin-left: 1.5rem; }
 .p-0 { padding: 0; }
 .p-xs { padding: 0.25rem; }
 .p-sm { padding: 0.5rem; }
 .p-md { padding: 0.75rem; }
 .p-lg { padding: 1rem; }
 .p-xl { padding: 1.5rem; }
+.p-2xl { padding: 2rem; }
 .px-sm { padding-left: 0.5rem; padding-right: 0.5rem; }
 .px-lg { padding-left: 1rem; padding-right: 1rem; }
 .py-sm { padding-top: 0.5rem; padding-bottom: 0.5rem; }
@@ -105,6 +111,7 @@
 .font-xl { font-size: 1.1rem; }
 .font-2xl { font-size: 1.25rem; }
 .font-bold { font-weight: 600; }
+.font-medium { font-weight: 500; }
 .font-normal { font-weight: 400; }
 .font-mono { font-family: 'Courier New', monospace; }
 .font-mono-sm { font-family: 'Courier New', monospace; font-size: 0.85rem; }
@@ -122,12 +129,40 @@
 .overflow-auto { overflow-y: auto; }
 .min-h-0 { min-height: 0; }
 .w-100 { width: 100%; }
+.flex-shrink-0 { flex-shrink: 0; }
+.user-select-none { user-select: none; }
+.word-break-all { word-break: break-all; }
+.opacity-50 { opacity: 0.5; }
+.opacity-70 { opacity: 0.7; }
+.opacity-90 { opacity: 0.9; }
+.gap-0 { gap: 0; }
+.text-left { text-align: left; }
+.line-height-relaxed { line-height: 1.6; }
 
 /* ── Border utilities ── */
 .border-bottom { border-bottom: 1px solid var(--border-primary); }
 .border-bottom-subtle { border-bottom: 1px solid var(--border-subtle); }
 .border-top-subtle { border-top: 1px solid var(--border-subtle); }
+.border-left-accent { border-left: 3px solid var(--accent-primary); }
+.border-left-success { border-left: 3px solid var(--color-success); }
 .rounded { border-radius: 4px; }
+
+/* ── Component classes (for JS-generated HTML) ── */
+.settings-input { padding: 0.3rem 0.5rem; font-size: 0.85rem; min-width: 200px; }
+.settings-description { font-size: 0.8rem; }
+.diagram-container { height: 400px; flex-shrink: 0; }
+.detail-content { padding: 2rem; overflow-y: auto; }
+.detail-section-header {
+    padding: 0.75rem 1rem calc(0.75rem + 2px);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-primary);
+}
+.tab-label-sm { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.2px; }
+.console-line { padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border-primary); font-size: 0.8rem; }
+.contribution-label { min-width: 120px; }
+.session-btn-sm { font-size: 0.7rem; padding: 0.15rem 0.3rem; }
+.template-selector { margin-left: 2rem; padding: 0.25rem 0.5rem; opacity: 0.9; transition: background-color 0.2s; }
+.link-accent { color: var(--accent-primary); text-decoration: none; }
 .rounded-sm { border-radius: 3px; }
 
 /* ── Component patterns (used in JS templates) ── */
@@ -273,27 +308,21 @@
     border-color: var(--accent-primary);
 }
 
-/* Trace type colors */
-.trace-type-error { color: var(--color-error-light); }
-.trace-type-info { color: var(--color-info); }
-.trace-type-update { color: var(--color-label-alt); }
-.trace-type-default { color: var(--text-primary); }
+/* Trace type colors (override text-primary on child elements) */
+.trace-type-error,
+.trace-type-error .text-primary,
+.trace-type-error .trace-header-text,
+.trace-type-error .trace-body { color: var(--color-error-light); }
 
-/* DAP trace type colors (override text-primary on child elements) */
-.trace-type-dap-error,
-.trace-type-dap-error .text-primary,
-.trace-type-dap-error .trace-header-text,
-.trace-type-dap-error .trace-body { color: var(--color-error-light); }
+.trace-type-info,
+.trace-type-info .text-primary,
+.trace-type-info .trace-header-text,
+.trace-type-info .trace-body { color: var(--color-info); }
 
-.trace-type-dap-info,
-.trace-type-dap-info .text-primary,
-.trace-type-dap-info .trace-header-text,
-.trace-type-dap-info .trace-body { color: var(--color-label); }
-
-.trace-type-dap-update,
-.trace-type-dap-update .text-primary,
-.trace-type-dap-update .trace-header-text,
-.trace-type-dap-update .trace-body { color: var(--color-success); }
+.trace-type-update,
+.trace-type-update .text-primary,
+.trace-type-update .trace-header-text,
+.trace-type-update .trace-body { color: var(--color-label-alt); }
 
 /* Contribution section */
 .contribution-subsection {
