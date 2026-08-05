@@ -24,12 +24,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for {@link WorkspaceConfiguration} with SPI providers and strategies.
+ * Tests for {@link IdeConfiguration} with SPI providers and strategies.
  */
-class WorkspaceConfigurationTest {
+class IdeConfigurationTest {
 
-    private static final WorkspaceConfigurationProvider VSCODE = new VsCodeConfigurationProvider();
-    private static final WorkspaceConfigurationProvider BOB = new BobConfigurationProvider();
+    private static final IdeConfigurationProvider VSCODE = new VsCodeConfigurationProvider();
+    private static final IdeConfigurationProvider BOB = new BobConfigurationProvider();
 
     private void writeSettingsFile(Path dir, String json) throws IOException {
         Files.createDirectories(dir);
@@ -44,9 +44,9 @@ class WorkspaceConfigurationTest {
                 {"editor.fontSize": 14}
                 """);
 
-        var config = new WorkspaceConfiguration(root,
+        var config = new IdeConfiguration(root,
                 List.of(VSCODE, BOB),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                IdeConfigurationStrategy.FIRST_FOUND);
 
         assertEquals(14.0, config.get("editor.fontSize"));
     }
@@ -57,9 +57,9 @@ class WorkspaceConfigurationTest {
                 {"bob.theme": "dark"}
                 """);
 
-        var config = new WorkspaceConfiguration(root,
+        var config = new IdeConfiguration(root,
                 List.of(VSCODE, BOB),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                IdeConfigurationStrategy.FIRST_FOUND);
 
         assertEquals("dark", config.get("bob.theme"));
     }
@@ -73,9 +73,9 @@ class WorkspaceConfigurationTest {
                 {"source": "bob"}
                 """);
 
-        var config = new WorkspaceConfiguration(root,
+        var config = new IdeConfiguration(root,
                 List.of(VSCODE, BOB),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                IdeConfigurationStrategy.FIRST_FOUND);
 
         assertEquals("vscode", config.get("source"));
     }
@@ -89,9 +89,9 @@ class WorkspaceConfigurationTest {
                 {"source": "bob"}
                 """);
 
-        var config = new WorkspaceConfiguration(root,
+        var config = new IdeConfiguration(root,
                 List.of(BOB, VSCODE),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                IdeConfigurationStrategy.FIRST_FOUND);
 
         assertEquals("bob", config.get("source"));
     }
@@ -107,9 +107,9 @@ class WorkspaceConfigurationTest {
                 {"shared": "from-bob", "bob.only": true}
                 """);
 
-        var config = new WorkspaceConfiguration(root,
+        var config = new IdeConfiguration(root,
                 List.of(VSCODE, BOB),
-                WorkspaceConfigurationStrategy.MERGE);
+                IdeConfigurationStrategy.MERGE);
 
         // First provider wins on conflicts
         assertEquals("from-vscode", config.get("shared"));
@@ -122,9 +122,9 @@ class WorkspaceConfigurationTest {
 
     @Test
     void noFileExists(@TempDir Path root) {
-        var config = new WorkspaceConfiguration(root,
+        var config = new IdeConfiguration(root,
                 List.of(VSCODE, BOB),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                IdeConfigurationStrategy.FIRST_FOUND);
 
         assertTrue(config.getAll().isEmpty());
     }
@@ -137,9 +137,9 @@ class WorkspaceConfigurationTest {
                 {"version": 1}
                 """);
 
-        var config = new WorkspaceConfiguration(root,
+        var config = new IdeConfiguration(root,
                 List.of(VSCODE),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                IdeConfigurationStrategy.FIRST_FOUND);
 
         assertEquals(1.0, config.get("version"));
 

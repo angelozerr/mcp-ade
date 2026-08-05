@@ -66,6 +66,7 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
     private static final String FIELD_GLOB_PATTERN = "globPattern";
     private static final String FIELD_COMMAND = "command";
     private static final String FIELD_SETTINGS = "settings";
+    private static final String FIELD_APPLICABLE_SETTINGS = "applicableSettings";
     protected final Gson gson = new Gson();
 
     protected ServerDescriptorLoaderBase() {
@@ -215,6 +216,15 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
         String command = OSUtils.getStringFromOs(jsonObject, getCommandFieldName());
         if (command != null) {
             config.setCommand(command);
+        }
+
+        // Applicable settings patterns (e.g. ["java.*"])
+        if (jsonObject.has(FIELD_APPLICABLE_SETTINGS)) {
+            List<String> applicableSettings = new ArrayList<>();
+            jsonObject.getAsJsonArray(FIELD_APPLICABLE_SETTINGS).forEach(el ->
+                    applicableSettings.add(el.getAsString())
+            );
+            config.setApplicableSettings(applicableSettings);
         }
 
         // Declarative settings

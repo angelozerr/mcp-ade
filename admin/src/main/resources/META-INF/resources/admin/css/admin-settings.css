@@ -1,0 +1,80 @@
+/* ── Settings Panel (reuses MCP tool-group pattern) ── */
+
+.settings-panel-group {
+    margin-bottom: 1rem;
+}
+
+.settings-panel-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+/* ── Setting Item (same card style as .mcp-tool-item) ── */
+
+.setting-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    transition: border-color 0.2s;
+}
+
+.setting-item:hover {
+    border-color: var(--accent-primary);
+}
+
+.setting-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.setting-item-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-bright);
+    margin-bottom: 0.15rem;
+}
+
+.setting-item-description {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.setting-item-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* ── Source hints & reset ── */
+
+.setting-source-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.setting-source-hint {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--text-dimmed);
+}
+
+.setting-source-hint.setting-source-overridden {
+    color: var(--accent-primary);
+}
+
+.setting-reset-btn {
+    font-size: 0.7rem !important;
+    padding: 0.1rem 0.4rem !important;
+}

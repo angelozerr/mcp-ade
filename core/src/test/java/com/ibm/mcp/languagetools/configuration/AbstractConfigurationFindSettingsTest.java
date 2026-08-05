@@ -14,8 +14,8 @@
 package com.ibm.mcp.languagetools.configuration;
 
 import com.ibm.mcp.languagetools.workspace.VsCodeConfigurationProvider;
-import com.ibm.mcp.languagetools.workspace.WorkspaceConfiguration;
-import com.ibm.mcp.languagetools.workspace.WorkspaceConfigurationStrategy;
+import com.ibm.mcp.languagetools.workspace.IdeConfiguration;
+import com.ibm.mcp.languagetools.workspace.IdeConfigurationStrategy;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -54,9 +54,9 @@ class AbstractConfigurationFindSettingsTest {
         Path dir = root.resolve(".vscode");
         Files.createDirectories(dir);
         Files.writeString(dir.resolve("settings.json"), json);
-        return new WorkspaceConfiguration(root,
+        return new IdeConfiguration(root,
                 List.of(new VsCodeConfigurationProvider()),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                IdeConfigurationStrategy.FIRST_FOUND);
     }
 
     private static ConfigurationItem item(String section) {

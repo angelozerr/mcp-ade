@@ -16,9 +16,9 @@ package com.ibm.mcp.languagetools.workspace;
 import java.nio.file.Path;
 
 /**
- * Workspace configuration provider for VS Code (.vscode/settings.json).
+ * IDE configuration provider for VS Code (.vscode/settings.json).
  */
-public class VsCodeConfigurationProvider implements WorkspaceConfigurationProvider {
+public class VsCodeConfigurationProvider implements IdeConfigurationProvider {
 
     @Override
     public String getId() {

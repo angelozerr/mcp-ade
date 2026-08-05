@@ -9,6 +9,7 @@ import {
     initSearchListeners, initTraceContainer, toggleTrace, showTooltip, hideTooltip
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
+import { renderSettingsPanel, renderToggleSetting, renderServerSetting, renderActionItem, resetWorkspaceSetting, setWorkspaceSetting } from './admin-settings.js';
 import { selectDapSession as selectDapSessionImpl, createNewTestSession as createNewTestSessionImpl } from './admin-dap.js';
 
         // Global variable to store DAP sessions
@@ -154,7 +155,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
                     <div class="d-flex justify-between align-center">
                         <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div>
-                        <button class="close-workspace-btn" data-action="buildWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Build workspace" style="font-size:0.9rem">⚙</button>
+                        <button class="close-workspace-btn" data-action="openWorkspaceSettings" data-uri="${ws.rootUri}" data-stop-propagation title="Workspace settings" style="font-size:0.9rem">⚙</button>
+                        <button class="close-workspace-btn" data-action="buildWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Build workspace" style="font-size:0.9rem">🔨</button>
                         <button class="close-workspace-btn" data-action="refreshWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Refresh workspace" style="font-size:1.1rem">↻</button>
                         <button class="close-workspace-btn" data-action="closeWorkspace" data-uri="${ws.rootUri}" data-stop-propagation title="Close workspace and stop all servers">×</button>
                     </div>
@@ -315,33 +317,50 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 <div class="tabs bg-panel" style="border-bottom: 1px solid var(--bg-card);">
                     <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'servers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="servers">Servers</div>
                     <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'debuggers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="debuggers">Debuggers</div>
-                    <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'settings' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="settings">Settings</div>
                 </div>
             `;
 
-            // Render content based on active tab
-            let contentHTML = '';
-            let filterHTML = '';
+            const appContainer = document.querySelector('.app-container');
+
+            const consoleContainer = document.getElementById('console-container');
+
+            // Settings mode: servers-sidebar spans full width
             if (state.currentWorkspaceTab === 'settings') {
-                contentHTML = renderWorkspaceSettings(workspace);
-            } else {
-                // Filter bar (only for servers/debuggers tabs)
-                filterHTML = `
-                    <div class="d-flex align-center bg-panel console-line">
-                        <label class="text-secondary d-flex align-center cursor-pointer gap-sm user-select-none">
-                            <input type="checkbox" data-action="toggleShowActiveServers" ${showOnlyActiveServers ? 'checked' : ''}>
-                            Show active only
-                        </label>
+                appContainer.classList.add('settings-mode');
+                consoleContainer.style.display = 'none';
+                const settingsHeaderHTML = `
+                    <div class="d-flex align-center detail-section-header">
+                        <button class="editor-btn" data-action="switchWorkspaceTab" data-tab="servers" style="margin-right:0.5rem" title="Back to servers">←</button>
+                        <span class="text-primary font-bold tab-label-sm">⚙ Settings</span>
                     </div>
                 `;
-                if (state.currentWorkspaceTab === 'servers') {
-                    contentHTML = (lspServers && lspServers.length > 0) ? renderLspServers(lspServers) : '<div class="servers-placeholder">No LSP servers</div>';
-                } else {
-                    const dapServers = Object.values(state.dapConfigs || {});
-                    contentHTML = (dapServers.length > 0 || dapSessions.length > 0)
-                        ? renderDapServers(dapServers, dapSessions)
-                        : '<div class="servers-placeholder">No debug adapters</div>';
-                }
+                container.innerHTML =
+                    '<div class="workspace-servers-header">' + headerHTML + settingsHeaderHTML + '</div>' +
+                    '<div class="workspace-servers-content">' + renderWorkspaceSettings(workspace) + '</div>';
+                return;
+            }
+
+            // Normal mode: show tabs + servers/debuggers
+            appContainer.classList.remove('settings-mode');
+            consoleContainer.style.display = '';
+
+            const filterHTML = `
+                <div class="d-flex align-center bg-panel console-line">
+                    <label class="text-secondary d-flex align-center cursor-pointer gap-sm user-select-none">
+                        <input type="checkbox" data-action="toggleShowActiveServers" ${showOnlyActiveServers ? 'checked' : ''}>
+                        Show active only
+                    </label>
+                </div>
+            `;
+
+            let contentHTML = '';
+            if (state.currentWorkspaceTab === 'servers') {
+                contentHTML = (lspServers && lspServers.length > 0) ? renderLspServers(lspServers) : '<div class="servers-placeholder">No LSP servers</div>';
+            } else {
+                const dapServers = Object.values(state.dapConfigs || {});
+                contentHTML = (dapServers.length > 0 || dapSessions.length > 0)
+                    ? renderDapServers(dapServers, dapSessions)
+                    : '<div class="servers-placeholder">No debug adapters</div>';
             }
 
             container.innerHTML =
@@ -364,26 +383,49 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             if (!workspace) return '<div class="servers-placeholder">No workspace selected</div>';
 
             const fwEnabled = workspace.fileWatcherEnabled || false;
+            const fwSource = workspace.fileWatcherEnabledSource || 'DEFAULT';
             const fwRunning = workspace.fileWatcherRunning || false;
-            const fwStatus = fwRunning
+            const fwStatusHtml = fwRunning
                 ? '<span class="status-badge status-running" style="font-size:0.7rem;padding:0.1rem 0.4rem">watching</span>'
                 : (fwEnabled ? '<span class="status-badge status-stopped" style="font-size:0.7rem;padding:0.1rem 0.4rem">stopped</span>' : '');
 
+            const uri = workspace.rootUri;
+
+            const actionsItems = [
+                renderActionItem({
+                    label: 'Build',
+                    description: 'Build workspace sources (auto full/incremental)',
+                    buttonLabel: '▶ Build',
+                    buttonAction: 'buildWorkspaceFromSettings',
+                    dataAttrs: { uri },
+                    buttonClass: 'install-run-btn'
+                }),
+                renderActionItem({
+                    label: 'Refresh',
+                    description: 'Sync file system changes with the workspace',
+                    buttonLabel: '↻ Refresh',
+                    buttonAction: 'refreshWorkspaceFromSettings',
+                    dataAttrs: { uri }
+                })
+            ];
+
+            const settingsItems = [
+                renderToggleSetting({
+                    label: 'File Watcher',
+                    description: 'Watch for file changes and notify language servers',
+                    value: fwEnabled,
+                    source: fwSource,
+                    toggleAction: 'toggleFileWatcherFromSettings',
+                    resetAction: 'resetFileWatcherSetting',
+                    dataAttrs: { uri },
+                    statusHtml: fwStatusHtml
+                })
+            ];
+
             return `
-                <div class="p-lg">
-                    <div class="setting-row d-flex justify-between align-center p-md bg-card rounded-sm mb-md">
-                        <div>
-                            <div class="text-primary font-medium">File Watcher</div>
-                            <div class="text-secondary font-sm">Watch for file changes and notify language servers</div>
-                        </div>
-                        <div class="d-flex align-center gap-md">
-                            ${fwStatus}
-                            <label class="toggle-switch" data-stop-propagation>
-                                <input type="checkbox" ${fwEnabled ? 'checked' : ''} data-action="toggleFileWatcherFromSettings" data-uri="${workspace.rootUri}">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
+                <div class="p-sm">
+                    ${renderSettingsPanel({ title: 'Actions', itemsHtml: actionsItems })}
+                    ${renderSettingsPanel({ title: 'Settings', itemsHtml: settingsItems })}
                 </div>
             `;
         }
@@ -394,12 +436,16 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             if (!workspace) return;
 
             if (tab === 'settings') {
+                state.selectedServer = null;
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'servers') {
                 // Load LSP servers lazy
                 if (!workspace.lspServers) {
                     await loadLspServersForWorkspace(workspace);
                 }
+                state.selectedServer = null;
+                renderWorkspaces();
+                showPlaceholder();
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'debuggers') {
                 // Load DAP sessions lazy
@@ -522,7 +568,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                                         title="Disconnect from IDE">⏏</button>
                             `;
                         } else {
-                            if (server.status === 'RUNNING' || server.status === 'STARTING') {
+                            if (server.status === 'RUNNING' || server.status === 'STARTING' || server.status === 'INDEXING') {
                                 actions = `
                                     <button class="server-action-btn" data-action="restartServerAction" data-server-id="${server.id}" data-stop-propagation title="Restart">↻</button>
                                     <button class="server-action-btn" data-action="stopServerAction" data-server-id="${server.id}" data-stop-propagation title="Stop">■</button>
@@ -784,6 +830,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             ${!server.isExtension && !server.isDap ? `<button class="tab-button ${state.currentConsoleTab === 'traces' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="traces">Traces</button>` : ''}
                             <button class="tab-button ${state.currentConsoleTab === 'overview' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="overview">Overview</button>
                             ${hasContributions ? `<button class="tab-button ${state.currentConsoleTab === 'contributions' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="contributions">Contributions</button>` : ''}
+                            <button class="tab-button ${state.currentConsoleTab === 'settings' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="settings">Settings</button>
                             <button class="tab-button ${state.currentConsoleTab === 'install' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="install">Install</button>
                         </div>
                         <div class="console-controls">
@@ -813,6 +860,11 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             </div>
                         </div>
                         ` : ''}
+                        <div id="settings-tab" class="tab-panel ${state.currentConsoleTab === 'settings' ? 'active' : ''}">
+                            <div class="details-panel" id="settings-content">
+                                <p>Loading...</p>
+                            </div>
+                        </div>
                         <div id="install-tab" class="tab-panel ${state.currentConsoleTab === 'install' ? 'active' : ''}">
                             <div class="install-panel">
                                 <h3>Installer Configuration</h3>
@@ -917,13 +969,23 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         contributionsContent.innerHTML = contributionsHTML || '<p class="detail-value">No contributions</p>';
                     }
                 } else {
-                    // LSP server - fetch from API
-                    const response = await fetch(`/api/admin/lsp/configs/${serverId}`);
-                    if (!response.ok) {
+                    // LSP server - fetch config, workspace-resolved settings, and IDE settings
+                    const [configResponse, settingsResponse, ideSettingsResponse] = await Promise.all([
+                        fetch(`/api/admin/lsp/configs/${serverId}`),
+                        workspace ? fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/settings`) : null,
+                        workspace ? fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/ide-settings`) : null
+                    ]);
+                    if (!configResponse.ok) {
                         throw new Error('Failed to load server details');
                     }
 
-                    const details = await response.json();
+                    const details = await configResponse.json();
+                    if (settingsResponse && settingsResponse.ok) {
+                        details.settings = await settingsResponse.json();
+                    }
+                    const ideSettings = (ideSettingsResponse && ideSettingsResponse.ok)
+                        ? await ideSettingsResponse.json()
+                        : [];
 
                     // Get all servers for contributedBy calculation
                     const allServers = workspace?.lspServers || [];
@@ -939,6 +1001,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     if (contributionsContent) {
                         const contributionsHTML = formatContributionsSection(details, allServers);
                         contributionsContent.innerHTML = contributionsHTML || '<p class="detail-value">No contributions</p>';
+                    }
+
+                    // Update settings tab
+                    const settingsContent = document.getElementById('settings-content');
+                    if (settingsContent) {
+                        settingsContent.innerHTML = renderServerSettingsTab(details, workspace, ideSettings);
                     }
                 }
             } catch (error) {
@@ -1012,63 +1080,56 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     <pre class="detail-value">${JSON.stringify(server.initializationOptions, null, 2)}</pre>
                 </div>
                 ` : ''}
-
-                ${renderSettingsSection(server)}
             `;
         }
 
-        /**
-         * Render settings section from declarative settings in server.json.
-         */
-        function renderSettingsSection(server) {
-            if (!server.settings || server.settings.length === 0) {
-                return '';
+        function renderServerSettingsTab(server, workspace, ideSettings) {
+            const uri = workspace?.rootUri || state.selectedWorkspace || '';
+            const hasWorkspaceSettings = server.settings && server.settings.length > 0;
+            const hasIdeSettings = ideSettings && ideSettings.length > 0;
+
+            if (!hasWorkspaceSettings && !hasIdeSettings) {
+                return '<p class="text-secondary p-lg">No settings declared for this server.</p>';
             }
 
-            const serverId = server.id;
+            let workspacePanel = '';
+            if (hasWorkspaceSettings) {
+                const wsItems = server.settings.map(setting =>
+                    renderServerSetting(setting, 'updateWorkspaceServerSetting', 'resetWorkspaceServerSetting',
+                        { uri, 'server-id': server.id })
+                );
+                workspacePanel = renderSettingsPanel({
+                    title: 'Workspace',
+                    itemsHtml: wsItems
+                });
+            }
 
-            const controlsHTML = server.settings.map(setting => {
-                const currentValue = setting.currentValue || setting.defaultValue || '';
-                let controlHTML = '';
-
-                if (setting.type === 'enum' && setting.values) {
-                    const options = setting.values.map(v => {
-                        const label = (setting.valueLabels && setting.valueLabels[v]) ? setting.valueLabels[v] : v;
-                        const selected = v === currentValue ? 'selected' : '';
-                        return `<option value="${v}" ${selected}>${label}</option>`;
-                    }).join('');
-                    controlHTML = `<select class="select-field settings-input" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">
-                                       ${options}
-                                   </select>`;
-                } else if (setting.type === 'boolean') {
-                    const checked = currentValue === 'true' ? 'checked' : '';
-                    controlHTML = `<label class="toggle-switch">
-                                       <input type="checkbox" ${checked}
-                                              data-action="updateServerSettingBool" data-server-id="${serverId}" data-setting-key="${setting.key}">
-                                       <span class="toggle-slider"></span>
-                                   </label>`;
-                } else {
-                    controlHTML = `<input type="text" class="input-field settings-input" value="${currentValue}"
-                                          data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">`;
-                }
-
-                const descHTML = setting.description
-                    ? `<div class="text-dimmed mt-xs settings-description">${setting.description}</div>`
-                    : '';
-
-                return `<div class="detail-item flex-column align-start">
-                            <div class="d-flex align-center gap-md w-100">
-                                <span class="detail-label">${setting.label}:</span>
-                                ${controlHTML}
-                            </div>
-                            ${descHTML}
-                        </div>`;
-            }).join('');
+            let idePanel = '';
+            if (hasIdeSettings) {
+                const ideItems = ideSettings.map(s => renderIdeSettingItem(s));
+                idePanel = renderSettingsPanel({
+                    title: 'IDE',
+                    itemsHtml: ideItems
+                });
+            }
 
             return `
-                <div class="details-section">
-                    <h4>Settings</h4>
-                    ${controlsHTML}
+                <div class="p-sm">
+                    ${workspacePanel}
+                    ${idePanel}
+                </div>
+            `;
+        }
+
+        function renderIdeSettingItem(setting) {
+            return `
+                <div class="setting-item">
+                    <div class="setting-item-info">
+                        <div class="setting-item-label">${setting.key}</div>
+                    </div>
+                    <div class="setting-item-control">
+                        <span class="text-secondary">${setting.value != null ? setting.value : '<em>null</em>'}</span>
+                    </div>
                 </div>
             `;
         }
@@ -1461,13 +1522,14 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/file-watcher`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled: newEnabled })
+                    body: JSON.stringify({ enabled: newEnabled, scope: 'workspace' })
                 });
                 if (response.ok) {
                     const result = await response.json();
                     console.log('File watcher toggled:', result);
                     if (workspace) {
                         workspace.fileWatcherEnabled = result.fileWatcherEnabled;
+                        workspace.fileWatcherEnabledSource = result.fileWatcherEnabledSource;
                         workspace.fileWatcherRunning = result.fileWatcherRunning;
                     }
                     renderWorkspaces();
@@ -1480,31 +1542,90 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
         }
 
-        async function refreshWorkspaceFromListAction(uri) {
-            try {
-                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/refresh`, {
-                    method: 'POST'
-                });
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Workspace refreshed:', result);
+        async function resetFileWatcherSettingAction(uri) {
+            const result = await resetWorkspaceSetting(uri, 'fileWatchers.enabled');
+            if (result) {
+                const workspace = state.workspaces?.find(w => w.rootUri === uri);
+                if (workspace) {
+                    workspace.fileWatcherEnabled = result.value;
+                    workspace.fileWatcherEnabledSource = result.source;
                 }
-            } catch (error) {
-                console.error('Failed to refresh workspace:', error);
+                renderWorkspaces();
+                if (state.currentWorkspaceTab === 'settings') {
+                    renderServers(workspace?.lspServers || [], [], workspace);
+                }
             }
         }
 
-        async function buildWorkspaceFromListAction(uri) {
+        async function refreshWorkspaceFromListAction(uri, btn) {
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('btn-loading');
+                try {
+                    const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/refresh`, { method: 'POST' });
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('Workspace refreshed:', result);
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh workspace:', error);
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('btn-loading');
+                }
+            }
+        }
+
+        async function buildWorkspaceFromListAction(uri, btn) {
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('btn-loading');
+                try {
+                    const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/build`, { method: 'POST' });
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('Workspace built:', result);
+                    }
+                } catch (error) {
+                    console.error('Failed to build workspace:', error);
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('btn-loading');
+                }
+            }
+        }
+
+        async function updateWorkspaceServerSettingAction(uri, serverId, settingKey, value) {
+            const persistKey = `lsp.${serverId}.settings.${settingKey}`;
+            await setWorkspaceSetting(uri, persistKey, value);
+            await reloadServerSettingsTab(serverId);
+        }
+
+        async function resetWorkspaceServerSettingAction(uri, serverId, key) {
+            const persistKey = `lsp.${serverId}.settings.${key}`;
+            await resetWorkspaceSetting(uri, persistKey);
+            await reloadServerSettingsTab(serverId);
+        }
+
+        async function reloadServerSettingsTab(serverId) {
+            const workspace = state.workspaces?.find(w => w.rootUri === state.selectedWorkspace);
+            if (!workspace) return;
             try {
-                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/build`, {
-                    method: 'POST'
-                });
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Workspace built:', result);
+                const [configResponse, settingsResponse, ideSettingsResponse] = await Promise.all([
+                    fetch(`/api/admin/lsp/configs/${serverId}`),
+                    fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/settings`),
+                    fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/ide-settings`)
+                ]);
+                const config = configResponse.ok ? await configResponse.json() : {};
+                const settings = settingsResponse.ok ? await settingsResponse.json() : [];
+                const ideSettings = ideSettingsResponse.ok ? await ideSettingsResponse.json() : [];
+                const server = { id: serverId, settings, name: config?.name || serverId };
+                const settingsContent = document.getElementById('settings-content');
+                if (settingsContent) {
+                    settingsContent.innerHTML = renderServerSettingsTab(server, workspace, ideSettings);
                 }
             } catch (error) {
-                console.error('Failed to build workspace:', error);
+                console.error('Failed to reload server settings:', error);
             }
         }
 
@@ -1538,8 +1659,16 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             connectToIdeAction: (el) => connectToIdeAction(el.dataset.serverId),
             createNewTestSession: (el) => createNewTestSession(el.dataset.serverId),
             refreshWorkspace: () => refreshWorkspaceAction(),
-            refreshWorkspaceFromList: (el) => refreshWorkspaceFromListAction(el.dataset.uri),
-            buildWorkspaceFromList: (el) => buildWorkspaceFromListAction(el.dataset.uri),
+            refreshWorkspaceFromList: (el) => refreshWorkspaceFromListAction(el.dataset.uri, el),
+            buildWorkspaceFromList: (el) => buildWorkspaceFromListAction(el.dataset.uri, el),
+            openWorkspaceSettings: (el) => {
+                selectWorkspace(el.dataset.uri);
+                switchWorkspaceTab('settings');
+            },
+            buildWorkspaceFromSettings: (el) => buildWorkspaceFromListAction(el.dataset.uri, el),
+            refreshWorkspaceFromSettings: (el) => refreshWorkspaceFromListAction(el.dataset.uri, el),
+            resetFileWatcherSetting: (el) => resetFileWatcherSettingAction(el.dataset.uri),
+            resetWorkspaceServerSetting: (el) => resetWorkspaceServerSettingAction(el.dataset.uri, el.dataset.serverId, el.dataset.key),
             toggleAllTracesWorkspace: () => toggleAllTracesWorkspace(),
             clearConsole: () => clearConsole(),
             saveInstallerJson: (el) => {
@@ -1564,4 +1693,11 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 toggleWorkspaceDapServerEnabled(el.dataset.serverId, el.checked);
             },
             changeTraceLevel: (el) => changeTraceLevel(el.value),
+            updateWorkspaceServerSetting: (el) => updateWorkspaceServerSettingAction(
+                el.dataset.uri, el.dataset.serverId, el.dataset.settingKey,
+                el.type === 'checkbox' ? String(el.checked) : el.value
+            ),
+        });
+
+        registerActions('input', {
         });

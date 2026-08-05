@@ -16,6 +16,7 @@ package com.ibm.mcp.languagetools.workspace;
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.configuration.Configuration;
+import com.ibm.mcp.languagetools.configuration.WorkspaceConfiguration;
 import com.ibm.mcp.languagetools.installer.InstallationException;
 import com.ibm.mcp.languagetools.lsp.LspInstanceRegistry;
 import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
@@ -61,6 +62,7 @@ public class Workspace {
     private final URI rootUri;
     private final Path rootPath;
     private final String normalizedRootUriString; // Cached normalized URI string (no trailing slash)
+    private final IdeConfiguration ideConfiguration;
     private final WorkspaceConfiguration configuration;
 
     // LSP
@@ -96,9 +98,11 @@ public class Workspace {
         this.normalizedRootUriString = rootUri.toString();
         this.application = application;
         this.lspTraceCollector = application.getLspTraceCollector();
-        this.configuration = new WorkspaceConfiguration(rootPath,
-                application.getWorkspaceConfigurationProviders(),
-                application.getWorkspaceConfigurationStrategy());
+        this.ideConfiguration = new IdeConfiguration(rootPath,
+                application.getIdeConfigurationProviders(),
+                application.getIdeConfigurationStrategy());
+        this.ideConfiguration.watch();
+        this.configuration = new WorkspaceConfiguration(rootPath, application.getConfiguration());
         this.configuration.watch();
     }
 
@@ -373,6 +377,7 @@ public class Workspace {
                 .thenRun(() -> {
                     stopFileWatcher();
                     lspServers.clear();
+                    ideConfiguration.unwatch();
                     configuration.unwatch();
                     LOG.infof("Workspace shut down: %s", rootUri);
                 });
@@ -472,9 +477,17 @@ public class Workspace {
 
 
     /**
-     * Get workspace configuration.
+     * Get IDE configuration (settings from .vscode/settings.json, .bob/settings.json, etc.)
+     * Used for LSP workspace/configuration responses.
      */
-    public Configuration getConfiguration() {
+    public Configuration getIdeConfiguration() {
+        return ideConfiguration;
+    }
+
+    /**
+     * Get workspace-level application configuration (overrides global settings).
+     */
+    public WorkspaceConfiguration getWorkspaceConfiguration() {
         return configuration;
     }
 
@@ -545,8 +558,7 @@ public class Workspace {
         if (fileWatcher != null && fileWatcher.isRunning()) {
             return;
         }
-        var config = application.getConfiguration();
-        boolean enabled = config == null || config.getBoolean("fileWatchers.enabled", true);
+        boolean enabled = configuration.resolveBoolean("fileWatchers.enabled", true).value();
         if (!enabled) {
             LOG.debugf("File watchers disabled for workspace: %s", rootUri);
             return;
@@ -556,12 +568,10 @@ public class Workspace {
             return;
         }
         Set<String> additionalExcludes = null;
-        if (config != null) {
-            String excludePatterns = config.getString("fileWatchers.excludePatterns", null);
-            if (excludePatterns != null && !excludePatterns.isBlank()) {
-                additionalExcludes = new HashSet<>(Arrays.asList(excludePatterns.split(",")));
-                additionalExcludes.removeIf(String::isBlank);
-            }
+        String excludePatterns = configuration.resolveString("fileWatchers.excludePatterns", null).value();
+        if (excludePatterns != null && !excludePatterns.isBlank()) {
+            additionalExcludes = new HashSet<>(Arrays.asList(excludePatterns.split(",")));
+            additionalExcludes.removeIf(String::isBlank);
         }
         fileWatcher = new WorkspaceFileWatcher(rootPath, this::onFileChanges, additionalExcludes);
         fileWatcher.start();

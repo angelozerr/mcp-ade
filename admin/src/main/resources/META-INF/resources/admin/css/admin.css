@@ -520,6 +520,17 @@ body {
     color: var(--color-error-delete);
 }
 
+.btn-loading {
+    opacity: 0.5;
+    pointer-events: none;
+    animation: btn-pulse 1s ease-in-out infinite;
+}
+@keyframes btn-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.2; }
+}
+
+
 .workspace-meta {
     font-size: 0.75rem;
     color: var(--text-secondary);
@@ -582,6 +593,15 @@ body {
     border-radius: 3px;
 }
 
+/* Settings mode: servers-sidebar spans both columns */
+.app-container.settings-mode .servers-sidebar {
+    grid-column: 2 / -1;
+    border-right: none;
+}
+.app-container.settings-mode .console-container {
+    display: none;
+}
+
 /* Middle sidebar - LSP Servers */
 .servers-sidebar {
     background: var(--bg-panel);
@@ -593,6 +613,7 @@ body {
 }
 
 .server-item {
+    position: relative;
     padding: 0.75rem 1rem;
     cursor: pointer;
     border-left: 3px solid transparent;

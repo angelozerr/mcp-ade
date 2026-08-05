@@ -14,9 +14,11 @@
 package com.ibm.mcp.languagetools.admin.dto;
 
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
+import com.ibm.mcp.languagetools.configuration.Configuration;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
+import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.server.ServerSettingDescriptor;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -25,6 +27,7 @@ import jakarta.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Builder for Server DTOs (Config and Runtime).
@@ -154,6 +157,15 @@ public class ServerDTOBuilder {
     }
 
     private List<ServerSettingDTO> buildSettings(LspServerConfig config) {
+        return buildSettings(config, null);
+    }
+
+    /**
+     * Build settings for a server, optionally resolving via workspace configuration.
+     * When workspace is provided, settings are resolved with inheritance (workspace → application → default).
+     * When workspace is null, settings are resolved from application configuration only.
+     */
+    public List<ServerSettingDTO> buildSettings(LspServerConfig config, Workspace workspace) {
         List<ServerSettingDescriptor> descriptors = config.getSettings();
         if (descriptors == null || descriptors.isEmpty()) {
             return null;
@@ -162,15 +174,70 @@ public class ServerDTOBuilder {
         List<ServerSettingDTO> result = new ArrayList<>();
         for (ServerSettingDescriptor desc : descriptors) {
             String settingKey = "lsp." + serverId + ".settings." + desc.key();
-            String currentValue = applicationConfiguration.getString(settingKey);
-            if (currentValue == null) {
-                currentValue = desc.defaultValue();
+            String currentValue;
+            String source;
+            if (workspace != null) {
+                var resolved = workspace.getWorkspaceConfiguration().resolveString(settingKey, desc.defaultValue());
+                currentValue = resolved.value();
+                source = resolved.source().name();
+            } else {
+                currentValue = applicationConfiguration.getString(settingKey);
+                if (currentValue == null) {
+                    currentValue = desc.defaultValue();
+                }
+                source = "APPLICATION";
             }
             result.add(new ServerSettingDTO(
                     desc.key(), desc.label(), desc.description(),
                     desc.type(), desc.values(), desc.valueLabels(),
-                    desc.defaultValue(), currentValue));
+                    desc.defaultValue(), currentValue, source));
         }
         return result;
+    }
+
+    /**
+     * Build IDE settings for a server in a workspace.
+     * Reads settings from the workspace's IDE configuration (e.g. .vscode/settings.json)
+     * and filters them using the server's applicableSettings glob patterns.
+     */
+    public List<IdeSettingDTO> buildIdeSettings(ServerConfigBase config, Workspace workspace) {
+        List<String> patterns = config.getApplicableSettings();
+        if (patterns == null || patterns.isEmpty()) {
+            return List.of();
+        }
+        Configuration ideConfig = workspace.getIdeConfiguration();
+        if (ideConfig == null) {
+            return List.of();
+        }
+        Map<String, Object> allSettings = ideConfig.getAll();
+        if (allSettings == null || allSettings.isEmpty()) {
+            return List.of();
+        }
+        List<IdeSettingDTO> result = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : allSettings.entrySet()) {
+            String key = entry.getKey();
+            if (matchesAnyPattern(key, patterns)) {
+                String value = entry.getValue() != null ? entry.getValue().toString() : null;
+                result.add(new IdeSettingDTO(key, value));
+            }
+        }
+        result.sort((a, b) -> a.key().compareTo(b.key()));
+        return result;
+    }
+
+    private static boolean matchesAnyPattern(String key, List<String> patterns) {
+        for (String pattern : patterns) {
+            if (matchesGlob(key, pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesGlob(String key, String pattern) {
+        String regex = pattern
+                .replace(".", "\\.")
+                .replace("*", ".*");
+        return key.matches(regex);
     }
 }

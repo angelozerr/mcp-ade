@@ -39,9 +39,9 @@ import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.trace.TraceCollectorFactory;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import com.ibm.mcp.languagetools.workspace.WorkspaceChangeEvent;
-import com.ibm.mcp.languagetools.workspace.WorkspaceConfigurationProvider;
-import com.ibm.mcp.languagetools.workspace.WorkspaceConfigurationProviderRegistry;
-import com.ibm.mcp.languagetools.workspace.WorkspaceConfigurationStrategy;
+import com.ibm.mcp.languagetools.workspace.IdeConfigurationProvider;
+import com.ibm.mcp.languagetools.workspace.IdeConfigurationProviderRegistry;
+import com.ibm.mcp.languagetools.workspace.IdeConfigurationStrategy;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -455,12 +455,12 @@ public class Application {
         return applicationConfiguration;
     }
 
-    public List<WorkspaceConfigurationProvider> getWorkspaceConfigurationProviders() {
-        List<String> ids = applicationConfiguration.getWorkspaceConfigurationProviderIds();
-        WorkspaceConfigurationProviderRegistry registry = WorkspaceConfigurationProviderRegistry.getInstance();
-        List<WorkspaceConfigurationProvider> providers = new ArrayList<>();
+    public List<IdeConfigurationProvider> getIdeConfigurationProviders() {
+        List<String> ids = applicationConfiguration.getIdeConfigurationProviderIds();
+        IdeConfigurationProviderRegistry registry = IdeConfigurationProviderRegistry.getInstance();
+        List<IdeConfigurationProvider> providers = new ArrayList<>();
         for (String id : ids) {
-            WorkspaceConfigurationProvider provider = registry.getProvider(id);
+            IdeConfigurationProvider provider = registry.getProvider(id);
             if (provider != null) {
                 providers.add(provider);
             }
@@ -468,8 +468,8 @@ public class Application {
         return providers;
     }
 
-    public WorkspaceConfigurationStrategy getWorkspaceConfigurationStrategy() {
-        return applicationConfiguration.getWorkspaceConfigurationStrategy();
+    public IdeConfigurationStrategy getIdeConfigurationStrategy() {
+        return applicationConfiguration.getIdeConfigurationStrategy();
     }
 
     public ServerTrace getLspTraceLevel(String serverId) {

@@ -11,21 +11,17 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.workspace;
+package com.ibm.mcp.languagetools.admin.dto;
 
 /**
- * Strategy for loading workspace configuration from multiple providers.
+ * An IDE setting read from the workspace's IDE configuration
+ * (e.g. {@code .vscode/settings.json}).
+ *
+ * @param key   setting key (e.g. {@code "java.format.enabled"})
+ * @param value current value as string
  */
-public enum WorkspaceConfigurationStrategy {
-
-    /**
-     * Use the first provider whose settings file exists.
-     */
-    FIRST_FOUND,
-
-    /**
-     * Merge settings from all providers whose files exist.
-     * Earlier providers in the list have higher priority (their values win on conflicts).
-     */
-    MERGE
+public record IdeSettingDTO(
+        String key,
+        String value
+) {
 }

@@ -11,22 +11,25 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.workspace;
-
-import java.nio.file.Path;
+package com.ibm.mcp.languagetools.configuration;
 
 /**
- * IDE configuration provider for Bob (.bob/settings.json).
+ * Indicates where a resolved configuration value comes from.
  */
-public class BobConfigurationProvider implements IdeConfigurationProvider {
+public enum ConfigurationSource {
 
-    @Override
-    public String getId() {
-        return "bob";
-    }
+    /**
+     * Value is overridden at workspace level ({workspace}/.mcp-languagetools/settings.json).
+     */
+    WORKSPACE,
 
-    @Override
-    public Path getSettingsFile(Path workspaceRoot) {
-        return workspaceRoot.resolve(".bob").resolve("settings.json");
-    }
+    /**
+     * Value comes from application configuration (~/.mcp-languagetools/settings.json).
+     */
+    APPLICATION,
+
+    /**
+     * No value found in workspace or global — using the default.
+     */
+    DEFAULT
 }

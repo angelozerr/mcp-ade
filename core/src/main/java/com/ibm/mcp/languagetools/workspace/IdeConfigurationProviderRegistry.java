@@ -18,32 +18,32 @@ import org.jboss.logging.Logger;
 import java.util.*;
 
 /**
- * Registry for workspace configuration providers discovered via Java SPI (ServiceLoader).
+ * Registry for IDE configuration providers discovered via Java SPI (ServiceLoader).
  */
-public class WorkspaceConfigurationProviderRegistry {
+public class IdeConfigurationProviderRegistry {
 
-    private static final Logger LOG = Logger.getLogger(WorkspaceConfigurationProviderRegistry.class);
-    private static final WorkspaceConfigurationProviderRegistry INSTANCE = new WorkspaceConfigurationProviderRegistry();
+    private static final Logger LOG = Logger.getLogger(IdeConfigurationProviderRegistry.class);
+    private static final IdeConfigurationProviderRegistry INSTANCE = new IdeConfigurationProviderRegistry();
 
-    private final Map<String, WorkspaceConfigurationProvider> providers = new LinkedHashMap<>();
+    private final Map<String, IdeConfigurationProvider> providers = new LinkedHashMap<>();
 
-    private WorkspaceConfigurationProviderRegistry() {
-        ServiceLoader<WorkspaceConfigurationProvider> loader = ServiceLoader.load(WorkspaceConfigurationProvider.class);
-        for (WorkspaceConfigurationProvider provider : loader) {
+    private IdeConfigurationProviderRegistry() {
+        ServiceLoader<IdeConfigurationProvider> loader = ServiceLoader.load(IdeConfigurationProvider.class);
+        for (IdeConfigurationProvider provider : loader) {
             providers.put(provider.getId(), provider);
-            LOG.infof("Registered workspace configuration provider: %s", provider.getId());
+            LOG.infof("Registered IDE configuration provider: %s", provider.getId());
         }
     }
 
-    public static WorkspaceConfigurationProviderRegistry getInstance() {
+    public static IdeConfigurationProviderRegistry getInstance() {
         return INSTANCE;
     }
 
-    public WorkspaceConfigurationProvider getProvider(String id) {
+    public IdeConfigurationProvider getProvider(String id) {
         return providers.get(id);
     }
 
-    public Collection<WorkspaceConfigurationProvider> getProviders() {
+    public Collection<IdeConfigurationProvider> getProviders() {
         return Collections.unmodifiableCollection(providers.values());
     }
 

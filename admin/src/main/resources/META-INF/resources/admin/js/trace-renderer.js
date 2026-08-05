@@ -299,7 +299,7 @@ export function initSearchListeners(callback) {
 // ========== Trace Controls ==========
 
 export function renderTraceControls(id, level, changeAction, buttons) {
-    let html = `<label class="text-primary font-md">
+    let innerHtml = `<label class="text-primary font-md">
             Trace Level:
             <select id="${id}-level" data-action="${changeAction}" class="select-field ml-sm">
                 <option value="off" ${level === 'off' ? 'selected' : ''}>Off</option>
@@ -308,15 +308,13 @@ export function renderTraceControls(id, level, changeAction, buttons) {
             </select>
         </label>`;
     if (buttons) {
-        const buttonsHtml = `<button data-action="${buttons.foldAction}" id="${id}-fold-button" ${level !== 'verbose' ? 'disabled' : ''}>Unfold All</button>`
+        innerHtml += `<button data-action="${buttons.foldAction}" id="${id}-fold-button" ${level !== 'verbose' ? 'disabled' : ''}>Unfold All</button>`
             + `<button data-action="${buttons.clearAction}" id="${id}-clear-button" ${level === 'off' ? 'disabled' : ''}>Clear</button>`;
-        if (buttons.wrapperId) {
-            html += `<span id="${buttons.wrapperId}" style="display: ${buttons.wrapperDisplay || 'contents'}">${buttonsHtml}</span>`;
-        } else {
-            html += buttonsHtml;
-        }
     }
-    return html;
+    if (buttons && buttons.wrapperId) {
+        return `<span id="${buttons.wrapperId}" style="display: ${buttons.wrapperDisplay || 'contents'}">${innerHtml}</span>`;
+    }
+    return innerHtml;
 }
 
 export function updateTraceControls(id, level) {

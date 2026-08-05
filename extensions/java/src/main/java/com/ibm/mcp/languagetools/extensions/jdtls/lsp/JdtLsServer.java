@@ -442,7 +442,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
      * Similar to vscode-java's parseVMargs().
      */
     private void addVMArgs(List<String> params) {
-        var workspaceConfiguration = getWorkspace().getConfiguration();
+        var workspaceConfiguration = getWorkspace().getIdeConfiguration();
         if (workspaceConfiguration == null) {
             LOG.debug("No workspace configuration available, skipping vmargs");
             return;

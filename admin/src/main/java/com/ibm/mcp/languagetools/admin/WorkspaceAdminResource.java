@@ -15,8 +15,10 @@ package com.ibm.mcp.languagetools.admin;
 
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.admin.dto.ContributionDTOBuilder;
+import com.ibm.mcp.languagetools.admin.dto.IdeSettingDTO;
 import com.ibm.mcp.languagetools.admin.dto.LspServerDTO;
 import com.ibm.mcp.languagetools.admin.dto.ServerDTOBuilder;
+import com.ibm.mcp.languagetools.admin.dto.ServerSettingDTO;
 import com.ibm.mcp.languagetools.admin.dto.WorkspaceDTO;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -95,6 +97,48 @@ public class WorkspaceAdminResource {
         return serverConfigs.stream()
                 .map(config -> serverDTOBuilder.buildRuntime(config, workspace))
                 .toList();
+    }
+
+    /**
+     * Get resolved settings for a specific server in a workspace.
+     * Settings are resolved with inheritance: workspace → application → default.
+     */
+    @GET
+    @Path("/workspaces/{uri}/lsp-servers/{serverId}/settings")
+    public List<ServerSettingDTO> getServerSettings(@PathParam("uri") String uriParam,
+                                                     @PathParam("serverId") String serverId) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+        var config = application.getLspServerConfigs().stream()
+                .filter(c -> c.getServerId().equals(serverId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Server not found: " + serverId));
+        var settings = serverDTOBuilder.buildSettings(config, workspace);
+        return settings != null ? settings : List.of();
+    }
+
+    /**
+     * Get IDE settings for a specific server in a workspace.
+     * Reads from the workspace's IDE configuration (e.g. .vscode/settings.json)
+     * and filters by the server's applicableSettings patterns.
+     */
+    @GET
+    @Path("/workspaces/{uri}/lsp-servers/{serverId}/ide-settings")
+    public List<IdeSettingDTO> getServerIdeSettings(@PathParam("uri") String uriParam,
+                                                     @PathParam("serverId") String serverId) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+        var config = application.getLspServerConfigs().stream()
+                .filter(c -> c.getServerId().equals(serverId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Server not found: " + serverId));
+        return serverDTOBuilder.buildIdeSettings(config, workspace);
     }
 
     /**
@@ -208,7 +252,7 @@ public class WorkspaceAdminResource {
     }
 
     /**
-     * Toggle file watcher for a workspace.
+     * Toggle file watcher for a workspace (writes to workspace-level configuration).
      */
     @POST
     @Path("/workspaces/{uri}/file-watcher")
@@ -221,23 +265,124 @@ public class WorkspaceAdminResource {
         }
 
         boolean enabled = Boolean.TRUE.equals(body.get("enabled"));
-        // Persist the global setting
-        var config = application.getConfiguration();
-        if (config instanceof com.ibm.mcp.languagetools.configuration.ApplicationConfiguration appConfig) {
-            appConfig.setBoolean("fileWatchers.enabled", enabled);
+        String scope = body.get("scope") != null ? body.get("scope").toString() : "workspace";
+
+        if ("application".equals(scope)) {
+            var config = application.getConfiguration();
+            if (config instanceof com.ibm.mcp.languagetools.configuration.ApplicationConfiguration appConfig) {
+                appConfig.setBoolean("fileWatchers.enabled", enabled);
+            }
+            for (Workspace ws : application.getWorkspaces()) {
+                if (enabled) {
+                    ws.startFileWatcherIfEnabled();
+                } else {
+                    ws.stopFileWatcher();
+                }
+            }
+        } else {
+            workspace.getWorkspaceConfiguration().setBoolean("fileWatchers.enabled", enabled);
+            if (enabled) {
+                workspace.startFileWatcherIfEnabled();
+            } else {
+                workspace.stopFileWatcher();
+            }
         }
 
-        // Apply to all workspaces (global setting)
-        for (Workspace ws : application.getWorkspaces()) {
-            if (enabled) {
-                ws.startFileWatcherIfEnabled();
+        var resolved = workspace.getWorkspaceConfiguration().resolveBoolean("fileWatchers.enabled", true);
+        return Response.ok()
+                .entity(Map.of(
+                        "fileWatcherEnabled", resolved.value(),
+                        "fileWatcherEnabledSource", resolved.source().name(),
+                        "fileWatcherRunning", workspace.isFileWatcherRunning()))
+                .build();
+    }
+
+    /**
+     * Get resolved workspace settings with source info.
+     */
+    @GET
+    @Path("/workspaces/{uri}/settings")
+    public Response getWorkspaceSettings(@PathParam("uri") String uriParam) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+
+        var wsConfig = workspace.getWorkspaceConfiguration();
+        var fwEnabled = wsConfig.resolveBoolean("fileWatchers.enabled", true);
+
+        return Response.ok()
+                .entity(Map.of(
+                        "fileWatchers.enabled", Map.of(
+                                "value", fwEnabled.value(),
+                                "source", fwEnabled.source().name()
+                        ),
+                        "overrides", wsConfig.getOverrides()
+                ))
+                .build();
+    }
+
+    /**
+     * Set a workspace-level configuration override.
+     */
+    @PUT
+    @Path("/workspaces/{uri}/settings/{key:.+}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response setWorkspaceSetting(@PathParam("uri") String uriParam,
+                                        @PathParam("key") String key,
+                                        Map<String, Object> body) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+
+        Object value = body.get("value");
+        workspace.getWorkspaceConfiguration().set(key, value);
+
+        if ("fileWatchers.enabled".equals(key)) {
+            if (Boolean.TRUE.equals(value)) {
+                workspace.startFileWatcherIfEnabled();
             } else {
-                ws.stopFileWatcher();
+                workspace.stopFileWatcher();
             }
         }
 
         return Response.ok()
-                .entity(Map.of("fileWatcherEnabled", enabled, "fileWatcherRunning", workspace.isFileWatcherRunning()))
+                .entity(Map.of("key", key, "value", value, "source", "WORKSPACE"))
+                .build();
+    }
+
+    /**
+     * Remove a workspace-level configuration override (revert to application).
+     */
+    @DELETE
+    @Path("/workspaces/{uri}/settings/{key:.+}")
+    public Response resetWorkspaceSetting(@PathParam("uri") String uriParam,
+                                          @PathParam("key") String key) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+
+        workspace.getWorkspaceConfiguration().remove(key);
+
+        if ("fileWatchers.enabled".equals(key)) {
+            boolean resolved = workspace.getWorkspaceConfiguration()
+                    .resolveBoolean("fileWatchers.enabled", true).value();
+            if (resolved) {
+                workspace.startFileWatcherIfEnabled();
+            } else {
+                workspace.stopFileWatcher();
+            }
+        }
+
+        var wsConfig = workspace.getWorkspaceConfiguration();
+        var fwEnabled = wsConfig.resolveBoolean("fileWatchers.enabled", true);
+        return Response.ok()
+                .entity(Map.of("key", key, "source", fwEnabled.source().name(), "value", fwEnabled.value()))
                 .build();
     }
 
@@ -253,9 +398,8 @@ public class WorkspaceAdminResource {
                 ))
                 .toList();
 
-        boolean fileWatcherEnabled = application.getConfiguration() == null
-                || application.getConfiguration().getBoolean("fileWatchers.enabled", true);
+        var fwResolved = workspace.getWorkspaceConfiguration().resolveBoolean("fileWatchers.enabled", true);
 
-        return new WorkspaceDTO(uri, mcpClients, fileWatcherEnabled, workspace.isFileWatcherRunning());
+        return new WorkspaceDTO(uri, mcpClients, fwResolved.value(), fwResolved.source().name(), workspace.isFileWatcherRunning());
     }
 }

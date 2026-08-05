@@ -19,6 +19,7 @@ public record WorkspaceDTO(
     String rootUri,
     List<McpClientInfo> mcpClients,
     boolean fileWatcherEnabled,
+    String fileWatcherEnabledSource,
     boolean fileWatcherRunning
 ) {
     public record McpClientInfo(

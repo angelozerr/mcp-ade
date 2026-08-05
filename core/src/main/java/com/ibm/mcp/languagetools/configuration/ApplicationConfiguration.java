@@ -21,8 +21,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
-import com.ibm.mcp.languagetools.workspace.WorkspaceConfigurationProviderRegistry;
-import com.ibm.mcp.languagetools.workspace.WorkspaceConfigurationStrategy;
+import com.ibm.mcp.languagetools.workspace.IdeConfigurationProviderRegistry;
+import com.ibm.mcp.languagetools.workspace.IdeConfigurationStrategy;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -196,24 +196,24 @@ public class ApplicationConfiguration extends AbstractConfiguration {
     // ========== Workspace configuration providers ==========
 
     @SuppressWarnings("unchecked")
-    public List<String> getWorkspaceConfigurationProviderIds() {
+    public List<String> getIdeConfigurationProviderIds() {
         Object value = get("workspace.configuration.providers");
         if (value instanceof List) {
             return (List<String>) value;
         }
-        return WorkspaceConfigurationProviderRegistry.getInstance().getProviderIds();
+        return IdeConfigurationProviderRegistry.getInstance().getProviderIds();
     }
 
-    public WorkspaceConfigurationStrategy getWorkspaceConfigurationStrategy() {
+    public IdeConfigurationStrategy getIdeConfigurationStrategy() {
         String value = getString("workspace.configuration.strategy");
         if (value != null) {
             try {
-                return WorkspaceConfigurationStrategy.valueOf(value.toUpperCase().replace('-', '_'));
+                return IdeConfigurationStrategy.valueOf(value.toUpperCase().replace('-', '_'));
             } catch (IllegalArgumentException e) {
                 LOG.warnf("Unknown workspace configuration strategy: %s, using FIRST_FOUND", value);
             }
         }
-        return WorkspaceConfigurationStrategy.FIRST_FOUND;
+        return IdeConfigurationStrategy.FIRST_FOUND;
     }
 
     // ========== LSP trace ==========

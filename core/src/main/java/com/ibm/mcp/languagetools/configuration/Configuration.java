@@ -21,7 +21,7 @@ import java.util.Map;
 /**
  * Read-only configuration interface.
  * Implemented by both {@link ApplicationConfiguration} and
- * {@link com.ibm.mcp.languagetools.workspace.WorkspaceConfiguration}.
+ * {@link com.ibm.mcp.languagetools.workspace.IdeConfiguration}.
  */
 public interface Configuration {
 

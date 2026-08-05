@@ -13,6 +13,7 @@ import {
     renderTraceControls, updateTraceControls, escapeHtml
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
+import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 
 let selectedAllServer = null; // Track selected server in global Servers tab
 let currentServerTab = 'overview'; // Track current tab: overview, contributions, install
@@ -126,6 +127,7 @@ export async function showServerDetails(serverId) {
 
         // Overview tab content (pass allServers for contribution detection)
         const detailsHTML = buildServerDetailsHTML(details, allServers);
+        const hasSettings = details.settings && details.settings.length > 0;
 
         // Contributions tab content (use same function as workspace, pass allServers)
         const contributionsHTML = formatContributionsSection(details, allServers);
@@ -141,6 +143,7 @@ export async function showServerDetails(serverId) {
                 <div class="console-tabs">
                     <button class="tab-button ${currentServerTab === 'overview' ? 'active' : ''}" data-action="switchServerTab" data-tab="overview">Overview</button>
                     <button class="tab-button ${currentServerTab === 'contributions' ? 'active' : ''}" data-action="switchServerTab" data-tab="contributions">Contributions</button>
+                    ${hasSettings ? `<button class="tab-button ${currentServerTab === 'settings' ? 'active' : ''}" data-action="switchServerTab" data-tab="settings">Settings</button>` : ''}
                     <button class="tab-button ${currentServerTab === 'install' ? 'active' : ''}" data-action="switchServerTab" data-tab="install">Install</button>
                 </div>
                 <div class="console-controls">
@@ -163,6 +166,13 @@ export async function showServerDetails(serverId) {
                         ${contributionsHTML || '<p class="detail-value">No contributions</p>'}
                     </div>
                 </div>
+                ${hasSettings ? `
+                <div id="server-settings-tab" class="tab-panel ${currentServerTab === 'settings' ? 'active' : ''}">
+                    <div class="details-panel text-primary overflow-auto p-2xl">
+                        ${buildSettingsHTML(details)}
+                    </div>
+                </div>
+                ` : ''}
                 <div id="server-install-tab" class="tab-panel ${currentServerTab === 'install' ? 'active' : ''}">
                     <div class="install-panel">
                         <h3>Installer Configuration</h3>
@@ -284,63 +294,23 @@ function buildServerDetailsHTML(details, allServers) {
             ${docSelectorHTML}
         </div>
 
-        ${buildSettingsHTML(details)}
     `;
 }
 
-/**
- * Build settings HTML from declarative settings in server.json.
- * Renders controls dynamically based on setting type (enum, boolean, string).
- */
 function buildSettingsHTML(details) {
     if (!details.settings || details.settings.length === 0) {
         return '';
     }
 
-    const serverId = details.id;
+    const settingsItems = details.settings.map(setting =>
+        renderServerSetting({ ...setting, source: null }, 'updateServerSetting', null,
+            { 'server-id': details.id })
+    );
 
-    let controlsHTML = details.settings.map(setting => {
-        let controlHTML = '';
-        const currentValue = setting.currentValue || setting.defaultValue || '';
-
-        if (setting.type === 'enum' && setting.values) {
-            const options = setting.values.map(v => {
-                const label = (setting.valueLabels && setting.valueLabels[v]) ? setting.valueLabels[v] : v;
-                const selected = v === currentValue ? 'selected' : '';
-                return `<option value="${v}" ${selected}>${label}</option>`;
-            }).join('');
-            controlHTML = `<select class="select-field settings-input" data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">
-                               ${options}
-                           </select>`;
-        } else if (setting.type === 'boolean') {
-            const checked = currentValue === 'true' ? 'checked' : '';
-            controlHTML = `<label class="toggle-switch">
-                               <input type="checkbox" ${checked}
-                                      data-action="updateServerSettingBool" data-server-id="${serverId}" data-setting-key="${setting.key}">
-                               <span class="toggle-slider"></span>
-                           </label>`;
-        } else {
-            controlHTML = `<input type="text" class="input-field settings-input" value="${currentValue}"
-                                  data-action="updateServerSetting" data-server-id="${serverId}" data-setting-key="${setting.key}">`;
-        }
-
-        const descHTML = setting.description
-            ? `<span class="text-dimmed ml-sm settings-description">${setting.description}</span>`
-            : '';
-
-        return `<div class="mb-md d-flex align-center gap-md">
-                    <strong class="text-label contribution-label">${setting.label}:</strong>
-                    ${controlHTML}
-                    ${descHTML}
-                </div>`;
-    }).join('');
-
-    return `
-        <div class="mb-xl">
-            <h3 class="text-label mt-lg">Settings</h3>
-            ${controlsHTML}
-        </div>
-    `;
+    return renderSettingsPanel({
+        title: 'Workspace',
+        itemsHtml: settingsItems
+    });
 }
 
 /**
@@ -648,6 +618,9 @@ registerActions('change', {
         const serverId = selectedAllServer;
         if (serverId) changeLspServerTraceLevel(serverId, el.value);
     },
-    updateServerSetting: (el) => updateServerSetting(el.dataset.serverId, el.dataset.settingKey, el.value),
-    updateServerSettingBool: (el) => updateServerSetting(el.dataset.serverId, el.dataset.settingKey, el.checked ? 'true' : 'false'),
+    updateServerSetting: (el) => updateServerSetting(el.dataset.serverId, el.dataset.settingKey,
+        el.type === 'checkbox' ? String(el.checked) : el.value),
+});
+
+registerActions('input', {
 });

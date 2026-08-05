@@ -36,6 +36,7 @@ public record ServerSettingDTO(
         List<String> values,
         Map<String, String> valueLabels,
         String defaultValue,
-        String currentValue
+        String currentValue,
+        String source
 ) {
 }

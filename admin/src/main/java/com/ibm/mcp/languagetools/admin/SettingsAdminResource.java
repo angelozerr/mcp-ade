@@ -30,7 +30,7 @@ public class SettingsAdminResource {
     ApplicationConfiguration applicationConfiguration;
 
     @GET
-    @Path("/{key}")
+    @Path("/{key:.+}")
     public Response getSetting(@PathParam("key") String key) {
         String value = applicationConfiguration.getString(key);
         if (value == null) {
@@ -42,7 +42,7 @@ public class SettingsAdminResource {
     }
 
     @PUT
-    @Path("/{key}")
+    @Path("/{key:.+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response setSetting(@PathParam("key") String key, String body) {
         try {

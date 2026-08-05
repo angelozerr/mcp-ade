@@ -13,20 +13,19 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.workspace;
 
-import java.nio.file.Path;
-
 /**
- * IDE configuration provider for Bob (.bob/settings.json).
+ * Strategy for loading IDE configuration from multiple providers.
  */
-public class BobConfigurationProvider implements IdeConfigurationProvider {
+public enum IdeConfigurationStrategy {
 
-    @Override
-    public String getId() {
-        return "bob";
-    }
+    /**
+     * Use the first provider whose settings file exists.
+     */
+    FIRST_FOUND,
 
-    @Override
-    public Path getSettingsFile(Path workspaceRoot) {
-        return workspaceRoot.resolve(".bob").resolve("settings.json");
-    }
+    /**
+     * Merge settings from all providers whose files exist.
+     * Earlier providers in the list have higher priority (their values win on conflicts).
+     */
+    MERGE
 }

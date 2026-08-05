@@ -71,6 +71,11 @@ public class ServerConfigBase implements ServerConfig {
      */
     private List<ServerSettingDescriptor> settings;
 
+    /**
+     * Glob patterns for IDE settings keys applicable to this server (e.g. ["java.*"]).
+     */
+    private List<String> applicableSettings;
+
     // Trace collector (set by workspace/session when server is added)
     protected TraceCollector traceCollector;
 
@@ -269,6 +274,14 @@ public class ServerConfigBase implements ServerConfig {
 
     public void setSettings(List<ServerSettingDescriptor> settings) {
         this.settings = settings;
+    }
+
+    public List<String> getApplicableSettings() {
+        return applicableSettings;
+    }
+
+    public void setApplicableSettings(List<String> applicableSettings) {
+        this.applicableSettings = applicableSettings;
     }
 
     public String getCommand() {

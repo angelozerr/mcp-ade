@@ -69,6 +69,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
     private InstanceFileWatcher fileWatcher;
     private LspInstanceRegistry.InstanceInfo currentInstance;
     private final LspClientFeatures clientFeatures;
+    private java.util.concurrent.Future<?> listeningFuture;
 
     public LspServer(LspServerConfig config, Workspace workspace) {
         super(config, workspace);
@@ -217,7 +218,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 .create();
 
         languageServer = launcher.getRemoteProxy();
-        launcher.startListening();
+        listeningFuture = launcher.startListening();
 
         LOG.infof("Socket connection established to %s on port %d", config.getServerId(), port);
     }
@@ -262,7 +263,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 .create();
 
         languageServer = launcher.getRemoteProxy();
-        launcher.startListening();
+        listeningFuture = launcher.startListening();
 
         LOG.infof("%s process started for workspace: %s", config.getServerId(), workspaceRoot);
 
@@ -564,6 +565,13 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     } catch (Exception e) {
                         LOG.warnf("Graceful shutdown failed for %s: %s", config.getServerId(), e.getMessage());
                     }
+                    languageServer = null;
+                }
+
+                // Cancel the listening future to stop processing incoming messages
+                if (listeningFuture != null) {
+                    listeningFuture.cancel(true);
+                    listeningFuture = null;
                 }
 
                 // Close socket connection if connected via socket
@@ -813,6 +821,10 @@ public class LspServer extends ServerBase<LspServerConfig> {
             currentInstance = null;
             isSocketConnection = false;
             languageServer = null;
+            if (listeningFuture != null) {
+                listeningFuture.cancel(true);
+                listeningFuture = null;
+            }
 
             // Launch our own server
             try {

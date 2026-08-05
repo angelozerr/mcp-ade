@@ -20,6 +20,7 @@
     { "globPattern": "**/gradle.build" },
     { "globPattern": "**/gradle.build.kts" }
   ],
+  "applicableSettings": ["java.*"],
   "settings": [
     {
       "key": "java.import.mode",

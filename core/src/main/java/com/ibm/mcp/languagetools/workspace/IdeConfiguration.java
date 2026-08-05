@@ -24,23 +24,23 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Workspace configuration reader.
- * Loads settings from provider-supplied files (e.g., .vscode/settings.json, .bob/settings.json)
+ * IDE configuration reader.
+ * Loads settings from IDE-supplied files (e.g., .vscode/settings.json, .bob/settings.json)
  * using a configurable strategy (first-found or merge).
  */
-public class WorkspaceConfiguration extends AbstractConfiguration {
+public class IdeConfiguration extends AbstractConfiguration {
 
     private final Path workspaceRoot;
-    private final List<WorkspaceConfigurationProvider> providers;
-    private final WorkspaceConfigurationStrategy strategy;
+    private final List<IdeConfigurationProvider> providers;
+    private final IdeConfigurationStrategy strategy;
     private final List<FileWatcher> fileWatchers = new ArrayList<>();
 
     /**
-     * Creates a workspace configuration with explicit providers and strategy.
+     * Creates an IDE configuration with explicit providers and strategy.
      */
-    public WorkspaceConfiguration(Path workspaceRoot,
-                                  List<WorkspaceConfigurationProvider> providers,
-                                  WorkspaceConfigurationStrategy strategy) {
+    public IdeConfiguration(Path workspaceRoot,
+                            List<IdeConfigurationProvider> providers,
+                            IdeConfigurationStrategy strategy) {
         this.workspaceRoot = workspaceRoot;
         this.providers = providers;
         this.strategy = strategy;
@@ -48,12 +48,12 @@ public class WorkspaceConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Creates a workspace configuration with default providers (all SPI providers, FIRST_FOUND).
+     * Creates an IDE configuration with default providers (all SPI providers, FIRST_FOUND).
      */
-    public WorkspaceConfiguration(Path workspaceRoot) {
+    public IdeConfiguration(Path workspaceRoot) {
         this(workspaceRoot,
-                new ArrayList<>(WorkspaceConfigurationProviderRegistry.getInstance().getProviders()),
-                WorkspaceConfigurationStrategy.FIRST_FOUND);
+                new ArrayList<>(IdeConfigurationProviderRegistry.getInstance().getProviders()),
+                IdeConfigurationStrategy.FIRST_FOUND);
     }
 
     @Override
@@ -65,7 +65,7 @@ public class WorkspaceConfiguration extends AbstractConfiguration {
     }
 
     private void loadFirstFound() {
-        for (WorkspaceConfigurationProvider provider : providers) {
+        for (IdeConfigurationProvider provider : providers) {
             Path file = provider.getSettingsFile(workspaceRoot);
             if (Files.exists(file)) {
                 Map<String, Object> loaded = loadFromFile(file);
@@ -93,7 +93,7 @@ public class WorkspaceConfiguration extends AbstractConfiguration {
 
     @Override
     protected Path getSettingsFile() {
-        for (WorkspaceConfigurationProvider provider : providers) {
+        for (IdeConfigurationProvider provider : providers) {
             Path file = provider.getSettingsFile(workspaceRoot);
             if (Files.exists(file)) {
                 return file;
@@ -104,7 +104,7 @@ public class WorkspaceConfiguration extends AbstractConfiguration {
 
     @Override
     public void watch() {
-        for (WorkspaceConfigurationProvider provider : providers) {
+        for (IdeConfigurationProvider provider : providers) {
             Path file = provider.getSettingsFile(workspaceRoot);
             FileWatcher watcher = new FileWatcher(file, this::reload);
             watcher.start();
