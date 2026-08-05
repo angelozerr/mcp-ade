@@ -98,6 +98,7 @@ export function toggleTrace(index) {
         toggle.textContent = '▼';
         header.classList.remove('folded');
         if (traceLine) traceLine.dataset.folded = 'false';
+        hideTooltip(index);
     }
 }
 
@@ -126,6 +127,8 @@ export function toggleAllTraces(containerId, expand) {
     });
 }
 
+let activeTooltipIndex = null;
+
 export function showTooltip(event, index, isFolded) {
     if (!isFolded) return;
 
@@ -135,6 +138,8 @@ export function showTooltip(event, index, isFolded) {
     const tooltip = document.getElementById('tooltip-' + index);
     if (!tooltip) return;
 
+    hideActiveTooltip();
+    activeTooltipIndex = index;
     tooltip.style.display = 'block';
     tooltip.style.left = event.clientX + 'px';
     tooltip.style.top = (event.clientY + 20) + 'px';
@@ -144,6 +149,15 @@ export function hideTooltip(index) {
     const tooltip = document.getElementById('tooltip-' + index);
     if (tooltip) {
         tooltip.style.display = 'none';
+    }
+    if (activeTooltipIndex === index) {
+        activeTooltipIndex = null;
+    }
+}
+
+function hideActiveTooltip() {
+    if (activeTooltipIndex != null) {
+        hideTooltip(activeTooltipIndex);
     }
 }
 
@@ -361,6 +375,7 @@ export function restoreExpandedState(container, expandedIds) {
 // ========== Render Traces in Container ==========
 
 export function renderTracesInContainer(containerId, traces, traceLevel, searchQuery, emptyMessage) {
+    hideActiveTooltip();
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -422,7 +437,11 @@ export function initTraceContainer(containerId) {
         el._tooltipActive = true;
         const index = parseInt(el.dataset.traceTooltip);
         const isFolded = el.dataset.folded === 'true';
-        showTooltip(e, index, isFolded);
+        el._tooltipTimer = setTimeout(() => {
+            if (el._tooltipActive) {
+                showTooltip(e, index, isFolded);
+            }
+        }, 800);
     });
 
     container.addEventListener('mouseout', (e) => {
@@ -430,6 +449,7 @@ export function initTraceContainer(containerId) {
         if (!el) return;
         if (el.contains(e.relatedTarget)) return;
         el._tooltipActive = false;
+        clearTimeout(el._tooltipTimer);
         hideTooltip(parseInt(el.dataset.traceTooltip));
     });
 }
