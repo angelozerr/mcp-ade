@@ -196,59 +196,56 @@ public class WorkspaceAdminResource {
 
     /**
      * Refresh a workspace: sync file system changes with all running language servers.
+     * Returns immediately with a taskId; progress is pushed via WebSocket.
      */
     @POST
     @Path("/workspaces/{uri}/refresh")
-    public Response refreshWorkspace(@PathParam("uri") String uriParam) {
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response refreshWorkspace(@PathParam("uri") String uriParam, Map<String, Object> body) {
         URI uri = URI.create(uriParam);
         Workspace workspace = application.getWorkspace(uri);
         if (workspace == null) {
             throw new NotFoundException("Workspace not found: " + uri);
         }
 
-        LOG.infof("Refreshing workspace %s", uri);
-        try {
-            String result = workspace.refreshWorkspace()
-                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
-            return Response.ok()
-                    .entity(Map.of("status", "refreshed", "details", result))
-                    .build();
-        } catch (Exception e) {
-            LOG.errorf(e, "Refresh failed for workspace %s", uri);
-            return Response.serverError()
-                    .entity(Map.of("status", "error", "details", e.getMessage()))
-                    .build();
+        String taskId = body != null && body.containsKey("taskId") ? body.get("taskId").toString() : null;
+        if (taskId == null || taskId.isEmpty()) {
+            throw new BadRequestException("taskId is required");
         }
+
+        LOG.infof("Refreshing workspace %s (taskId=%s)", uri, taskId);
+        workspace.refreshWorkspace(taskId);
+
+        return Response.accepted()
+                .entity(Map.of("taskId", taskId, "status", "running"))
+                .build();
     }
 
     /**
      * Build workspace (auto full/incremental based on needsFullBuild flag).
+     * Returns immediately; progress is pushed via WebSocket using the provided taskId.
      */
     @POST
     @Path("/workspaces/{uri}/build")
-    public Response buildWorkspace(@PathParam("uri") String uriParam) {
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response buildWorkspace(@PathParam("uri") String uriParam, Map<String, Object> body) {
         URI uri = URI.create(uriParam);
         Workspace workspace = application.getWorkspace(uri);
         if (workspace == null) {
             throw new NotFoundException("Workspace not found: " + uri);
         }
 
-        boolean fullBuild = workspace.isNeedsFullBuild();
-        LOG.infof("Building workspace %s (fullBuild=%s)", uri, fullBuild);
-        try {
-            String result = workspace.buildWorkspace()
-                    .get(60, java.util.concurrent.TimeUnit.SECONDS);
-            return Response.ok()
-                    .entity(Map.of("status", "built",
-                            "fullBuild", fullBuild,
-                            "details", result))
-                    .build();
-        } catch (Exception e) {
-            LOG.errorf(e, "Build failed for workspace %s", uri);
-            return Response.serverError()
-                    .entity(Map.of("status", "error", "details", e.getMessage()))
-                    .build();
+        String taskId = body != null && body.containsKey("taskId") ? body.get("taskId").toString() : null;
+        if (taskId == null || taskId.isEmpty()) {
+            throw new BadRequestException("taskId is required");
         }
+
+        LOG.infof("Building workspace %s (taskId=%s)", uri, taskId);
+        workspace.buildWorkspace(taskId);
+
+        return Response.accepted()
+                .entity(Map.of("taskId", taskId, "status", "running"))
+                .build();
     }
 
     /**

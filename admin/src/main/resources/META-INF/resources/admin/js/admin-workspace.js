@@ -1500,21 +1500,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             renderTracesInContainer('console-output', traces, currentTraceLevel, getCurrentSearchQuery());
         }
 
-        async function refreshWorkspaceAction() {
-            if (!state.selectedWorkspace) return;
-            try {
-                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(state.selectedWorkspace)}/refresh`, {
-                    method: 'POST'
-                });
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Workspace refreshed:', result);
-                }
-            } catch (error) {
-                console.error('Failed to refresh workspace:', error);
-            }
-        }
-
         async function toggleFileWatcherFromListAction(uri) {
             const workspace = state.workspaces?.find(w => w.rootUri === uri);
             const newEnabled = !(workspace?.fileWatcherEnabled || false);
@@ -1557,41 +1542,64 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
         }
 
-        async function refreshWorkspaceFromListAction(uri, btn) {
-            if (btn) {
-                btn.disabled = true;
-                btn.classList.add('btn-loading');
-                try {
-                    const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/refresh`, { method: 'POST' });
-                    if (response.ok) {
-                        const result = await response.json();
-                        console.log('Workspace refreshed:', result);
+        // Maps taskId (from backend) -> { taskType, uri }
+        const runningWorkspaceTasks = new Map();
+
+        function setWorkspaceTaskButtons(taskType, uri, disabled) {
+            const action = taskType === 'build' ? 'buildWorkspace' : 'refreshWorkspace';
+            const actions = [`${action}FromList`, `${action}FromSettings`];
+            actions.forEach(act => {
+                document.querySelectorAll(`[data-action="${act}"]`).forEach(btn => {
+                    if (btn.dataset.uri === uri) {
+                        btn.disabled = disabled;
+                        if (disabled) btn.classList.add('btn-loading');
+                        else btn.classList.remove('btn-loading');
                     }
-                } catch (error) {
-                    console.error('Failed to refresh workspace:', error);
-                } finally {
-                    btn.disabled = false;
-                    btn.classList.remove('btn-loading');
-                }
+                });
+            });
+        }
+
+        function isWorkspaceTaskRunning(taskType, uri) {
+            for (const info of runningWorkspaceTasks.values()) {
+                if (info.taskType === taskType && info.uri === uri) return true;
+            }
+            return false;
+        }
+
+        async function workspaceTaskAction(taskType, uri) {
+            if (isWorkspaceTaskRunning(taskType, uri)) return;
+
+            const taskId = `${taskType}-${crypto.randomUUID().substring(0, 8)}`;
+            runningWorkspaceTasks.set(taskId, { taskType, uri });
+            setWorkspaceTaskButtons(taskType, uri, true);
+
+            try {
+                const endpoint = taskType === 'build' ? 'build' : 'refresh';
+                await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId })
+                });
+            } catch (error) {
+                console.error(`Failed to ${taskType} workspace:`, error);
+                runningWorkspaceTasks.delete(taskId);
+                setWorkspaceTaskButtons(taskType, uri, false);
             }
         }
 
-        async function buildWorkspaceFromListAction(uri, btn) {
-            if (btn) {
-                btn.disabled = true;
-                btn.classList.add('btn-loading');
-                try {
-                    const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/build`, { method: 'POST' });
-                    if (response.ok) {
-                        const result = await response.json();
-                        console.log('Workspace built:', result);
-                    }
-                } catch (error) {
-                    console.error('Failed to build workspace:', error);
-                } finally {
-                    btn.disabled = false;
-                    btn.classList.remove('btn-loading');
-                }
+        export function onWorkspaceTaskStarted(taskId, workspaceUri) {
+            if (runningWorkspaceTasks.has(taskId)) return;
+            const taskType = taskId.startsWith('build-') ? 'build' : taskId.startsWith('refresh-') ? 'refresh' : null;
+            if (!taskType || !workspaceUri) return;
+            runningWorkspaceTasks.set(taskId, { taskType, uri: workspaceUri });
+            setWorkspaceTaskButtons(taskType, workspaceUri, true);
+        }
+
+        export function onWorkspaceTaskCompleted(taskId) {
+            const info = runningWorkspaceTasks.get(taskId);
+            if (info) {
+                runningWorkspaceTasks.delete(taskId);
+                setWorkspaceTaskButtons(info.taskType, info.uri, false);
             }
         }
 
@@ -1658,15 +1666,14 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             disconnectFromIdeAction: (el) => disconnectFromIdeAction(el.dataset.serverId),
             connectToIdeAction: (el) => connectToIdeAction(el.dataset.serverId),
             createNewTestSession: (el) => createNewTestSession(el.dataset.serverId),
-            refreshWorkspace: () => refreshWorkspaceAction(),
-            refreshWorkspaceFromList: (el) => refreshWorkspaceFromListAction(el.dataset.uri, el),
-            buildWorkspaceFromList: (el) => buildWorkspaceFromListAction(el.dataset.uri, el),
+            refreshWorkspaceFromList: (el) => workspaceTaskAction('refresh', el.dataset.uri),
+            buildWorkspaceFromList: (el) => workspaceTaskAction('build', el.dataset.uri),
             openWorkspaceSettings: (el) => {
                 selectWorkspace(el.dataset.uri);
                 switchWorkspaceTab('settings');
             },
-            buildWorkspaceFromSettings: (el) => buildWorkspaceFromListAction(el.dataset.uri, el),
-            refreshWorkspaceFromSettings: (el) => refreshWorkspaceFromListAction(el.dataset.uri, el),
+            buildWorkspaceFromSettings: (el) => workspaceTaskAction('build', el.dataset.uri),
+            refreshWorkspaceFromSettings: (el) => workspaceTaskAction('refresh', el.dataset.uri),
             resetFileWatcherSetting: (el) => resetFileWatcherSettingAction(el.dataset.uri),
             resetWorkspaceServerSetting: (el) => resetWorkspaceServerSettingAction(el.dataset.uri, el.dataset.serverId, el.dataset.key),
             toggleAllTracesWorkspace: () => toggleAllTracesWorkspace(),

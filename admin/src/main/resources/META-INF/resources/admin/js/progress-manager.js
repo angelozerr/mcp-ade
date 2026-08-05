@@ -7,9 +7,19 @@ const taskSteps = new Map();
 const taskDetailExpanded = new Set();
 
 let installProgressCallback = null;
+let taskCompletedCallback = null;
+let taskStartedCallback = null;
 
 export function setInstallProgressCallback(cb) {
     installProgressCallback = cb;
+}
+
+export function setTaskCompletedCallback(cb) {
+    taskCompletedCallback = cb;
+}
+
+export function setTaskStartedCallback(cb) {
+    taskStartedCallback = cb;
 }
 
 export function updateTask(task) {
@@ -188,8 +198,22 @@ export function handleProgressUpdate(msg) {
     }
 
     if (msg.status === 'completed' || msg.status === 'failed') {
+        updateTask({
+            id: msg.taskId,
+            serverId: msg.serverId,
+            title: msg.title,
+            percent: msg.status === 'completed' ? 100 : (msg.progress || 0) * 100,
+            message: msg.status === 'completed' ? 'Done' : msg.message,
+            status: msg.status
+        });
+        if (taskCompletedCallback) {
+            taskCompletedCallback(msg.taskId, msg.status);
+        }
         setTimeout(() => removeTask(msg.taskId), 2000);
     } else {
+        if (msg.status === 'running' && taskStartedCallback) {
+            taskStartedCallback(msg.taskId, msg.serverId);
+        }
         updateTask({
             id: msg.taskId,
             serverId: msg.serverId,

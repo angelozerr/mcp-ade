@@ -533,5 +533,9 @@ public class Application {
     public ContributionManager getContributionManager() {
         return contributionManager;
     }
+
+    public ProgressBroadcaster getProgressBroadcaster() {
+        return progressBroadcasterInstance.isResolvable() ? progressBroadcasterInstance.get() : null;
+    }
 }
 

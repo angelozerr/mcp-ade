@@ -7,10 +7,11 @@ import { initEventDelegation, registerActions } from './event-delegation.js';
 import { KeyboardShortcuts } from './keyboard-shortcuts.js';
 import { setDiagramCallbacks } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
-import { handleProgressInit, handleProgressUpdate, setInstallProgressCallback } from './progress-manager.js';
+import { handleProgressInit, handleProgressUpdate, setInstallProgressCallback, setTaskCompletedCallback, setTaskStartedCallback } from './progress-manager.js';
 
 import { renderWorkspaces, selectWorkspace, selectServer, selectDapSessionByServerId,
     switchWorkspaceTab, loadConsole, renderConsole, loadServers,
+    onWorkspaceTaskStarted, onWorkspaceTaskCompleted,
     setCreateSessionHTMLFn, setInstallerCallbacks, setChangeDapServerTraceLevelFn,
     setRenderDapTracesForSessionFn, setRenderMcpConsoleWithHighlightsFn } from './admin-workspace.js';
 import { loadAllLspServers, saveInstallerJson, resetInstallerJson, runInstaller,
@@ -376,7 +377,7 @@ function updateServerStatusBadge(serverId, server) {
             actions = `<button class="server-action-btn server-action-disconnect"
                               data-action="disconnectFromIdeAction" data-server-id="${serverId}" data-stop-propagation
                               title="Disconnect from IDE">⏏</button>`;
-        } else if (server.status === 'RUNNING' || server.status === 'STARTING') {
+        } else if (server.status === 'RUNNING' || server.status === 'STARTING' || server.status === 'INDEXING') {
             actions = `<button class="server-action-btn" data-action="restartServerAction" data-server-id="${serverId}" data-stop-propagation title="Restart">↻</button>
                        <button class="server-action-btn" data-action="stopServerAction" data-server-id="${serverId}" data-stop-propagation title="Stop">■</button>`;
         } else if (server.status === 'STOPPED' || server.status === 'START_FAILED' || server.status === 'INSTALL_FAILED' || server.status === 'ERROR') {
@@ -532,6 +533,8 @@ setDiagramCallbacks({
     selectDapSessionByServerId,
 });
 setInstallProgressCallback(updateInstallProgress);
+setTaskStartedCallback((taskId, workspaceUri) => onWorkspaceTaskStarted(taskId, workspaceUri));
+setTaskCompletedCallback((taskId) => onWorkspaceTaskCompleted(taskId));
 setSelectDapSessionByServerIdCallback(selectDapSessionByServerId);
 setCreateSessionHTMLFn(createSessionHTML);
 setInstallerCallbacks({
