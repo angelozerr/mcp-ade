@@ -114,7 +114,8 @@ public class IdeConfiguration extends AbstractConfiguration {
 
     @Override
     public void unwatch() {
-        fileWatchers.forEach(FileWatcher::stop);
+        List<FileWatcher> watchers = new ArrayList<>(fileWatchers);
         fileWatchers.clear();
+        watchers.forEach(FileWatcher::stop);
     }
 }
