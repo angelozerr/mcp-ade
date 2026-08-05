@@ -13,6 +13,9 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.watcher;
 
+import io.methvin.watcher.DirectoryChangeEvent;
+import io.methvin.watcher.DirectoryWatcher;
+import io.methvin.watcher.visitor.FileTreeVisitor;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.jboss.logging.Logger;
@@ -24,14 +27,14 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-import static java.nio.file.StandardWatchEventKinds.*;
-
 /**
  * Watches a workspace directory recursively for file changes.
  * Converts file system events to LSP {@link FileEvent}s and dispatches
  * them in batches to a callback.
  *
- * <p>Uses Java NIO {@link WatchService} with recursive directory registration.
+ * <p>Uses {@link DirectoryWatcher} (io.methvin) for cross-platform
+ * recursive watching with native OS APIs (ReadDirectoryChangesW on Windows,
+ * FSEvents on macOS, inotify on Linux).
  * Events are batched (500ms window) to avoid flooding language servers.</p>
  */
 public class WorkspaceFileWatcher {
@@ -50,9 +53,8 @@ public class WorkspaceFileWatcher {
     private final Consumer<List<FileEvent>> eventHandler;
     private final Set<String> excludedDirs;
 
-    private WatchService watchService;
-    private final Map<WatchKey, Path> watchKeyToDir = new ConcurrentHashMap<>();
-    private Thread watchThread;
+    private DirectoryWatcher watcher;
+    private CompletableFuture<Void> watchFuture;
     private volatile boolean running;
 
     private final ScheduledExecutorService batchScheduler =
@@ -86,12 +88,13 @@ public class WorkspaceFileWatcher {
             return;
         }
         try {
-            watchService = root.getFileSystem().newWatchService();
-            registerRecursive(root);
+            watcher = DirectoryWatcher.builder()
+                    .path(root)
+                    .listener(this::onEvent)
+                    .fileTreeVisitor(new FilteringFileTreeVisitor(excludedDirs))
+                    .build();
             running = true;
-            watchThread = new Thread(this::watchLoop, "workspace-file-watcher-" + root.getFileName());
-            watchThread.setDaemon(true);
-            watchThread.start();
+            watchFuture = watcher.watchAsync();
             LOG.infof("Started file watcher for workspace: %s", root);
         } catch (IOException e) {
             LOG.errorf(e, "Failed to start file watcher for: %s", root);
@@ -100,19 +103,18 @@ public class WorkspaceFileWatcher {
 
     public void stop() {
         running = false;
-        if (watchThread != null) {
-            watchThread.interrupt();
-            watchThread = null;
-        }
-        if (watchService != null) {
+        if (watcher != null) {
             try {
-                watchService.close();
+                watcher.close();
             } catch (IOException e) {
-                LOG.debugf("Error closing watch service: %s", e.getMessage());
+                LOG.debugf("Error closing directory watcher: %s", e.getMessage());
             }
-            watchService = null;
+            watcher = null;
         }
-        watchKeyToDir.clear();
+        if (watchFuture != null) {
+            watchFuture.cancel(true);
+            watchFuture = null;
+        }
         batchScheduler.shutdownNow();
         flushBatch();
         LOG.infof("Stopped file watcher for workspace: %s", root);
@@ -122,90 +124,41 @@ public class WorkspaceFileWatcher {
         return running;
     }
 
-    private void registerRecursive(Path dir) {
-        try {
-            Files.walkFileTree(dir, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult preVisitDirectory(Path d, BasicFileAttributes attrs) {
-                    String dirName = d.getFileName() != null ? d.getFileName().toString() : "";
-                    if (excludedDirs.contains(dirName)) {
-                        return FileVisitResult.SKIP_SUBTREE;
-                    }
-                    registerDir(d);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } catch (IOException e) {
-            LOG.warnf(e, "Failed to register directories under: %s", dir);
+    private void onEvent(DirectoryChangeEvent event) {
+        if (!running) {
+            return;
         }
-    }
 
-    private void registerDir(Path dir) {
-        try {
-            WatchKey key = dir.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE);
-            watchKeyToDir.put(key, dir);
-        } catch (IOException e) {
-            LOG.debugf("Failed to register directory: %s", dir);
+        Path path = event.path();
+        if (path == null) {
+            return;
         }
-    }
 
-    private void watchLoop() {
-        while (running) {
-            WatchKey key;
-            try {
-                key = watchService.poll(500, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException | ClosedWatchServiceException e) {
+        // Filter excluded directories
+        for (Path component : root.relativize(path)) {
+            if (excludedDirs.contains(component.toString())) {
+                return;
+            }
+        }
+
+        FileChangeType changeType;
+        switch (event.eventType()) {
+            case CREATE:
+                changeType = FileChangeType.Created;
                 break;
-            }
-            if (key == null) {
-                continue;
-            }
-
-            Path dir = watchKeyToDir.get(key);
-            if (dir == null) {
-                key.cancel();
-                continue;
-            }
-
-            for (WatchEvent<?> event : key.pollEvents()) {
-                WatchEvent.Kind<?> kind = event.kind();
-                if (kind == OVERFLOW) {
-                    continue;
-                }
-
-                @SuppressWarnings("unchecked")
-                WatchEvent<Path> pathEvent = (WatchEvent<Path>) event;
-                Path child = dir.resolve(pathEvent.context());
-
-                if (kind == ENTRY_CREATE && Files.isDirectory(child)) {
-                    String childName = child.getFileName().toString();
-                    if (!excludedDirs.contains(childName)) {
-                        registerRecursive(child);
-                    }
-                }
-
-                FileChangeType changeType;
-                if (kind == ENTRY_CREATE) {
-                    changeType = FileChangeType.Created;
-                } else if (kind == ENTRY_MODIFY) {
-                    changeType = FileChangeType.Changed;
-                } else if (kind == ENTRY_DELETE) {
-                    changeType = FileChangeType.Deleted;
-                } else {
-                    continue;
-                }
-
-                String uri = child.toUri().toString();
-                pendingBatch.add(new FileEvent(uri, changeType));
-            }
-
-            boolean valid = key.reset();
-            if (!valid) {
-                watchKeyToDir.remove(key);
-            }
-
-            scheduleBatchFlush();
+            case MODIFY:
+                changeType = FileChangeType.Changed;
+                break;
+            case DELETE:
+                changeType = FileChangeType.Deleted;
+                break;
+            default:
+                return;
         }
+
+        String uri = path.toUri().toString();
+        pendingBatch.add(new FileEvent(uri, changeType));
+        scheduleBatchFlush();
     }
 
     private void scheduleBatchFlush() {
@@ -233,6 +186,36 @@ public class WorkspaceFileWatcher {
             } catch (Exception e) {
                 LOG.warnf(e, "Error dispatching file events");
             }
+        }
+    }
+
+    private static class FilteringFileTreeVisitor implements FileTreeVisitor {
+
+        private final Set<String> excludedDirs;
+
+        FilteringFileTreeVisitor(Set<String> excludedDirs) {
+            this.excludedDirs = excludedDirs;
+        }
+
+        @Override
+        public void recursiveVisitFiles(Path root, Callback onDirectory, Callback onFile) throws IOException {
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    String dirName = dir.getFileName() != null ? dir.getFileName().toString() : "";
+                    if (excludedDirs.contains(dirName)) {
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    onDirectory.call(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    onFile.call(file);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         }
     }
 }
