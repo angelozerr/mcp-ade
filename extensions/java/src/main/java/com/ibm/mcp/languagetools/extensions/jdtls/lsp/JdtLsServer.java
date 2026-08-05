@@ -376,13 +376,13 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         if (importMode != null) {
             return;
         }
-        importMode = IMPORT_MODE_FULL;
-        var appConfig = getWorkspace().getApplication().getConfiguration();
-        if (appConfig != null) {
-            String mode = appConfig.getString("lsp.jdtls.settings.java.import.mode");
-            if (IMPORT_MODE_FAST.equals(mode) || IMPORT_MODE_FAST_CACHE.equals(mode)) {
-                importMode = mode;
-            }
+        var resolved = getWorkspace().getWorkspaceConfiguration()
+                .resolveString("lsp.jdtls.settings.java.import.mode", IMPORT_MODE_FULL);
+        String mode = resolved.value();
+        if (IMPORT_MODE_FAST.equals(mode) || IMPORT_MODE_FAST_CACHE.equals(mode)) {
+            importMode = mode;
+        } else {
+            importMode = IMPORT_MODE_FULL;
         }
     }
 
