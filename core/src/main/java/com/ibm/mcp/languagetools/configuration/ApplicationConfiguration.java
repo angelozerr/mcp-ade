@@ -13,8 +13,6 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.configuration;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.ibm.mcp.languagetools.PathManager;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,8 +22,6 @@ import org.jboss.logging.Logger;
 import com.ibm.mcp.languagetools.workspace.IdeConfigurationProviderRegistry;
 import com.ibm.mcp.languagetools.workspace.IdeConfigurationStrategy;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -41,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ApplicationConfiguration extends AbstractConfiguration {
 
     private static final Logger LOG = Logger.getLogger(ApplicationConfiguration.class);
-    private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
 
     @Inject
     PathManager pathManager;
@@ -59,29 +54,6 @@ public class ApplicationConfiguration extends AbstractConfiguration {
     @Override
     protected Path getSettingsFile() {
         return pathManager.getSettingsFile();
-    }
-
-    // ========== Write support ==========
-
-    public synchronized void set(String key, String value) {
-        getSettings().put(key, value);
-        save();
-    }
-
-    public synchronized void setBoolean(String key, boolean value) {
-        getSettings().put(key, value);
-        save();
-    }
-
-    public synchronized void save() {
-        try {
-            Files.createDirectories(getSettingsFile().getParent());
-            String json = PRETTY_GSON.toJson(getSettings());
-            Files.writeString(getSettingsFile(), json);
-            LOG.infof("Saved settings to %s", getSettingsFile());
-        } catch (IOException e) {
-            LOG.errorf(e, "Failed to save settings to %s", getSettingsFile());
-        }
     }
 
     // ========== Migration from old nested format ==========
@@ -216,16 +188,17 @@ public class ApplicationConfiguration extends AbstractConfiguration {
         return IdeConfigurationStrategy.FIRST_FOUND;
     }
 
-    // ========== LSP trace ==========
+    // ========== LSP trace (cached) ==========
 
+    @Override
     public ServerTrace getLspTraceLevel(String serverId) {
-        return lspTraceLevels.computeIfAbsent(serverId,
-                id -> ServerTrace.fromValue(getString("lsp." + id + ".trace")));
+        return lspTraceLevels.computeIfAbsent(serverId, id -> super.getLspTraceLevel(id));
     }
 
+    @Override
     public void setLspTraceLevel(String serverId, ServerTrace level) {
         lspTraceLevels.put(serverId, level);
-        set("lsp." + serverId + ".trace", level.toString());
+        super.setLspTraceLevel(serverId, level);
     }
 
     // ========== MCP trace ==========
@@ -245,15 +218,16 @@ public class ApplicationConfiguration extends AbstractConfiguration {
         set("mcp.trace", level.toString());
     }
 
-    // ========== DAP trace ==========
+    // ========== DAP trace (cached) ==========
 
+    @Override
     public ServerTrace getDapTraceLevel(String serverId) {
-        return dapTraceLevels.computeIfAbsent(serverId,
-                id -> ServerTrace.fromValue(getString("dap." + id + ".trace")));
+        return dapTraceLevels.computeIfAbsent(serverId, id -> super.getDapTraceLevel(id));
     }
 
+    @Override
     public void setDapTraceLevel(String serverId, ServerTrace level) {
         dapTraceLevels.put(serverId, level);
-        set("dap." + serverId + ".trace", level.toString());
+        super.setDapTraceLevel(serverId, level);
     }
 }

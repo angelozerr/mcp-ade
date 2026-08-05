@@ -69,7 +69,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
 
     @Override
     public ServerTrace getServerTrace() {
-        return getWorkspace().getApplication().getDapTraceLevel(getConfig().getServerId());
+        return getWorkspace().getWorkspaceConfiguration().getDapTraceLevel(getConfig().getServerId());
     }
 
     /**

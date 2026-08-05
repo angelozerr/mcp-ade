@@ -767,22 +767,34 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             updateTracesButtonsState(level);
             renderConsole();
 
+            const uri = state.selectedWorkspace;
             if (state.selectedServer && state.selectedServer.isDap) {
-                if (changeDapServerTraceLevelFn) {
+                if (uri) {
+                    try {
+                        await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/dap/${encodeURIComponent(state.selectedServer.id)}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ traceLevel: level })
+                        });
+                        reloadServerSettingsTab(state.selectedServer.id);
+                    } catch (error) {
+                        console.error('Failed to change DAP trace level:', error);
+                    }
+                } else if (changeDapServerTraceLevelFn) {
                     changeDapServerTraceLevelFn(state.selectedServer.id, level);
                 }
             } else if (state.currentServerId) {
-                if (state.traceLevels) {
-                    state.traceLevels['lsp.' + state.currentServerId] = level;
-                }
-                try {
-                    await fetch(`/api/admin/traces/lsp/${state.currentServerId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ traceLevel: level })
-                    });
-                } catch (error) {
-                    console.error('Failed to change trace level:', error);
+                if (uri) {
+                    try {
+                        await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/lsp/${encodeURIComponent(state.currentServerId)}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ traceLevel: level })
+                        });
+                        reloadServerSettingsTab(state.currentServerId);
+                    } catch (error) {
+                        console.error('Failed to change trace level:', error);
+                    }
                 }
             }
         }
@@ -906,14 +918,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 setTimeout(() => renderWorkspaceDiagram(allServers, server.id), 100);
             }
 
-            // Initialize trace level selector from WebSocket-provided data
-            const tk = server.isDap ? 'dap.' + server.id : 'lsp.' + server.id;
-            const savedTraceLevel = state.traceLevels && state.traceLevels[tk];
-            currentTraceLevel = savedTraceLevel || 'off';
-            const traceLevelSelect = document.getElementById('trace-level');
-            if (traceLevelSelect) {
-                traceLevelSelect.value = currentTraceLevel;
-            }
+            // Trace level will be initialized from workspace-resolved settings in loadServerDetails
+            currentTraceLevel = 'off';
             updateTracesButtonsState(currentTraceLevel);
 
             // Load traces for specific workspace + server
@@ -968,6 +974,18 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         const contributionsHTML = formatContributionsSection({...dapServer, isDap: true}, allServers);
                         contributionsContent.innerHTML = contributionsHTML || '<p class="detail-value">No contributions</p>';
                     }
+
+                    // Update settings tab (trace level)
+                    const settingsContent = document.getElementById('settings-content');
+                    if (settingsContent && workspace) {
+                        try {
+                            const settingsResponse = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/dap-servers/${encodeURIComponent(serverId)}/settings`);
+                            const settings = settingsResponse.ok ? await settingsResponse.json() : [];
+                            settingsContent.innerHTML = renderServerSettingsTab({ id: serverId, settings, isDap: true }, workspace, []);
+                        } catch (e) {
+                            settingsContent.innerHTML = '<p class="text-secondary p-lg">Failed to load settings.</p>';
+                        }
+                    }
                 } else {
                     // LSP server - fetch config, workspace-resolved settings, and IDE settings
                     const [configResponse, settingsResponse, ideSettingsResponse] = await Promise.all([
@@ -986,6 +1004,14 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     const ideSettings = (ideSettingsResponse && ideSettingsResponse.ok)
                         ? await ideSettingsResponse.json()
                         : [];
+
+                    // Sync trace level from workspace-resolved settings
+                    const traceSetting = details.settings?.find(s => s.key === 'trace');
+                    if (traceSetting) {
+                        currentTraceLevel = traceSetting.currentValue || 'off';
+                        updateTraceControls('trace', currentTraceLevel);
+                        renderConsole();
+                    }
 
                     // Get all servers for contributedBy calculation
                     const allServers = workspace?.lspServers || [];
@@ -1085,6 +1111,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         function renderServerSettingsTab(server, workspace, ideSettings) {
             const uri = workspace?.rootUri || state.selectedWorkspace || '';
+            const serverType = server.isDap ? 'dap' : 'lsp';
             const hasWorkspaceSettings = server.settings && server.settings.length > 0;
             const hasIdeSettings = ideSettings && ideSettings.length > 0;
 
@@ -1096,7 +1123,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             if (hasWorkspaceSettings) {
                 const wsItems = server.settings.map(setting =>
                     renderServerSetting(setting, 'updateWorkspaceServerSetting', 'resetWorkspaceServerSetting',
-                        { uri, 'server-id': server.id })
+                        { uri, 'server-id': server.id, 'server-type': serverType })
                 );
                 workspacePanel = renderSettingsPanel({
                     title: 'Workspace',
@@ -1603,13 +1630,36 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
         }
 
-        async function updateWorkspaceServerSettingAction(uri, serverId, settingKey, value) {
+        async function updateWorkspaceServerSettingAction(uri, serverId, settingKey, value, serverType) {
+            if (settingKey === 'trace') {
+                const type = serverType || 'lsp';
+                await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${type}/${encodeURIComponent(serverId)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ traceLevel: value })
+                });
+                if (type === 'lsp') {
+                    currentTraceLevel = value;
+                    updateTraceControls('trace', value);
+                    renderConsole();
+                }
+                await reloadServerSettingsTab(serverId);
+                return;
+            }
             const persistKey = `lsp.${serverId}.settings.${settingKey}`;
             await setWorkspaceSetting(uri, persistKey, value);
             await reloadServerSettingsTab(serverId);
         }
 
-        async function resetWorkspaceServerSettingAction(uri, serverId, key) {
+        async function resetWorkspaceServerSettingAction(uri, serverId, key, serverType) {
+            if (key === 'trace') {
+                const type = serverType || 'lsp';
+                await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${type}/${encodeURIComponent(serverId)}`, {
+                    method: 'DELETE'
+                });
+                await reloadServerSettingsTab(serverId);
+                return;
+            }
             const persistKey = `lsp.${serverId}.settings.${key}`;
             await resetWorkspaceSetting(uri, persistKey);
             await reloadServerSettingsTab(serverId);
@@ -1618,19 +1668,29 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         async function reloadServerSettingsTab(serverId) {
             const workspace = state.workspaces?.find(w => w.rootUri === state.selectedWorkspace);
             if (!workspace) return;
+            const isDap = state.selectedServer?.isDap;
             try {
-                const [configResponse, settingsResponse, ideSettingsResponse] = await Promise.all([
-                    fetch(`/api/admin/lsp/configs/${serverId}`),
-                    fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/settings`),
-                    fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/ide-settings`)
-                ]);
-                const config = configResponse.ok ? await configResponse.json() : {};
-                const settings = settingsResponse.ok ? await settingsResponse.json() : [];
-                const ideSettings = ideSettingsResponse.ok ? await ideSettingsResponse.json() : [];
-                const server = { id: serverId, settings, name: config?.name || serverId };
-                const settingsContent = document.getElementById('settings-content');
-                if (settingsContent) {
-                    settingsContent.innerHTML = renderServerSettingsTab(server, workspace, ideSettings);
+                if (isDap) {
+                    const settingsResponse = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/dap-servers/${encodeURIComponent(serverId)}/settings`);
+                    const settings = settingsResponse.ok ? await settingsResponse.json() : [];
+                    const settingsContent = document.getElementById('settings-content');
+                    if (settingsContent) {
+                        settingsContent.innerHTML = renderServerSettingsTab({ id: serverId, settings, isDap: true }, workspace, []);
+                    }
+                } else {
+                    const [configResponse, settingsResponse, ideSettingsResponse] = await Promise.all([
+                        fetch(`/api/admin/lsp/configs/${serverId}`),
+                        fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/settings`),
+                        fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers/${encodeURIComponent(serverId)}/ide-settings`)
+                    ]);
+                    const config = configResponse.ok ? await configResponse.json() : {};
+                    const settings = settingsResponse.ok ? await settingsResponse.json() : [];
+                    const ideSettings = ideSettingsResponse.ok ? await ideSettingsResponse.json() : [];
+                    const server = { id: serverId, settings, name: config?.name || serverId };
+                    const settingsContent = document.getElementById('settings-content');
+                    if (settingsContent) {
+                        settingsContent.innerHTML = renderServerSettingsTab(server, workspace, ideSettings);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to reload server settings:', error);
@@ -1675,7 +1735,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             buildWorkspaceFromSettings: (el) => workspaceTaskAction('build', el.dataset.uri),
             refreshWorkspaceFromSettings: (el) => workspaceTaskAction('refresh', el.dataset.uri),
             resetFileWatcherSetting: (el) => resetFileWatcherSettingAction(el.dataset.uri),
-            resetWorkspaceServerSetting: (el) => resetWorkspaceServerSettingAction(el.dataset.uri, el.dataset.serverId, el.dataset.key),
+            resetWorkspaceServerSetting: (el) => resetWorkspaceServerSettingAction(el.dataset.uri, el.dataset.serverId, el.dataset.key, el.dataset.serverType),
             toggleAllTracesWorkspace: () => toggleAllTracesWorkspace(),
             clearConsole: () => clearConsole(),
             saveInstallerJson: (el) => {
@@ -1702,7 +1762,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             changeTraceLevel: (el) => changeTraceLevel(el.value),
             updateWorkspaceServerSetting: (el) => updateWorkspaceServerSettingAction(
                 el.dataset.uri, el.dataset.serverId, el.dataset.settingKey,
-                el.type === 'checkbox' ? String(el.checked) : el.value
+                el.type === 'checkbox' ? String(el.checked) : el.value,
+                el.dataset.serverType
             ),
         });
 

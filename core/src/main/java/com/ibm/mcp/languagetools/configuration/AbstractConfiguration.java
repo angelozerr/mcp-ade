@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.configuration;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import org.jboss.logging.Logger;
 
@@ -36,6 +37,7 @@ public abstract class AbstractConfiguration implements Configuration {
 
     private static final Logger LOG = Logger.getLogger(AbstractConfiguration.class);
     private static final Gson GSON = new Gson();
+    private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private volatile Map<String, Object> settings = new HashMap<>();
 
@@ -205,6 +207,56 @@ public abstract class AbstractConfiguration implements Configuration {
 
     public Map<String, Object> getAll() {
         return new HashMap<>(settings);
+    }
+
+    // ========== Write support ==========
+
+    public synchronized void set(String key, Object value) {
+        settings.put(key, value);
+        save();
+    }
+
+    public synchronized void setBoolean(String key, boolean value) {
+        settings.put(key, value);
+        save();
+    }
+
+    public synchronized void remove(String key) {
+        settings.remove(key);
+        save();
+    }
+
+    public synchronized void save() {
+        Path file = getSettingsFile();
+        if (file == null) {
+            return;
+        }
+        try {
+            Files.createDirectories(file.getParent());
+            String json = PRETTY_GSON.toJson(settings);
+            Files.writeString(file, json);
+            LOG.infof("Saved configuration to %s", file);
+        } catch (IOException e) {
+            LOG.errorf(e, "Failed to save configuration to %s", file);
+        }
+    }
+
+    // ========== Trace levels ==========
+
+    public ServerTrace getLspTraceLevel(String serverId) {
+        return ServerTrace.fromValue(getString("lsp." + serverId + ".trace"));
+    }
+
+    public void setLspTraceLevel(String serverId, ServerTrace level) {
+        set("lsp." + serverId + ".trace", level.toString());
+    }
+
+    public ServerTrace getDapTraceLevel(String serverId) {
+        return ServerTrace.fromValue(getString("dap." + serverId + ".trace"));
+    }
+
+    public void setDapTraceLevel(String serverId, ServerTrace level) {
+        set("dap." + serverId + ".trace", level.toString());
     }
 
     // ========== Section-based find ==========

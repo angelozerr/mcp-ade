@@ -15,6 +15,7 @@ import {
     getCurrentSearchQuery, toggleAllTraces, clearHighlights, initTraceContainer
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
+import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 
 let selectDapSessionByServerIdCallback = null;
 export function setSelectDapSessionByServerIdCallback(cb) { selectDapSessionByServerIdCallback = cb; }
@@ -248,8 +249,9 @@ function showLaunchConfigForm(session, dapServerId) {
     // Initialize trace container event delegation (mousedown/mouseup for fold/unfold)
     initTraceContainer(`dap-traces-container-${sessionId}`);
 
-    // Initialize trace level combo and buttons from WebSocket-provided data
-    updateTraceControls('dap-trace', getDapTraceLevel());
+    // Initialize trace level from workspace-resolved settings
+    const dapSession = state.dapSessions?.find(s => s.sessionId === sessionId);
+    loadWorkspaceDapTraceLevel(dapServerId, dapSession?.workspaceUri);
 
     // Initialize button states based on session state
     const debugBtn = document.getElementById(`dap-debug-btn-${sessionId}`);
@@ -520,12 +522,35 @@ export async function selectDapSession(sessionId) {
     }
 }
 
+let currentDapTraceLevel = 'off';
+
 function getDapTraceLevel() {
-    const serverId = state.currentDapServerId;
-    if (serverId && state.traceLevels) {
-        return state.traceLevels['dap.' + serverId] || 'off';
+    return currentDapTraceLevel;
+}
+
+async function loadWorkspaceDapTraceLevel(serverId, workspaceUri) {
+    if (!serverId || !workspaceUri) {
+        currentDapTraceLevel = (state.traceLevels && state.traceLevels['dap.' + serverId]) || 'off';
+        return;
     }
-    return 'off';
+    try {
+        const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspaceUri)}/dap-servers/${encodeURIComponent(serverId)}/settings`);
+        if (response.ok) {
+            const settings = await response.json();
+            const traceSetting = settings.find(s => s.key === 'trace');
+            if (traceSetting) {
+                currentDapTraceLevel = traceSetting.currentValue || 'off';
+                updateTraceControls('dap-trace', currentDapTraceLevel);
+                if (state.currentDapSessionId) {
+                    renderDapTracesForSession(state.currentDapSessionId);
+                }
+                return;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load workspace DAP trace level:', e);
+    }
+    currentDapTraceLevel = (state.traceLevels && state.traceLevels['dap.' + serverId]) || 'off';
 }
 
 /**
@@ -740,8 +765,6 @@ export async function showDapServerDetails(serverId) {
         </div>
     `;
 
-    const dapTraceLevel = getDapTraceLevel();
-
     const html = `
         <div class="console-header">
             <div class="console-title">
@@ -751,10 +774,10 @@ export async function showDapServerDetails(serverId) {
             <div class="console-tabs">
                 <button class="tab-button ${currentDapServerTab === 'overview' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="overview">Overview</button>
                 ${hasContributions ? `<button class="tab-button ${currentDapServerTab === 'contributions' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="contributions">Contributions</button>` : ''}
+                <button class="tab-button ${currentDapServerTab === 'settings' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="settings">Settings</button>
                 <button class="tab-button ${currentDapServerTab === 'install' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="install">Install</button>
             </div>
             <div class="console-controls">
-                ${renderTraceControls('dap-trace', dapTraceLevel, 'changeDapServerTraceLevel')}
             </div>
         </div>
         <div class="tab-content">
@@ -772,6 +795,11 @@ export async function showDapServerDetails(serverId) {
                 </div>
             </div>
             ` : ''}
+            <div id="dap-server-settings-tab" class="tab-panel ${currentDapServerTab === 'settings' ? 'active' : ''}">
+                <div class="details-panel text-primary overflow-auto p-2xl">
+                    ${buildDapSettingsHTML(server)}
+                </div>
+            </div>
             <div id="dap-server-install-tab" class="tab-panel ${currentDapServerTab === 'install' ? 'active' : ''}">
                 <div class="install-panel">
                     <h3>Installer Configuration</h3>
@@ -947,6 +975,29 @@ export async function clearDapConsole(sessionId) {
     renderDapTracesForSession(sessionId);
 }
 
+function buildDapSettingsHTML(server) {
+    const dapTraceLevel = (state.traceLevels && state.traceLevels['dap.' + server.id]) || 'off';
+    const traceSetting = {
+        key: 'trace',
+        label: 'Trace Level',
+        description: 'Controls protocol message tracing',
+        type: 'enum',
+        values: ['off', 'messages', 'verbose'],
+        currentValue: dapTraceLevel,
+        source: null
+    };
+    return renderSettingsPanel({
+        title: 'Settings',
+        itemsHtml: [renderServerSetting(traceSetting, 'updateDapServerSetting', null, { 'server-id': server.id })]
+    });
+}
+
+function updateDapServerSetting(serverId, settingKey, value) {
+    if (settingKey === 'trace') {
+        changeDapServerTraceLevel(serverId, value);
+    }
+}
+
 export async function changeDapServerTraceLevel(serverId, level) {
     if (state.traceLevels) {
         state.traceLevels['dap.' + serverId] = level;
@@ -963,9 +1014,21 @@ export async function changeDapServerTraceLevel(serverId, level) {
 }
 
 export async function changeDapTraceLevel(sessionId, level) {
+    currentDapTraceLevel = level;
     const session = state.dapSessions?.find(s => s.sessionId === sessionId);
     const serverId = session?.serverId || session?.dapServerId || state.currentDapServerId;
-    if (serverId) {
+    const workspaceUri = session?.workspaceUri;
+    if (serverId && workspaceUri) {
+        try {
+            await fetch(`/api/admin/workspaces/${encodeURIComponent(workspaceUri)}/traces/dap/${encodeURIComponent(serverId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ traceLevel: level })
+            });
+        } catch (e) {
+            console.error('Failed to save DAP trace level:', e);
+        }
+    } else if (serverId) {
         changeDapServerTraceLevel(serverId, level);
     }
     updateTraceControls('dap-trace', level);
@@ -1628,10 +1691,7 @@ registerActions('change', {
         const sessionId = state.currentDapSessionId;
         if (sessionId) changeDapTraceLevel(sessionId, el.value);
     },
-    changeDapServerTraceLevel: (el) => {
-        const serverId = selectedDapServer;
-        if (serverId) changeDapServerTraceLevel(serverId, el.value);
-    },
+    updateDapServerSetting: (el) => updateDapServerSetting(el.dataset.serverId, el.dataset.settingKey, el.value),
     applyLaunchTemplate: (el) => {
         const sessionId = el.dataset.sessionId || state.currentDapSessionId;
         if (sessionId) applyLaunchTemplate(sessionId, el.value);

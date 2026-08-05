@@ -13,11 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.configuration;
 
-import com.google.gson.GsonBuilder;
 import org.jboss.logging.Logger;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
@@ -54,37 +51,6 @@ public class WorkspaceConfiguration extends AbstractConfiguration {
      */
     public boolean has(String key) {
         return getSettings().containsKey(key);
-    }
-
-    // ========== Write support ==========
-
-    public synchronized void set(String key, Object value) {
-        getSettings().put(key, value);
-        save();
-    }
-
-    public synchronized void setBoolean(String key, boolean value) {
-        getSettings().put(key, value);
-        save();
-    }
-
-    /**
-     * Remove a workspace-level override (revert to global).
-     */
-    public synchronized void remove(String key) {
-        getSettings().remove(key);
-        save();
-    }
-
-    public synchronized void save() {
-        try {
-            Files.createDirectories(settingsFile.getParent());
-            String json = new GsonBuilder().setPrettyPrinting().create().toJson(getSettings());
-            Files.writeString(settingsFile, json);
-            LOG.infof("Saved workspace configuration to %s", settingsFile);
-        } catch (IOException e) {
-            LOG.errorf(e, "Failed to save workspace configuration to %s", settingsFile);
-        }
     }
 
     /**
@@ -124,5 +90,25 @@ public class WorkspaceConfiguration extends AbstractConfiguration {
             }
         }
         return new ResolvedConfiguration<>(defaultValue, ConfigurationSource.DEFAULT);
+    }
+
+    // ========== Trace levels (resolved with inheritance) ==========
+
+    @Override
+    public ServerTrace getLspTraceLevel(String serverId) {
+        return ServerTrace.fromValue(resolveString("lsp." + serverId + ".trace", ServerTrace.off.toString()).value());
+    }
+
+    public void resetLspTraceLevel(String serverId) {
+        remove("lsp." + serverId + ".trace");
+    }
+
+    @Override
+    public ServerTrace getDapTraceLevel(String serverId) {
+        return ServerTrace.fromValue(resolveString("dap." + serverId + ".trace", ServerTrace.off.toString()).value());
+    }
+
+    public void resetDapTraceLevel(String serverId) {
+        remove("dap." + serverId + ".trace");
     }
 }

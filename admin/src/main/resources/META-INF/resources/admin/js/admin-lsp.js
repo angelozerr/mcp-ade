@@ -9,9 +9,7 @@ import { showAlert } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { LanguageFilter } from './language-filter.js';
-import {
-    renderTraceControls, updateTraceControls, escapeHtml
-} from './trace-renderer.js';
+import { escapeHtml } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
 import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 
@@ -127,12 +125,9 @@ export async function showServerDetails(serverId) {
 
         // Overview tab content (pass allServers for contribution detection)
         const detailsHTML = buildServerDetailsHTML(details, allServers);
-        const hasSettings = details.settings && details.settings.length > 0;
 
         // Contributions tab content (use same function as workspace, pass allServers)
         const contributionsHTML = formatContributionsSection(details, allServers);
-
-        const lspTraceLevel = (state.traceLevels && state.traceLevels['lsp.' + serverId]) || 'off';
 
         const html = `
             <div class="console-header">
@@ -143,11 +138,10 @@ export async function showServerDetails(serverId) {
                 <div class="console-tabs">
                     <button class="tab-button ${currentServerTab === 'overview' ? 'active' : ''}" data-action="switchServerTab" data-tab="overview">Overview</button>
                     <button class="tab-button ${currentServerTab === 'contributions' ? 'active' : ''}" data-action="switchServerTab" data-tab="contributions">Contributions</button>
-                    ${hasSettings ? `<button class="tab-button ${currentServerTab === 'settings' ? 'active' : ''}" data-action="switchServerTab" data-tab="settings">Settings</button>` : ''}
+                    <button class="tab-button ${currentServerTab === 'settings' ? 'active' : ''}" data-action="switchServerTab" data-tab="settings">Settings</button>
                     <button class="tab-button ${currentServerTab === 'install' ? 'active' : ''}" data-action="switchServerTab" data-tab="install">Install</button>
                 </div>
                 <div class="console-controls">
-                    ${renderTraceControls('lsp-server-trace', lspTraceLevel, 'changeLspServerTraceLevel')}
                 </div>
             </div>
             <div class="tab-content">
@@ -166,13 +160,11 @@ export async function showServerDetails(serverId) {
                         ${contributionsHTML || '<p class="detail-value">No contributions</p>'}
                     </div>
                 </div>
-                ${hasSettings ? `
                 <div id="server-settings-tab" class="tab-panel ${currentServerTab === 'settings' ? 'active' : ''}">
                     <div class="details-panel text-primary overflow-auto p-2xl">
                         ${buildSettingsHTML(details)}
                     </div>
                 </div>
-                ` : ''}
                 <div id="server-install-tab" class="tab-panel ${currentServerTab === 'install' ? 'active' : ''}">
                     <div class="install-panel">
                         <h3>Installer Configuration</h3>
@@ -298,18 +290,27 @@ function buildServerDetailsHTML(details, allServers) {
 }
 
 function buildSettingsHTML(details) {
-    if (!details.settings || details.settings.length === 0) {
-        return '';
-    }
+    const lspTraceLevel = (state.traceLevels && state.traceLevels['lsp.' + details.id]) || 'off';
+    const traceSetting = {
+        key: 'trace',
+        label: 'Trace Level',
+        description: 'Controls protocol message tracing',
+        type: 'enum',
+        values: ['off', 'messages', 'verbose'],
+        currentValue: lspTraceLevel,
+        source: null
+    };
 
-    const settingsItems = details.settings.map(setting =>
+    const traceItems = [renderServerSetting(traceSetting, 'updateServerSetting', null, { 'server-id': details.id })];
+
+    const regularItems = (details.settings || []).map(setting =>
         renderServerSetting({ ...setting, source: null }, 'updateServerSetting', null,
             { 'server-id': details.id })
     );
 
     return renderSettingsPanel({
-        title: 'Workspace',
-        itemsHtml: settingsItems
+        title: 'Settings',
+        itemsHtml: [...traceItems, ...regularItems]
     });
 }
 
@@ -320,6 +321,10 @@ function buildSettingsHTML(details) {
  * @param {string} value - New value
  */
 function updateServerSetting(serverId, settingKey, value) {
+    if (settingKey === 'trace') {
+        changeLspServerTraceLevel(serverId, value);
+        return;
+    }
     const persistKey = `lsp.${serverId}.settings.${settingKey}`;
     fetch(`/api/admin/settings/${persistKey}`, {
         method: 'PUT',
@@ -614,10 +619,6 @@ registerActions('click', {
 
 registerActions('change', {
     toggleLspServerEnabled: (el) => toggleLspServerEnabled(el.dataset.serverId, el.checked),
-    changeLspServerTraceLevel: (el) => {
-        const serverId = selectedAllServer;
-        if (serverId) changeLspServerTraceLevel(serverId, el.value);
-    },
     updateServerSetting: (el) => updateServerSetting(el.dataset.serverId, el.dataset.settingKey,
         el.type === 'checkbox' ? String(el.checked) : el.value),
 });

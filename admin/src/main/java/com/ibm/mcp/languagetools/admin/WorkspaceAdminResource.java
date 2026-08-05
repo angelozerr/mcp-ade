@@ -20,8 +20,11 @@ import com.ibm.mcp.languagetools.admin.dto.LspServerDTO;
 import com.ibm.mcp.languagetools.admin.dto.ServerDTOBuilder;
 import com.ibm.mcp.languagetools.admin.dto.ServerSettingDTO;
 import com.ibm.mcp.languagetools.admin.dto.WorkspaceDTO;
+import com.ibm.mcp.languagetools.admin.ws.TraceLevelWsMessage;
+import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
 import com.ibm.mcp.languagetools.workspace.Workspace;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -50,6 +53,9 @@ public class WorkspaceAdminResource {
 
     @Inject
     ContributionDTOBuilder contributionBuilder;
+
+    @Inject
+    Event<TraceLevelWsMessage> traceLevelEvent;
 
     @GET
     @Path("/workspaces")
@@ -117,7 +123,12 @@ public class WorkspaceAdminResource {
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException("Server not found: " + serverId));
         var settings = serverDTOBuilder.buildSettings(config, workspace);
-        return settings != null ? settings : List.of();
+        List<ServerSettingDTO> result = new java.util.ArrayList<>();
+        result.add(buildTraceLevelSetting("lsp", serverId, workspace));
+        if (settings != null) {
+            result.addAll(settings);
+        }
+        return result;
     }
 
     /**
@@ -381,6 +392,80 @@ public class WorkspaceAdminResource {
         return Response.ok()
                 .entity(Map.of("key", key, "source", fwEnabled.source().name(), "value", fwEnabled.value()))
                 .build();
+    }
+
+    /**
+     * Get settings for a DAP server in a workspace (trace level).
+     */
+    @GET
+    @Path("/workspaces/{uri}/dap-servers/{serverId}/settings")
+    public List<ServerSettingDTO> getDapServerSettings(@PathParam("uri") String uriParam,
+                                                       @PathParam("serverId") String serverId) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        return List.of(buildTraceLevelSetting("dap", serverId, workspace));
+    }
+
+    private ServerSettingDTO buildTraceLevelSetting(String serverType, String serverId, Workspace workspace) {
+        var resolved = workspace.getWorkspaceConfiguration().resolveString(
+                serverType + "." + serverId + ".trace", ServerTrace.off.toString());
+        return new ServerSettingDTO(
+                "trace", "Trace Level", "Controls protocol message tracing",
+                "enum", List.of("off", "messages", "verbose"), null,
+                ServerTrace.off.toString(), resolved.value(), resolved.source().name()
+        );
+    }
+
+    // ========== Workspace-scoped Trace Levels ==========
+
+    @PUT
+    @Path("/workspaces/{uri}/traces/lsp/{serverId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response setWorkspaceLspTraceLevel(@PathParam("uri") String uriParam,
+                                               @PathParam("serverId") String serverId,
+                                               Map<String, Object> body) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        ServerTrace level = ServerTrace.fromValue(String.valueOf(body.get("traceLevel")));
+        workspace.getWorkspaceConfiguration().setLspTraceLevel(serverId, level);
+        return Response.noContent().build();
+    }
+
+    @DELETE
+    @Path("/workspaces/{uri}/traces/lsp/{serverId}")
+    public Response resetWorkspaceLspTraceLevel(@PathParam("uri") String uriParam,
+                                                 @PathParam("serverId") String serverId) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        workspace.getWorkspaceConfiguration().resetLspTraceLevel(serverId);
+        return Response.noContent().build();
+    }
+
+    @PUT
+    @Path("/workspaces/{uri}/traces/dap/{serverId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response setWorkspaceDapTraceLevel(@PathParam("uri") String uriParam,
+                                               @PathParam("serverId") String serverId,
+                                               Map<String, Object> body) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        ServerTrace level = ServerTrace.fromValue(String.valueOf(body.get("traceLevel")));
+        workspace.getWorkspaceConfiguration().setDapTraceLevel(serverId, level);
+        return Response.noContent().build();
+    }
+
+    @DELETE
+    @Path("/workspaces/{uri}/traces/dap/{serverId}")
+    public Response resetWorkspaceDapTraceLevel(@PathParam("uri") String uriParam,
+                                                 @PathParam("serverId") String serverId) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        workspace.getWorkspaceConfiguration().resetDapTraceLevel(serverId);
+        return Response.noContent().build();
+    }
+
+    private Workspace getWorkspaceOrThrow(String uriParam) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+        return workspace;
     }
 
     private WorkspaceDTO toDTO(Workspace workspace) {
