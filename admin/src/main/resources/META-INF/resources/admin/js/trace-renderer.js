@@ -408,6 +408,8 @@ export function renderTracesInContainer(containerId, traces, traceLevel, searchQ
 export function initTraceContainer(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
+    if (container._traceContainerInitialized) return;
+    container._traceContainerInitialized = true;
 
     let mouseDownData = null;
 
