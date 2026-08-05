@@ -244,7 +244,17 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 | Project | 4 |
 | **Total** | **60** |
 
-### Extension & Workspace Tools
+### Workspace Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_workspaces` | List active workspaces |
+| `list_language_servers` | List language servers with status |
+| `refresh_workspace` | Refresh all language servers to synchronize with file system changes |
+| `build_workspace` | Build all language servers (auto full/incremental based on file watcher state) |
+| `notify_file_changes` | Notify language servers about specific file changes |
+
+### Extension Tools
 
 | Tool | Description |
 |------|-------------|
@@ -254,8 +264,6 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 | `add_lsp_server` / `add_dap_server` | Add a server to an extension |
 | `remove_lsp_server` / `remove_dap_server` | Remove a server |
 | `enable_extension` / `disable_extension` | Enable or disable an extension |
-| `list_language_servers` | List language servers with status |
-| `listWorkspaces` | List active workspaces |
 
 ## Bundled Extensions
 

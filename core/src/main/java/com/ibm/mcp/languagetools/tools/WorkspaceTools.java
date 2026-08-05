@@ -80,27 +80,38 @@ public class WorkspaceTools {
 
             workspace.refreshActivationCache();
 
-            StringBuilder result = new StringBuilder();
-            result.append("Workspace refreshed: ").append(workspace.getRootUri());
-
-            for (LspServer server : workspace.getLspServers()) {
-                if (server.getStatus() != ServerStatus.RUNNING || !server.isReady()) {
-                    continue;
-                }
-                try {
-                    String serverResult = server.refreshWorkspace()
-                            .get(30, java.util.concurrent.TimeUnit.SECONDS);
-                    result.append("\n- ").append(server.getId()).append(": ").append(serverResult);
-                } catch (Exception e) {
-                    LOG.warnf(e, "Failed to refresh server %s", server.getId());
-                    result.append("\n- ").append(server.getId()).append(": error - ").append(e.getMessage());
-                }
-            }
-
-            return result.toString();
+            String result = workspace.refreshWorkspace()
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
+            return "Workspace refreshed: " + workspace.getRootUri() + "\n" + result;
         } catch (Exception e) {
             LOG.error("Failed to refresh workspace", e);
             return "Failed to refresh workspace: " + e.getMessage();
+        }
+    }
+
+    @Tool(
+            name = "build_workspace",
+            description = "Build all running language servers in a workspace. " +
+                        "Automatically chooses between full and incremental build: " +
+                        "incremental if the file watcher has been tracking changes continuously, " +
+                        "full if changes may have been missed (file watcher was disabled, server just started, etc.). " +
+                        "Call this before debugging to ensure all sources are compiled.")
+    public String buildWorkspace(
+            @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
+        try {
+            Workspace workspace = application.getWorkspaceForPath(cwd);
+            if (workspace == null) {
+                return "No workspace found for: " + cwd;
+            }
+
+            boolean wasFull = workspace.isNeedsFullBuild();
+            String result = workspace.buildWorkspace()
+                    .get(60, java.util.concurrent.TimeUnit.SECONDS);
+            return "Workspace built (" + (wasFull ? "full" : "incremental") + "): "
+                    + workspace.getRootUri() + "\n" + result;
+        } catch (Exception e) {
+            LOG.error("Failed to build workspace", e);
+            return "Failed to build workspace: " + e.getMessage();
         }
     }
 

@@ -915,4 +915,16 @@ public class LspServer extends ServerBase<LspServerConfig> {
         return CompletableFuture.completedFuture("OK");
     }
 
+    /**
+     * Build the workspace for this language server.
+     * Subclasses can override to add server-specific build logic
+     * (e.g., JDT.LS calls vscode.java.buildWorkspace).
+     *
+     * @param fullBuild true for a full build, false for incremental
+     * @return a future that completes with a status message
+     */
+    public CompletableFuture<String> buildWorkspace(boolean fullBuild) {
+        return CompletableFuture.completedFuture("OK");
+    }
+
 }

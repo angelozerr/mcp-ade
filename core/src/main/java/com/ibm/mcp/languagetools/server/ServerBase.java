@@ -350,7 +350,6 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
             try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(getServerProcess().getErrorStream()))) {
                 String line;
                 StringBuilder stackTraceBuffer = new StringBuilder();
-                String stackTraceTimestamp = null;
 
                 while ((line = reader.readLine()) != null && !Thread.currentThread().isInterrupted()) {
                     LOG.errorf("[%s stderr] %s", config.getServerId(), line);
@@ -360,32 +359,19 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
                     boolean isExceptionLine = trimmed.contains("Exception:") || trimmed.contains("Error:");
 
                     if (isStackTraceLine || (isExceptionLine && stackTraceBuffer.isEmpty())) {
-                        if (stackTraceBuffer.isEmpty()) {
-                            stackTraceTimestamp = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
-                        }
                         stackTraceBuffer.append(line).append("\n");
                     } else {
                         if (!stackTraceBuffer.isEmpty()) {
-                            addTrace(String.format("[Error - %s] %s stderr: %s",
-                                stackTraceTimestamp,
-                                config.getName(),
-                                stackTraceBuffer.toString().trim()), TraceCollector.MessageType.ERROR);
+                            addTrace(stackTraceBuffer.toString().trim(), TraceCollector.MessageType.ERROR);
                             stackTraceBuffer.setLength(0);
-                            stackTraceTimestamp = null;
                         }
 
-                        addTrace(String.format("[Error - %s] %s stderr: %s",
-                            java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")),
-                            config.getName(),
-                            line), TraceCollector.MessageType.ERROR);
+                        addTrace(line, TraceCollector.MessageType.ERROR);
                     }
                 }
 
                 if (!stackTraceBuffer.isEmpty()) {
-                    addTrace(String.format("[Error - %s] %s stderr: %s",
-                        stackTraceTimestamp,
-                        config.getName(),
-                        stackTraceBuffer.toString().trim()), TraceCollector.MessageType.ERROR);
+                    addTrace(stackTraceBuffer.toString().trim(), TraceCollector.MessageType.ERROR);
                 }
 
                 LOG.infof("Stderr monitor for %s ended", config.getServerId());

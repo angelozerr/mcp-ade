@@ -154,6 +154,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
                     <div class="d-flex justify-between align-center">
                         <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div>
+                        <button class="close-workspace-btn" data-action="buildWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Build workspace" style="font-size:0.9rem">⚙</button>
                         <button class="close-workspace-btn" data-action="refreshWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Refresh workspace" style="font-size:1.1rem">↻</button>
                         <button class="close-workspace-btn" data-action="closeWorkspace" data-uri="${ws.rootUri}" data-stop-propagation title="Close workspace and stop all servers">×</button>
                     </div>
@@ -1493,6 +1494,20 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
         }
 
+        async function buildWorkspaceFromListAction(uri) {
+            try {
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/build`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Workspace built:', result);
+                }
+            } catch (error) {
+                console.error('Failed to build workspace:', error);
+            }
+        }
+
         async function createNewTestSession(serverId) {
             createNewTestSessionImpl(serverId);
         }
@@ -1524,6 +1539,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             createNewTestSession: (el) => createNewTestSession(el.dataset.serverId),
             refreshWorkspace: () => refreshWorkspaceAction(),
             refreshWorkspaceFromList: (el) => refreshWorkspaceFromListAction(el.dataset.uri),
+            buildWorkspaceFromList: (el) => buildWorkspaceFromListAction(el.dataset.uri),
             toggleAllTracesWorkspace: () => toggleAllTracesWorkspace(),
             clearConsole: () => clearConsole(),
             saveInstallerJson: (el) => {

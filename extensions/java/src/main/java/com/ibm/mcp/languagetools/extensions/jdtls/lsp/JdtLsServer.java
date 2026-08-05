@@ -340,7 +340,25 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             return CompletableFuture.completedFuture("JDT.LS is not ready");
         }
         return executeCommand(JdtlsCommands.REFRESH_PROJECT, List.of())
-                .thenApply(result -> "JDT.LS workspace refreshed: " + result);
+                .thenApply(result -> {
+                    getWorkspace().setNeedsFullBuild(false);
+                    return "JDT.LS workspace refreshed: " + result;
+                });
+    }
+
+    @Override
+    public CompletableFuture<String> buildWorkspace(boolean fullBuild) {
+        if (!isReady()) {
+            return CompletableFuture.completedFuture("JDT.LS is not ready");
+        }
+        String buildArg = String.format("{\"isFullBuild\":%s}", fullBuild);
+        return executeCommand("vscode.java.buildWorkspace", List.of(buildArg))
+                .thenApply(result -> {
+                    if (fullBuild) {
+                        getWorkspace().setNeedsFullBuild(false);
+                    }
+                    return "JDT.LS build " + (fullBuild ? "full" : "incremental") + ": " + result;
+                });
     }
 
     @Override

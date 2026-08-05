@@ -250,10 +250,8 @@ public class DapServer extends ServerBase<DapServerConfig> {
                                 LOG.errorf("DAP server process exited with code %d: %s", exitCode, config.getName());
                                 if (exitCode != 0) {
                                     setStatus(ServerStatus.START_FAILED, "Process exited with code " + exitCode);
-                                    addTrace(String.format("[Error - %s] %s process exited with code %d",
-                                            java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")),
-                                            config.getName(),
-                                            exitCode));
+                                    addTrace(String.format("Process exited with code %d", exitCode),
+                                            TraceCollector.MessageType.ERROR);
                                 }
                                 break;
                             }

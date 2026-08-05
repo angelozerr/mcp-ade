@@ -77,6 +77,9 @@ public class Workspace {
     private WorkspaceFileWatcher fileWatcher;
     private final Map<String, List<FileEvent>> pendingServerEvents = new ConcurrentHashMap<>();
 
+    // Build state
+    private volatile boolean needsFullBuild = true;
+
     public record McpClientInfo(
             String connectionId,
             String name,
@@ -571,6 +574,7 @@ public class Workspace {
         if (fileWatcher != null) {
             fileWatcher.stop();
             fileWatcher = null;
+            needsFullBuild = true;
         }
     }
 
@@ -579,6 +583,51 @@ public class Workspace {
      */
     public boolean isFileWatcherRunning() {
         return fileWatcher != null && fileWatcher.isRunning();
+    }
+
+    public boolean isNeedsFullBuild() {
+        return needsFullBuild;
+    }
+
+    public void setNeedsFullBuild(boolean needsFullBuild) {
+        this.needsFullBuild = needsFullBuild;
+    }
+
+    public CompletableFuture<String> refreshWorkspace() {
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+        for (LspServer server : lspServers.values()) {
+            if (server.getStatus() == ServerStatus.RUNNING && server.isReady()) {
+                futures.add(server.refreshWorkspace());
+            }
+        }
+        if (futures.isEmpty()) {
+            return CompletableFuture.completedFuture("No ready servers");
+        }
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(f -> f.getNow(""))
+                        .filter(s -> !s.isEmpty())
+                        .reduce((a, b) -> a + "\n" + b)
+                        .orElse("OK"));
+    }
+
+    public CompletableFuture<String> buildWorkspace() {
+        boolean fullBuild = needsFullBuild;
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+        for (LspServer server : lspServers.values()) {
+            if (server.getStatus() == ServerStatus.RUNNING && server.isReady()) {
+                futures.add(server.buildWorkspace(fullBuild));
+            }
+        }
+        if (futures.isEmpty()) {
+            return CompletableFuture.completedFuture("No ready servers");
+        }
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(f -> f.getNow(""))
+                        .filter(s -> !s.isEmpty())
+                        .reduce((a, b) -> a + "\n" + b)
+                        .orElse("OK"));
     }
 
     private void onFileChanges(List<FileEvent> events) {

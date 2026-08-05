@@ -162,29 +162,49 @@ public class WorkspaceAdminResource {
             throw new NotFoundException("Workspace not found: " + uri);
         }
 
-        StringBuilder result = new StringBuilder();
-        LOG.infof("Refreshing workspace %s, %d servers", uri, workspace.getLspServers().size());
-        for (var server : workspace.getLspServers()) {
-            LOG.infof("Server %s: status=%s, ready=%s", server.getId(), server.getStatus(), server.isReady());
-            if (server.getStatus() == com.ibm.mcp.languagetools.server.ServerStatus.RUNNING && server.isReady()) {
-                try {
-                    String serverResult = server.refreshWorkspace()
-                            .get(30, java.util.concurrent.TimeUnit.SECONDS);
-                    LOG.infof("Refresh result for %s: %s", server.getId(), serverResult);
-                    result.append(server.getId()).append(": ").append(serverResult).append("\n");
-                } catch (Exception e) {
-                    LOG.errorf(e, "Refresh failed for %s", server.getId());
-                    result.append(server.getId()).append(": error - ").append(e.getMessage()).append("\n");
-                }
-            } else {
-                result.append(server.getId()).append(": skipped (status=").append(server.getStatus())
-                        .append(", ready=").append(server.isReady()).append(")\n");
-            }
+        LOG.infof("Refreshing workspace %s", uri);
+        try {
+            String result = workspace.refreshWorkspace()
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
+            return Response.ok()
+                    .entity(Map.of("status", "refreshed", "details", result))
+                    .build();
+        } catch (Exception e) {
+            LOG.errorf(e, "Refresh failed for workspace %s", uri);
+            return Response.serverError()
+                    .entity(Map.of("status", "error", "details", e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Build workspace (auto full/incremental based on needsFullBuild flag).
+     */
+    @POST
+    @Path("/workspaces/{uri}/build")
+    public Response buildWorkspace(@PathParam("uri") String uriParam) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
         }
 
-        return Response.ok()
-                .entity(Map.of("status", "refreshed", "details", result.toString()))
-                .build();
+        boolean fullBuild = workspace.isNeedsFullBuild();
+        LOG.infof("Building workspace %s (fullBuild=%s)", uri, fullBuild);
+        try {
+            String result = workspace.buildWorkspace()
+                    .get(60, java.util.concurrent.TimeUnit.SECONDS);
+            return Response.ok()
+                    .entity(Map.of("status", "built",
+                            "fullBuild", fullBuild,
+                            "details", result))
+                    .build();
+        } catch (Exception e) {
+            LOG.errorf(e, "Build failed for workspace %s", uri);
+            return Response.serverError()
+                    .entity(Map.of("status", "error", "details", e.getMessage()))
+                    .build();
+        }
     }
 
     /**
