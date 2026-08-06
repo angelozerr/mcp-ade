@@ -13,6 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.tools.params;
 
+import java.util.Map;
+
 /**
  * Request parameters for file position-based LSP requests (references, definition, declaration, implementation, etc.).
  * Contains workspace root + file URI + line + character.
@@ -34,6 +36,14 @@ public class FilePositionRequestParams extends FileUriRequestParams {
 
     public int getCharacter() {
         return character;
+    }
+
+    @Override
+    public Map<String, Object> toArgumentsMap() {
+        Map<String, Object> map = super.toArgumentsMap();
+        map.put("line", line);
+        map.put("character", character);
+        return map;
     }
 }
 

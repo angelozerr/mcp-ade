@@ -235,3 +235,210 @@
     min-width: 1rem;
     text-align: center;
 }
+
+/* ── Activity Tab ── */
+
+.activity-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.activity-workspace-group {
+    margin-bottom: 0.5rem;
+}
+
+.activity-workspace-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.activity-workspace-header:hover {
+    color: var(--text-bright);
+}
+
+.activity-workspace-count {
+    font-size: 0.7rem;
+    color: var(--text-on-accent);
+    background: var(--accent-primary);
+    padding: 0.05rem 0.4rem;
+    border-radius: 10px;
+    min-width: 1rem;
+    text-align: center;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.activity-operation {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    margin-bottom: 0.2rem;
+    transition: border-color 0.2s;
+}
+
+.activity-operation:hover {
+    border-color: var(--accent-primary);
+}
+
+.activity-operation-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    background: var(--accent-bg-light);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 2px 2px 0 0;
+}
+
+.activity-toggle {
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+    width: 0.7rem;
+    flex-shrink: 0;
+}
+
+.activity-toggle-spacer {
+    width: 0.7rem;
+    flex-shrink: 0;
+}
+
+.activity-status-icon {
+    width: 0.85rem;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+}
+
+.activity-operation-info {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.activity-operation-name {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--text-bright);
+}
+
+.activity-operation-args {
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.activity-duration {
+    font-size: 0.7rem;
+    color: var(--color-info);
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    margin-left: 0.25rem;
+}
+
+.activity-entries {
+    border-top: 1px solid var(--border-subtle);
+    padding: 0.2rem 0.5rem 0.2rem 1.2rem;
+}
+
+.activity-server-group {
+    margin-bottom: 0.1rem;
+}
+
+.activity-server-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    user-select: none;
+    max-width: 28rem;
+}
+
+.activity-server-name {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--text-bright);
+    flex: 1;
+}
+
+.activity-entry-children {
+    padding-left: 1.2rem;
+}
+
+.activity-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.05rem 0.4rem;
+    font-size: 0.7rem;
+    max-width: 28rem;
+}
+
+.activity-entry-connector {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.activity-entry-connector::before {
+    content: '\251C\2500';
+    font-size: 0.65rem;
+}
+
+.activity-entry:last-child .activity-entry-connector::before {
+    content: '\2514\2500';
+}
+
+.activity-entry-name {
+    font-family: 'Courier New', monospace;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.activity-replay {
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+    cursor: pointer;
+    padding: 0.05rem 0.25rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.activity-replay:hover {
+    background: var(--accent-bg-light);
+}
+
+.activity-replay.replaying {
+    color: var(--color-error);
+    cursor: pointer;
+}
+
+.activity-spinner {
+    display: inline-block;
+    width: 0.6rem;
+    height: 0.6rem;
+    border: 1.5px solid var(--border-subtle);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: activity-spin 0.8s linear infinite;
+}
+
+@keyframes activity-spin {
+    to { transform: rotate(360deg); }
+}

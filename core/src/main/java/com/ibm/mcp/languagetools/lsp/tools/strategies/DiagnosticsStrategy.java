@@ -19,6 +19,7 @@ import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.lsp.tools.params.FileUriRequestParams;
+import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import org.eclipse.lsp4j.Diagnostic;
 
@@ -47,13 +48,15 @@ public class DiagnosticsStrategy
     public CompletableFuture<List<LspServer>> resolveServers(
             LspServerResolver resolver,
             FileUriRequestParams params,
-            ProgressMonitor progressMonitor) {
+            ProgressMonitor progressMonitor,
+            OperationContext operationContext) {
         LanguageDocument document = languageRegistry.createDocument(params.getFileUri());
         return resolver.getLspServersForFile(
                 document,
                 params.getCwd(),
                 LspServer::isEnabled,
-                progressMonitor
+                progressMonitor,
+                operationContext
         );
     }
 

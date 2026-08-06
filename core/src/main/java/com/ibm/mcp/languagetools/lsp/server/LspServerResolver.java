@@ -15,6 +15,7 @@ package com.ibm.mcp.languagetools.lsp.server;
 
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
+import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -51,9 +52,18 @@ public class LspServerResolver {
             String cwd,
             Predicate<LspServer> filter,
             ProgressMonitor progressMonitor) {
+        return getLspServersForFile(document, cwd, filter, progressMonitor, OperationContext.noop());
+    }
+
+    public CompletableFuture<List<LspServer>> getLspServersForFile(
+            LanguageDocument document,
+            String cwd,
+            Predicate<LspServer> filter,
+            ProgressMonitor progressMonitor,
+            OperationContext operationContext) {
 
         Workspace workspace = application.getWorkspaceForPath(cwd);
-        return application.ensureServersForFile(document.getUri(), workspace, progressMonitor)
+        return application.ensureServersForFile(document.getUri(), workspace, progressMonitor, operationContext)
                 .thenApply(v -> {
                     var allServers = workspace.getLspServers();
                     URI fileUri = document.getUri();

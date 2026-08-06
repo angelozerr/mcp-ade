@@ -20,6 +20,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.lsp.tools.LspRequestExecutor;
 import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
+import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import org.eclipse.lsp4j.TextDocumentPositionParams;
 
@@ -61,7 +62,8 @@ public abstract class FilePositionBasedStrategy<TLspParams, TResult>
     public CompletableFuture<List<LspServer>> resolveServers(
             LspServerResolver resolver,
             FilePositionRequestParams params,
-            ProgressMonitor progressMonitor) {
+            ProgressMonitor progressMonitor,
+            OperationContext operationContext) {
 
         // Create language document (detects language once)
         LanguageDocument document = languageRegistry.createDocument(params.getFileUri());
@@ -71,7 +73,8 @@ public abstract class FilePositionBasedStrategy<TLspParams, TResult>
                 document,
                 params.getCwd(),
                 server -> server.isEnabled() && server.supportsCapability(getCapability(), document),
-                progressMonitor
+                progressMonitor,
+                operationContext
         );
     }
 

@@ -24,6 +24,7 @@ import { getMcpClients, getSelectedMcpClient, getMcpTracesByClient,
     setMcpTraceLevel, handleMcpTrace, handleMcpClientsUpdate,
     selectMcpClient, loadMcpConsole, loadMcpTracesConsole,
     renderMcpConsole, renderMcpConsoleWithHighlights } from './admin-mcp.js';
+import { handleOperationUpdate, handleActivityState } from './admin-activity.js';
 
 // ========== Init event delegation + modals ==========
 initEventDelegation();
@@ -110,6 +111,12 @@ function handleWebSocketMessage(message) {
             break;
         case 'server-enabled-changed':
             handleServerEnabledChanged(message);
+            break;
+        case 'operation-update':
+            handleOperationUpdate(message);
+            break;
+        case 'activity-state':
+            handleActivityState(message);
             break;
         default:
             console.warn('Unknown WebSocket message type:', message.type);

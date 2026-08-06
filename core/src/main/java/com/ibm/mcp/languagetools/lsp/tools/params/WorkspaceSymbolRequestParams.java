@@ -13,6 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.tools.params;
 
+import java.util.Map;
+
 /**
  * Request parameters for workspace/symbol LSP requests.
  * Contains workspace root + search query.
@@ -28,5 +30,12 @@ public class WorkspaceSymbolRequestParams extends LspRequestParams {
 
     public String getQuery() {
         return query;
+    }
+
+    @Override
+    public Map<String, Object> toArgumentsMap() {
+        Map<String, Object> map = super.toArgumentsMap();
+        map.put("query", query);
+        return map;
     }
 }

@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.lsp.tools.LspRequestExecutor;
 import com.ibm.mcp.languagetools.lsp.tools.params.WorkspaceSymbolRequestParams;
+import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -46,7 +47,8 @@ public class WorkspaceSymbolStrategy implements LspRequestExecutor.LspRequestStr
     @Override
     public CompletableFuture<List<LspServer>> resolveServers(
             LspServerResolver resolver,
-            WorkspaceSymbolRequestParams params, ProgressMonitor progressMonitor) {
+            WorkspaceSymbolRequestParams params, ProgressMonitor progressMonitor,
+            OperationContext operationContext) {
 
         return resolver.getLspServersForWorkspace(params.getCwd(), server -> server.isEnabled());
     }

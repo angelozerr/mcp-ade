@@ -17,6 +17,9 @@ import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.extensions.jdtls.classpath.FastModeProjectManager;
 import com.ibm.mcp.languagetools.extensions.jdtls.classpath.ServerStatusProgressMonitor;
 import com.ibm.mcp.languagetools.extensions.jdtls.lsp.JdtLsServer;
+import com.ibm.mcp.languagetools.operation.OperationContext;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
+import com.ibm.mcp.languagetools.operation.OperationTracker;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
@@ -54,12 +57,35 @@ public class JdtlsCommandExecutor {
     @Inject
     FastModeProjectManager fastModeProjectManager;
 
+    @Inject
+    OperationTracker operationTracker;
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<String> executeCommand(String cwd, String commandId, Object arguments,
                                                      Cancellation cancellation, Progress progress) {
+        String toolName = OperationTracker.resolveToolName(commandId);
+        OperationContext operationContext = operationTracker.startOperation(toolName, "tool", cwd);
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("cwd", cwd);
+        args.put("commandId", commandId);
+        if (arguments != null) {
+            args.put("arguments", arguments);
+        }
+        operationContext.setArguments(args);
+        OperationEntry serverEntry = operationContext.addEntry(JDTLS_SERVER_ID, JDTLS_SERVER_ID);
+
         String fileUriPrefix = toFileUriPrefix(cwd);
-        return executeCommandWithMetadata(cwd, commandId, arguments, null)
+        return executeCommandWithMetadata(cwd, commandId, arguments, null, serverEntry)
                 .thenApply(result -> formatResultWithPrefix(result, fileUriPrefix))
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        serverEntry.fail(ex.getMessage());
+                        operationContext.fail(ex.getMessage());
+                    } else {
+                        serverEntry.complete();
+                        operationContext.complete();
+                    }
+                })
                 .exceptionally(ex -> {
                     LOG.errorf(ex, "Failed to execute command %s", commandId);
                     return "Error executing " + commandId + ": " + ex.getMessage();
@@ -81,11 +107,14 @@ public class JdtlsCommandExecutor {
 
     @SuppressWarnings("unchecked")
     private CompletableFuture<Object> executeCommandWithMetadata(String cwd, String commandId,
-                                                                   Object arguments, String fileUri) {
+                                                                   Object arguments, String fileUri,
+                                                                   OperationEntry serverEntry) {
         var workspace = application.getWorkspaceForPath(cwd);
 
-        return workspace.ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none())
+        return workspace.ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none(), serverEntry)
                 .thenCompose(jdtls -> {
+                    OperationEntry commandChild = serverEntry.addChild(commandId);
+
                     boolean fastMode = jdtls instanceof JdtLsServer j && j.isFastMode();
                     ServerStatusProgressMonitor progressMonitor = fastMode
                             ? new ServerStatusProgressMonitor(jdtls) : null;
@@ -113,12 +142,18 @@ public class JdtlsCommandExecutor {
                                 CompletableFuture<Object> commandFuture =
                                         jdtls.executeCommand(commandId, args);
                                 if (!fastMode) {
-                                    return commandFuture;
+                                    return commandFuture.thenApply(r -> {
+                                        commandChild.complete();
+                                        return r;
+                                    });
                                 }
                                 CompletableFuture<Boolean> indexingFuture =
                                         fastModeProjectManager.isIndexing(jdtls);
                                 return commandFuture.thenCombine(indexingFuture,
-                                        this::enrichResultWithMetadata);
+                                        (r, idx) -> {
+                                            commandChild.complete();
+                                            return enrichResultWithMetadata(r, idx);
+                                        });
                             });
                 });
     }
@@ -164,11 +199,17 @@ public class JdtlsCommandExecutor {
                                                           List<String> fileUris,
                                                           Function<String, Object> argsBuilder,
                                                           Cancellation cancellation, Progress progress) {
+        String toolName = OperationTracker.resolveToolName(commandId);
+        OperationContext operationContext = operationTracker.startOperation(toolName, "tool", cwd);
+        OperationEntry serverEntry = operationContext.addEntry(JDTLS_SERVER_ID, JDTLS_SERVER_ID);
+
         var workspace = application.getWorkspaceForPath(cwd);
         String fileUriPrefix = toFileUriPrefix(cwd);
 
-        return workspace.ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none())
+        return workspace.ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none(), serverEntry)
                 .thenCompose(jdtls -> {
+                    OperationEntry commandChild = serverEntry.addChild(commandId + " (batch)");
+
                     boolean fastMode = jdtls instanceof JdtLsServer j && j.isFastMode();
                     ServerStatusProgressMonitor progressMonitor = fastMode
                             ? new ServerStatusProgressMonitor(jdtls) : null;
@@ -210,7 +251,19 @@ public class JdtlsCommandExecutor {
                                 }
                                 return chain;
                             })
-                            .thenApply(result -> formatResultWithPrefix(result, fileUriPrefix));
+                            .thenApply(result -> {
+                                commandChild.complete();
+                                return formatResultWithPrefix(result, fileUriPrefix);
+                            });
+                })
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        serverEntry.fail(ex.getMessage());
+                        operationContext.fail(ex.getMessage());
+                    } else {
+                        serverEntry.complete();
+                        operationContext.complete();
+                    }
                 })
                 .exceptionally(ex -> {
                     LOG.errorf(ex, "Failed to execute batch command %s", commandId);

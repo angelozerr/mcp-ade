@@ -13,6 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.tools.params;
 
+import java.util.Map;
+
 public class RenameRequestParams extends FilePositionRequestParams {
 
     private final String newName;
@@ -24,5 +26,12 @@ public class RenameRequestParams extends FilePositionRequestParams {
 
     public String getNewName() {
         return newName;
+    }
+
+    @Override
+    public Map<String, Object> toArgumentsMap() {
+        Map<String, Object> map = super.toArgumentsMap();
+        map.put("newName", newName);
+        return map;
     }
 }

@@ -38,9 +38,10 @@ public class ImplementationTools {
     @Inject
     LanguageRegistry languageRegistry;
 
-    @Tool(description = "Find all implementations of an interface or abstract class at a specific position. " +
+    @Tool(name = "find_implementations",
+          description = "Find all implementations of an interface or abstract class at a specific position. " +
                         "Returns the locations where the symbol is implemented. " +
-                        "Example: findImplementations(cwd='/home/user/project', fileUri='file:///home/user/project/src/MyInterface.java', line=5, character=15)" +
+                        "Example: find_implementations(cwd='/home/user/project', fileUri='file:///home/user/project/src/MyInterface.java', line=5, character=15)" +
                         ToolArgDescriptions.OPEN_DOCUMENT_HINT)
     public CompletableFuture<String> findImplementations(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,

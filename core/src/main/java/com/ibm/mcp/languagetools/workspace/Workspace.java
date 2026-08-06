@@ -24,6 +24,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.lsp.server.LspServerFactoryRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServerStatusChangeEvent;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
@@ -215,13 +216,27 @@ public class Workspace {
      * @param progressMonitor Progress monitor (never null)
      */
     public CompletableFuture<Void> startManagedLspServer(String serverId, ProgressMonitor progressMonitor) {
+        return startManagedLspServer(serverId, progressMonitor, null);
+    }
+
+    public CompletableFuture<Void> startManagedLspServer(String serverId, ProgressMonitor progressMonitor,
+                                                          OperationEntry serverEntry) {
         LspServerConfig serverConfig = application.getLspServerConfig(serverId);
         String serverName = serverConfig != null ? serverConfig.getName() : serverId;
+
+        OperationEntry installChild = serverEntry != null ? serverEntry.addChild("installing") : null;
 
         ProgressMonitor installMonitor = progressMonitor.beginStep(ProgressStep.INSTALLING);
         installMonitor.reportProgress(0.0, "Installing " + serverName);
         return prepareManagedLspServer(serverId, installMonitor)
                 .thenCompose(server -> {
+                    if (installChild != null) {
+                        installChild.complete();
+                    }
+                    if (serverEntry != null) {
+                        serverEntry.addChild("starting");
+                        server.setOperationEntry(serverEntry);
+                    }
                     progressMonitor.beginStep(ProgressStep.STARTING);
                     progressMonitor.beginStep(ProgressStep.INITIALIZING);
                     return server.initialize();
@@ -293,6 +308,12 @@ public class Workspace {
      */
     public CompletableFuture<LspServer> ensureLspServerStarted(String serverId,
                                                                ProgressMonitor progressMonitor) {
+        return ensureLspServerStarted(serverId, progressMonitor, null);
+    }
+
+    public CompletableFuture<LspServer> ensureLspServerStarted(String serverId,
+                                                               ProgressMonitor progressMonitor,
+                                                               OperationEntry serverEntry) {
         // Already running?
         if (hasLspServer(serverId)) {
             LspServer server = getLspServer(serverId);
@@ -336,7 +357,7 @@ public class Workspace {
         }
 
         // No external instance - start our own managed server (handles installation automatically)
-        return startManagedLspServer(serverId, progressMonitor)
+        return startManagedLspServer(serverId, progressMonitor, serverEntry)
             .thenApply(v -> {
                 LspServer server = getLspServer(serverId);
                 if (server == null) {
@@ -359,8 +380,14 @@ public class Workspace {
      */
     public CompletableFuture<LspServer> ensureLspServerReady(String serverId,
                                                              ProgressMonitor progressMonitor) {
-        return ensureLspServerStarted(serverId, progressMonitor)
-            .thenCompose(server -> server.waitUntilReady().thenApply(v -> server));
+        return ensureLspServerReady(serverId, progressMonitor, null);
+    }
+
+    public CompletableFuture<LspServer> ensureLspServerReady(String serverId,
+                                                             ProgressMonitor progressMonitor,
+                                                             OperationEntry serverEntry) {
+        return ensureLspServerStarted(serverId, progressMonitor, serverEntry)
+                .thenCompose(server -> server.waitForReady().thenApply(v -> server));
     }
 
     /**

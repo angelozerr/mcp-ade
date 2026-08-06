@@ -24,6 +24,7 @@ import com.ibm.mcp.languagetools.event.ServerEnabledChangeEvent;
 import com.ibm.mcp.languagetools.lsp.server.LspServerStatusChangeEvent;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
+import com.ibm.mcp.languagetools.operation.OperationTracker;
 import com.ibm.mcp.languagetools.trace.TraceMessage;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import com.ibm.mcp.languagetools.workspace.WorkspaceChangeEvent;
@@ -73,6 +74,9 @@ public class AdminWebSocketEndpoint {
     @Inject
     ApplicationConfiguration applicationConfiguration;
 
+    @Inject
+    OperationTracker operationTracker;
+
     // Thread-safe set of active WebSocket sessions
     private final Set<Session> sessions = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -81,6 +85,11 @@ public class AdminWebSocketEndpoint {
         application.getLspTraceCollector().addTraceListener(this::onTrace);
         application.getDapTraceCollector().addTraceListener(this::onTrace);
         application.getMcpTraceCollector().addTraceListener(this::onTrace);
+        operationTracker.addListener(event -> {
+            OperationUpdateWsMessage msg = new OperationUpdateWsMessage(
+                    event.type().name(), event.operation());
+            broadcast(msg);
+        });
     }
 
     @OnOpen
@@ -136,6 +145,13 @@ public class AdminWebSocketEndpoint {
 
             // Send active progress state
             sendProgressState(session);
+
+            // Send activity state
+            sendToSession(session, new com.ibm.mcp.languagetools.admin.ws.ActivityStateWsMessage(
+                    operationTracker.isEnabled()));
+
+            // Send recent operations
+            sendOperationHistory(session);
 
             LOG.debugf("Initial state sent to session: %s", session.getId());
         } catch (Exception e) {
@@ -442,12 +458,31 @@ public class AdminWebSocketEndpoint {
         broadcast(msg);
     }
 
+    void onActivityStateChange(@Observes com.ibm.mcp.languagetools.admin.ws.ActivityStateWsMessage msg) {
+        broadcast(msg);
+    }
+
     void onServerEnabledChange(@Observes ServerEnabledChangeEvent event) {
         LOG.infof("WebSocket: Server enabled changed: %s -> %s (broadcasting to %d clients)",
                 event.serverId(), event.enabled(), sessions.size());
         ServerEnabledChangedWsMessage msg = new ServerEnabledChangedWsMessage(
                 event.serverId(), event.enabled());
         broadcast(msg);
+    }
+
+    /**
+     * Send recent operation history to a newly connected session.
+     */
+    private void sendOperationHistory(Session session) {
+        try {
+            for (var op : operationTracker.getRecentOperations(100)) {
+                OperationUpdateWsMessage msg = new OperationUpdateWsMessage("COMPLETED", op);
+                sendToSession(session, msg);
+            }
+            LOG.debugf("Operation history sent to session: %s", session.getId());
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to send operation history to session: %s", session.getId());
+        }
     }
 
     /**

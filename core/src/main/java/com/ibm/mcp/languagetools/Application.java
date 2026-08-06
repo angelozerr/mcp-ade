@@ -23,6 +23,8 @@ import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.lsp.server.LspServerStatusChangeEvent;
 import com.ibm.mcp.languagetools.event.ServerEnabledChangeEvent;
+import com.ibm.mcp.languagetools.operation.OperationContext;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.mcp.McpClientChangeEvent;
 import com.ibm.mcp.languagetools.mcp.McpClientTracker;
 import com.ibm.mcp.languagetools.mcp.trace.McpTraceCollector;
@@ -225,7 +227,8 @@ public class Application {
      */
     public CompletableFuture<Void> ensureServersForFile(URI fileUri,
                                                         Workspace workspace,
-                                                        ProgressMonitor progressMonitor) {
+                                                        ProgressMonitor progressMonitor,
+                                                        OperationContext operationContext) {
         Optional<String> languageId = languageRegistry.detectLanguage(fileUri);
         if (languageId.isEmpty()) {
             LOG.debugf("No language detected for: %s", fileUri);
@@ -278,11 +281,14 @@ public class Application {
                     ? progressMonitor.createSubMonitor(start, end)
                     : progressMonitor;
 
-            CompletableFuture<Void> future = workspace.ensureLspServerStarted(
-                            config.getServerId(), serverMonitor)
+            String serverId = config.getServerId();
+            OperationEntry serverEntry = operationContext.addEntry(serverId, serverId);
+            CompletableFuture<Void> future = workspace.ensureLspServerReady(
+                            serverId, serverMonitor, serverEntry)
                     .thenAccept(server -> {})
                     .exceptionally(ex -> {
                         LOG.errorf(ex, "Failed to start %s", config.getName());
+                        serverEntry.fail(ex.getMessage());
                         return null;
                     });
             serverFutures.add(future);

@@ -38,9 +38,10 @@ public class DeclarationTools {
     @Inject
     LanguageRegistry languageRegistry;
 
-    @Tool(description = "Go to the declaration of a symbol at a specific position in a file. " +
+    @Tool(name = "go_to_declaration",
+          description = "Go to the declaration of a symbol at a specific position in a file. " +
                         "Returns the location where the symbol is declared (different from definition for forward declarations). " +
-                        "Example: goToDeclaration(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.cpp', line=10, character=5)" +
+                        "Example: go_to_declaration(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.cpp', line=10, character=5)" +
                         ToolArgDescriptions.OPEN_DOCUMENT_HINT)
     public CompletableFuture<String> goToDeclaration(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,

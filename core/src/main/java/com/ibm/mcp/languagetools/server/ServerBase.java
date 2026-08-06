@@ -15,6 +15,7 @@ package com.ibm.mcp.languagetools.server;
 
 import com.ibm.mcp.languagetools.client.BindEndpointSupport;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.trace.TracingMessageConsumer;
@@ -63,7 +64,10 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
 
     private Process serverProcess;
     private volatile boolean isReady;
+    private volatile boolean isStarted;
     private CompletableFuture<Void> readyFuture;
+    private CompletableFuture<Void> startedFuture;
+    private volatile OperationEntry operationEntry;
 
     public ServerBase(T config, Workspace workspace) {
         this(config, workspace, config.getServerId());
@@ -85,6 +89,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         this.contextId = contextId;
         this.executorService = Executors.newCachedThreadPool();
         this.readyFuture = new CompletableFuture<>();
+        this.startedFuture = new CompletableFuture<>();
 
         var workspaceRoot = workspace.getNormalizedUri();
         this.traceCollector = initializeTraceCollector(workspace);
@@ -387,11 +392,38 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         });
     }
 
+    public void setOperationEntry(OperationEntry operationEntry) {
+        this.operationEntry = operationEntry;
+    }
+
+    public OperationEntry getOperationEntry() {
+        return operationEntry;
+    }
+
+    public CompletableFuture<Void> waitForStarted() {
+        if (isStarted) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return startedFuture;
+    }
+
+    public CompletableFuture<Void> waitForReady() {
+        if (isReady) {
+            return CompletableFuture.completedFuture(null);
+        }
+        OperationEntry entry = this.operationEntry;
+        OperationEntry indexingChild = entry != null ? entry.addChild("indexing") : null;
+        return readyFuture.thenRun(() -> {
+            if (indexingChild != null) {
+                indexingChild.complete();
+            }
+        });
+    }
+
     /**
-     * Wait until the server is ready, without timeout.
-     * Returns a CompletableFuture that completes when the server is ready.
-     * Uses notification mechanism (no polling) for efficiency.
+     * @deprecated Use {@link #waitForReady()} instead
      */
+    @Deprecated
     public CompletableFuture<Void> waitUntilReady() {
         if (isReady) {
             return CompletableFuture.completedFuture(null);
@@ -400,47 +432,56 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
     }
 
     /**
-     * Wait until the server is ready, with a timeout.
-     * Returns a CompletableFuture that completes when the server is ready.
+     * @deprecated Use {@link #waitForReady()} instead
      */
+    @Deprecated
     public CompletableFuture<Void> waitUntilReady(long timeoutMs) {
         if (isReady) {
             return CompletableFuture.completedFuture(null);
         }
-
         return readyFuture.orTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Check if the language server is ready to handle requests.
-     * For most servers, this is true after initialize() completes (status == RUNNING).
-     * For servers like JDT.LS, this is determined by specific notifications (e.g., language/status).
-     * Subclasses can override this method to provide custom readiness detection.
-     */
+    public final boolean isStarted() {
+        return isStarted;
+    }
+
     public final boolean isReady() {
         return isReady;
     }
 
-    /**
-     * Set the ready state of the language server.
-     * Called by subclasses when they detect the server is ready (e.g., JdtLsServer on language/status).
-     * Completes the readyFuture to notify all waiting threads.
-     */
+    public final void setStarted(boolean started) {
+        boolean wasStarted = this.isStarted;
+        this.isStarted = started;
+
+        if (started && !wasStarted && startedFuture != null && !startedFuture.isDone()) {
+            OperationEntry entry = this.operationEntry;
+            if (entry != null) {
+                OperationEntry startChild = entry.findChild("starting");
+                if (startChild != null) {
+                    startChild.complete();
+                }
+            }
+            startedFuture.complete(null);
+        }
+
+        if (!started && wasStarted) {
+            startedFuture = new CompletableFuture<>();
+        }
+    }
+
     public final void setReady(boolean ready) {
         boolean wasReady = this.isReady;
         this.isReady = ready;
 
-        // Complete the future when becoming ready
         if (ready && !wasReady && readyFuture != null && !readyFuture.isDone()) {
             readyFuture.complete(null);
         }
 
-        // Reset the future when becoming not ready (for restarts)
         if (!ready && wasReady) {
             readyFuture = new CompletableFuture<>();
         }
 
-        // Notify listeners so the UI updates the badge color
         if (wasReady != ready && !statusChangeListeners.isEmpty()) {
             for (StatusChangeListener listener : statusChangeListeners) {
                 try {

@@ -19,6 +19,7 @@ import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
+import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -51,13 +52,15 @@ public class CodeActionStrategy
     public CompletableFuture<List<LspServer>> resolveServers(
             LspServerResolver resolver,
             FilePositionRequestParams params,
-            ProgressMonitor progressMonitor) {
+            ProgressMonitor progressMonitor,
+            OperationContext operationContext) {
         LanguageDocument document = languageRegistry.createDocument(params.getFileUri());
         return resolver.getLspServersForFile(
                 document,
                 params.getCwd(),
                 server -> server.isEnabled() && server.supportsCapability(getCapability(), document),
-                progressMonitor
+                progressMonitor,
+                operationContext
         );
     }
 

@@ -11,30 +11,18 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.lsp.tools.params;
+package com.ibm.mcp.languagetools.admin.ws;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+public class ActivityStateWsMessage extends WsMessage {
 
-/**
- * Base class for all LSP request parameters.
- * Contains the workspace root (cwd).
- */
-public class LspRequestParams {
+    private final boolean enabled;
 
-    private final String cwd;
-
-    public LspRequestParams(String cwd) {
-        this.cwd = cwd;
+    public ActivityStateWsMessage(boolean enabled) {
+        super(WsMessageType.ACTIVITY_STATE);
+        this.enabled = enabled;
     }
 
-    public String getCwd() {
-        return cwd;
-    }
-
-    public Map<String, Object> toArgumentsMap() {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("cwd", cwd);
-        return map;
+    public boolean isEnabled() {
+        return enabled;
     }
 }

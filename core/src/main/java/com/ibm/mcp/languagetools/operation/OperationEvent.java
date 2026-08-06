@@ -11,30 +11,15 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.lsp.tools.params;
+package com.ibm.mcp.languagetools.operation;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-/**
- * Base class for all LSP request parameters.
- * Contains the workspace root (cwd).
- */
-public class LspRequestParams {
-
-    private final String cwd;
-
-    public LspRequestParams(String cwd) {
-        this.cwd = cwd;
-    }
-
-    public String getCwd() {
-        return cwd;
-    }
-
-    public Map<String, Object> toArgumentsMap() {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("cwd", cwd);
-        return map;
+public record OperationEvent(
+        Type type,
+        OperationContext operation
+) {
+    public enum Type {
+        STARTED,
+        UPDATED,
+        COMPLETED
     }
 }

@@ -4,6 +4,7 @@ import {
     getCurrentSearchQuery, escapeHtml, initTraceContainer, toggleAllTraces
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
+import { renderActivity, updateActivityToggleUI } from './admin-activity.js';
 
 let mcpTraces = [];
 let mcpTraceLevel = 'off';
@@ -114,9 +115,18 @@ export function loadMcpTracesConsole() {
                 <div class="console-tabs">
                     <button class="tab-button active" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
                     <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
+                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="activity">Activity</button>
                 </div>
                 <div class="console-controls" id="mcp-traces-controls">
                     ${renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel')}
+                </div>
+                <div class="console-controls" id="mcp-activity-controls" style="display: none;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="activity-toggle-checkbox" data-action="toggleActivity">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <button data-action="foldAllActivity">Fold All</button>
+                    <button data-action="clearActivity">Clear</button>
                 </div>
             </div>
             <div class="tab-content">
@@ -133,6 +143,11 @@ export function loadMcpTracesConsole() {
                             <span class="mcp-tools-count" id="mcp-tools-count"></span>
                         </div>
                         <div class="mcp-tools-list" id="mcp-tools-list"></div>
+                    </div>
+                </div>
+                <div id="mcp-activity-tab" class="tab-panel">
+                    <div class="activity-list" id="mcp-activity-content">
+                        <div class="text-secondary p-lg">No operations recorded yet</div>
                     </div>
                 </div>
             </div>
@@ -155,12 +170,21 @@ export function loadMcpConsole(clientId) {
                 <div class="console-tabs">
                     <button class="tab-button active" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
                     <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
+                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="activity">Activity</button>
                 </div>
                 <div class="console-controls" id="mcp-traces-controls">
                     ${renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel', {
                         foldAction: 'toggleAllMcpTraces',
                         clearAction: 'clearMcpConsole'
                     })}
+                </div>
+                <div class="console-controls" id="mcp-activity-controls" style="display: none;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="activity-toggle-checkbox" data-action="toggleActivity">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <button data-action="foldAllActivity">Fold All</button>
+                    <button data-action="clearActivity">Clear</button>
                 </div>
             </div>
             <div class="tab-content">
@@ -175,6 +199,11 @@ export function loadMcpConsole(clientId) {
                             <span class="mcp-tools-count" id="mcp-tools-count"></span>
                         </div>
                         <div class="mcp-tools-list" id="mcp-tools-list"></div>
+                    </div>
+                </div>
+                <div id="mcp-activity-tab" class="tab-panel">
+                    <div class="activity-list" id="mcp-activity-content">
+                        <div class="text-secondary p-lg">No operations recorded yet</div>
                     </div>
                 </div>
             </div>
@@ -214,15 +243,27 @@ function switchMcpConsoleTab(tab, clickedBtn) {
         panel.classList.remove('active');
     });
 
+    const tracesControls = document.getElementById('mcp-traces-controls');
+    const activityControls = document.getElementById('mcp-activity-controls');
+
     if (tab === 'traces') {
         document.getElementById('mcp-traces-tab').classList.add('active');
-        document.getElementById('mcp-traces-controls').style.display = 'flex';
+        if (tracesControls) tracesControls.style.display = 'flex';
+        if (activityControls) activityControls.style.display = 'none';
         updateSearchBoxVisibility(true);
     } else if (tab === 'tools') {
         document.getElementById('mcp-tools-tab').classList.add('active');
-        document.getElementById('mcp-traces-controls').style.display = 'none';
+        if (tracesControls) tracesControls.style.display = 'none';
+        if (activityControls) activityControls.style.display = 'none';
         updateSearchBoxVisibility(false);
         loadMcpTools();
+    } else if (tab === 'activity') {
+        document.getElementById('mcp-activity-tab').classList.add('active');
+        if (tracesControls) tracesControls.style.display = 'none';
+        if (activityControls) activityControls.style.display = 'flex';
+        updateSearchBoxVisibility(false);
+        updateActivityToggleUI();
+        renderActivity();
     }
 }
 

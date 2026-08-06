@@ -334,6 +334,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
                     languageServer.initialized(new InitializedParams());
                     setStatus(ServerStatus.RUNNING);
+                    setStarted(true);
                     // For generic servers, ready after initialization
                     // Subclasses like JdtLsServer may override this behavior
                     setReady(true);

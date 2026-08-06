@@ -13,6 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.tools.params;
 
+import java.util.Map;
+
 /**
  * Request parameters for file URI-based LSP requests.
  * Contains workspace root + file URI.
@@ -28,6 +30,13 @@ public class FileUriRequestParams extends LspRequestParams {
 
     public String getFileUri() {
         return fileUri;
+    }
+
+    @Override
+    public Map<String, Object> toArgumentsMap() {
+        Map<String, Object> map = super.toArgumentsMap();
+        map.put("fileUri", fileUri);
+        return map;
     }
 }
 

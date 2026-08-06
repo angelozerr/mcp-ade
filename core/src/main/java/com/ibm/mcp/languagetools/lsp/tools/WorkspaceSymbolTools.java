@@ -34,9 +34,10 @@ public class WorkspaceSymbolTools {
     @Inject
     LspRequestExecutor requestExecutor;
 
-    @Tool(description = "Search for symbols across the entire workspace. " +
+    @Tool(name = "search_workspace_symbols",
+          description = "Search for symbols across the entire workspace. " +
                         "Returns symbols (classes, methods, variables, etc.) matching the query string. " +
-                        "Example: searchWorkspaceSymbols(cwd='/home/user/project', query='MyClass')")
+                        "Example: search_workspace_symbols(cwd='/home/user/project', query='MyClass')")
     public CompletableFuture<String> searchWorkspaceSymbols(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "The search query string to match against symbol names") String query,
