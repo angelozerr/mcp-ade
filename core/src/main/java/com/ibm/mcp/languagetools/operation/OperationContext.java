@@ -92,6 +92,11 @@ public class OperationContext {
         this.endTime = Instant.now();
         this.status = OperationStatus.FAILED;
         this.error = error;
+        for (OperationEntry entry : entries) {
+            if (entry.getStatus() == OperationStatus.RUNNING) {
+                entry.fail(error);
+            }
+        }
         tracker.operationCompleted(this);
     }
 

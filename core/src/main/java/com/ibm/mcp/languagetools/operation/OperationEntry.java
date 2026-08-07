@@ -77,6 +77,11 @@ public class OperationEntry {
         this.endTime = Instant.now();
         this.status = OperationStatus.FAILED;
         this.error = error;
+        for (OperationEntry child : children) {
+            if (child.status == OperationStatus.RUNNING) {
+                child.fail(error);
+            }
+        }
         context.notifyUpdate();
     }
 
