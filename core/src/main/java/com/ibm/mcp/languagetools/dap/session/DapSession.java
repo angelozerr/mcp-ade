@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.dap.session;
 
 import com.ibm.mcp.languagetools.dap.client.DapClient;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.dap.client.DapEventListener;
 import com.ibm.mcp.languagetools.dap.server.DapServer;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
@@ -594,19 +595,19 @@ public class DapSession implements DapEventListener {
                     })
                     .whenComplete((result, ex) -> {
                         if (ex != null) {
+                            String errorMessage = ToolException.resolveErrorMessage(ex);
                             if (launchEntry != null) {
-                                launchEntry.fail(ex.getMessage());
+                                launchEntry.fail(errorMessage);
                             }
                             if (serverEntry != null) {
-                                serverEntry.fail(ex.getMessage());
+                                serverEntry.fail(errorMessage);
                             }
                             if (state == SessionState.LAUNCHING || state == SessionState.ATTACHING) {
-                                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                                 SessionState failedState = state == SessionState.LAUNCHING
                                         ? SessionState.LAUNCH_FAILED : SessionState.ATTACH_FAILED;
-                                setState(failedState, cause.getMessage());
+                                setState(failedState, errorMessage);
                             }
-                            String error = String.format("DAP session launch failed: %s", ex.getMessage());
+                            String error = String.format("DAP session launch failed: %s", errorMessage);
                             LOG.error(error, ex);
 
                             // Build full error message with stack trace

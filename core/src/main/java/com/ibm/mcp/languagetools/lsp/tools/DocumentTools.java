@@ -19,6 +19,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.tools.ToolArgDescriptions;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -75,7 +76,7 @@ public class DocumentTools {
 
     private CompletableFuture<String> waitForReadyAndOpen(List<LspServer> servers, String fileUri, String languageId) {
         if (servers.isEmpty()) {
-            return CompletableFuture.completedFuture("No language server found for: " + fileUri);
+            throw new ToolException("No language server found for: " + fileUri);
         }
         List<CompletableFuture<String>> futures = servers.stream()
                 .map(server -> server.waitUntilReady()

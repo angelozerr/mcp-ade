@@ -48,7 +48,7 @@ public class GetTypeAtPositionHandler extends AbstractPositionHandler {
     protected Object handleElements(IJavaElement[] elements, ICompilationUnit cu, int offset,
             IProgressMonitor monitor) throws Exception {
         if (elements.length == 0) {
-            return Map.of("error", "No element found at position");
+            throw new RuntimeException("No element found at position");
         }
 
         IType type = null;
@@ -65,7 +65,7 @@ public class GetTypeAtPositionHandler extends AbstractPositionHandler {
         }
 
         if (type == null) {
-            return Map.of("error", "No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         Map<String, Object> result = new HashMap<>();

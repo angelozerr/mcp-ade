@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools;
 
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.installer.InstallResult;
 import com.ibm.mcp.languagetools.installer.InstallerListener;
@@ -288,7 +289,7 @@ public class Application {
                     .thenAccept(server -> {})
                     .exceptionally(ex -> {
                         LOG.errorf(ex, "Failed to start %s", config.getName());
-                        serverEntry.fail(ex.getMessage());
+                        serverEntry.fail(ToolException.resolveErrorMessage(ex));
                         return null;
                     });
             serverFutures.add(future);

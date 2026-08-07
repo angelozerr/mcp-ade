@@ -52,11 +52,11 @@ public class PushDownHandler extends AbstractLTKRefactoringHandler {
         List<String> memberNames = (List<String>) params.get("memberNames");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         if (memberNames == null || memberNames.isEmpty()) {
-            return createErrorResult("At least one member name must be specified");
+            throw new RuntimeException("At least one member name must be specified");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -64,7 +64,7 @@ public class PushDownHandler extends AbstractLTKRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         // Collect members to push down
@@ -85,7 +85,7 @@ public class PushDownHandler extends AbstractLTKRefactoringHandler {
         }
 
         if (membersToMove.isEmpty()) {
-            return createErrorResult("No matching members found to push down");
+            throw new RuntimeException("No matching members found to push down");
         }
 
         IMember[] members = membersToMove.toArray(new IMember[0]);

@@ -49,30 +49,27 @@ public class InlineMethodHandler extends AbstractLTKRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         CompilationUnit ast = parseAST(cu, monitor);
 
         ASTNode selectedNode = NodeFinder.perform(ast, offset, 0);
         if (selectedNode == null) {
-            return createErrorResult("No node found at position");
+            throw new RuntimeException("No node found at position");
         }
 
         InlineMethodRefactoring refactoring = InlineMethodRefactoring.create(
                 cu, ast, offset, 0);
 
         if (refactoring == null) {
-            return createErrorResult("Cannot create inline method refactoring at this position. Place cursor on a method name.");
+            throw new RuntimeException("Cannot create inline method refactoring at this position. Place cursor on a method name.");
         }
 
         return executeRefactoring(refactoring, params, monitor);

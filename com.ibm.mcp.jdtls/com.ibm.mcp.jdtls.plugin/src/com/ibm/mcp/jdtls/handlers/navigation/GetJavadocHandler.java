@@ -53,7 +53,7 @@ public class GetJavadocHandler extends AbstractPositionHandler {
     protected Object handleElements(IJavaElement[] elements, ICompilationUnit cu, int offset,
             IProgressMonitor monitor) throws Exception {
         if (elements.length == 0) {
-            return Map.of("error", "No element found at position");
+            throw new RuntimeException("No element found at position");
         }
 
         IJavaElement element = elements[0];
@@ -61,7 +61,7 @@ public class GetJavadocHandler extends AbstractPositionHandler {
         result.put("element", element.getElementName());
 
         if (!(element instanceof IMember member)) {
-            return Map.of("error", "Element is not a member with Javadoc");
+            throw new RuntimeException("Element is not a member with Javadoc");
         }
 
         String rawJavadoc = extractSourceJavadoc(member);

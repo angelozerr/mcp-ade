@@ -77,10 +77,7 @@ public class FindNamingViolationsHandler implements ICommandHandler {
         List<Map<String, Object>> violations = new ArrayList<>();
 
         if (uri != null) {
-            ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-            if (cu == null) {
-                return Map.of("error", "Compilation unit not found: " + uri);
-            }
+            ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
             analyzeCompilationUnit(cu, violations, monitor);
         } else {
             // Project-wide analysis

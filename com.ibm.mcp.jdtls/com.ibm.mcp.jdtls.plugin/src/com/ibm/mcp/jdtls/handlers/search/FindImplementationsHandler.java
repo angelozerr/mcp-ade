@@ -58,7 +58,7 @@ public class FindImplementationsHandler implements ICommandHandler {
 
         if (element instanceof IType type) {
             if (!type.exists()) {
-                return Map.of("error", "Type not found");
+                throw new RuntimeException("Type not found");
             }
             return findTypeImplementations(type, monitor);
         }
@@ -67,7 +67,7 @@ public class FindImplementationsHandler implements ICommandHandler {
             return findMethodImplementations(method, monitor);
         }
 
-        return Map.of("error", "Type or method not found");
+        throw new RuntimeException("Type or method not found");
     }
 
     private Object findTypeImplementations(IType type, IProgressMonitor monitor) throws JavaModelException {
@@ -98,7 +98,7 @@ public class FindImplementationsHandler implements ICommandHandler {
 
     private Object findMethodImplementations(IMethod method, IProgressMonitor monitor) throws Exception {
         if (cannotBeOverridden(method)) {
-            return Map.of("error",
+            throw new RuntimeException(
                     "Method cannot be overridden (private, final, static, or constructor)");
         }
 
@@ -118,7 +118,7 @@ public class FindImplementationsHandler implements ICommandHandler {
                 | IJavaSearchConstants.IGNORE_RETURN_TYPE;
         SearchPattern pattern = SearchPattern.createPattern(method, limitTo);
         if (pattern == null) {
-            return Map.of("error", "Cannot create search pattern for method");
+            throw new RuntimeException("Cannot create search pattern for method");
         }
 
         List<Map<String, Object>> implementations = new ArrayList<>();

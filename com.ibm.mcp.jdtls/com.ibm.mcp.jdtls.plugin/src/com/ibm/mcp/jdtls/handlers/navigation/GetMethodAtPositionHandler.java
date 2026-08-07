@@ -48,7 +48,7 @@ public class GetMethodAtPositionHandler extends AbstractPositionHandler {
     protected Object handleElements(IJavaElement[] elements, ICompilationUnit cu, int offset,
             IProgressMonitor monitor) throws Exception {
         if (elements.length == 0) {
-            return Map.of("error", "No element found at position");
+            throw new RuntimeException("No element found at position");
         }
 
         IMethod method = null;
@@ -60,7 +60,7 @@ public class GetMethodAtPositionHandler extends AbstractPositionHandler {
         }
 
         if (method == null) {
-            return Map.of("error", "Element at position is not a method");
+            throw new RuntimeException("Element at position is not a method");
         }
 
         Map<String, Object> result = new HashMap<>();

@@ -62,7 +62,7 @@ public class GetProjectStructureHandler implements ICommandHandler {
             String msg = projectName != null
                     ? "Java project '" + projectName + "' not found in workspace"
                     : "No Java project found in workspace";
-            return Map.of("error", msg);
+            throw new RuntimeException(msg);
         }
 
         List<Map<String, Object>> sourceFolders = new ArrayList<>();

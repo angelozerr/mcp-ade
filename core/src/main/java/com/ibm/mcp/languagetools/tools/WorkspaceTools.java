@@ -17,6 +17,7 @@ import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.server.ServerStatus;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
@@ -60,7 +61,7 @@ public class WorkspaceTools {
 
         } catch (Exception e) {
             LOG.error("Failed to list workspaces", e);
-            return "Failed to list workspaces: " + e.getMessage();
+            throw new ToolException("Failed to list workspaces: " + e.getMessage(), e);
         }
     }
 
@@ -75,7 +76,7 @@ public class WorkspaceTools {
         try {
             Workspace workspace = application.getWorkspaceForPath(cwd);
             if (workspace == null) {
-                return "No workspace found for: " + cwd;
+                throw new ToolException("No workspace found for: " + cwd);
             }
 
             workspace.refreshActivationCache();
@@ -85,7 +86,7 @@ public class WorkspaceTools {
             return "Workspace refreshed: " + workspace.getRootUri() + "\n" + result;
         } catch (Exception e) {
             LOG.error("Failed to refresh workspace", e);
-            return "Failed to refresh workspace: " + e.getMessage();
+            throw new ToolException("Failed to refresh workspace: " + e.getMessage(), e);
         }
     }
 
@@ -101,7 +102,7 @@ public class WorkspaceTools {
         try {
             Workspace workspace = application.getWorkspaceForPath(cwd);
             if (workspace == null) {
-                return "No workspace found for: " + cwd;
+                throw new ToolException("No workspace found for: " + cwd);
             }
 
             boolean wasFull = workspace.isNeedsFullBuild();
@@ -111,7 +112,7 @@ public class WorkspaceTools {
                     + workspace.getRootUri() + "\n" + result;
         } catch (Exception e) {
             LOG.error("Failed to build workspace", e);
-            return "Failed to build workspace: " + e.getMessage();
+            throw new ToolException("Failed to build workspace: " + e.getMessage(), e);
         }
     }
 
@@ -192,7 +193,7 @@ public class WorkspaceTools {
         try {
             Workspace workspace = application.getWorkspaceForPath(cwd);
             if (workspace == null) {
-                return "No workspace found for: " + cwd;
+                throw new ToolException("No workspace found for: " + cwd);
             }
 
             List<FileEvent> events = new ArrayList<>();
@@ -219,14 +220,14 @@ public class WorkspaceTools {
             }
 
             if (events.isEmpty()) {
-                return "No valid file changes provided";
+                throw new ToolException("No valid file changes provided");
             }
 
             workspace.notifyFileChanges(events);
             return String.format("Notified %d file change(s) to language servers", events.size());
         } catch (Exception e) {
             LOG.error("Failed to notify file changes", e);
-            return "Failed to notify file changes: " + e.getMessage();
+            throw new ToolException("Failed to notify file changes: " + e.getMessage(), e);
         }
     }
 }

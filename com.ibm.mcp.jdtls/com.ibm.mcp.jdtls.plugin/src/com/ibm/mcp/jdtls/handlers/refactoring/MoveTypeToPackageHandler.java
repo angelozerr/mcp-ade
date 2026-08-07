@@ -54,27 +54,24 @@ public class MoveTypeToPackageHandler extends AbstractLTKRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         String targetPackageName = (String) params.get("targetPackage");
         if (targetPackageName == null) {
-            return createErrorResult("Missing required argument: targetPackage");
+            throw new RuntimeException("Missing required argument: targetPackage");
         }
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found");
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         String currentPackage = cu.getParent().getElementName();
         if (targetPackageName.equals(currentPackage)) {
-            return createErrorResult("Type is already in package: " + targetPackageName);
+            throw new RuntimeException("Type is already in package: " + targetPackageName);
         }
 
         IPackageFragmentRoot sourceRoot = (IPackageFragmentRoot) cu.getAncestor(IJavaElement.PACKAGE_FRAGMENT_ROOT);
         if (sourceRoot == null) {
-            return createErrorResult("Cannot determine source folder");
+            throw new RuntimeException("Cannot determine source folder");
         }
 
         IPackageFragment targetPackage = sourceRoot.getPackageFragment(targetPackageName);
@@ -90,7 +87,7 @@ public class MoveTypeToPackageHandler extends AbstractLTKRefactoringHandler {
             JavaMoveProcessor processor = new JavaMoveProcessor(policy);
             RefactoringStatus destinationStatus = processor.setDestination(ReorgDestinationFactory.createDestination(targetPackage));
             if (destinationStatus.hasFatalError()) {
-                return createErrorResult("Invalid move destination: " + destinationStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+                throw new RuntimeException("Invalid move destination: " + destinationStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
             }
             processor.setUpdateReferences(true);
 
@@ -98,7 +95,7 @@ public class MoveTypeToPackageHandler extends AbstractLTKRefactoringHandler {
 
             return executeRefactoring(refactoring, params, monitor);
         } catch (IllegalArgumentException e) {
-            return createErrorResult("Move refactoring setup failed: " + e.getMessage()
+            throw new RuntimeException("Move refactoring setup failed: " + e.getMessage()
                     + ". Ensure the project is fully loaded (not in fast/lightweight mode).");
         }
     }

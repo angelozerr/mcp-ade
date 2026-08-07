@@ -52,11 +52,11 @@ public class ExtractInterfaceHandler extends AbstractLTKRefactoringHandler {
         List<String> methodNames = (List<String>) params.get("methodNames");
 
         if (uri == null || interfaceName == null || interfaceName.isEmpty()) {
-            return createErrorResult("Missing required arguments: uri and interfaceName");
+            throw new RuntimeException("Missing required arguments: uri and interfaceName");
         }
 
         if (methodNames == null || methodNames.isEmpty()) {
-            return createErrorResult("At least one method name must be specified");
+            throw new RuntimeException("At least one method name must be specified");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -64,15 +64,15 @@ public class ExtractInterfaceHandler extends AbstractLTKRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         if (type.getCompilationUnit() == null) {
-            return createErrorResult("Cannot extract interface: type is from a binary dependency, not a source file");
+            throw new RuntimeException("Cannot extract interface: type is from a binary dependency, not a source file");
         }
 
         if (type.isInterface()) {
-            return createErrorResult("Cannot extract interface from an interface");
+            throw new RuntimeException("Cannot extract interface from an interface");
         }
 
         CodeGenerationSettings settings = createCodeGenerationSettings(type.getCompilationUnit());
@@ -89,7 +89,7 @@ public class ExtractInterfaceHandler extends AbstractLTKRefactoringHandler {
         }
 
         if (extractMethods.isEmpty()) {
-            return createErrorResult("No matching methods found to extract");
+            throw new RuntimeException("No matching methods found to extract");
         }
 
         processor.setExtractedMembers(extractMethods.toArray(new IMethod[0]));

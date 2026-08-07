@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -85,7 +86,7 @@ public class ExtensionTools {
             return result;
         } catch (Exception e) {
             LOG.error("Failed to list extensions", e);
-            return List.of(Map.of("error", "Failed to list extensions: " + e.getMessage()));
+            throw new ToolException("Failed to list extensions: " + e.getMessage(), e);
         }
     }
 
@@ -111,7 +112,7 @@ public class ExtensionTools {
             return result;
         } catch (Exception e) {
             LOG.error("Failed to add extension", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to add extension: " + e.getMessage(), e);
         }
     }
 
@@ -132,7 +133,7 @@ public class ExtensionTools {
             return result;
         } catch (Exception e) {
             LOG.error("Failed to add LSP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to add LSP server: " + e.getMessage(), e);
         }
     }
 
@@ -153,7 +154,7 @@ public class ExtensionTools {
             return result;
         } catch (Exception e) {
             LOG.error("Failed to add DAP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to add DAP server: " + e.getMessage(), e);
         }
     }
 
@@ -168,7 +169,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "Extension '" + extensionId + "' removed");
         } catch (Exception e) {
             LOG.error("Failed to remove extension", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to remove extension: " + e.getMessage(), e);
         }
     }
 
@@ -181,7 +182,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "LSP server '" + serverId + "' removed");
         } catch (Exception e) {
             LOG.error("Failed to remove LSP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to remove LSP server: " + e.getMessage(), e);
         }
     }
 
@@ -194,7 +195,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "DAP server '" + serverId + "' removed");
         } catch (Exception e) {
             LOG.error("Failed to remove DAP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to remove DAP server: " + e.getMessage(), e);
         }
     }
 
@@ -241,7 +242,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "Extension '" + extensionId + "' enabled");
         } catch (Exception e) {
             LOG.error("Failed to enable extension", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to enable extension: " + e.getMessage(), e);
         }
     }
 
@@ -254,7 +255,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "Extension '" + extensionId + "' disabled");
         } catch (Exception e) {
             LOG.error("Failed to disable extension", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to disable extension: " + e.getMessage(), e);
         }
     }
 
@@ -267,7 +268,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "LSP server '" + serverId + "' enabled");
         } catch (Exception e) {
             LOG.error("Failed to enable LSP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to enable LSP server: " + e.getMessage(), e);
         }
     }
 
@@ -280,7 +281,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "LSP server '" + serverId + "' disabled");
         } catch (Exception e) {
             LOG.error("Failed to disable LSP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to disable LSP server: " + e.getMessage(), e);
         }
     }
 
@@ -293,7 +294,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "DAP server '" + serverId + "' enabled");
         } catch (Exception e) {
             LOG.error("Failed to enable DAP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to enable DAP server: " + e.getMessage(), e);
         }
     }
 
@@ -306,7 +307,7 @@ public class ExtensionTools {
             return Map.of("success", true, "message", "DAP server '" + serverId + "' disabled");
         } catch (Exception e) {
             LOG.error("Failed to disable DAP server", e);
-            return Map.of("success", false, "error", e.getMessage());
+            throw new ToolException("Failed to disable DAP server: " + e.getMessage(), e);
         }
     }
 }

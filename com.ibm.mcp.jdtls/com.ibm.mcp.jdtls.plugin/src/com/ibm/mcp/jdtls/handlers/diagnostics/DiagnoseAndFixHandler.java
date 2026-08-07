@@ -61,17 +61,14 @@ public class DiagnoseAndFixHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty()) {
-            return Map.of("error", "Missing arguments");
+            throw new RuntimeException("Missing arguments");
         }
 
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
         String uri = (String) params.get("uri");
         boolean autoFix = Boolean.TRUE.equals(params.get("autoFix"));
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return Map.of("error", "Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         // Step 1: Run diagnostics
         ASTParser parser = ASTParser.newParser(AST.getJLSLatest());

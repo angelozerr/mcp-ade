@@ -41,7 +41,7 @@ public class GenerateToStringHandler extends AbstractRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -51,7 +51,7 @@ public class GenerateToStringHandler extends AbstractRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         IField[] allFields = type.getFields();
@@ -67,7 +67,7 @@ public class GenerateToStringHandler extends AbstractRefactoringHandler {
         }
 
         if (targetFields.isEmpty()) {
-            return createErrorResult("No eligible fields found for toString generation");
+            throw new RuntimeException("No eligible fields found for toString generation");
         }
 
         ICompilationUnit cu = type.getCompilationUnit();

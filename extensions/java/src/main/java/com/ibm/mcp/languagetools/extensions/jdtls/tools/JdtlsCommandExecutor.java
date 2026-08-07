@@ -21,6 +21,7 @@ import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.operation.OperationTracker;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -33,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
 import java.util.function.Function;
 
 /**
@@ -80,18 +82,16 @@ public class JdtlsCommandExecutor {
                 .thenApply(result -> formatResultWithPrefix(result, fileUriPrefix))
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        serverEntry.fail(ex.getMessage());
-                        operationContext.fail(ex.getMessage());
+                        String errorMessage = ToolException.resolveErrorMessage(ex);
+                        serverEntry.fail(errorMessage);
+                        operationContext.fail(errorMessage);
                     } else {
                         serverEntry.complete();
                         operationContext.setResult(result instanceof String ? (String) result : String.valueOf(result));
                         operationContext.complete();
                     }
                 })
-                .exceptionally(ex -> {
-                    LOG.errorf(ex, "Failed to execute command %s", commandId);
-                    return "Error executing " + commandId + ": " + ex.getMessage();
-                });
+                .exceptionally(ToolException::rethrow);
     }
 
     @SuppressWarnings("unchecked")
@@ -264,18 +264,16 @@ public class JdtlsCommandExecutor {
                 })
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        serverEntry.fail(ex.getMessage());
-                        operationContext.fail(ex.getMessage());
+                        String errorMessage = ToolException.resolveErrorMessage(ex);
+                        serverEntry.fail(errorMessage);
+                        operationContext.fail(errorMessage);
                     } else {
                         serverEntry.complete();
                         operationContext.setResult(result instanceof String ? (String) result : String.valueOf(result));
                         operationContext.complete();
                     }
                 })
-                .exceptionally(ex -> {
-                    LOG.errorf(ex, "Failed to execute batch command %s", commandId);
-                    return "Error executing " + commandId + ": " + ex.getMessage();
-                });
+                .exceptionally(ToolException::rethrow);
     }
 
     String formatResult(Object result, String cwd) {

@@ -50,23 +50,20 @@ public class InlineVariableHandler extends AbstractLTKRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         CompilationUnit ast = parseAST(cu, monitor);
 
         ASTNode node = NodeFinder.perform(ast, offset, 0);
         if (node == null) {
-            return createErrorResult("No node found at position");
+            throw new RuntimeException("No node found at position");
         }
 
         VariableDeclaration varDecl = null;
@@ -78,7 +75,7 @@ public class InlineVariableHandler extends AbstractLTKRefactoringHandler {
         }
         if (varDecl == null) {
             // Try to resolve via codeSelect
-            return createErrorResult("No local variable declaration found at position. Place cursor on the variable name in its declaration.");
+            throw new RuntimeException("No local variable declaration found at position. Place cursor on the variable name in its declaration.");
         }
 
         InlineTempRefactoring refactoring = new InlineTempRefactoring(varDecl);

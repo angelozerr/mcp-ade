@@ -59,16 +59,13 @@ public class ConvertAnonymousToLambdaHandler extends AbstractRefactoringHandler 
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         String source = cu.getSource();
         int offset = JdtUtils.getOffset(cu, line, character);
@@ -76,12 +73,12 @@ public class ConvertAnonymousToLambdaHandler extends AbstractRefactoringHandler 
 
         ClassInstanceCreation creation = findClassInstanceCreation(ast, offset);
         if (creation == null) {
-            return createErrorResult("No anonymous class instance creation found at position");
+            throw new RuntimeException("No anonymous class instance creation found at position");
         }
 
         AnonymousClassDeclaration anonymousDecl = creation.getAnonymousClassDeclaration();
         if (anonymousDecl == null) {
-            return createErrorResult("No anonymous class declaration found");
+            throw new RuntimeException("No anonymous class declaration found");
         }
 
         @SuppressWarnings("unchecked")
@@ -97,11 +94,11 @@ public class ConvertAnonymousToLambdaHandler extends AbstractRefactoringHandler 
         }
 
         if (methodCount != 1) {
-            return createErrorResult("Anonymous class must have exactly one method to convert to lambda");
+            throw new RuntimeException("Anonymous class must have exactly one method to convert to lambda");
         }
 
         if (singleMethod == null) {
-            return createErrorResult("No method found in anonymous class");
+            throw new RuntimeException("No method found in anonymous class");
         }
 
         StringBuilder lambda = new StringBuilder();
@@ -128,7 +125,7 @@ public class ConvertAnonymousToLambdaHandler extends AbstractRefactoringHandler 
 
         Block body = singleMethod.getBody();
         if (body == null) {
-            return createErrorResult("Method has no body");
+            throw new RuntimeException("Method has no body");
         }
 
         @SuppressWarnings("unchecked")

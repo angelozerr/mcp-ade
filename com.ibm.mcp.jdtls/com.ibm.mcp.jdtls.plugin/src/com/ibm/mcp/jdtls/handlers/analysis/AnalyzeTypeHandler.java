@@ -66,7 +66,7 @@ public class AnalyzeTypeHandler implements ICommandHandler {
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         IType type = JdtUtils.resolveType(arguments, monitor);
         if (type == null || !type.exists()) {
-            return Map.of("error", "Type not found");
+            throw new RuntimeException("Type not found");
         }
 
         // Type hierarchy

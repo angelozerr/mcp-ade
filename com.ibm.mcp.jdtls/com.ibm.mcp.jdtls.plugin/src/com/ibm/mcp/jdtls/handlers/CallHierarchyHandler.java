@@ -70,7 +70,7 @@ public class CallHierarchyHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty()) {
-            return Map.of("error", "Missing arguments");
+            throw new RuntimeException("Missing arguments");
         }
 
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
@@ -78,10 +78,7 @@ public class CallHierarchyHandler implements ICommandHandler {
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return Map.of("error", "Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
@@ -95,7 +92,7 @@ public class CallHierarchyHandler implements ICommandHandler {
         }
 
         if (method == null) {
-            return Map.of("error", "No method found at position");
+            throw new RuntimeException("No method found at position");
         }
 
         if (incoming) {

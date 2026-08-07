@@ -71,10 +71,7 @@ public class GetDependencyGraphHandler implements ICommandHandler {
         boolean[] truncated = {false};
 
         if (uri != null) {
-            ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-            if (cu == null) {
-                return Map.of("error", "Compilation unit not found: " + uri);
-            }
+            ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
             collectDependencies(cu, nodes, edges, edgeKeys, edgeLimit, truncated);
         } else {
             IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();

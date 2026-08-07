@@ -24,6 +24,7 @@ import com.ibm.mcp.languagetools.progress.ProgressContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressMonitorManager;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -32,6 +33,7 @@ import org.jboss.logging.Logger;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
 
 /**
  * Generic executor for LSP requests.
@@ -93,9 +95,7 @@ public class LspRequestExecutor {
         return strategy.resolveServers(serverResolver, params, installMonitor, operationContext)
                 .thenCompose(servers -> {
                     if (servers.isEmpty()) {
-                        return CompletableFuture.completedFuture(
-                                strategy.formatNoServerFound(params)
-                        );
+                        throw new ToolException(strategy.formatNoServerFound(params));
                     }
 
                     // Build server names for progress messages
@@ -135,12 +135,7 @@ public class LspRequestExecutor {
                                         parentEntry.complete();
                                         return result;
                                     })
-                                    .exceptionally(ex -> {
-                                        LOG.warnf("Failed to execute %s on server %s: %s",
-                                                strategy.getCapability(), serverId, ex.getMessage());
-                                        parentEntry.fail(ex.getMessage());
-                                        return strategy.getEmptyResult();
-                                    });
+                                    .exceptionally(ToolException::rethrow);
                             })
                             .toList();
 
@@ -161,15 +156,12 @@ public class LspRequestExecutor {
                 }).whenComplete((result, ex) -> {
                     progressMonitor.setComplete();
                     if (ex != null) {
-                        operationContext.fail(ex.getMessage());
+                        operationContext.fail(ToolException.resolveErrorMessage(ex));
                     } else {
                         operationContext.setResult(result);
                         operationContext.complete();
                     }
-                }).exceptionally(ex -> {
-                    LOG.error("Failed to execute LSP request", ex);
-                    return strategy.formatError(params, ex);
-                });
+                }).exceptionally(ToolException::rethrow);
     }
 
     /**

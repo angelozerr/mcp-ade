@@ -44,7 +44,7 @@ public class GenerateEqualsHashCodeHandler extends AbstractRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -54,7 +54,7 @@ public class GenerateEqualsHashCodeHandler extends AbstractRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         IField[] allFields = type.getFields();
@@ -70,7 +70,7 @@ public class GenerateEqualsHashCodeHandler extends AbstractRefactoringHandler {
         }
 
         if (targetFields.isEmpty()) {
-            return createErrorResult("No eligible fields found for equals/hashCode generation");
+            throw new RuntimeException("No eligible fields found for equals/hashCode generation");
         }
 
         ICompilationUnit cu = type.getCompilationUnit();

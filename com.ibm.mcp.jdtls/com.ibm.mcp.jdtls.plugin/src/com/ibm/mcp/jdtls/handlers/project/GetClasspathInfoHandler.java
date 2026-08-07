@@ -45,7 +45,7 @@ public class GetClasspathInfoHandler implements ICommandHandler {
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         IJavaProject javaProject = findFirstJavaProject();
         if (javaProject == null) {
-            return Map.of("error", "No Java project found in workspace");
+            throw new RuntimeException("No Java project found in workspace");
         }
 
         List<Map<String, Object>> entries = new ArrayList<>();

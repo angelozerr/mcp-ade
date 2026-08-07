@@ -46,7 +46,7 @@ public class ExtractConstantHandler extends AbstractLTKRefactoringHandler {
         String constantName = (String) params.get("constantName");
 
         if (uri == null || constantName == null || constantName.isEmpty()) {
-            return createErrorResult("Missing required arguments: uri and constantName");
+            throw new RuntimeException("Missing required arguments: uri and constantName");
         }
 
         int startLine = ((Number) params.get("startLine")).intValue();
@@ -54,10 +54,7 @@ public class ExtractConstantHandler extends AbstractLTKRefactoringHandler {
         int endLine = ((Number) params.get("endLine")).intValue();
         int endCharacter = ((Number) params.get("endCharacter")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         String source = cu.getSource();
         int selStart = getOffset(source, startLine, startCharacter);
@@ -65,14 +62,14 @@ public class ExtractConstantHandler extends AbstractLTKRefactoringHandler {
         int selLength = selEnd - selStart;
 
         if (selLength <= 0) {
-            return createErrorResult("Invalid selection range");
+            throw new RuntimeException("Invalid selection range");
         }
 
         CompilationUnit ast = parseAST(cu, monitor);
 
         ASTNode covering = NodeFinder.perform(ast, selStart, selLength);
         if (covering == null) {
-            return createErrorResult("No AST node found at the specified selection range. Check that the line/character positions are correct.");
+            throw new RuntimeException("No AST node found at the specified selection range. Check that the line/character positions are correct.");
         }
         if (covering instanceof Expression) {
             selStart = covering.getStartPosition();

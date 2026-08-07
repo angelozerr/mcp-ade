@@ -48,16 +48,13 @@ public class EncapsulateFieldHandler extends AbstractLTKRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
@@ -71,7 +68,7 @@ public class EncapsulateFieldHandler extends AbstractLTKRefactoringHandler {
         }
 
         if (field == null) {
-            return createErrorResult("No field found at position");
+            throw new RuntimeException("No field found at position");
         }
 
         SelfEncapsulateFieldRefactoring refactoring = new SelfEncapsulateFieldRefactoring(field);

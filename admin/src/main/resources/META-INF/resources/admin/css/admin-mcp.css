@@ -539,6 +539,10 @@
     overflow-y: auto;
 }
 
+.activity-error-content {
+    color: var(--color-error);
+}
+
 .activity-arg-field {
     display: flex;
     align-items: baseline;

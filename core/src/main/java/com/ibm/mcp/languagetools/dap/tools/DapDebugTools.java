@@ -27,6 +27,7 @@ import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressMonitorManager;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.tools.ToolArgDescriptions;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.utils.MapUtils;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
@@ -100,9 +101,12 @@ public class DapDebugTools {
             operationContext.setResult(String.valueOf(result));
             operationContext.complete();
             return result;
-        } catch (Exception e) {
+        } catch (ToolException e) {
             operationContext.fail(e.getMessage());
             throw e;
+        } catch (Exception e) {
+            operationContext.fail(e.getMessage());
+            throw new ToolException(e.getMessage(), e);
         }
     }
 
@@ -359,6 +363,20 @@ public class DapDebugTools {
             @ToolArg(description = "Debug mode: true=debug with breakpoints, false=run without debugging (default)") Boolean debugMode,
             Cancellation cancellation,
             Progress progress) {
+        return startDebugging(debuggerId, cwd, configuration, breakpoints,
+                sessionName, debugMode, cancellation, progress).join();
+    }
+
+    public CompletableFuture<Map<String, Object>> startDebugging(
+            String debuggerId,
+            String cwd,
+            Map<String, Object> configuration,
+            List<Map<String, Object>> breakpoints,
+            String sessionName,
+            Boolean debugMode,
+            Cancellation cancellation,
+            Progress progress) {
+
         OperationContext operationContext = operationTracker.startOperation(
                 OperationTracker.resolveToolName("dap"), "tool", cwd);
         Map<String, Object> args = new LinkedHashMap<>();
@@ -376,39 +394,6 @@ public class DapDebugTools {
         }
         operationContext.setArguments(args);
         OperationEntry serverEntry = operationContext.addEntry(debuggerId, debuggerId);
-
-        try {
-            Map<String, Object> result = startDebugging(debuggerId, cwd, configuration, breakpoints,
-                    sessionName, debugMode, cancellation, progress, serverEntry).join();
-            String createdSessionId = (String) result.get("sessionId");
-            if (createdSessionId != null) {
-                operationContext.setSessionId(createdSessionId);
-                try {
-                    operationContext.setSessionName(
-                            sessionManager.getSession(createdSessionId).getSessionName());
-                } catch (Exception ignored) {
-                }
-            }
-            operationContext.setResult(String.valueOf(result));
-            operationContext.complete();
-            return result;
-        } catch (Exception e) {
-            serverEntry.fail(e.getMessage());
-            operationContext.fail(e.getMessage());
-            throw e;
-        }
-    }
-
-    public CompletableFuture<Map<String, Object>> startDebugging(
-            String debuggerId,
-            String cwd,
-            Map<String, Object> configuration,
-            List<Map<String, Object>> breakpoints,
-            String sessionName,
-            Boolean debugMode,
-            Cancellation cancellation,
-            Progress progress,
-            OperationEntry serverEntry) {
 
         // Create progress monitor (MCP + Admin WebSocket contributors)
         ProgressMonitor progressMonitor = progressMonitorManager.createProgressMonitor(
@@ -510,13 +495,24 @@ public class DapDebugTools {
             return result;
         }).whenComplete((result, ex) -> {
             progressMonitor.setComplete();
-        }).exceptionally(ex -> {
-            Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("sessionId", sessionId);
-            errorResult.put("error", ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
-            return errorResult;
-        });
+            if (ex != null) {
+                String errorMessage = ToolException.resolveErrorMessage(ex);
+                serverEntry.fail(errorMessage);
+                operationContext.fail(errorMessage);
+            } else {
+                String createdSessionId = (String) result.get("sessionId");
+                if (createdSessionId != null) {
+                    operationContext.setSessionId(createdSessionId);
+                    try {
+                        operationContext.setSessionName(
+                                sessionManager.getSession(createdSessionId).getSessionName());
+                    } catch (Exception ignored) {
+                    }
+                }
+                operationContext.setResult(String.valueOf(result));
+                operationContext.complete();
+            }
+        }).exceptionally(ToolException::rethrow);
     }
 
     @Tool(description = "Detach from the debugged process without terminating it.")
@@ -813,10 +809,7 @@ public class DapDebugTools {
             // Get top frame
             StackFrame[] frames = session.getStackTrace().join();
             if (frames.length == 0) {
-                return Map.of(
-                        "success", false,
-                        "message", "No stack frames available"
-                );
+                throw new ToolException("No stack frames available");
             }
 
             int frameId = frames[0].getId();
@@ -831,10 +824,7 @@ public class DapDebugTools {
                     .orElse(scopes.length > 0 ? scopes[0] : null);
 
             if (localsScope == null) {
-                return Map.of(
-                        "success", false,
-                        "message", "No local scope found"
-                );
+                throw new ToolException("No local scope found");
             }
 
             // Get variables from locals scope
@@ -900,12 +890,7 @@ public class DapDebugTools {
             // Get the real configuration templates from the debug adapter config
             var serverConfig = application.getDapServerConfig(debuggerId);
             if (serverConfig == null) {
-                return new DebugTemplatesResult(
-                        debuggerId,
-                        List.of(),
-                        List.of(),
-                        "Unknown debug adapter: " + debuggerId + ". Use list_debug_adapters to see available adapters."
-                );
+                throw new ToolException("Unknown debug adapter: " + debuggerId + ". Use list_debug_adapters to see available adapters.");
             }
 
             var allTemplates = serverConfig.getConfigurationTemplates();

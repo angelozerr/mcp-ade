@@ -83,10 +83,7 @@ public class FindTestsHandler implements ICommandHandler {
 
         if (uri != null) {
             // Single file search
-            ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-            if (cu == null) {
-                return Map.of("error", "Compilation unit not found");
-            }
+            ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
             collectTests(cu, uri, tests);
         } else {
             // Workspace-wide search

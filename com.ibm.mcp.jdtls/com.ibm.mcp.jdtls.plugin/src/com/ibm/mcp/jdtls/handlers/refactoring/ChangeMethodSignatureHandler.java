@@ -52,7 +52,7 @@ public class ChangeMethodSignatureHandler extends AbstractLTKRefactoringHandler 
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -62,10 +62,7 @@ public class ChangeMethodSignatureHandler extends AbstractLTKRefactoringHandler 
         String newReturnType = (String) params.get("newReturnType");
         List<Map<String, String>> newParameters = (List<Map<String, String>>) params.get("newParameters");
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
@@ -79,7 +76,7 @@ public class ChangeMethodSignatureHandler extends AbstractLTKRefactoringHandler 
         }
 
         if (method == null) {
-            return createErrorResult("No method found at position");
+            throw new RuntimeException("No method found at position");
         }
 
         ChangeSignatureProcessor processor = new ChangeSignatureProcessor(method);

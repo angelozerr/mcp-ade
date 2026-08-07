@@ -90,11 +90,15 @@ public final class JdtUtils {
      */
     public static IType resolveTypeAtPosition(String uri, int line, int character, IProgressMonitor monitor)
             throws JavaModelException {
-        IJavaElement element = resolveElementAtPosition(uri, line, character, monitor);
-        if (element instanceof IType type) {
-            return type;
+        ICompilationUnit cu = requireCompilationUnit(uri);
+        int offset = getOffset(cu, line, character);
+        IJavaElement[] elements = cu.codeSelect(offset, 0);
+        for (IJavaElement element : elements) {
+            if (element instanceof IType type) {
+                return type;
+            }
         }
-        if (element != null) {
+        for (IJavaElement element : elements) {
             IType enclosingType = (IType) element.getAncestor(IJavaElement.TYPE);
             if (enclosingType != null) {
                 return enclosingType;
@@ -147,11 +151,7 @@ public final class JdtUtils {
     public static IJavaElement resolveElementAtPosition(String uri, int line, int character,
                                                          IProgressMonitor monitor)
             throws JavaModelException {
-        ICompilationUnit cu = getCompilationUnit(uri);
-        if (cu == null) {
-            return null;
-        }
-
+        ICompilationUnit cu = requireCompilationUnit(uri);
         int offset = getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
         for (IJavaElement element : elements) {
@@ -183,6 +183,17 @@ public final class JdtUtils {
             }
         }
         return null;
+    }
+
+    /**
+     * Get the ICompilationUnit for a file URI, throwing if not found.
+     */
+    public static ICompilationUnit requireCompilationUnit(String uri) {
+        ICompilationUnit cu = getCompilationUnit(uri);
+        if (cu == null) {
+            throw new RuntimeException("Compilation unit not found: " + uri);
+        }
+        return cu;
     }
 
     /**

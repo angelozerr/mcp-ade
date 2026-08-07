@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.lsp.tools.params.FileUriRequestParams;
 import com.ibm.mcp.languagetools.lsp.tools.strategies.DiagnosticsStrategy;
 import com.ibm.mcp.languagetools.tools.ToolArgDescriptions;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
@@ -71,7 +72,7 @@ public class DiagnosticsTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
         try {
             if (cwd == null || cwd.isEmpty()) {
-                return "Error: cwd must be provided";
+                throw new ToolException("cwd must be provided");
             }
 
             URI uri = new File(cwd).toURI();
@@ -84,7 +85,7 @@ public class DiagnosticsTools {
 
             var servers = ws.getLspServers();
             if (servers.isEmpty()) {
-                return "No language servers available in workspace";
+                throw new ToolException("No language servers available in workspace");
             }
 
             boolean foundDiagnostics = false;
@@ -125,7 +126,7 @@ public class DiagnosticsTools {
 
         } catch (Exception e) {
             LOG.error("Failed to get all diagnostics", e);
-            return "Failed to get all diagnostics: " + e.getMessage();
+            throw new ToolException("Failed to get all diagnostics: " + e.getMessage(), e);
         }
     }
 

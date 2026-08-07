@@ -79,11 +79,11 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
             IProgressMonitor monitor) throws CoreException {
         RefactoringStatus initialStatus = refactoring.checkInitialConditions(monitor);
         if (initialStatus.hasFatalError()) {
-            return createErrorResult("Refactoring precondition failed: "
+            throw new RuntimeException("Refactoring precondition failed: "
                     + initialStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
         }
         if (initialStatus.hasError()) {
-            return createErrorResult("Refactoring precondition failed: "
+            throw new RuntimeException("Refactoring precondition failed: "
                     + initialStatus.getMessageMatchingSeverity(RefactoringStatus.ERROR));
         }
 
@@ -91,14 +91,14 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
         try {
             finalStatus = refactoring.checkFinalConditions(monitor);
         } catch (RuntimeException e) {
-            return createErrorResult("Refactoring validation failed: " + getRuntimeExceptionMessage(e));
+            throw new RuntimeException("Refactoring validation failed: " + getRuntimeExceptionMessage(e));
         }
         if (finalStatus.hasFatalError()) {
-            return createErrorResult("Refactoring validation failed: "
+            throw new RuntimeException("Refactoring validation failed: "
                     + finalStatus.getMessageMatchingSeverity(RefactoringStatus.FATAL));
         }
         if (isFinalConditionErrorBlocking() && finalStatus.hasError()) {
-            return createErrorResult("Refactoring validation failed: "
+            throw new RuntimeException("Refactoring validation failed: "
                     + finalStatus.getMessageMatchingSeverity(RefactoringStatus.ERROR));
         }
 
@@ -106,17 +106,17 @@ public abstract class AbstractLTKRefactoringHandler extends AbstractRefactoringH
         try {
             change = refactoring.createChange(monitor);
         } catch (RuntimeException e) {
-            return createErrorResult("Refactoring failed: " + getRuntimeExceptionMessage(e));
+            throw new RuntimeException("Refactoring failed: " + getRuntimeExceptionMessage(e));
         }
         if (change == null) {
-            return createErrorResult("Refactoring produced no changes");
+            throw new RuntimeException("Refactoring produced no changes");
         }
 
         try {
             List<Map<String, Object>> edits = convertChangeToEdits(change);
 
             if (edits.isEmpty()) {
-                return createErrorResult("Refactoring produced no text edits");
+                throw new RuntimeException("Refactoring produced no text edits");
             }
 
             if (apply) {

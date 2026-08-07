@@ -52,20 +52,17 @@ public class IntroduceParameterObjectHandler extends AbstractLTKRefactoringHandl
         List<String> parameterNames = (List<String>) params.get("parameterNames");
 
         if (uri == null || className == null || className.isEmpty()) {
-            return createErrorResult("Missing required arguments: uri and className");
+            throw new RuntimeException("Missing required arguments: uri and className");
         }
 
         if (parameterNames == null || parameterNames.isEmpty()) {
-            return createErrorResult("At least one parameter name must be specified");
+            throw new RuntimeException("At least one parameter name must be specified");
         }
 
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
@@ -79,7 +76,7 @@ public class IntroduceParameterObjectHandler extends AbstractLTKRefactoringHandl
         }
 
         if (method == null) {
-            return createErrorResult("No method found at position");
+            throw new RuntimeException("No method found at position");
         }
 
         IntroduceParameterObjectDescriptor descriptor = new IntroduceParameterObjectDescriptor();

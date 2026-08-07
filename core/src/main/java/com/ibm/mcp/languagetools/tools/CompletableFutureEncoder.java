@@ -18,6 +18,7 @@ import io.quarkiverse.mcp.server.ToolResponseEncoder;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Encoder for CompletableFuture<String> tool responses.
@@ -33,6 +34,11 @@ public class CompletableFutureEncoder implements ToolResponseEncoder<Completable
 
     @Override
     public ToolResponse encode(CompletableFuture value) {
-        return ToolResponse.success(value.join().toString());
+        try {
+            return ToolResponse.success(value.join().toString());
+        } catch (CompletionException ex) {
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            return ToolResponse.error(cause.getMessage());
+        }
     }
 }

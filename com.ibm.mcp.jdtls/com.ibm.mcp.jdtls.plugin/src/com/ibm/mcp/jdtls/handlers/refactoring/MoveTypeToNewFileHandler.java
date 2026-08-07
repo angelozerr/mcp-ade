@@ -46,7 +46,7 @@ public class MoveTypeToNewFileHandler extends AbstractLTKRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -54,12 +54,12 @@ public class MoveTypeToNewFileHandler extends AbstractLTKRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         IType declaringType = type.getDeclaringType();
         if (declaringType == null) {
-            return createErrorResult("Type is already a top-level type - cannot move to new file");
+            throw new RuntimeException("Type is already a top-level type - cannot move to new file");
         }
 
         MoveInnerToTopRefactoring refactoring = new MoveInnerToTopRefactoring(type, null);

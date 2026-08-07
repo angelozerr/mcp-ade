@@ -54,11 +54,11 @@ public class PullUpHandler extends AbstractLTKRefactoringHandler {
         List<String> memberNames = (List<String>) params.get("memberNames");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         if (memberNames == null || memberNames.isEmpty()) {
-            return createErrorResult("At least one member name must be specified");
+            throw new RuntimeException("At least one member name must be specified");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -66,14 +66,14 @@ public class PullUpHandler extends AbstractLTKRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         // Find the superclass
         ITypeHierarchy hierarchy = type.newSupertypeHierarchy(monitor);
         IType superclass = hierarchy.getSuperclass(type);
         if (superclass == null || superclass.getCompilationUnit() == null) {
-            return createErrorResult("Type has no editable superclass (binary or no superclass)");
+            throw new RuntimeException("Type has no editable superclass (binary or no superclass)");
         }
 
         // Collect members to pull up
@@ -94,7 +94,7 @@ public class PullUpHandler extends AbstractLTKRefactoringHandler {
         }
 
         if (membersToMove.isEmpty()) {
-            return createErrorResult("No matching members found to pull up");
+            throw new RuntimeException("No matching members found to pull up");
         }
 
         IMember[] members = membersToMove.toArray(new IMember[0]);

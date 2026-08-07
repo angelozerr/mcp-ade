@@ -59,33 +59,30 @@ public class RenameSymbolHandler extends AbstractLTKRefactoringHandler {
         String newName = (String) params.get("newName");
 
         if (uri == null || newName == null || newName.isEmpty()) {
-            return createErrorResult("Missing required arguments: uri and newName");
+            throw new RuntimeException("Missing required arguments: uri and newName");
         }
 
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
         if (elements == null || elements.length == 0) {
-            return createErrorResult("No element found at position");
+            throw new RuntimeException("No element found at position");
         }
 
         IJavaElement element = elements[0];
         String oldName = element.getElementName();
 
         if (oldName.equals(newName)) {
-            return createErrorResult("New name is the same as the old name");
+            throw new RuntimeException("New name is the same as the old name");
         }
 
         JavaRenameProcessor processor = createRenameProcessor(element);
         if (processor == null) {
-            return createErrorResult("Unsupported element type for rename: " + element.getClass().getSimpleName());
+            throw new RuntimeException("Unsupported element type for rename: " + element.getClass().getSimpleName());
         }
 
         processor.setNewElementName(newName);

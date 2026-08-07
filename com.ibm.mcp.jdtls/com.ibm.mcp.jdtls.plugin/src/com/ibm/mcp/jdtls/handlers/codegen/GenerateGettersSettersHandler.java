@@ -43,7 +43,7 @@ public class GenerateGettersSettersHandler extends AbstractRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -55,7 +55,7 @@ public class GenerateGettersSettersHandler extends AbstractRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         IField[] allFields = type.getFields();
@@ -71,7 +71,7 @@ public class GenerateGettersSettersHandler extends AbstractRefactoringHandler {
         }
 
         if (targetFields.isEmpty()) {
-            return createErrorResult("No eligible fields found for getter/setter generation");
+            throw new RuntimeException("No eligible fields found for getter/setter generation");
         }
 
         StringBuilder code = new StringBuilder();
@@ -104,7 +104,7 @@ public class GenerateGettersSettersHandler extends AbstractRefactoringHandler {
         }
 
         if (code.length() == 0) {
-            return createErrorResult("All getters/setters already exist");
+            throw new RuntimeException("All getters/setters already exist");
         }
 
         ICompilationUnit cu = type.getCompilationUnit();

@@ -47,7 +47,7 @@ public class GetSignatureHelpHandler extends AbstractPositionHandler {
     protected Object handleElements(IJavaElement[] elements, ICompilationUnit cu, int offset,
             IProgressMonitor monitor) throws Exception {
         if (elements.length == 0) {
-            return Map.of("error", "No element found at position");
+            throw new RuntimeException("No element found at position");
         }
 
         IMethod method = null;
@@ -59,7 +59,7 @@ public class GetSignatureHelpHandler extends AbstractPositionHandler {
         }
 
         if (method == null) {
-            return Map.of("error", "No method found at position");
+            throw new RuntimeException("No method found at position");
         }
 
         Map<String, Object> result = new HashMap<>();

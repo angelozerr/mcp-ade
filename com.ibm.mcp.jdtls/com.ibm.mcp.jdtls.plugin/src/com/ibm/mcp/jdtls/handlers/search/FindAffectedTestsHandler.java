@@ -70,7 +70,7 @@ public class FindAffectedTestsHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty()) {
-            return Map.of("error", "Missing arguments");
+            throw new RuntimeException("Missing arguments");
         }
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
         String uri = (String) params.get("uri");
@@ -84,15 +84,12 @@ public class FindAffectedTestsHandler implements ICommandHandler {
         }
         final int limit = maxResults > 0 ? maxResults : 50;
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return Map.of("error", "Compilation unit not found");
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
         if (elements.length == 0) {
-            return Map.of("error", "No element found at position");
+            throw new RuntimeException("No element found at position");
         }
 
         IJavaElement targetElement = elements[0];

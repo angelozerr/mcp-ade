@@ -65,7 +65,7 @@ public class ApplyCleanupHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty()) {
-            return Map.of("error", "Missing arguments");
+            throw new RuntimeException("Missing arguments");
         }
 
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
@@ -73,13 +73,10 @@ public class ApplyCleanupHandler implements ICommandHandler {
         String cleanupId = (String) params.get("cleanupId");
 
         if (cleanupId == null) {
-            return Map.of("error", "Missing cleanupId");
+            throw new RuntimeException("Missing cleanupId");
         }
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return Map.of("error", "Compilation unit not found: " + uri);
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
         parser.setSource(cu);
@@ -111,7 +108,7 @@ public class ApplyCleanupHandler implements ICommandHandler {
                 changesApplied = addFinalModifier(cu, ast, edits, uri, monitor);
                 break;
             default:
-                return Map.of("error", "Unknown cleanupId: " + cleanupId);
+                throw new RuntimeException("Unknown cleanupId: " + cleanupId);
         }
 
         Map<String, Object> result = new HashMap<>();

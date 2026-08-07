@@ -52,17 +52,14 @@ public class FindFieldWritesHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty()) {
-            return Map.of("error", "Missing arguments");
+            throw new RuntimeException("Missing arguments");
         }
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
         String uri = (String) params.get("uri");
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return Map.of("error", "Compilation unit not found");
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
@@ -74,7 +71,7 @@ public class FindFieldWritesHandler implements ICommandHandler {
             }
         }
         if (field == null) {
-            return Map.of("error", "No field found at position");
+            throw new RuntimeException("No field found at position");
         }
 
         SearchPattern pattern = SearchPattern.createPattern(field, IJavaSearchConstants.WRITE_ACCESSES);

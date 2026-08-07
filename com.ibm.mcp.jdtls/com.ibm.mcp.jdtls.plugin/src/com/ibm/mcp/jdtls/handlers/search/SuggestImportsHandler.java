@@ -47,12 +47,12 @@ public class SuggestImportsHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty()) {
-            return Map.of("error", "Missing arguments");
+            throw new RuntimeException("Missing arguments");
         }
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
         String typeName = (String) params.get("typeName");
         if (typeName == null || typeName.isBlank()) {
-            return Map.of("error", "Missing typeName parameter");
+            throw new RuntimeException("Missing typeName parameter");
         }
 
         IJavaSearchScope scope = SearchEngine.createWorkspaceScope();

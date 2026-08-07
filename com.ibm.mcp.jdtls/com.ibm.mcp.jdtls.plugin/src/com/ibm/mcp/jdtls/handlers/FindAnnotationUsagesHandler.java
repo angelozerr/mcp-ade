@@ -51,7 +51,7 @@ public class FindAnnotationUsagesHandler implements ICommandHandler {
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         IType type = JdtUtils.resolveType(arguments, monitor);
         if (type == null || !type.exists()) {
-            return Map.of("error", "Annotation type not found");
+            throw new RuntimeException("Annotation type not found");
         }
 
         int maxResults = 0;

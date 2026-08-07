@@ -50,16 +50,13 @@ public class GenerateDelegateMethodsHandler extends AbstractRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
         int character = ((Number) params.get("character")).intValue();
 
-        ICompilationUnit cu = JdtUtils.getCompilationUnit(uri);
-        if (cu == null) {
-            return createErrorResult("Compilation unit not found");
-        }
+        ICompilationUnit cu = JdtUtils.requireCompilationUnit(uri);
 
         int offset = JdtUtils.getOffset(cu, line, character);
         IJavaElement[] elements = cu.codeSelect(offset, 0);
@@ -73,20 +70,20 @@ public class GenerateDelegateMethodsHandler extends AbstractRefactoringHandler {
         }
 
         if (field == null) {
-            return createErrorResult("No field found at position");
+            throw new RuntimeException("No field found at position");
         }
 
         IType enclosingType = field.getDeclaringType();
         IType fieldType = resolveFieldType(field);
 
         if (fieldType == null) {
-            return createErrorResult("Cannot resolve field type: " + Signature.toString(field.getTypeSignature()));
+            throw new RuntimeException("Cannot resolve field type: " + Signature.toString(field.getTypeSignature()));
         }
 
         List<IMethod> delegateMethods = collectDelegateMethods(fieldType, enclosingType);
 
         if (delegateMethods.isEmpty()) {
-            return createErrorResult("No methods available for delegation (all already exist or type has no public methods)");
+            throw new RuntimeException("No methods available for delegation (all already exist or type has no public methods)");
         }
 
         String fieldName = field.getElementName();

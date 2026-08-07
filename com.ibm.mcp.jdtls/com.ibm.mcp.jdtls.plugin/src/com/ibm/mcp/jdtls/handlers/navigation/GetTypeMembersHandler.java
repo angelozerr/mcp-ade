@@ -52,7 +52,7 @@ public class GetTypeMembersHandler implements ICommandHandler {
     @SuppressWarnings("unchecked")
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty()) {
-            return Map.of("error", "Missing arguments");
+            throw new RuntimeException("Missing arguments");
         }
 
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
@@ -60,7 +60,7 @@ public class GetTypeMembersHandler implements ICommandHandler {
 
         IType type = JdtUtils.resolveType(arguments, monitor);
         if (type == null || !type.exists()) {
-            return Map.of("error", "Type not found");
+            throw new RuntimeException("Type not found");
         }
 
         Map<String, Object> result = new HashMap<>();

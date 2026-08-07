@@ -60,11 +60,11 @@ public class ExtractSuperclassHandler extends AbstractLTKRefactoringHandler {
         List<String> memberNames = (List<String>) params.get("memberNames");
 
         if (uri == null || superclassName == null || superclassName.isEmpty()) {
-            return createErrorResult("Missing required arguments: uri and superclassName");
+            throw new RuntimeException("Missing required arguments: uri and superclassName");
         }
 
         if (memberNames == null || memberNames.isEmpty()) {
-            return createErrorResult("At least one member name must be specified");
+            throw new RuntimeException("At least one member name must be specified");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -72,11 +72,11 @@ public class ExtractSuperclassHandler extends AbstractLTKRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         if (type.getCompilationUnit() == null) {
-            return createErrorResult("Cannot extract superclass: type is from a binary dependency, not a source file");
+            throw new RuntimeException("Cannot extract superclass: type is from a binary dependency, not a source file");
         }
 
         // Collect members to move
@@ -97,7 +97,7 @@ public class ExtractSuperclassHandler extends AbstractLTKRefactoringHandler {
         }
 
         if (membersToMove.isEmpty()) {
-            return createErrorResult("No matching members found to extract");
+            throw new RuntimeException("No matching members found to extract");
         }
 
         IMember[] members = membersToMove.toArray(new IMember[0]);

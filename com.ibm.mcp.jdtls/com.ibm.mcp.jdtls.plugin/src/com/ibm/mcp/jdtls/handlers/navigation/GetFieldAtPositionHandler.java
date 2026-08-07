@@ -48,7 +48,7 @@ public class GetFieldAtPositionHandler extends AbstractPositionHandler {
     protected Object handleElements(IJavaElement[] elements, ICompilationUnit cu, int offset,
             IProgressMonitor monitor) throws Exception {
         if (elements.length == 0) {
-            return Map.of("error", "No element found at position");
+            throw new RuntimeException("No element found at position");
         }
 
         IField field = null;
@@ -60,7 +60,7 @@ public class GetFieldAtPositionHandler extends AbstractPositionHandler {
         }
 
         if (field == null) {
-            return Map.of("error", "Element at position is not a field");
+            throw new RuntimeException("Element at position is not a field");
         }
 
         Map<String, Object> result = new HashMap<>();

@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.tools;
 
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import io.quarkiverse.mcp.server.Root;
 import io.quarkiverse.mcp.server.Roots;
@@ -65,7 +66,7 @@ public class RootsTools {
 
         } catch (Exception e) {
             LOG.error("Failed to list roots", e);
-            return "Failed to list roots: " + e.getMessage();
+            throw new ToolException("Failed to list roots: " + e.getMessage(), e);
         }
     }
 
@@ -114,7 +115,7 @@ public class RootsTools {
 
         } catch (Exception e) {
             LOG.error("Failed to initialize roots", e);
-            return "Failed to initialize roots: " + e.getMessage();
+            throw new ToolException("Failed to initialize roots: " + e.getMessage(), e);
         }
     }
 }

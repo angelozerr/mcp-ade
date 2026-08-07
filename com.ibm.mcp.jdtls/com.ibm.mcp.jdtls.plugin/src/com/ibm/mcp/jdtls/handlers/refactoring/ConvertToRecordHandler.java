@@ -48,7 +48,7 @@ public class ConvertToRecordHandler extends AbstractRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -56,17 +56,17 @@ public class ConvertToRecordHandler extends AbstractRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         String error = checkEligibility(type);
         if (error != null) {
-            return createErrorResult(error);
+            throw new RuntimeException(error);
         }
 
         IField[] fields = getInstanceFields(type);
         if (fields.length == 0) {
-            return createErrorResult("Class has no instance fields to convert to record components");
+            throw new RuntimeException("Class has no instance fields to convert to record components");
         }
 
         ICompilationUnit cu = type.getCompilationUnit();

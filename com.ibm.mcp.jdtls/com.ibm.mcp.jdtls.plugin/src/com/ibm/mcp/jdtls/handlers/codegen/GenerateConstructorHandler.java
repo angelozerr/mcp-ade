@@ -43,7 +43,7 @@ public class GenerateConstructorHandler extends AbstractRefactoringHandler {
         String uri = (String) params.get("uri");
 
         if (uri == null) {
-            return createErrorResult("Missing required argument: uri");
+            throw new RuntimeException("Missing required argument: uri");
         }
 
         int line = ((Number) params.get("line")).intValue();
@@ -54,7 +54,7 @@ public class GenerateConstructorHandler extends AbstractRefactoringHandler {
 
         IType type = JdtUtils.resolveTypeAtPosition(uri, line, character, monitor);
         if (type == null) {
-            return createErrorResult("No type found at position");
+            throw new RuntimeException("No type found at position");
         }
 
         IField[] allFields = type.getFields();
@@ -106,7 +106,7 @@ public class GenerateConstructorHandler extends AbstractRefactoringHandler {
         }
 
         if (code.length() == 0) {
-            return createErrorResult("No constructor to generate (no eligible fields)");
+            throw new RuntimeException("No constructor to generate (no eligible fields)");
         }
 
         int insertOffset = findInsertOffset(type, source);

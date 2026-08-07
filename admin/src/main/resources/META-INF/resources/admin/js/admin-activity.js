@@ -252,7 +252,7 @@ function renderOperation(op, esc) {
     let html = `<div class="activity-operation${statusClass}" data-op-id="${op.id}">`;
     html += `<div class="activity-operation-header" data-action="toggleActivityOperation">`;
     const expanded = expandedOps.has(op.id);
-    const hasBody = hasEntries || op.arguments || op.result;
+    const hasBody = hasEntries || op.arguments || op.result || op.error;
     if (hasBody) {
         html += `<span class="activity-toggle">${expanded ? '&#9660;' : '&#9654;'}</span>`;
     } else {
@@ -288,6 +288,10 @@ function renderOperation(op, esc) {
                 entriesHtml += renderEntry(entry, esc, 1, op.id, maxDuration);
             }
             html += renderSection(op.id, 'steps', 'Steps', entriesHtml, esc);
+        }
+        if (op.error) {
+            const errorHtml = `<pre class="activity-output-content activity-error-content">${esc(op.error)}</pre>`;
+            html += renderSection(op.id, 'error', 'Error', errorHtml, esc);
         }
         if (op.result) {
             const outputHtml = `<pre class="activity-output-content">${esc(op.result)}</pre>`;

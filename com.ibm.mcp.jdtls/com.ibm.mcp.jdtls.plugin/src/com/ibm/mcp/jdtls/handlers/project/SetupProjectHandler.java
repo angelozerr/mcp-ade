@@ -60,7 +60,7 @@ public class SetupProjectHandler implements ICommandHandler {
     @Override
     public Object execute(List<Object> arguments, IProgressMonitor monitor) throws Exception {
         if (arguments == null || arguments.isEmpty() || !(arguments.get(0) instanceof Map)) {
-            return Map.of("error", "Missing required arguments: projectName, projectPath, sourceRoots, classpathJars");
+            throw new RuntimeException("Missing required arguments: projectName, projectPath, sourceRoots, classpathJars");
         }
 
         Map<String, Object> params = (Map<String, Object>) arguments.get(0);
@@ -72,7 +72,7 @@ public class SetupProjectHandler implements ICommandHandler {
         Boolean disableBuilders = (Boolean) params.get("disableBuilders");
 
         if (projectName == null || projectPath == null) {
-            return Map.of("error", "projectName and projectPath are required");
+            throw new RuntimeException("projectName and projectPath are required");
         }
         if (sourceRoots == null) {
             sourceRoots = List.of();
