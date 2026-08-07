@@ -41,14 +41,14 @@ public class JavaCodeSearchTools {
           description = "Find all write accesses to a field")
     public CompletableFuture<String> findFieldWrites(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
+        Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putScope(params, scope, projectName);
         return executor.executeCommand(cwd, JdtlsCommands.FIND_FIELD_WRITES, params, cancellation, progress);
     }
@@ -57,17 +57,17 @@ public class JavaCodeSearchTools {
           description = "Find test methods in a Java file (JUnit 4/5, TestNG)")
     public CompletableFuture<String> findTests(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_TESTS, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_TESTS, resolvedUris,
+                    u -> Map.of("uri", u), cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_TESTS,
-                Map.of("uri", fileUri),
+                Map.of("uri", uri),
                 cancellation, progress);
     }
 
@@ -75,13 +75,13 @@ public class JavaCodeSearchTools {
           description = "Find tests transitively affected by changes to a symbol")
     public CompletableFuture<String> findAffectedTests(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
+        Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putMaxResults(params, maxResults);
         return executor.executeCommand(cwd, JdtlsCommands.FIND_AFFECTED_TESTS, params, cancellation, progress);
     }
@@ -90,17 +90,17 @@ public class JavaCodeSearchTools {
           description = "Find unused code in a Java file (imports, private fields, methods, variables)")
     public CompletableFuture<String> findUnusedCode(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_UNUSED_CODE, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_UNUSED_CODE, resolvedUris,
+                    u -> Map.of("uri", u), cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_UNUSED_CODE,
-                Map.of("uri", fileUri),
+                Map.of("uri", uri),
                 cancellation, progress);
     }
 
@@ -108,17 +108,17 @@ public class JavaCodeSearchTools {
           description = "Find unreachable code in a Java file (dead code after return/throw)")
     public CompletableFuture<String> findUnreachableCode(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_UNREACHABLE_CODE, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_UNREACHABLE_CODE, resolvedUris,
+                    u -> Map.of("uri", u), cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_UNREACHABLE_CODE,
-                Map.of("uri", fileUri),
+                Map.of("uri", uri),
                 cancellation, progress);
     }
 
@@ -163,7 +163,7 @@ public class JavaCodeSearchTools {
                   + "for Java symbol usages -- resolves through type hierarchy and finds all references semantically.")
     public CompletableFuture<String> findReferences(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
@@ -171,7 +171,7 @@ public class JavaCodeSearchTools {
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
+        Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putScope(params, scope, projectName);
         RefactoringHelper.putMaxResults(params, maxResults);
         return executor.executeCommand(cwd, JdtlsCommands.FIND_REFERENCES, params, cancellation, progress);
@@ -179,14 +179,14 @@ public class JavaCodeSearchTools {
 
     @Tool(name = "java_find_implementations",
           description = "Find all implementations of a Java interface, abstract class, or method. "
-                  + "Provide either fullyQualifiedName (for types) or fileUri+line+character "
+                  + "Provide either fullyQualifiedName (for types) or uri+line+character "
                   + "(for types or methods at a cursor position)")
     public CompletableFuture<String> findImplementations(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Fully qualified name of the interface or abstract class",
                      required = false) String fullyQualifiedName,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI,
-                     required = false) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI,
+                     required = false) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE,
                      required = false) Integer line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER,
@@ -194,13 +194,13 @@ public class JavaCodeSearchTools {
             Cancellation cancellation,
             Progress progress) {
         Object params;
-        if (fileUri != null && line != null && character != null) {
-            params = RefactoringHelper.positionParams(fileUri, line, character);
+        if (uri != null && line != null && character != null) {
+            params = RefactoringHelper.positionParams(uri, line, character);
         } else if (fullyQualifiedName != null) {
             params = RefactoringHelper.fqnParams(fullyQualifiedName);
         } else {
             return CompletableFuture.completedFuture(
-                    "Error: provide either fullyQualifiedName or fileUri+line+character");
+                    "Error: provide either fullyQualifiedName or uri+line+character");
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_IMPLEMENTATIONS,
                 params, cancellation, progress);

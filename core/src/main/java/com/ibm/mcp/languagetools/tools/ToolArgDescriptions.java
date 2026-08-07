@@ -26,7 +26,7 @@ public final class ToolArgDescriptions {
     public static final String CWD = "Project root path";
 
     // File URI arguments
-    public static final String FILE_URI = "file:// URI of the source file";
+    public static final String URI = "URI of the source file (e.g. file:// or ssh://)";
 
     // Position arguments
     public static final String POSITION_LINE = "Line number (0-based)";

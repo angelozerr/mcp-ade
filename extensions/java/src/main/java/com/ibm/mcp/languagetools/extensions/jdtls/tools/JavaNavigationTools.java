@@ -42,13 +42,13 @@ public class JavaNavigationTools {
                   + "declarations -- resolves through JARs, generics, and type hierarchy.")
     public CompletableFuture<String> goToDefinition(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GO_TO_DEFINITION,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -58,13 +58,13 @@ public class JavaNavigationTools {
                   + "need to understand what a symbol is.")
     public CompletableFuture<String> getHoverInfo(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_HOVER_INFO,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -72,13 +72,13 @@ public class JavaNavigationTools {
           description = "Get method signature help at a specific position")
     public CompletableFuture<String> getSignatureHelp(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_SIGNATURE_HELP,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -86,13 +86,13 @@ public class JavaNavigationTools {
           description = "Find the method that a Java method overrides or implements")
     public CompletableFuture<String> getSuperMethod(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_SUPER_METHOD,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -100,17 +100,17 @@ public class JavaNavigationTools {
           description = "Get all symbols (types, methods, fields) in a Java file")
     public CompletableFuture<String> getDocumentSymbols(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.GET_DOCUMENT_SYMBOLS, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.GET_DOCUMENT_SYMBOLS, resolvedUris,
+                    u -> Map.of("uri", u), cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.GET_DOCUMENT_SYMBOLS,
-                Map.of("uri", fileUri),
+                Map.of("uri", uri),
                 cancellation, progress);
     }
 }

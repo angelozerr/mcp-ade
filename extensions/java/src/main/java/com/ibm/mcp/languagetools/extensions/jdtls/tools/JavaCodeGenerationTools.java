@@ -39,14 +39,14 @@ public class JavaCodeGenerationTools {
           description = "Generate getter and/or setter methods for fields in a Java class")
     public CompletableFuture<String> generateGettersSetters(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = "Generate only getters (default true)", required = false) Boolean generateGetters,
             @ToolArg(description = "Generate only setters (default true)", required = false) Boolean generateSetters,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> args = RefactoringHelper.positionParams(fileUri, line, character);
+        Map<String, Object> args = RefactoringHelper.positionParams(uri, line, character);
         if (generateGetters != null) {
             args.put("generateGetters", generateGetters);
         }
@@ -60,13 +60,13 @@ public class JavaCodeGenerationTools {
           description = "Generate a constructor for a Java class from its fields")
     public CompletableFuture<String> generateConstructor(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = "Also generate a default no-arg constructor (default false)", required = false) Boolean generateDefault,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> args = RefactoringHelper.positionParams(fileUri, line, character);
+        Map<String, Object> args = RefactoringHelper.positionParams(uri, line, character);
         if (generateDefault != null) {
             args.put("generateDefault", generateDefault);
         }
@@ -77,13 +77,13 @@ public class JavaCodeGenerationTools {
           description = "Generate a toString() method for a Java class")
     public CompletableFuture<String> generateToString(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GENERATE_TO_STRING,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -91,13 +91,13 @@ public class JavaCodeGenerationTools {
           description = "Generate equals() and hashCode() methods for a Java class")
     public CompletableFuture<String> generateEqualsHashCode(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GENERATE_EQUALS_HASHCODE,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -105,13 +105,13 @@ public class JavaCodeGenerationTools {
           description = "Generate delegate methods for a field in a Java class")
     public CompletableFuture<String> generateDelegateMethods(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.GENERATE_DELEGATE_METHODS,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 }

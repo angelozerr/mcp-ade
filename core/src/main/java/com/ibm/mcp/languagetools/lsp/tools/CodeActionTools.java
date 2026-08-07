@@ -41,12 +41,12 @@ public class CodeActionTools {
                         "Example: get_code_actions(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.java', line=10, character=5)")
     public CompletableFuture<String> getCodeActions(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
-        FilePositionRequestParams params = new FilePositionRequestParams(cwd, fileUri, line, character);
+        FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
         return requestExecutor.execute(
                 params,
                 new CodeActionStrategy(languageRegistry),

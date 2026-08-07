@@ -19,6 +19,9 @@ import com.ibm.mcp.languagetools.dap.server.DapConfigurationTemplate;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
+import com.ibm.mcp.languagetools.operation.OperationContext;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
+import com.ibm.mcp.languagetools.operation.OperationTracker;
 import com.ibm.mcp.languagetools.progress.ProgressContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressMonitorManager;
@@ -39,9 +42,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.ibm.mcp.languagetools.tools.CancellationSupport.executeWithCancellation;
@@ -67,6 +72,50 @@ public class DapDebugTools {
     @Inject
     ProgressMonitorManager progressMonitorManager;
 
+    @Inject
+    OperationTracker operationTracker;
+
+    private <T> T tracked(Map<String, Object> args, Supplier<T> action) {
+        String workspaceUri = (String) args.get("cwd");
+        String sessionId = (String) args.get("sessionId");
+        DapSession session = null;
+        if (sessionId != null) {
+            try {
+                session = sessionManager.getSession(sessionId);
+                if (workspaceUri == null) {
+                    workspaceUri = session.getWorkspace().getNormalizedUri();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        OperationContext operationContext = operationTracker.startOperation(
+                OperationTracker.resolveToolName("dap"), "tool", workspaceUri);
+        operationContext.setArguments(args);
+        if (session != null) {
+            operationContext.setSessionId(sessionId);
+            operationContext.setSessionName(session.getSessionName());
+        }
+        try {
+            T result = action.get();
+            operationContext.setResult(String.valueOf(result));
+            operationContext.complete();
+            return result;
+        } catch (Exception e) {
+            operationContext.fail(e.getMessage());
+            throw e;
+        }
+    }
+
+    private static Map<String, Object> buildArgs(Object... keyValues) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            if (keyValues[i + 1] != null) {
+                map.put((String) keyValues[i], keyValues[i + 1]);
+            }
+        }
+        return map;
+    }
+
     // ========== Session Management ==========
 
 
@@ -80,50 +129,52 @@ public class DapDebugTools {
                     "Use the adapter ID with start_debugging.")
     public List<Map<String, Object>> listDebugAdapters(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Optional file URI to filter adapters (e.g., 'file:///path/to/Main.java')") String fileUri) {
-        List<Map<String, Object>> adapters;
-        if (fileUri != null && !fileUri.isEmpty()) {
-            Path basePath = (cwd != null && !cwd.isEmpty()) ? Paths.get(cwd) : null;
-            adapters = sessionManager.listDebugAdaptersForFile(URI.create(fileUri), basePath);
-        } else {
-            adapters = sessionManager.listDebugAdapters();
-        }
+            @ToolArg(description = "Optional file URI to filter adapters (e.g., 'file:///path/to/Main.java')") String uri) {
+        return tracked(buildArgs("cwd", cwd, "uri", uri), () -> {
+            List<Map<String, Object>> adapters;
+            if (uri != null && !uri.isEmpty()) {
+                Path basePath = (cwd != null && !cwd.isEmpty()) ? Paths.get(cwd) : null;
+                adapters = sessionManager.listDebugAdaptersForFile(URI.create(uri), basePath);
+            } else {
+                adapters = sessionManager.listDebugAdapters();
+            }
 
-        ExtensionRegistry extRegistry = application.getExtensionRegistry();
-        for (Map<String, Object> adapter : adapters) {
-            String id = (String) adapter.get("id");
-            DapServerConfig config = application.getDapServerConfig(id);
-            if (config != null) {
-                String extensionId = config.getExtensionId();
-                if (extensionId != null) {
-                    adapter.put("extensionId", extensionId);
-                }
-                boolean enabled = extRegistry.isExtensionEnabled(extensionId != null ? extensionId : id)
-                        && extRegistry.isServerEnabled(id);
-                adapter.put("enabled", enabled);
+            ExtensionRegistry extRegistry = application.getExtensionRegistry();
+            for (Map<String, Object> adapter : adapters) {
+                String id = (String) adapter.get("id");
+                DapServerConfig config = application.getDapServerConfig(id);
+                if (config != null) {
+                    String extensionId = config.getExtensionId();
+                    if (extensionId != null) {
+                        adapter.put("extensionId", extensionId);
+                    }
+                    boolean enabled = extRegistry.isExtensionEnabled(extensionId != null ? extensionId : id)
+                            && extRegistry.isServerEnabled(id);
+                    adapter.put("enabled", enabled);
 
-                if (cwd != null && !cwd.isEmpty()) {
-                    config.addInstallationStatus(adapter);
+                    if (cwd != null && !cwd.isEmpty()) {
+                        config.addInstallationStatus(adapter);
+                    }
                 }
             }
-        }
 
-        return adapters;
+            return adapters;
+        });
     }
 
     @Tool(
             name = "list_debug_sessions",
             description = "List all active debug sessions with their state (CREATED, RUNNING, PAUSED, etc).")
     public List<Map<String, Object>> getListDebugSessions() {
-        return sessionManager.listSessions();
+        return tracked(buildArgs(), () -> sessionManager.listSessions());
     }
 
     @Tool(
             name = "close_debug_session",
             description = "Close and terminate a debug session, stopping the debugged program.")
     public Map<String, Object> closeDebugSessionSynch(String sessionId) {
-        return closeDebugSession(sessionId)
-                .join();
+        return tracked(buildArgs("sessionId", sessionId), () ->
+                closeDebugSession(sessionId).join());
     }
 
     public CompletableFuture<Map<String, Object>> closeDebugSession(String sessionId) {
@@ -140,57 +191,61 @@ public class DapDebugTools {
             String file,
             int line,
             String condition) {
+        return tracked(buildArgs("sessionId", sessionId, "file", file, "line", line, "condition", condition), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            DapSession.BreakpointInfo info = session.setBreakpoint(file, line, condition).join();
 
-        DapSession session = sessionManager.getSession(sessionId);
-        DapSession.BreakpointInfo info = session.setBreakpoint(file, line, condition).join();
-
-        return Map.of(
-                "success", true,
-                "breakpointId", info.breakpointId,
-                "file", info.file,
-                "line", info.line,
-                "verified", info.verified,
-                "message", "Breakpoint set at " + file + ":" + line
-        );
+            return Map.of(
+                    "success", true,
+                    "breakpointId", info.breakpointId,
+                    "file", info.file,
+                    "line", info.line,
+                    "verified", info.verified,
+                    "message", "Breakpoint set at " + file + ":" + line
+            );
+        });
     }
 
     @Tool(description = "Remove a previously set breakpoint by its ID.")
     public Map<String, Object> remove_breakpoint(
             String sessionId,
             String breakpointId) {
+        return tracked(buildArgs("sessionId", sessionId, "breakpointId", breakpointId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            boolean removed = session.removeBreakpoint(breakpointId).join();
 
-        DapSession session = sessionManager.getSession(sessionId);
-        boolean removed = session.removeBreakpoint(breakpointId).join();
-
-        return Map.of(
-                "success", removed,
-                "breakpointId", breakpointId,
-                "message", removed ? "Breakpoint removed" : "Breakpoint not found"
-        );
+            return Map.of(
+                    "success", removed,
+                    "breakpointId", breakpointId,
+                    "message", removed ? "Breakpoint removed" : "Breakpoint not found"
+            );
+        });
     }
 
     @Tool(description = "List all breakpoints currently set in a debug session.")
     public Map<String, Object> list_all_breakpoints(String sessionId) {
-        DapSession session = sessionManager.getSession(sessionId);
-        List<DapSession.BreakpointInfo> breakpoints = session.listBreakpoints();
+        return tracked(buildArgs("sessionId", sessionId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            List<DapSession.BreakpointInfo> breakpoints = session.listBreakpoints();
 
-        List<Map<String, Object>> bpList = breakpoints.stream()
-                .map(bp -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("breakpointId", bp.breakpointId);
-                    map.put("file", bp.file);
-                    map.put("line", bp.line);
-                    map.put("verified", bp.verified);
-                    map.put("condition", bp.condition != null ? bp.condition : "");
-                    return map;
-                })
-                .collect(Collectors.toList());
+            List<Map<String, Object>> bpList = breakpoints.stream()
+                    .map(bp -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("breakpointId", bp.breakpointId);
+                        map.put("file", bp.file);
+                        map.put("line", bp.line);
+                        map.put("verified", bp.verified);
+                        map.put("condition", bp.condition != null ? bp.condition : "");
+                        return map;
+                    })
+                    .collect(Collectors.toList());
 
-        return Map.of(
-                "success", true,
-                "count", bpList.size(),
-                "breakpoints", bpList
-        );
+            return Map.of(
+                    "success", true,
+                    "count", bpList.size(),
+                    "breakpoints", bpList
+            );
+        });
     }
 
     // ========== Instruction Breakpoints ==========
@@ -205,7 +260,9 @@ public class DapDebugTools {
             @ToolArg(description = "Instruction memory reference (e.g., from stack frame's instructionPointerReference)") String instructionReference,
             @ToolArg(description = "Optional byte offset from the instruction reference", required = false) Integer offset,
             @ToolArg(description = "Optional condition expression (e.g., 'x > 10')", required = false) String condition) {
-        return setInstructionBreakpoint(sessionId, instructionReference, offset, condition).join();
+        return tracked(buildArgs("sessionId", sessionId, "instructionReference", instructionReference,
+                "offset", offset, "condition", condition), () ->
+                setInstructionBreakpoint(sessionId, instructionReference, offset, condition).join());
     }
 
     public CompletableFuture<Map<String, Object>> setInstructionBreakpoint(
@@ -232,7 +289,8 @@ public class DapDebugTools {
     public Map<String, Object> removeInstructionBreakpointSync(
             String sessionId,
             String breakpointId) {
-        return removeInstructionBreakpoint(sessionId, breakpointId).join();
+        return tracked(buildArgs("sessionId", sessionId, "breakpointId", breakpointId), () ->
+                removeInstructionBreakpoint(sessionId, breakpointId).join());
     }
 
     public CompletableFuture<Map<String, Object>> removeInstructionBreakpoint(
@@ -250,7 +308,8 @@ public class DapDebugTools {
             name = "list_instruction_breakpoints",
             description = "List all instruction breakpoints currently set in a debug session.")
     public Map<String, Object> listInstructionBreakpointsSync(String sessionId) {
-        return listInstructionBreakpoints(sessionId);
+        return tracked(buildArgs("sessionId", sessionId), () ->
+                listInstructionBreakpoints(sessionId));
     }
 
     public Map<String, Object> listInstructionBreakpoints(String sessionId) {
@@ -300,8 +359,44 @@ public class DapDebugTools {
             @ToolArg(description = "Debug mode: true=debug with breakpoints, false=run without debugging (default)") Boolean debugMode,
             Cancellation cancellation,
             Progress progress) {
-        return startDebugging(debuggerId, cwd, configuration, breakpoints, sessionName, debugMode, cancellation, progress)
-                .join();
+        OperationContext operationContext = operationTracker.startOperation(
+                OperationTracker.resolveToolName("dap"), "tool", cwd);
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("debuggerId", debuggerId);
+        args.put("cwd", cwd);
+        String request = MapUtils.getString(configuration, "request");
+        if (request != null) {
+            args.put("request", request);
+        }
+        if (sessionName != null) {
+            args.put("sessionName", sessionName);
+        }
+        if (debugMode != null) {
+            args.put("debugMode", debugMode);
+        }
+        operationContext.setArguments(args);
+        OperationEntry serverEntry = operationContext.addEntry(debuggerId, debuggerId);
+
+        try {
+            Map<String, Object> result = startDebugging(debuggerId, cwd, configuration, breakpoints,
+                    sessionName, debugMode, cancellation, progress, serverEntry).join();
+            String createdSessionId = (String) result.get("sessionId");
+            if (createdSessionId != null) {
+                operationContext.setSessionId(createdSessionId);
+                try {
+                    operationContext.setSessionName(
+                            sessionManager.getSession(createdSessionId).getSessionName());
+                } catch (Exception ignored) {
+                }
+            }
+            operationContext.setResult(String.valueOf(result));
+            operationContext.complete();
+            return result;
+        } catch (Exception e) {
+            serverEntry.fail(e.getMessage());
+            operationContext.fail(e.getMessage());
+            throw e;
+        }
     }
 
     public CompletableFuture<Map<String, Object>> startDebugging(
@@ -312,7 +407,8 @@ public class DapDebugTools {
             String sessionName,
             Boolean debugMode,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            OperationEntry serverEntry) {
 
         // Create progress monitor (MCP + Admin WebSocket contributors)
         ProgressMonitor progressMonitor = progressMonitorManager.createProgressMonitor(
@@ -366,20 +462,20 @@ public class DapDebugTools {
         // Note: progressMonitor.executeWithCancellation is already called inside trackFuture,
         // so we don't need to wrap again here (would create double wrapping)
         return breakpointsFuture.thenCompose(v -> {
-            String request = MapUtils.getString(configuration, "request");
+            String requestType = MapUtils.getString(configuration, "request");
 
-            if ("attach".equals(request)) {
+            if ("attach".equals(requestType)) {
                 // Attach mode
                 Integer processId = MapUtils.getInteger(configuration, "processId");
                 if (processId != null) {
                     return session.attach(processId, progressMonitor);
                 } else {
                     // Attach via port/host
-                    return session.launch(configuration, actualDebugMode, DapSession.SessionActor.AI_AGENT, progressMonitor);
+                    return session.launch(configuration, actualDebugMode, DapSession.SessionActor.AI_AGENT, progressMonitor, serverEntry);
                 }
             } else {
                 // Launch mode (default)
-                return session.launch(configuration, actualDebugMode, DapSession.SessionActor.AI_AGENT, progressMonitor);
+                return session.launch(configuration, actualDebugMode, DapSession.SessionActor.AI_AGENT, progressMonitor, serverEntry);
             }
         }).thenApply(result -> {
             // Add sessionId to result
@@ -425,27 +521,30 @@ public class DapDebugTools {
 
     @Tool(description = "Detach from the debugged process without terminating it.")
     public Map<String, Object> detach_from_process(String sessionId) {
-        // For now, just close the session
-        // TODO: implement proper detach that leaves process running
-        return closeDebugSessionSynch(sessionId);
+        return tracked(buildArgs("sessionId", sessionId), () ->
+                closeDebugSession(sessionId).join());
     }
 
     // ========== Execution Control ==========
 
     @Tool(description = "Continue program execution after hitting a breakpoint or pause. Returns console output (stdout/stderr) accumulated during execution.")
     public Map<String, Object> continue_execution(String sessionId) {
-        DapSession session = sessionManager.getSession(sessionId);
-        return session.continueExecution().join();
+        return tracked(buildArgs("sessionId", sessionId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            return session.continueExecution().join();
+        });
     }
 
     @Tool(description = "Pause the running program at the current line.")
     public Map<String, Object> pause_execution(String sessionId) {
-        DapSession session = sessionManager.getSession(sessionId);
-        session.pause().join();
-        return Map.of(
-                "success", true,
-                "message", "Execution paused"
-        );
+        return tracked(buildArgs("sessionId", sessionId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            session.pause().join();
+            return Map.of(
+                    "success", true,
+                    "message", "Execution paused"
+            );
+        });
     }
 
     @Tool(
@@ -456,7 +555,8 @@ public class DapDebugTools {
     public Map<String, Object> stepOverSync(
             String sessionId,
             @ToolArg(description = "Optional stepping granularity: 'statement' (default), 'line', or 'instruction'", required = false) String granularity) {
-        return stepOver(sessionId, granularity).join();
+        return tracked(buildArgs("sessionId", sessionId, "granularity", granularity), () ->
+                stepOver(sessionId, granularity).join());
     }
 
     public CompletableFuture<Map<String, Object>> stepOver(String sessionId, String granularity) {
@@ -471,7 +571,8 @@ public class DapDebugTools {
     public Map<String, Object> stepInSync(
             String sessionId,
             @ToolArg(description = "Optional stepping granularity: 'statement' (default), 'line', or 'instruction'", required = false) String granularity) {
-        return stepIn(sessionId, granularity).join();
+        return tracked(buildArgs("sessionId", sessionId, "granularity", granularity), () ->
+                stepIn(sessionId, granularity).join());
     }
 
     public CompletableFuture<Map<String, Object>> stepIn(String sessionId, String granularity) {
@@ -486,7 +587,8 @@ public class DapDebugTools {
     public Map<String, Object> stepOutSync(
             String sessionId,
             @ToolArg(description = "Optional stepping granularity: 'statement' (default), 'line', or 'instruction'", required = false) String granularity) {
-        return stepOut(sessionId, granularity).join();
+        return tracked(buildArgs("sessionId", sessionId, "granularity", granularity), () ->
+                stepOut(sessionId, granularity).join());
     }
 
     public CompletableFuture<Map<String, Object>> stepOut(String sessionId, String granularity) {
@@ -510,30 +612,32 @@ public class DapDebugTools {
 
     @Tool(description = "Get the current call stack (stack trace) showing function calls and line numbers.", structuredContent = true)
     public Map<String, Object> get_stack_trace(String sessionId) {
-        DapSession session = sessionManager.getSession(sessionId);
-        StackFrame[] frames = session.getStackTrace().join();
+        return tracked(buildArgs("sessionId", sessionId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            StackFrame[] frames = session.getStackTrace().join();
 
-        List<Map<String, Object>> framesList = Arrays.stream(frames)
-                .map(frame -> {
-                    Map<String, Object> frameMap = new HashMap<>();
-                    frameMap.put("id", frame.getId());
-                    frameMap.put("name", frame.getName());
-                    frameMap.put("line", frame.getLine());
-                    frameMap.put("column", frame.getColumn());
-                    if (frame.getSource() != null) {
-                        frameMap.put("file", frame.getSource().getPath());
-                    }
-                    if (frame.getInstructionPointerReference() != null) {
-                        frameMap.put("instructionPointerReference", frame.getInstructionPointerReference());
-                    }
-                    return frameMap;
-                })
-                .collect(Collectors.toList());
+            List<Map<String, Object>> framesList = Arrays.stream(frames)
+                    .map(frame -> {
+                        Map<String, Object> frameMap = new HashMap<>();
+                        frameMap.put("id", frame.getId());
+                        frameMap.put("name", frame.getName());
+                        frameMap.put("line", frame.getLine());
+                        frameMap.put("column", frame.getColumn());
+                        if (frame.getSource() != null) {
+                            frameMap.put("file", frame.getSource().getPath());
+                        }
+                        if (frame.getInstructionPointerReference() != null) {
+                            frameMap.put("instructionPointerReference", frame.getInstructionPointerReference());
+                        }
+                        return frameMap;
+                    })
+                    .collect(Collectors.toList());
 
-        return Map.of(
-                "success", true,
-                "frames", framesList
-        );
+            return Map.of(
+                    "success", true,
+                    "frames", framesList
+            );
+        });
     }
 
     // ========== Disassembly ==========
@@ -551,7 +655,9 @@ public class DapDebugTools {
             @ToolArg(description = "Optional byte offset from the memory reference", required = false) Integer offset,
             @ToolArg(description = "Optional offset in instructions (negative=before, positive=after)", required = false) Integer instructionOffset,
             @ToolArg(description = "Number of instructions to disassemble (default: 50)", required = false) Integer instructionCount) {
-        return disassemble(sessionId, memoryReference, offset, instructionOffset, instructionCount).join();
+        return tracked(buildArgs("sessionId", sessionId, "memoryReference", memoryReference,
+                "offset", offset, "instructionOffset", instructionOffset, "instructionCount", instructionCount), () ->
+                disassemble(sessionId, memoryReference, offset, instructionOffset, instructionCount).join());
     }
 
     public CompletableFuture<Map<String, Object>> disassemble(
@@ -597,68 +703,73 @@ public class DapDebugTools {
 
     @Tool(description = "Get the console output (stdout/stderr/console.log) from the debugged program. Use this to see what the program has printed or logged. Very useful to understand program behavior without re-running. Returns up to 200 recent lines.")
     public Map<String, Object> get_console_output(String sessionId) {
-        DapSession session = sessionManager.getSession(sessionId);
+        return tracked(buildArgs("sessionId", sessionId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
 
-        String output = session.getProgramOutput().getAllWithCategories();
-        int lineCount = session.getProgramOutput().getLineCount();
+            String output = session.getProgramOutput().getAllWithCategories();
+            int lineCount = session.getProgramOutput().getLineCount();
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
 
-        if (lineCount > 0) {
-            result.put("output", output);
-            result.put("lines", lineCount);
-        } else {
-            result.put("output", "");
-            result.put("lines", 0);
-            result.put("message", "No console output yet");
-        }
+            if (lineCount > 0) {
+                result.put("output", output);
+                result.put("lines", lineCount);
+            } else {
+                result.put("output", "");
+                result.put("lines", 0);
+                result.put("message", "No console output yet");
+            }
 
-        return result;
+            return result;
+        });
     }
 
     @Tool(description = "List all threads in the debugged program.", structuredContent = true)
     public Map<String, Object> list_threads(String sessionId) {
-        DapSession session = sessionManager.getSession(sessionId);
-        Thread[] threads = session.getThreads().join();
+        return tracked(buildArgs("sessionId", sessionId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            Thread[] threads = session.getThreads().join();
 
-        List<Map<String, Object>> threadsList = Arrays.stream(threads)
-                .map(thread -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("id", thread.getId());
-                    map.put("name", thread.getName());
-                    return map;
-                })
-                .collect(Collectors.toList());
+            List<Map<String, Object>> threadsList = Arrays.stream(threads)
+                    .map(thread -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", thread.getId());
+                        map.put("name", thread.getName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
 
-        return Map.of(
-                "success", true,
-                "threads", threadsList
-        );
+            return Map.of(
+                    "success", true,
+                    "threads", threadsList
+            );
+        });
     }
 
     @Tool(description = "Get variable scopes (Locals, Globals, etc.) for a specific stack frame.", structuredContent = true)
     public Map<String, Object> get_scopes(
             String sessionId,
             int frameId) {
+        return tracked(buildArgs("sessionId", sessionId, "frameId", frameId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
+            Scope[] scopes = session.getScopes(frameId).join();
 
-        DapSession session = sessionManager.getSession(sessionId);
-        Scope[] scopes = session.getScopes(frameId).join();
+            List<Map<String, Object>> scopesList = Arrays.stream(scopes)
+                    .map(scope -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("name", scope.getName());
+                        map.put("variablesReference", scope.getVariablesReference());
+                        map.put("expensive", scope.isExpensive());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
 
-        List<Map<String, Object>> scopesList = Arrays.stream(scopes)
-                .map(scope -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("name", scope.getName());
-                    map.put("variablesReference", scope.getVariablesReference());
-                    map.put("expensive", scope.isExpensive());
-                    return map;
-                })
-                .collect(Collectors.toList());
-
-        return Map.of(
-                "success", true,
-                "scopes", scopesList
-        );
+            return Map.of(
+                    "success", true,
+                    "scopes", scopesList
+            );
+        });
     }
 
     @Tool(description = "Get variables from a scope or expandable variable. " +
@@ -667,7 +778,11 @@ public class DapDebugTools {
     public Map<String, Object> get_variables(
             String sessionId,
             int variablesReference) {
+        return tracked(buildArgs("sessionId", sessionId, "variablesReference", variablesReference), () ->
+                fetchVariables(sessionId, variablesReference));
+    }
 
+    private Map<String, Object> fetchVariables(String sessionId, int variablesReference) {
         DapSession session = sessionManager.getSession(sessionId);
         Variable[] variables = session.getVariables(variablesReference).join();
 
@@ -692,37 +807,39 @@ public class DapDebugTools {
 
     @Tool(description = "Shortcut to get local variables in the current stack frame (top of stack).", structuredContent = true)
     public Map<String, Object> get_local_variables(String sessionId) {
-        DapSession session = sessionManager.getSession(sessionId);
+        return tracked(buildArgs("sessionId", sessionId), () -> {
+            DapSession session = sessionManager.getSession(sessionId);
 
-        // Get top frame
-        StackFrame[] frames = session.getStackTrace().join();
-        if (frames.length == 0) {
-            return Map.of(
-                    "success", false,
-                    "message", "No stack frames available"
-            );
-        }
+            // Get top frame
+            StackFrame[] frames = session.getStackTrace().join();
+            if (frames.length == 0) {
+                return Map.of(
+                        "success", false,
+                        "message", "No stack frames available"
+                );
+            }
 
-        int frameId = frames[0].getId();
+            int frameId = frames[0].getId();
 
-        // Get scopes for top frame
-        Scope[] scopes = session.getScopes(frameId).join();
+            // Get scopes for top frame
+            Scope[] scopes = session.getScopes(frameId).join();
 
-        // Find "Locals" scope
-        Scope localsScope = Arrays.stream(scopes)
-                .filter(s -> "Locals".equalsIgnoreCase(s.getName()))
-                .findFirst()
-                .orElse(scopes.length > 0 ? scopes[0] : null);
+            // Find "Locals" scope
+            Scope localsScope = Arrays.stream(scopes)
+                    .filter(s -> "Locals".equalsIgnoreCase(s.getName()))
+                    .findFirst()
+                    .orElse(scopes.length > 0 ? scopes[0] : null);
 
-        if (localsScope == null) {
-            return Map.of(
-                    "success", false,
-                    "message", "No local scope found"
-            );
-        }
+            if (localsScope == null) {
+                return Map.of(
+                        "success", false,
+                        "message", "No local scope found"
+                );
+            }
 
-        // Get variables from locals scope
-        return get_variables(sessionId, localsScope.getVariablesReference());
+            // Get variables from locals scope
+            return fetchVariables(sessionId, localsScope.getVariablesReference());
+        });
     }
 
     @Tool(
@@ -734,8 +851,8 @@ public class DapDebugTools {
             String expression,
             Integer frameId,
             Cancellation cancellation) {
-        return evaluateExpression(sessionId, expression, frameId, cancellation)
-                .join();
+        return tracked(buildArgs("sessionId", sessionId, "expression", expression, "frameId", frameId), () ->
+                evaluateExpression(sessionId, expression, frameId, cancellation).join());
     }
 
     public CompletableFuture<EvaluateResponse> evaluateExpression(
@@ -765,7 +882,7 @@ public class DapDebugTools {
 
     @Tool(description = "Get statistics about active debug sessions (total count, states, supported languages).")
     public Map<String, Object> get_debug_statistics() {
-        return sessionManager.getStatistics();
+        return tracked(buildArgs(), () -> sessionManager.getStatistics());
     }
 
     // ========== Configuration Helpers ==========
@@ -779,30 +896,31 @@ public class DapDebugTools {
     )
     public DebugTemplatesResult getDebugTemplates(
             @ToolArg(description = "ID of the debug adapter (e.g., 'java-debug', 'vscode-js-debug')") String debuggerId) {
+        return tracked(buildArgs("debuggerId", debuggerId), () -> {
+            // Get the real configuration templates from the debug adapter config
+            var serverConfig = application.getDapServerConfig(debuggerId);
+            if (serverConfig == null) {
+                return new DebugTemplatesResult(
+                        debuggerId,
+                        List.of(),
+                        List.of(),
+                        "Unknown debug adapter: " + debuggerId + ". Use list_debug_adapters to see available adapters."
+                );
+            }
 
-        // Get the real configuration templates from the debug adapter config
-        var serverConfig = application.getDapServerConfig(debuggerId);
-        if (serverConfig == null) {
-            return new DebugTemplatesResult(
-                    debuggerId,
-                    List.of(),
-                    List.of(),
-                    "Unknown debug adapter: " + debuggerId + ". Use list_debug_adapters to see available adapters."
-            );
-        }
+            var allTemplates = serverConfig.getConfigurationTemplates();
 
-        var allTemplates = serverConfig.getConfigurationTemplates();
+            // Group templates by type (launch vs attach)
+            var launchTemplates = allTemplates.stream()
+                    .filter(t -> t.name.startsWith("launch."))
+                    .toList();
 
-        // Group templates by type (launch vs attach)
-        var launchTemplates = allTemplates.stream()
-                .filter(t -> t.name.startsWith("launch."))
-                .toList();
+            var attachTemplates = allTemplates.stream()
+                    .filter(t -> t.name.startsWith("attach."))
+                    .toList();
 
-        var attachTemplates = allTemplates.stream()
-                .filter(t -> t.name.startsWith("attach."))
-                .toList();
-
-        return new DebugTemplatesResult(debuggerId, launchTemplates, attachTemplates, null);
+            return new DebugTemplatesResult(debuggerId, launchTemplates, attachTemplates, null);
+        });
     }
 
     /**

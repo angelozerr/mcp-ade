@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.dap.client.DapEventListener;
 import com.ibm.mcp.languagetools.dap.server.DapServer;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerFactoryRegistry;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerStatus;
@@ -440,12 +441,6 @@ public class DapSession implements DapEventListener {
     }
 
     /**
-     * Launch a program for debugging.
-     *
-     * @param scriptPath Path to the script/program to debug
-     * @param args Additional launch arguments
-     */
-    /**
      * Launch with full launch configuration (from launch.json).
      *
      * @param launchConfig    the launch configuration
@@ -456,6 +451,14 @@ public class DapSession implements DapEventListener {
                                                          boolean debugMode,
                                                          SessionActor launchedBy,
                                                          ProgressMonitor progressMonitor) {
+        return launch(launchConfig, debugMode, launchedBy, progressMonitor, null);
+    }
+
+    public CompletableFuture<Map<String, Object>> launch(Map<String, Object> launchConfig,
+                                                         boolean debugMode,
+                                                         SessionActor launchedBy,
+                                                         ProgressMonitor progressMonitor,
+                                                         OperationEntry serverEntry) {
         LOG.infof("Launching debug session: %s (debugMode=%s, launchedBy=%s) with config: %s", sessionId, debugMode, launchedBy, launchConfig);
 
         // Store launch configuration for later retrieval
@@ -484,6 +487,8 @@ public class DapSession implements DapEventListener {
             progressMonitor.reportProgress(10.0, "Starting debug adapter");
         }
 
+        OperationEntry installEntry = serverEntry != null ? serverEntry.addChild("installing") : null;
+
         // Restart server if not running (first launch or after crash)
         CompletableFuture<Void> initFuture;
         var serverStatus = dapServer.getStatus();
@@ -506,7 +511,19 @@ public class DapSession implements DapEventListener {
             initFuture = CompletableFuture.completedFuture(null);
         }
 
-        return trackFuture(initFuture.thenCompose(v -> {
+        return trackFuture(initFuture
+                .whenComplete((v, initEx) -> {
+                    if (installEntry != null) {
+                        if (initEx != null) {
+                            installEntry.fail(initEx.getMessage());
+                        } else {
+                            installEntry.complete();
+                        }
+                    }
+                })
+                .thenCompose(v -> {
+            OperationEntry launchEntry = serverEntry != null
+                    ? serverEntry.addChild(attachMode ? "attaching" : "launching") : null;
             // Verify server is actually running
             if (dapServer.getStatus() != ServerStatus.RUNNING) {
                 return CompletableFuture.failedFuture(new IllegalStateException(
@@ -556,6 +573,12 @@ public class DapSession implements DapEventListener {
                                         debugMode ? this::sendAllBreakpoints : null  // Send breakpoints if debug mode
                                 )
                                 .thenApply(result -> {
+                                    if (launchEntry != null) {
+                                        launchEntry.complete();
+                                    }
+                                    if (serverEntry != null) {
+                                        serverEntry.complete();
+                                    }
                                     if (state != SessionState.TERMINATED) {
                                         setState(SessionState.RUNNING);
                                     }
@@ -571,6 +594,12 @@ public class DapSession implements DapEventListener {
                     })
                     .whenComplete((result, ex) -> {
                         if (ex != null) {
+                            if (launchEntry != null) {
+                                launchEntry.fail(ex.getMessage());
+                            }
+                            if (serverEntry != null) {
+                                serverEntry.fail(ex.getMessage());
+                            }
                             if (state == SessionState.LAUNCHING || state == SessionState.ATTACHING) {
                                 Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                                 SessionState failedState = state == SessionState.LAUNCHING

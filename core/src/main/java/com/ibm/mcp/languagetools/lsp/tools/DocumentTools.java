@@ -44,32 +44,32 @@ public class DocumentTools {
             + "Use this when you plan to execute several LSP features on the same file to avoid repeated open/close cycles.")
     public CompletableFuture<String> open_document(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri) {
-        LanguageDocument document = languageRegistry.createDocument(fileUri);
-        String languageId = languageRegistry.detectLanguage(URI.create(fileUri)).orElse("");
+            @ToolArg(description = ToolArgDescriptions.URI) String uri) {
+        LanguageDocument document = languageRegistry.createDocument(uri);
+        String languageId = languageRegistry.detectLanguage(URI.create(uri)).orElse("");
         return serverResolver.getLspServersForFile(
                         document, cwd, LspServer::isEnabled, ProgressMonitor.none())
-                .thenCompose(servers -> waitForReadyAndOpen(servers, fileUri, languageId));
+                .thenCompose(servers -> waitForReadyAndOpen(servers, uri, languageId));
     }
 
     @Tool(description = "Close a document previously opened with open_document. "
             + "Always close documents when you're done with multiple LSP operations on a file.")
     public CompletableFuture<String> close_document(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri) {
-        LanguageDocument document = languageRegistry.createDocument(fileUri);
+            @ToolArg(description = ToolArgDescriptions.URI) String uri) {
+        LanguageDocument document = languageRegistry.createDocument(uri);
         return serverResolver.getLspServersForFile(
                         document, cwd, LspServer::isEnabled, ProgressMonitor.none())
                 .thenApply(servers -> {
                     List<String> closedIn = servers.stream()
-                            .filter(server -> server.isExplicitlyOpened(fileUri))
-                            .peek(server -> server.closeFileExplicitly(fileUri))
+                            .filter(server -> server.isExplicitlyOpened(uri))
+                            .peek(server -> server.closeFileExplicitly(uri))
                             .map(server -> server.getConfig().getName())
                             .toList();
                     if (closedIn.isEmpty()) {
-                        return "Document was not open: " + fileUri;
+                        return "Document was not open: " + uri;
                     }
-                    return String.format("Closed %s in: %s", fileUri, String.join(", ", closedIn));
+                    return String.format("Closed %s in: %s", uri, String.join(", ", closedIn));
                 });
     }
 

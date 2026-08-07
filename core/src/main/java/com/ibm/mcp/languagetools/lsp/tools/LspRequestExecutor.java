@@ -163,6 +163,7 @@ public class LspRequestExecutor {
                     if (ex != null) {
                         operationContext.fail(ex.getMessage());
                     } else {
+                        operationContext.setResult(result);
                         operationContext.complete();
                     }
                 }).exceptionally(ex -> {

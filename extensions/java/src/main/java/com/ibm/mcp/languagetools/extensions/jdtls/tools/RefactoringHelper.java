@@ -25,18 +25,18 @@ final class RefactoringHelper {
     private RefactoringHelper() {
     }
 
-    static Map<String, Object> positionParams(String fileUri, int line, int character) {
+    static Map<String, Object> positionParams(String uri, int line, int character) {
         Map<String, Object> params = new HashMap<>();
-        params.put("uri", fileUri);
+        params.put("uri", uri);
         params.put("line", line);
         params.put("character", character);
         return params;
     }
 
-    static Map<String, Object> rangeParams(String fileUri, int startLine, int startCharacter,
+    static Map<String, Object> rangeParams(String uri, int startLine, int startCharacter,
                                               int endLine, int endCharacter) {
         Map<String, Object> params = new HashMap<>();
-        params.put("uri", fileUri);
+        params.put("uri", uri);
         params.put("startLine", startLine);
         params.put("startCharacter", startCharacter);
         params.put("endLine", endLine);
@@ -56,12 +56,12 @@ final class RefactoringHelper {
         }
     }
 
-    static List<String> resolveFileUris(String fileUri, List<String> fileUris) {
-        if (fileUris != null && !fileUris.isEmpty()) {
-            return fileUris;
+    static List<String> resolveUris(String uri, List<String> uris) {
+        if (uris != null && !uris.isEmpty()) {
+            return uris;
         }
-        if (fileUri != null) {
-            return List.of(fileUri);
+        if (uri != null) {
+            return List.of(uri);
         }
         return List.of();
     }

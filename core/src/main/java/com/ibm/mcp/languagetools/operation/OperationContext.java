@@ -35,6 +35,9 @@ public class OperationContext {
     private volatile String error;
     private final List<OperationEntry> entries;
     private volatile Map<String, Object> arguments;
+    private volatile String result;
+    private volatile String sessionId;
+    private volatile String sessionName;
     private final OperationTracker tracker;
 
     private OperationContext() {
@@ -157,5 +160,32 @@ public class OperationContext {
 
     public Map<String, Object> getArguments() {
         return arguments;
+    }
+
+    public void setResult(String result) {
+        if (tracker == null) return;
+        this.result = result;
+    }
+
+    public String getResult() {
+        return result;
+    }
+
+    public void setSessionId(String sessionId) {
+        if (tracker == null) return;
+        this.sessionId = sessionId;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionName(String sessionName) {
+        if (tracker == null) return;
+        this.sessionName = sessionName;
+    }
+
+    public String getSessionName() {
+        return sessionName;
     }
 }

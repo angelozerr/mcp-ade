@@ -6,11 +6,13 @@ let operations = [];
 const expandedOps = new Set();
 const collapsedServers = new Set();
 const collapsedWorkspaces = new Set();
+const collapsedSessions = new Set();
 let allFolded = false;
-let tickInterval = null;
+let tickHandle = null;
 let mcpToolsMap = null;
 let activityEnabled = false;
 const activeReplays = new Map();
+const toggledSections = new Set();
 
 async function ensureToolsLoaded() {
     if (mcpToolsMap) return;
@@ -32,15 +34,13 @@ function getToolDescription(toolName) {
     return tool ? tool.description : null;
 }
 
-function startTick() {
-    if (tickInterval) return;
-    tickInterval = setInterval(() => {
-        const hasRunning = operations.some(op => op.status === 'RUNNING');
-        if (hasRunning) {
+function scheduleTick() {
+    if (tickHandle) clearTimeout(tickHandle);
+    tickHandle = setTimeout(() => {
+        tickHandle = null;
+        if (operations.some(op => op.status === 'RUNNING')) {
             renderActivity();
-        } else {
-            clearInterval(tickInterval);
-            tickInterval = null;
+            scheduleTick();
         }
     }, 500);
 }
@@ -63,7 +63,7 @@ export function handleOperationUpdate(msg) {
     ensureToolsLoaded().then(() => renderActivity());
 
     if (msg.status === 'RUNNING') {
-        startTick();
+        scheduleTick();
     }
 
     if (msg.status === 'COMPLETED' || msg.status === 'FAILED') {
@@ -106,14 +106,67 @@ export function renderActivity() {
         html += `${esc(wsLabel)} <span class="activity-workspace-count">${ops.length}</span>`;
         html += `</div>`;
         html += `<div class="activity-workspace-body" style="display: ${wsExpanded ? 'block' : 'none'};">`;
-        for (const op of ops.slice().reverse()) {
-            html += renderOperation(op, esc);
+
+        const sessionGroups = {};
+        const noSession = [];
+        for (const op of ops) {
+            if (op.sessionId) {
+                if (!sessionGroups[op.sessionId]) {
+                    sessionGroups[op.sessionId] = { name: op.sessionName || op.sessionId, ops: [] };
+                }
+                sessionGroups[op.sessionId].ops.push(op);
+            } else {
+                noSession.push(op);
+            }
         }
+
+        const renderItems = [];
+        for (const [sid, group] of Object.entries(sessionGroups)) {
+            const latestStart = Math.max(...group.ops.map(o => o.startTime));
+            renderItems.push({ type: 'session', sessionId: sid, sessionName: group.name, ops: group.ops, sortTime: latestStart });
+        }
+        for (const op of noSession) {
+            renderItems.push({ type: 'operation', op, sortTime: op.startTime });
+        }
+        renderItems.sort((a, b) => b.sortTime - a.sortTime);
+
+        for (const item of renderItems) {
+            if (item.type === 'session') {
+                html += renderSessionGroup(item, ws, esc);
+            } else {
+                html += renderOperation(item.op, esc);
+            }
+        }
+
         html += `</div>`;
         html += `</div>`;
     }
 
+    const scrollParent = container.closest('.activity-list') || container;
+    let anchorId = null;
+    let anchorOffset = 0;
+    if (scrollParent.scrollTop > 0) {
+        for (const opEl of container.querySelectorAll('.activity-operation[data-op-id]')) {
+            const rect = opEl.getBoundingClientRect();
+            const parentRect = scrollParent.getBoundingClientRect();
+            if (rect.top >= parentRect.top - 10) {
+                anchorId = opEl.dataset.opId;
+                anchorOffset = rect.top - parentRect.top;
+                break;
+            }
+        }
+    }
+
     container.innerHTML = html;
+
+    if (anchorId) {
+        const anchorEl = container.querySelector(`.activity-operation[data-op-id="${anchorId}"]`);
+        if (anchorEl) {
+            const parentRect = scrollParent.getBoundingClientRect();
+            const drift = (anchorEl.getBoundingClientRect().top - parentRect.top) - anchorOffset;
+            scrollParent.scrollTop += drift;
+        }
+    }
 }
 
 function liveDuration(item) {
@@ -164,6 +217,29 @@ function flattenArgs(obj, parts) {
     }
 }
 
+function renderSessionGroup(session, wsKey, esc) {
+    const sessionKey = `${wsKey}:${session.sessionId}`;
+    const sessionExpanded = allFolded ? false : !collapsedSessions.has(sessionKey);
+    const count = session.ops.length;
+
+    let html = `<div class="activity-session-group">`;
+    html += `<div class="activity-session-header" data-action="toggleSession" data-session-key="${esc(sessionKey)}">`;
+    html += `<span class="activity-toggle">${sessionExpanded ? '&#9660;' : '&#9654;'}</span>`;
+    html += `<span class="activity-session-name">${esc(session.sessionName)}</span>`;
+    html += ` <span class="activity-session-id">(${esc(session.sessionId)})</span>`;
+    html += ` <span class="activity-workspace-count">${count}</span>`;
+    html += `</div>`;
+    html += `<div class="activity-session-body" style="display: ${sessionExpanded ? 'block' : 'none'};">`;
+
+    for (const op of session.ops) {
+        html += renderOperation(op, esc);
+    }
+
+    html += `</div>`;
+    html += `</div>`;
+    return html;
+}
+
 function renderOperation(op, esc) {
     const statusIcon = getStatusIcon(op.status);
     const duration = formatDuration(liveDuration(op));
@@ -172,10 +248,12 @@ function renderOperation(op, esc) {
     const titleAttr = desc ? ` title="${esc(desc)}"` : '';
     const argsSummary = formatArgsSummary(op.arguments);
 
-    let html = `<div class="activity-operation" data-op-id="${op.id}">`;
+    const statusClass = op.status === 'RUNNING' ? ' running' : op.status === 'FAILED' ? ' failed' : ' completed';
+    let html = `<div class="activity-operation${statusClass}" data-op-id="${op.id}">`;
     html += `<div class="activity-operation-header" data-action="toggleActivityOperation">`;
     const expanded = expandedOps.has(op.id);
-    if (hasEntries) {
+    const hasBody = hasEntries || op.arguments || op.result;
+    if (hasBody) {
         html += `<span class="activity-toggle">${expanded ? '&#9660;' : '&#9654;'}</span>`;
     } else {
         html += `<span class="activity-toggle-spacer"></span>`;
@@ -187,6 +265,7 @@ function renderOperation(op, esc) {
         html += ` <span class="activity-operation-args">${esc(argsSummary)}</span>`;
     }
     html += `</span>`;
+    html += `<span class="activity-time">${formatTime(op.startTime)}</span>`;
     html += `<span class="activity-duration">${duration}</span>`;
     if (op.status !== 'RUNNING' && op.arguments) {
         if (activeReplays.has(op.id)) {
@@ -197,10 +276,22 @@ function renderOperation(op, esc) {
     }
     html += `</div>`;
 
-    if (hasEntries) {
-        html += `<div class="activity-entries" style="display: ${expanded ? 'block' : 'none'};">`;
-        for (const entry of op.entries) {
-            html += renderEntry(entry, esc, 1, op.id);
+    if (hasBody) {
+        html += `<div class="activity-operation-body" style="display: ${expanded ? 'block' : 'none'};">`;
+        if (op.arguments) {
+            html += renderSection(op.id, 'input', 'Arguments', renderArgsForm(op, esc), esc);
+        }
+        if (hasEntries) {
+            let entriesHtml = '';
+            const maxDuration = findMaxDuration(op.entries);
+            for (const entry of op.entries) {
+                entriesHtml += renderEntry(entry, esc, 1, op.id, maxDuration);
+            }
+            html += renderSection(op.id, 'steps', 'Steps', entriesHtml, esc);
+        }
+        if (op.result) {
+            const outputHtml = `<pre class="activity-output-content">${esc(op.result)}</pre>`;
+            html += renderSection(op.id, 'output', 'Result', outputHtml, esc);
         }
         html += `</div>`;
     }
@@ -208,9 +299,99 @@ function renderOperation(op, esc) {
     return html;
 }
 
-function renderEntry(entry, esc, depth, opId) {
+function isSectionExpanded(opId, section) {
+    if (allFolded) return false;
+    const key = `${opId}:${section}`;
+    const op = operations.find(o => o.id === opId);
+    const finished = op && op.status !== 'RUNNING';
+    let defaultExpanded;
+    if (section === 'input') {
+        defaultExpanded = false;
+    } else if (section === 'steps') {
+        defaultExpanded = !finished;
+    } else {
+        defaultExpanded = true;
+    }
+    return toggledSections.has(key) ? !defaultExpanded : defaultExpanded;
+}
+
+function renderSection(opId, section, label, content, esc) {
+    const expanded = isSectionExpanded(opId, section);
+    const key = `${opId}:${section}`;
+    let html = `<div class="activity-section">`;
+    html += `<div class="activity-section-header" data-action="toggleSection" data-section-key="${esc(key)}">`;
+    html += `<span class="activity-toggle">${expanded ? '&#9660;' : '&#9654;'}</span>`;
+    html += `<span class="activity-section-label">${label}</span>`;
+    html += `</div>`;
+    html += `<div class="activity-section-body" style="display: ${expanded ? 'block' : 'none'};">`;
+    html += content;
+    html += `</div>`;
+    html += `</div>`;
+    return html;
+}
+
+function renderArgsForm(op, esc) {
+    const tool = mcpToolsMap ? mcpToolsMap[op.name] : null;
+    const argDefs = tool ? tool.args : null;
+    const args = op.arguments || {};
+
+    let html = `<div class="activity-args-form" data-op-id="${op.id}">`;
+
+    if (argDefs && argDefs.length > 0) {
+        for (const argDef of argDefs) {
+            const value = args[argDef.name];
+            const displayValue = value !== undefined && value !== null
+                ? (typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value))
+                : '';
+            const requiredMark = argDef.required ? '<span class="activity-arg-required">*</span>' : '';
+            const titleAttr = argDef.description ? ` title="${esc(argDef.description)}"` : '';
+
+            html += `<div class="activity-arg-field"${titleAttr}>`;
+            html += `<label class="activity-arg-label">${esc(argDef.name)}${requiredMark}</label>`;
+
+            if (typeof value === 'object' && value !== null) {
+                html += `<textarea class="activity-arg-input" data-arg-name="${esc(argDef.name)}" rows="3">${esc(displayValue)}</textarea>`;
+            } else if (displayValue.length > 60) {
+                html += `<textarea class="activity-arg-input" data-arg-name="${esc(argDef.name)}" rows="2">${esc(displayValue)}</textarea>`;
+            } else {
+                html += `<input class="activity-arg-input" data-arg-name="${esc(argDef.name)}" type="text" value="${esc(displayValue)}" />`;
+            }
+            html += `</div>`;
+        }
+    } else {
+        for (const [key, value] of Object.entries(args)) {
+            const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+            html += `<div class="activity-arg-field">`;
+            html += `<label class="activity-arg-label">${esc(key)}</label>`;
+            if (typeof value === 'object' && value !== null) {
+                html += `<textarea class="activity-arg-input" data-arg-name="${esc(key)}" rows="3">${esc(displayValue)}</textarea>`;
+            } else {
+                html += `<input class="activity-arg-input" data-arg-name="${esc(key)}" type="text" value="${esc(displayValue)}" />`;
+            }
+            html += `</div>`;
+        }
+    }
+    html += `</div>`;
+    return html;
+}
+
+function findMaxDuration(entries) {
+    if (!entries || entries.length < 2) return -1;
+    if (entries.some(e => e.status === 'RUNNING')) return -1;
+    let max = -1;
+    for (const e of entries) {
+        const d = liveDuration(e);
+        if (d > max) max = d;
+    }
+    return max;
+}
+
+function renderEntry(entry, esc, depth, opId, maxDuration) {
     const statusIcon = getStatusIcon(entry.status);
-    const duration = formatDuration(liveDuration(entry));
+    const dur = liveDuration(entry);
+    const duration = formatDuration(dur);
+    const isSlowest = maxDuration > 0 && entry.status !== 'RUNNING' && dur === maxDuration;
+    const durClass = isSlowest ? ' activity-duration-slowest' : '';
     const hasChildren = entry.children && entry.children.length > 0;
 
     if (depth === 1 && hasChildren) {
@@ -221,11 +402,11 @@ function renderEntry(entry, esc, depth, opId) {
         html += `<span class="activity-toggle">${serverExpanded ? '&#9660;' : '&#9654;'}</span>`;
         html += `<span class="activity-status-icon">${statusIcon}</span>`;
         html += `<span class="activity-server-name">${esc(entry.name)}</span>`;
-        html += `<span class="activity-duration">${duration}</span>`;
+        html += `<span class="activity-duration${durClass}">${duration}</span>`;
         html += `</div>`;
         html += `<div class="activity-entry-children" style="display: ${serverExpanded ? 'block' : 'none'};">`;
         for (const child of entry.children) {
-            html += renderEntry(child, esc, depth + 1, opId);
+            html += renderEntry(child, esc, depth + 1, opId, -1);
         }
         html += `</div></div>`;
         return html;
@@ -237,12 +418,12 @@ function renderEntry(entry, esc, depth, opId) {
     }
     html += `<span class="activity-status-icon">${statusIcon}</span>`;
     html += `<span class="activity-entry-name">${esc(entry.name)}</span>`;
-    html += `<span class="activity-duration">${duration}</span>`;
+    html += `<span class="activity-duration${durClass}">${duration}</span>`;
     html += `</div>`;
 
     if (hasChildren) {
         for (const child of entry.children) {
-            html += renderEntry(child, esc, depth + 1, opId);
+            html += renderEntry(child, esc, depth + 1, opId, -1);
         }
     }
     return html;
@@ -263,13 +444,22 @@ function formatDuration(ms) {
     return (ms / 1000).toFixed(1) + 's';
 }
 
+function formatTime(epochMs) {
+    if (!epochMs) return '';
+    const d = new Date(epochMs);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+}
+
 function toggleActivityOperation(el) {
     const opEl = el.closest('.activity-operation');
     if (!opEl) return;
-    const entries = opEl.querySelector('.activity-entries');
-    if (!entries) return;
-    const isVisible = entries.style.display !== 'none';
-    entries.style.display = isVisible ? 'none' : 'block';
+    const body = opEl.querySelector('.activity-operation-body');
+    if (!body) return;
+    const isVisible = body.style.display !== 'none';
+    body.style.display = isVisible ? 'none' : 'block';
     const toggle = opEl.querySelector('.activity-toggle');
     if (toggle) {
         toggle.innerHTML = isVisible ? '&#9654;' : '&#9660;';
@@ -281,6 +471,27 @@ function toggleActivityOperation(el) {
         } else {
             expandedOps.add(opId);
         }
+    }
+}
+
+function toggleSection(el) {
+    const key = el.dataset.sectionKey || el.closest('[data-section-key]')?.dataset.sectionKey;
+    if (!key) return;
+    const sectionEl = el.closest('.activity-section');
+    if (!sectionEl) return;
+    const body = sectionEl.querySelector('.activity-section-body');
+    if (!body) return;
+    const isVisible = body.style.display !== 'none';
+    body.style.display = isVisible ? 'none' : 'block';
+    const toggle = sectionEl.querySelector('.activity-section-header .activity-toggle');
+    if (toggle) {
+        toggle.innerHTML = isVisible ? '&#9654;' : '&#9660;';
+    }
+    allFolded = false;
+    if (toggledSections.has(key)) {
+        toggledSections.delete(key);
+    } else {
+        toggledSections.add(key);
     }
 }
 
@@ -302,6 +513,27 @@ function toggleServerEntry(el) {
         collapsedServers.add(key);
     } else {
         collapsedServers.delete(key);
+    }
+}
+
+function toggleSession(el) {
+    const key = el.dataset.sessionKey || el.closest('[data-session-key]')?.dataset.sessionKey;
+    if (!key) return;
+    const group = el.closest('.activity-session-group');
+    if (!group) return;
+    const body = group.querySelector('.activity-session-body');
+    if (!body) return;
+    const isVisible = body.style.display !== 'none';
+    body.style.display = isVisible ? 'none' : 'block';
+    const toggle = el.querySelector('.activity-toggle') || el.closest('.activity-session-header')?.querySelector('.activity-toggle');
+    if (toggle) {
+        toggle.innerHTML = isVisible ? '&#9654;' : '&#9660;';
+    }
+    allFolded = false;
+    if (isVisible) {
+        collapsedSessions.add(key);
+    } else {
+        collapsedSessions.delete(key);
     }
 }
 
@@ -330,6 +562,8 @@ function foldAllActivity() {
     expandedOps.clear();
     collapsedServers.clear();
     collapsedWorkspaces.clear();
+    collapsedSessions.clear();
+    toggledSections.clear();
     allFolded = true;
     renderActivity();
 }
@@ -370,6 +604,23 @@ async function toggleActivity(el) {
     }
 }
 
+function gatherFormArgs(opId) {
+    const form = document.querySelector(`.activity-args-form[data-op-id="${opId}"]`);
+    if (!form) return null;
+    const args = {};
+    for (const input of form.querySelectorAll('.activity-arg-input')) {
+        const name = input.dataset.argName;
+        if (!name) continue;
+        const val = input.value;
+        try {
+            args[name] = JSON.parse(val);
+        } catch (e) {
+            args[name] = val;
+        }
+    }
+    return args;
+}
+
 async function replayOperation(el) {
     const opEl = el.closest('[data-op-id]');
     if (!opEl) return;
@@ -378,11 +629,13 @@ async function replayOperation(el) {
     if (!op || !op.arguments) return;
     if (activeReplays.has(opId)) return;
 
+    const formArgs = gatherFormArgs(opId) || op.arguments;
+
     try {
         const resp = await fetch('/api/admin/activity/replay', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ toolName: op.name, arguments: op.arguments })
+            body: JSON.stringify({ toolName: op.name, arguments: formArgs })
         });
         if (resp.ok) {
             const data = await resp.json();
@@ -412,7 +665,9 @@ async function cancelReplay(el) {
 
 registerActions('click', {
     toggleActivityOperation: (el) => toggleActivityOperation(el),
+    toggleSection: (el) => toggleSection(el),
     toggleServerEntry: (el) => toggleServerEntry(el),
+    toggleSession: (el) => toggleSession(el),
     toggleWorkspace: (el) => toggleWorkspace(el),
     foldAllActivity: () => foldAllActivity(),
     clearActivity: () => clearActivity(),

@@ -13,7 +13,9 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.operation;
 
+import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
+import com.ibm.mcp.languagetools.workspace.Workspace;
 import io.quarkiverse.mcp.server.Tool;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -35,6 +37,9 @@ public class OperationTracker {
 
     @Inject
     ApplicationConfiguration configuration;
+
+    @Inject
+    Application application;
 
     private volatile boolean enabled;
     private final ConcurrentLinkedDeque<OperationContext> operations = new ConcurrentLinkedDeque<>();
@@ -60,6 +65,15 @@ public class OperationTracker {
     public OperationContext startOperation(String name, String kind, String workspaceUri) {
         if (!enabled) {
             return OperationContext.noop();
+        }
+        if (workspaceUri != null) {
+            try {
+                Workspace ws = application.getWorkspaceForPath(workspaceUri);
+                if (ws != null) {
+                    workspaceUri = ws.getNormalizedUri();
+                }
+            } catch (Exception ignored) {
+            }
         }
         OperationContext ctx = new OperationContext(name, kind, workspaceUri, this);
         operations.addLast(ctx);

@@ -21,8 +21,8 @@ public final class JavaToolArgDescriptions {
     private JavaToolArgDescriptions() {
     }
 
-    public static final String FILE_URIS =
-        "List of file URIs for batch operation. When provided, overrides fileUri and processes all files";
+    public static final String URIS =
+        "List of URIs for batch operation. When provided, overrides uri and processes all files";
 
     public static final String SEARCH_SCOPE =
         "Search scope: 'project' for project sources only (faster), 'workspace' for full workspace (default)";

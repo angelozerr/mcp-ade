@@ -67,8 +67,9 @@ public class JdtlsCommandExecutor {
         OperationContext operationContext = operationTracker.startOperation(toolName, "tool", cwd);
         Map<String, Object> args = new LinkedHashMap<>();
         args.put("cwd", cwd);
-        args.put("commandId", commandId);
-        if (arguments != null) {
+        if (arguments instanceof Map) {
+            args.putAll((Map<String, Object>) arguments);
+        } else if (arguments != null) {
             args.put("arguments", arguments);
         }
         operationContext.setArguments(args);
@@ -83,6 +84,7 @@ public class JdtlsCommandExecutor {
                         operationContext.fail(ex.getMessage());
                     } else {
                         serverEntry.complete();
+                        operationContext.setResult(result instanceof String ? (String) result : String.valueOf(result));
                         operationContext.complete();
                     }
                 })
@@ -201,6 +203,10 @@ public class JdtlsCommandExecutor {
                                                           Cancellation cancellation, Progress progress) {
         String toolName = OperationTracker.resolveToolName(commandId);
         OperationContext operationContext = operationTracker.startOperation(toolName, "tool", cwd);
+        Map<String, Object> batchArgs = new LinkedHashMap<>();
+        batchArgs.put("cwd", cwd);
+        batchArgs.put("fileUris", fileUris);
+        operationContext.setArguments(batchArgs);
         OperationEntry serverEntry = operationContext.addEntry(JDTLS_SERVER_ID, JDTLS_SERVER_ID);
 
         var workspace = application.getWorkspaceForPath(cwd);
@@ -262,6 +268,7 @@ public class JdtlsCommandExecutor {
                         operationContext.fail(ex.getMessage());
                     } else {
                         serverEntry.complete();
+                        operationContext.setResult(result instanceof String ? (String) result : String.valueOf(result));
                         operationContext.complete();
                     }
                 })

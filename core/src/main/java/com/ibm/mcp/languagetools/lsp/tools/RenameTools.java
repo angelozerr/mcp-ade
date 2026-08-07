@@ -42,13 +42,13 @@ public class RenameTools {
                         ToolArgDescriptions.OPEN_DOCUMENT_HINT)
     public CompletableFuture<String> rename(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = "The new name for the symbol") String newName,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
-        RenameRequestParams params = new RenameRequestParams(cwd, fileUri, line, character, newName);
+        RenameRequestParams params = new RenameRequestParams(cwd, uri, line, character, newName);
         return requestExecutor.execute(
                 params,
                 new RenameStrategy(languageRegistry),

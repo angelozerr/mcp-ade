@@ -190,6 +190,10 @@ public final class JdtUtils {
      */
     public static ICompilationUnit getCompilationUnit(String uri) {
         URI fileUri = URI.create(uri);
+        try {
+            fileUri = new File(fileUri).toURI();
+        } catch (Exception ignored) {
+        }
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         IFile[] files = root.findFilesForLocationURI(fileUri);
         if (files.length == 0) {

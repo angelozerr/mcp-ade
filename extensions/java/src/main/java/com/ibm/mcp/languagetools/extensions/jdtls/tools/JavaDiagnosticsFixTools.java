@@ -44,17 +44,17 @@ public class JavaDiagnosticsFixTools {
           description = "Quick syntax-only validation of a Java file (no semantic analysis)")
     public CompletableFuture<String> validateSyntax(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.VALIDATE_SYNTAX, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.VALIDATE_SYNTAX, resolvedUris,
+                    u -> Map.of("uri", u), cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.VALIDATE_SYNTAX,
-                Map.of("uri", fileUri),
+                Map.of("uri", uri),
                 cancellation, progress);
     }
 
@@ -62,14 +62,14 @@ public class JavaDiagnosticsFixTools {
           description = "Get available quick fixes for problems at a position. Pass optional fixId to apply a specific fix")
     public CompletableFuture<String> getQuickFixes(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = "ID of the fix to apply (from a previous call without fixId)", required = false) String fixId,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> params = positionParams(fileUri, line, character);
+        Map<String, Object> params = positionParams(uri, line, character);
         if (fixId != null) {
             params.put("fixId", fixId);
             RefactoringHelper.putApply(params, apply);
@@ -82,17 +82,17 @@ public class JavaDiagnosticsFixTools {
           description = "Diagnose problems in a Java file and optionally apply safe auto-fixes")
     public CompletableFuture<String> diagnoseAndFix(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.DIAGNOSE_AND_FIX, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.DIAGNOSE_AND_FIX, resolvedUris,
+                    u -> Map.of("uri", u), cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.DIAGNOSE_AND_FIX,
-                Map.of("uri", fileUri),
+                Map.of("uri", uri),
                 cancellation, progress);
     }
 
@@ -100,23 +100,23 @@ public class JavaDiagnosticsFixTools {
           description = "Apply a code cleanup to a Java file")
     public CompletableFuture<String> applyCleanup(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = "Cleanup ID: remove_unused_imports, add_missing_override, convert_to_lambda, remove_unnecessary_casts, add_final_modifier") String cleanupId,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.APPLY_CLEANUP, uris,
-                    uri -> {
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.APPLY_CLEANUP, resolvedUris,
+                    u -> {
                         Map<String, Object> params = new HashMap<>();
-                        params.put("uri", uri);
+                        params.put("uri", u);
                         params.put("cleanupId", cleanupId);
                         return params;
                     }, cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.APPLY_CLEANUP,
-                Map.of("uri", fileUri, "cleanupId", cleanupId),
+                Map.of("uri", uri, "cleanupId", cleanupId),
                 cancellation, progress);
     }
 }

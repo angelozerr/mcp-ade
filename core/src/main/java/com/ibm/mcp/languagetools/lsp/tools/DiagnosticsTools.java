@@ -55,10 +55,10 @@ public class DiagnosticsTools {
             "Example: getDiagnostics(cwd='/home/user/projects/my-app', fileUri='file:///home/user/projects/my-app/src/Main.java')")
     public CompletableFuture<String> getDiagnostics(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             Cancellation cancellation,
             Progress progress) {
-        FileUriRequestParams params = new FileUriRequestParams(cwd, fileUri);
+        FileUriRequestParams params = new FileUriRequestParams(cwd, uri);
         return requestExecutor.execute(params, new DiagnosticsStrategy(languageRegistry), cancellation, progress);
     }
 

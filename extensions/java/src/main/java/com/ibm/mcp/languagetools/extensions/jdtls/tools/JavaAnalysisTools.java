@@ -43,14 +43,14 @@ public class JavaAnalysisTools {
           description = "Get the full type hierarchy (supertypes, super interfaces, and subtypes) for a Java type")
     public CompletableFuture<String> getTypeHierarchy(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
 
         return executor.executeCommand(cwd, JdtlsCommands.TYPE_HIERARCHY,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -58,14 +58,14 @@ public class JavaAnalysisTools {
           description = "Find all callers of a method")
     public CompletableFuture<String> getCallHierarchyIncoming(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
+        Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putScope(params, scope, projectName);
         return executor.executeCommand(cwd, JdtlsCommands.CALL_HIERARCHY_INCOMING, params, cancellation, progress);
     }
@@ -74,14 +74,14 @@ public class JavaAnalysisTools {
           description = "Find all methods called by a method")
     public CompletableFuture<String> getCallHierarchyOutgoing(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
 
         return executor.executeCommand(cwd, JdtlsCommands.CALL_HIERARCHY_OUTGOING,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -121,17 +121,17 @@ public class JavaAnalysisTools {
           description = "Get comprehensive analysis of a Java file (types, methods, fields, diagnostics, complexity)")
     public CompletableFuture<String> analyzeFile(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
-            @ToolArg(description = JavaToolArgDescriptions.FILE_URIS, required = false) List<String> fileUris,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
+            @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
             Progress progress) {
-        List<String> uris = RefactoringHelper.resolveFileUris(fileUri, fileUris);
-        if (uris.size() > 1) {
-            return executor.executeBatchCommand(cwd, JdtlsCommands.ANALYZE_FILE, uris,
-                    uri -> Map.of("uri", uri), cancellation, progress);
+        List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
+        if (resolvedUris.size() > 1) {
+            return executor.executeBatchCommand(cwd, JdtlsCommands.ANALYZE_FILE, resolvedUris,
+                    u -> Map.of("uri", u), cancellation, progress);
         }
         return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_FILE,
-                Map.of("uri", fileUri),
+                Map.of("uri", uri),
                 cancellation, progress);
     }
 
@@ -151,13 +151,13 @@ public class JavaAnalysisTools {
           description = "Get comprehensive analysis of a Java method (complexity, callers, callees, overrides)")
     public CompletableFuture<String> analyzeMethod(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
             Progress progress) {
         return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_METHOD,
-                RefactoringHelper.positionParams(fileUri, line, character),
+                RefactoringHelper.positionParams(uri, line, character),
                 cancellation, progress);
     }
 
@@ -165,13 +165,13 @@ public class JavaAnalysisTools {
           description = "Analyze the ripple effect of changing a symbol")
     public CompletableFuture<String> analyzeChangeImpact(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.FILE_URI) String fileUri,
+            @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
             Progress progress) {
-        Map<String, Object> params = RefactoringHelper.positionParams(fileUri, line, character);
+        Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putMaxResults(params, maxResults);
         return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_CHANGE_IMPACT, params, cancellation, progress);
     }

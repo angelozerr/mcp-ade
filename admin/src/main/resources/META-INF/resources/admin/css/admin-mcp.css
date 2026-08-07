@@ -279,6 +279,38 @@
     letter-spacing: 0;
 }
 
+.activity-session-group {
+    margin-bottom: 0.3rem;
+    border-left: 2px solid var(--color-info);
+    padding-left: 0.5rem;
+}
+
+.activity-session-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.4rem;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 3px;
+}
+
+.activity-session-header:hover {
+    background: var(--bg-hover);
+}
+
+.activity-session-name {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--color-info);
+}
+
+.activity-session-id {
+    font-size: 0.65rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-secondary);
+}
+
 .activity-operation {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
@@ -298,9 +330,22 @@
     padding: 0.2rem 0.5rem;
     cursor: pointer;
     user-select: none;
-    background: var(--accent-bg-light);
-    border-left: 3px solid var(--accent-primary);
     border-radius: 2px 2px 0 0;
+}
+
+.activity-operation.running .activity-operation-header {
+    background: rgba(255, 165, 0, 0.1);
+    border-left: 3px solid var(--color-warning);
+}
+
+.activity-operation.completed .activity-operation-header {
+    background: var(--color-success-bg);
+    border-left: 3px solid var(--color-success);
+}
+
+.activity-operation.failed .activity-operation-header {
+    background: var(--color-error-bg);
+    border-left: 3px solid var(--color-error);
 }
 
 .activity-toggle {
@@ -350,8 +395,12 @@
     margin-left: 0.25rem;
 }
 
+.activity-duration-slowest {
+    color: var(--color-error);
+    font-weight: 600;
+}
+
 .activity-entries {
-    border-top: 1px solid var(--border-subtle);
     padding: 0.2rem 0.5rem 0.2rem 1.2rem;
 }
 
@@ -427,6 +476,109 @@
 .activity-replay.replaying {
     color: var(--color-error);
     cursor: pointer;
+}
+
+.activity-time {
+    font-size: 0.65rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    margin-left: 0.25rem;
+}
+
+.activity-operation-body {
+    border-top: 1px solid var(--border-subtle);
+}
+
+.activity-section {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.activity-section:last-child {
+    border-bottom: none;
+}
+
+.activity-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    background: var(--bg-card-alt);
+}
+
+.activity-section-header:hover {
+    background: var(--bg-hover);
+}
+
+.activity-section-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.activity-section-body {
+}
+
+.activity-args-form {
+    padding: 0.3rem 0.75rem;
+}
+
+.activity-output-content {
+    margin: 0;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.7rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 20rem;
+    overflow-y: auto;
+}
+
+.activity-arg-field {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-bottom: 0.2rem;
+}
+
+.activity-arg-label {
+    font-size: 0.7rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-secondary);
+    min-width: 8rem;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.activity-arg-required {
+    color: var(--color-error);
+    margin-left: 0.15rem;
+}
+
+.activity-arg-input {
+    flex: 1;
+    font-size: 0.7rem;
+    font-family: 'Courier New', monospace;
+    padding: 0.15rem 0.35rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    color: var(--text-primary);
+    min-width: 0;
+}
+
+.activity-arg-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+textarea.activity-arg-input {
+    resize: vertical;
 }
 
 .activity-spinner {
