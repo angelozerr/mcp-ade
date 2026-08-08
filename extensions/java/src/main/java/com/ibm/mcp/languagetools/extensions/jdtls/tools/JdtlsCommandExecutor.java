@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.extensions.jdtls.tools;
 
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.extensions.jdtls.classpath.FastModeProjectManager;
 import com.ibm.mcp.languagetools.extensions.jdtls.classpath.ServerStatusProgressMonitor;
 import com.ibm.mcp.languagetools.extensions.jdtls.lsp.JdtLsServer;
@@ -77,7 +78,7 @@ public class JdtlsCommandExecutor {
         operationContext.setArguments(args);
         OperationEntry serverEntry = operationContext.addEntry(JDTLS_SERVER_ID, JDTLS_SERVER_ID);
 
-        String fileUriPrefix = toFileUriPrefix(cwd);
+        String fileUriPrefix = UriUtils.cwdToUriPrefix(cwd);
         return executeCommandWithMetadata(cwd, commandId, arguments, null, serverEntry)
                 .thenApply(result -> formatResultWithPrefix(result, fileUriPrefix))
                 .whenComplete((result, ex) -> {
@@ -210,7 +211,7 @@ public class JdtlsCommandExecutor {
         OperationEntry serverEntry = operationContext.addEntry(JDTLS_SERVER_ID, JDTLS_SERVER_ID);
 
         var workspace = application.getWorkspaceForPath(cwd);
-        String fileUriPrefix = toFileUriPrefix(cwd);
+        String fileUriPrefix = UriUtils.cwdToUriPrefix(cwd);
 
         return workspace.ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none(), serverEntry)
                 .thenCompose(jdtls -> {
@@ -277,39 +278,21 @@ public class JdtlsCommandExecutor {
     }
 
     String formatResult(Object result, String cwd) {
-        return formatResultWithPrefix(result, toFileUriPrefix(cwd));
+        return formatResultWithPrefix(result, UriUtils.cwdToUriPrefix(cwd));
     }
 
-    private String formatResultWithPrefix(Object result, String fileUriPrefix) {
+    private String formatResultWithPrefix(Object result, String cwdUriPrefix) {
         if (result == null) {
             return "No result";
         }
         if (result instanceof String s) {
-            return stripFileUriPrefix(s, fileUriPrefix);
+            return UriUtils.stripFileUriPrefix(s, cwdUriPrefix);
         }
         try {
             String json = GSON.toJson(result);
-            return stripFileUriPrefix(json, fileUriPrefix);
+            return UriUtils.stripFileUriPrefix(json, cwdUriPrefix);
         } catch (Exception e) {
             return result.toString();
         }
-    }
-
-    private static String stripFileUriPrefix(String text, String fileUriPrefix) {
-        if (fileUriPrefix != null && text.contains(fileUriPrefix)) {
-            return text.replace(fileUriPrefix, "");
-        }
-        return text;
-    }
-
-    private static String toFileUriPrefix(String cwd) {
-        if (cwd == null) {
-            return null;
-        }
-        String normalized = cwd.replace('\\', '/');
-        if (!normalized.endsWith("/")) {
-            normalized += "/";
-        }
-        return "file:///" + normalized;
     }
 }

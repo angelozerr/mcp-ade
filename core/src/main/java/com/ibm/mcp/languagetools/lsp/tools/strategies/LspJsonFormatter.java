@@ -14,8 +14,10 @@
 package com.ibm.mcp.languagetools.lsp.tools.strategies;
 
 import com.google.gson.Gson;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import org.eclipse.lsp4j.*;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,13 +57,37 @@ final class LspJsonFormatter {
         return result;
     }
 
+    // --- URI compaction (delegates to UriUtils) ---
+
+    static String cwdToUriPrefix(String cwd) {
+        return UriUtils.cwdToUriPrefix(cwd);
+    }
+
+    static String compactUri(String uri, String cwdUri) {
+        return UriUtils.compactUri(uri, cwdUri);
+    }
+
     // --- Locations ---
 
-    static Map<String, Object> location(Location loc) {
+    static Map<String, Object> location(Location loc, String cwdUri) {
         return map(
-                "uri", loc.getUri(),
+                "file", compactUri(loc.getUri(), cwdUri),
                 "range", range(loc.getRange())
         );
+    }
+
+    static List<Map<String, Object>> locationsByFile(List<? extends Location> locations, String cwdUri) {
+        Map<String, List<String>> grouped = new LinkedHashMap<>();
+        for (Location loc : locations) {
+            String file = compactUri(loc.getUri(), cwdUri);
+            grouped.computeIfAbsent(file, k -> new ArrayList<>())
+                    .add(range(loc.getRange()));
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, List<String>> entry : grouped.entrySet()) {
+            result.add(map("file", entry.getKey(), "refs", entry.getValue()));
+        }
+        return result;
     }
 
     // --- TextEdits ---
@@ -96,12 +122,12 @@ final class LspJsonFormatter {
 
     // --- Symbols ---
 
-    static Map<String, Object> symbolInfo(SymbolInformation sym) {
+    static Map<String, Object> symbolInfo(SymbolInformation sym, String cwdUri) {
         return map(
                 "name", sym.getName(),
                 "kind", sym.getKind() != null ? sym.getKind().name() : null,
                 "containerName", sym.getContainerName(),
-                "uri", sym.getLocation() != null ? sym.getLocation().getUri() : null,
+                "file", sym.getLocation() != null ? compactUri(sym.getLocation().getUri(), cwdUri) : null,
                 "range", sym.getLocation() != null ? range(sym.getLocation().getRange()) : null
         );
     }
@@ -112,7 +138,6 @@ final class LspJsonFormatter {
                 "kind", sym.getKind() != null ? sym.getKind().name() : null,
                 "detail", sym.getDetail(),
                 "range", range(sym.getRange()),
-                "selectionRange", range(sym.getSelectionRange()),
                 "children", sym.getChildren() != null && !sym.getChildren().isEmpty()
                         ? sym.getChildren().stream().map(LspJsonFormatter::documentSymbol).toList()
                         : null
@@ -125,8 +150,7 @@ final class LspJsonFormatter {
         return map(
                 "label", item.getLabel(),
                 "kind", item.getKind() != null ? item.getKind().name() : null,
-                "detail", item.getDetail(),
-                "sortText", item.getSortText()
+                "detail", item.getDetail()
         );
     }
 
@@ -206,14 +230,14 @@ final class LspJsonFormatter {
 
     // --- WorkspaceEdit (rename) ---
 
-    static List<Map<String, Object>> workspaceEdits(List<WorkspaceEdit> edits) {
-        List<Map<String, Object>> result = new java.util.ArrayList<>();
+    static List<Map<String, Object>> workspaceEdits(List<WorkspaceEdit> edits, String cwdUri) {
+        List<Map<String, Object>> result = new ArrayList<>();
         for (WorkspaceEdit edit : edits) {
             if (edit.getChanges() != null) {
                 for (Map.Entry<String, List<TextEdit>> entry : edit.getChanges().entrySet()) {
                     for (TextEdit te : entry.getValue()) {
                         result.add(map(
-                                "uri", entry.getKey(),
+                                "file", compactUri(entry.getKey(), cwdUri),
                                 "range", range(te.getRange()),
                                 "newText", te.getNewText()
                         ));
@@ -224,12 +248,12 @@ final class LspJsonFormatter {
                 for (var change : edit.getDocumentChanges()) {
                     if (change.isLeft()) {
                         TextDocumentEdit docEdit = change.getLeft();
-                        String uri = docEdit.getTextDocument().getUri();
+                        String file = compactUri(docEdit.getTextDocument().getUri(), cwdUri);
                         for (var textEdit : docEdit.getEdits()) {
                             if (!textEdit.isLeft()) continue;
                             TextEdit te = textEdit.getLeft();
                             result.add(map(
-                                    "uri", uri,
+                                    "file", file,
                                     "range", range(te.getRange()),
                                     "newText", te.getNewText()
                             ));

@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class CompletionStrategy extends FilePositionBasedStrategy<CompletionParams, Either<List<CompletionItem>, CompletionList>> {
 
-    private static final int MAX_ITEMS_DISPLAYED = 50;
+    private static final int MAX_ITEMS_DISPLAYED = 15;
 
     public CompletionStrategy(LanguageRegistry languageRegistry) {
         super(languageRegistry, LspCapability.COMPLETION, "Completion");

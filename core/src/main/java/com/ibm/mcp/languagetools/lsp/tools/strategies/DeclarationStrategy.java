@@ -82,7 +82,8 @@ public class DeclarationStrategy extends FilePositionBasedStrategy<DeclarationPa
             return formatNoResultFound(params);
         }
 
-        return LspJsonFormatter.toJson(allLocations.stream().map(LspJsonFormatter::location).toList());
+        String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
+        return LspJsonFormatter.toJson(allLocations.stream().map(loc -> LspJsonFormatter.location(loc, cwdUri)).toList());
     }
 
     @Override

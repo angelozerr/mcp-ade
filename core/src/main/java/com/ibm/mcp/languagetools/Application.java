@@ -15,6 +15,7 @@ package com.ibm.mcp.languagetools;
 
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.tools.ToolException;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.installer.InstallResult;
 import com.ibm.mcp.languagetools.installer.InstallerListener;
@@ -306,18 +307,7 @@ public class Application {
      * @return the workspace
      */
     public Workspace getWorkspaceForPath(String cwd) {
-        String workspaceUriStr;
-        if (cwd.startsWith("file:")) {
-            workspaceUriStr = cwd;
-        } else {
-            String normalizedPath = cwd.replace("\\", "/");
-            if (!normalizedPath.startsWith("/")) {
-                normalizedPath = "/" + normalizedPath;
-            }
-            workspaceUriStr = "file://" + normalizedPath;
-        }
-
-        URI workspaceUri = URI.create(workspaceUriStr);
+        URI workspaceUri = UriUtils.toUri(cwd);
         return getOrCreateWorkspace(workspaceUri);
     }
 

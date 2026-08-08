@@ -98,7 +98,8 @@ public class RenameStrategy implements LspRequestExecutor.LspRequestStrategy<Ren
 
     @Override
     public String formatResults(RenameRequestParams params, List<WorkspaceEdit> results) {
-        return LspJsonFormatter.toJson(LspJsonFormatter.workspaceEdits(results));
+        String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
+        return LspJsonFormatter.toJson(LspJsonFormatter.workspaceEdits(results, cwdUri));
     }
 
     @Override

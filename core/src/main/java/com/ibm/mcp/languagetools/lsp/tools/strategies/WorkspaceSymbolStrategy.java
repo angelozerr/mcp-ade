@@ -115,7 +115,8 @@ public class WorkspaceSymbolStrategy implements LspRequestExecutor.LspRequestStr
             return formatNoResultFound(params);
         }
 
-        return LspJsonFormatter.toJson(allSymbols.stream().map(LspJsonFormatter::symbolInfo).toList());
+        String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
+        return LspJsonFormatter.toJson(allSymbols.stream().map(sym -> LspJsonFormatter.symbolInfo(sym, cwdUri)).toList());
     }
 
     @Override

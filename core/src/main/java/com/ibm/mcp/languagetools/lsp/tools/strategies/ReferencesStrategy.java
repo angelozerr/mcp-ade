@@ -76,9 +76,8 @@ public class ReferencesStrategy extends FilePositionBasedStrategy<ReferenceParam
                 .distinct()
                 .toList();
 
-        return LspJsonFormatter.toJson(references.stream()
-                .map(loc -> LspJsonFormatter.location((Location) loc))
-                .toList());
+        String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
+        return LspJsonFormatter.toJson(LspJsonFormatter.locationsByFile(references, cwdUri));
     }
 
     @Override
