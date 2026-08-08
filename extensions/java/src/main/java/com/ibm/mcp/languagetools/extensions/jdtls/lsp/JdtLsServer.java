@@ -25,6 +25,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.jboss.logging.Logger;
@@ -55,6 +56,11 @@ import java.util.concurrent.CompletableFuture;
 public class JdtLsServer extends LspServer implements InstallerListener {
 
     private static final Logger LOG = Logger.getLogger(JdtLsServer.class);
+    private static final String JDT_CONTENTS_PREFIX = "jdt://contents/";
+
+    static {
+        UriUtils.registerSchemeCompactor("jdt", JdtLsServer::compactJdtUri);
+    }
 
     public static final String IMPORT_MODE_FAST = "fast";
     public static final String IMPORT_MODE_FAST_CACHE = "fast+cache";
@@ -64,6 +70,37 @@ public class JdtLsServer extends LspServer implements InstallerListener {
 
     public JdtLsServer(LspServerConfig config, Workspace workspace) {
         super(config, workspace);
+    }
+
+    private static Map<String, String> compactJdtUri(String uri) {
+        if (!uri.startsWith(JDT_CONTENTS_PREFIX)) {
+            return null;
+        }
+        String path = uri.substring(JDT_CONTENTS_PREFIX.length());
+        int queryIdx = path.indexOf('?');
+        if (queryIdx >= 0) {
+            path = path.substring(0, queryIdx);
+        }
+        try {
+            path = java.net.URLDecoder.decode(path, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            // keep as-is
+        }
+        String[] parts = path.split("/");
+        if (parts.length >= 3) {
+            String jar = parts[0];
+            String pkg = parts[1];
+            String name = parts[2];
+            int dotIdx = name.lastIndexOf('.');
+            if (dotIdx > 0) {
+                name = name.substring(0, dotIdx);
+            }
+            Map<String, String> result = new java.util.LinkedHashMap<>();
+            result.put("jar", jar);
+            result.put("class", pkg + "." + name);
+            return result;
+        }
+        return null;
     }
 
     /**

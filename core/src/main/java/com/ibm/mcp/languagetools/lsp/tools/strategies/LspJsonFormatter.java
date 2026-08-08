@@ -70,24 +70,61 @@ final class LspJsonFormatter {
     // --- Locations ---
 
     static Map<String, Object> location(Location loc, String cwdUri) {
-        return map(
-                "file", compactUri(loc.getUri(), cwdUri),
-                "range", range(loc.getRange())
-        );
+        Map<String, Object> result = new LinkedHashMap<>(UriUtils.compactUriToMap(loc.getUri(), cwdUri));
+        result.put("range", range(loc.getRange()));
+        return result;
     }
 
     static List<Map<String, Object>> locationsByFile(List<? extends Location> locations, String cwdUri) {
-        Map<String, List<String>> grouped = new LinkedHashMap<>();
+        Map<String, LocationGroup> grouped = new LinkedHashMap<>();
         for (Location loc : locations) {
-            String file = compactUri(loc.getUri(), cwdUri);
-            grouped.computeIfAbsent(file, k -> new ArrayList<>())
-                    .add(range(loc.getRange()));
+            Map<String, String> compact = UriUtils.compactUriToMap(loc.getUri(), cwdUri);
+            var it = compact.entrySet().iterator();
+            var first = it.next();
+            String groupKey = first.getKey() + "=" + first.getValue();
+
+            LocationGroup group = grouped.computeIfAbsent(groupKey, k -> {
+                Map<String, String> gf = new LinkedHashMap<>();
+                gf.put(first.getKey(), first.getValue());
+                return new LocationGroup(gf);
+            });
+
+            if (it.hasNext()) {
+                Map<String, String> itemFields = new LinkedHashMap<>();
+                while (it.hasNext()) {
+                    var e = it.next();
+                    itemFields.put(e.getKey(), e.getValue());
+                }
+                group.addItem(itemFields, range(loc.getRange()));
+            } else {
+                group.ranges.add(range(loc.getRange()));
+            }
         }
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map.Entry<String, List<String>> entry : grouped.entrySet()) {
-            result.add(map("file", entry.getKey(), "refs", entry.getValue()));
+        for (LocationGroup group : grouped.values()) {
+            Map<String, Object> entry = new LinkedHashMap<>(group.fields);
+            if (!group.items.isEmpty()) {
+                entry.put("items", group.items);
+            } else {
+                entry.put("refs", group.ranges);
+            }
+            result.add(entry);
         }
         return result;
+    }
+
+    private static class LocationGroup {
+        final Map<String, String> fields;
+        final List<String> ranges = new ArrayList<>();
+        final List<Map<String, String>> items = new ArrayList<>();
+        LocationGroup(Map<String, String> fields) {
+            this.fields = fields;
+        }
+        void addItem(Map<String, String> extra, String range) {
+            Map<String, String> item = new LinkedHashMap<>(extra);
+            item.put("range", range);
+            items.add(item);
+        }
     }
 
     // --- TextEdits ---
@@ -114,22 +151,30 @@ final class LspJsonFormatter {
                 "severity", d.getSeverity() != null ? d.getSeverity().name() : null,
                 "message", d.getMessage(),
                 "source", d.getSource(),
-                "code", d.getCode() != null
-                        ? (d.getCode().isLeft() ? d.getCode().getLeft() : d.getCode().getRight())
-                        : null
+                "code", extractEither(d.getCode())
         );
+    }
+
+    private static Object extractEither(Object either) {
+        if (either == null) return null;
+        if (either instanceof org.eclipse.lsp4j.jsonrpc.messages.Either<?, ?> e) {
+            return e.isLeft() ? e.getLeft() : e.getRight();
+        }
+        return either;
     }
 
     // --- Symbols ---
 
     static Map<String, Object> symbolInfo(SymbolInformation sym, String cwdUri) {
-        return map(
-                "name", sym.getName(),
-                "kind", sym.getKind() != null ? sym.getKind().name() : null,
-                "containerName", sym.getContainerName(),
-                "file", sym.getLocation() != null ? compactUri(sym.getLocation().getUri(), cwdUri) : null,
-                "range", sym.getLocation() != null ? range(sym.getLocation().getRange()) : null
-        );
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("name", sym.getName());
+        if (sym.getKind() != null) result.put("kind", sym.getKind().name());
+        if (sym.getContainerName() != null) result.put("containerName", sym.getContainerName());
+        if (sym.getLocation() != null) {
+            result.putAll(UriUtils.compactUriToMap(sym.getLocation().getUri(), cwdUri));
+            result.put("range", range(sym.getLocation().getRange()));
+        }
+        return result;
     }
 
     static Map<String, Object> documentSymbol(DocumentSymbol sym) {
@@ -147,10 +192,14 @@ final class LspJsonFormatter {
     // --- Completions ---
 
     static Map<String, Object> completionItem(CompletionItem item) {
+        String detail = item.getDetail();
+        if (detail != null && detail.equals(item.getLabel())) {
+            detail = null;
+        }
         return map(
                 "label", item.getLabel(),
                 "kind", item.getKind() != null ? item.getKind().name() : null,
-                "detail", item.getDetail()
+                "detail", detail
         );
     }
 
@@ -235,12 +284,12 @@ final class LspJsonFormatter {
         for (WorkspaceEdit edit : edits) {
             if (edit.getChanges() != null) {
                 for (Map.Entry<String, List<TextEdit>> entry : edit.getChanges().entrySet()) {
+                    Map<String, String> compact = UriUtils.compactUriToMap(entry.getKey(), cwdUri);
                     for (TextEdit te : entry.getValue()) {
-                        result.add(map(
-                                "file", compactUri(entry.getKey(), cwdUri),
-                                "range", range(te.getRange()),
-                                "newText", te.getNewText()
-                        ));
+                        Map<String, Object> item = new LinkedHashMap<>(compact);
+                        item.put("range", range(te.getRange()));
+                        item.put("newText", te.getNewText());
+                        result.add(item);
                     }
                 }
             }
@@ -248,15 +297,14 @@ final class LspJsonFormatter {
                 for (var change : edit.getDocumentChanges()) {
                     if (change.isLeft()) {
                         TextDocumentEdit docEdit = change.getLeft();
-                        String file = compactUri(docEdit.getTextDocument().getUri(), cwdUri);
+                        Map<String, String> compact = UriUtils.compactUriToMap(docEdit.getTextDocument().getUri(), cwdUri);
                         for (var textEdit : docEdit.getEdits()) {
                             if (!textEdit.isLeft()) continue;
                             TextEdit te = textEdit.getLeft();
-                            result.add(map(
-                                    "file", file,
-                                    "range", range(te.getRange()),
-                                    "newText", te.getNewText()
-                            ));
+                            Map<String, Object> item = new LinkedHashMap<>(compact);
+                            item.put("range", range(te.getRange()));
+                            item.put("newText", te.getNewText());
+                            result.add(item);
                         }
                     } else {
                         result.add(map("resourceOperation", change.getRight().getKind()));

@@ -19,7 +19,9 @@ import com.ibm.mcp.languagetools.lsp.tools.params.FileUriRequestParams;
 import com.ibm.mcp.languagetools.lsp.tools.strategies.DiagnosticsStrategy;
 import com.ibm.mcp.languagetools.tools.ToolArgDescriptions;
 import com.ibm.mcp.languagetools.tools.ToolException;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.workspace.Workspace;
+import com.google.gson.Gson;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import io.quarkiverse.mcp.server.Tool;
@@ -29,10 +31,8 @@ import jakarta.inject.Inject;
 import org.eclipse.lsp4j.Diagnostic;
 import org.jboss.logging.Logger;
 
-import java.io.File;
 import java.net.URI;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 @ApplicationScoped
@@ -63,6 +63,8 @@ public class DiagnosticsTools {
         return requestExecutor.execute(params, new DiagnosticsStrategy(languageRegistry), cancellation, progress);
     }
 
+    private static final Gson GSON = new Gson();
+
     @Tool(
             name="get_all_diagnostics",
             description = "Get all diagnostics from all files in a workspace. " +
@@ -75,54 +77,48 @@ public class DiagnosticsTools {
                 throw new ToolException("cwd must be provided");
             }
 
-            URI uri = new File(cwd).toURI();
+            URI uri = UriUtils.toUri(cwd);
             LOG.infof("Getting all diagnostics for workspace: %s", uri);
 
             Workspace ws = application.getOrCreateWorkspace(uri);
-
-            StringBuilder result = new StringBuilder();
-            result.append("All diagnostics for workspace: ").append(uri).append("\n\n");
 
             var servers = ws.getLspServers();
             if (servers.isEmpty()) {
                 throw new ToolException("No language servers available in workspace");
             }
 
-            boolean foundDiagnostics = false;
+            String cwdUri = UriUtils.cwdToUriPrefix(cwd);
+            List<Map<String, Object>> files = new ArrayList<>();
 
             for (var server : servers) {
-                String serverId = server.getId();
-
                 Map<String, List<Diagnostic>> allDiagnostics = server.getDiagnosticsCache();
-
-                if (!allDiagnostics.isEmpty()) {
-                    foundDiagnostics = true;
-                    result.append(String.format("Language Server: %s (%s)\n",
-                            serverId, server.getConfig().getName()));
-
-                    for (Map.Entry<String, List<Diagnostic>> fileEntry : allDiagnostics.entrySet()) {
-                        String fileUri = fileEntry.getKey();
-                        List<Diagnostic> diagnostics = fileEntry.getValue();
-
-                        if (!diagnostics.isEmpty()) {
-                            result.append(String.format("\n  File: %s\n", fileUri));
-                            for (Diagnostic diagnostic : diagnostics) {
-                                result.append(String.format("    [%s] Line %d: %s\n",
-                                        diagnostic.getSeverity(),
-                                        diagnostic.getRange().getStart().getLine() + 1,
-                                        diagnostic.getMessage()));
+                for (Map.Entry<String, List<Diagnostic>> fileEntry : allDiagnostics.entrySet()) {
+                    List<Diagnostic> diagnostics = fileEntry.getValue();
+                    if (!diagnostics.isEmpty()) {
+                        String compactFile = UriUtils.compactUri(fileEntry.getKey(), cwdUri);
+                        List<Map<String, Object>> diags = new ArrayList<>();
+                        for (Diagnostic d : diagnostics) {
+                            Map<String, Object> diag = new LinkedHashMap<>();
+                            diag.put("range", (d.getRange().getStart().getLine() + 1) + ":" + d.getRange().getStart().getCharacter()
+                                    + "-" + (d.getRange().getEnd().getLine() + 1) + ":" + d.getRange().getEnd().getCharacter());
+                            if (d.getSeverity() != null) {
+                                diag.put("severity", d.getSeverity().name());
                             }
+                            diag.put("message", d.getMessage());
+                            diags.add(diag);
                         }
+                        Map<String, Object> fileInfo = new LinkedHashMap<>();
+                        fileInfo.put("file", compactFile);
+                        fileInfo.put("diagnostics", diags);
+                        files.add(fileInfo);
                     }
-                    result.append("\n");
                 }
             }
 
-            if (!foundDiagnostics) {
-                return "No diagnostics found in workspace";
+            if (files.isEmpty()) {
+                return "[]";
             }
-
-            return result.toString();
+            return GSON.toJson(files);
 
         } catch (Exception e) {
             LOG.error("Failed to get all diagnostics", e);

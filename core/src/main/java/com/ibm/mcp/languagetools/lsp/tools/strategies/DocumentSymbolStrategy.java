@@ -98,16 +98,18 @@ public class DocumentSymbolStrategy implements LspRequestExecutor.LspRequestStra
     @Override
     public String formatResults(FileUriRequestParams params, List<List<Either<SymbolInformation, DocumentSymbol>>> results) {
         String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
-        List<Map<String, Object>> symbols = new java.util.ArrayList<>();
+        List<Map<String, Object>> hierarchical = new java.util.ArrayList<>();
+        List<Map<String, Object>> flat = new java.util.ArrayList<>();
         for (List<Either<SymbolInformation, DocumentSymbol>> resultList : results) {
             for (Either<SymbolInformation, DocumentSymbol> either : resultList) {
-                if (either.isLeft()) {
-                    symbols.add(LspJsonFormatter.symbolInfo(either.getLeft(), cwdUri));
-                } else {
-                    symbols.add(LspJsonFormatter.documentSymbol(either.getRight()));
+                if (either.isRight()) {
+                    hierarchical.add(LspJsonFormatter.documentSymbol(either.getRight()));
+                } else if (either.isLeft()) {
+                    flat.add(LspJsonFormatter.symbolInfo(either.getLeft(), cwdUri));
                 }
             }
         }
+        List<Map<String, Object>> symbols = !hierarchical.isEmpty() ? hierarchical : flat;
         if (symbols.isEmpty()) {
             return formatNoResultFound(params);
         }

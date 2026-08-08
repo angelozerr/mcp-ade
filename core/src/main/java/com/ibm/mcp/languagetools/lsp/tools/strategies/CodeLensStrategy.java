@@ -95,11 +95,15 @@ public class CodeLensStrategy implements LspRequestExecutor.LspRequestStrategy<F
 
     @Override
     public String formatResults(FileUriRequestParams params, List<List<? extends CodeLens>> results) {
-        List<CodeLens> all = results.stream().flatMap(List::stream).map(cl -> (CodeLens) cl).toList();
-        if (all.isEmpty()) {
+        List<CodeLens> resolved = results.stream()
+                .flatMap(List::stream)
+                .map(cl -> (CodeLens) cl)
+                .filter(cl -> cl.getCommand() != null && cl.getCommand().getTitle() != null)
+                .toList();
+        if (resolved.isEmpty()) {
             return formatNoResultFound(params);
         }
-        return LspJsonFormatter.toJson(all.stream().map(LspJsonFormatter::codeLens).toList());
+        return LspJsonFormatter.toJson(resolved.stream().map(LspJsonFormatter::codeLens).toList());
     }
 
     @Override

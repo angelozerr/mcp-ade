@@ -38,7 +38,7 @@ function getToolDescription(toolName) {
 }
 
 function scheduleTick() {
-    if (tickHandle) clearTimeout(tickHandle);
+    if (tickHandle) return;
     tickHandle = setTimeout(() => {
         tickHandle = null;
         if (operations.some(op => op.status === 'RUNNING')) {
@@ -60,7 +60,30 @@ function tickDurations() {
         if (durEl) {
             durEl.textContent = formatDuration(liveDuration(op));
         }
+        for (const dur of el.querySelectorAll('.activity-duration')) {
+            if (dur === durEl) continue;
+            const entry = dur.closest('.activity-entry, .activity-server-entry');
+            if (!entry) continue;
+            const name = entry.querySelector('.activity-entry-name, .activity-server-name');
+            if (!name) continue;
+            const entryData = findEntry(op.entries, name.textContent);
+            if (entryData && entryData.status === 'RUNNING') {
+                dur.textContent = formatDuration(liveDuration(entryData));
+            }
+        }
     }
+}
+
+function findEntry(entries, name) {
+    if (!entries) return null;
+    for (const e of entries) {
+        if (e.name === name) return e;
+        if (e.children) {
+            const found = findEntry(e.children, name);
+            if (found) return found;
+        }
+    }
+    return null;
 }
 
 export function handleOperationUpdate(msg) {
@@ -102,6 +125,13 @@ export function handleOperationUpdate(msg) {
 }
 
 function flushUpdates() {
+    const container = document.getElementById('mcp-activity-content')
+        || document.getElementById('mcp-activity-tab');
+    const scrollParent = container ? (container.closest('.activity-list') || container) : null;
+    const wasAtBottom = scrollParent
+        ? scrollParent.scrollHeight - scrollParent.scrollTop - scrollParent.clientHeight < 50
+        : true;
+
     if (pendingUpdates.size > 0) {
         const ids = new Set(pendingUpdates);
         pendingUpdates.clear();
@@ -113,6 +143,10 @@ function flushUpdates() {
         const ids = [...pendingNewOps];
         pendingNewOps.clear();
         insertNewOperations(ids);
+    }
+
+    if (wasAtBottom && scrollParent) {
+        scrollParent.scrollTop = scrollParent.scrollHeight;
     }
 }
 
@@ -141,8 +175,6 @@ function insertNewOperations(opIds) {
     }
 
     const esc = escapeHtml;
-    const scrollParent = container.closest('.activity-list') || container;
-    const wasAtBottom = scrollParent.scrollHeight - scrollParent.scrollTop - scrollParent.clientHeight < 50;
 
     for (const opId of opIds) {
         const op = operations.find(o => o.id === opId);
@@ -158,10 +190,6 @@ function insertNewOperations(opIds) {
         }
 
         updateWorkspaceCount(wsBody, wsKey);
-    }
-
-    if (wasAtBottom) {
-        scrollParent.scrollTop = scrollParent.scrollHeight;
     }
 }
 
@@ -285,9 +313,10 @@ export function renderActivity() {
     }
 
     const scrollParent = container.closest('.activity-list') || container;
+    const wasAtBottom = scrollParent.scrollHeight - scrollParent.scrollTop - scrollParent.clientHeight < 50;
     let anchorId = null;
     let anchorOffset = 0;
-    if (scrollParent.scrollTop > 0) {
+    if (!wasAtBottom && scrollParent.scrollTop > 0) {
         for (const opEl of container.querySelectorAll('.activity-operation[data-op-id]')) {
             const rect = opEl.getBoundingClientRect();
             const parentRect = scrollParent.getBoundingClientRect();
@@ -301,7 +330,9 @@ export function renderActivity() {
 
     container.innerHTML = html;
 
-    if (anchorId) {
+    if (wasAtBottom) {
+        scrollParent.scrollTop = scrollParent.scrollHeight;
+    } else if (anchorId) {
         const anchorEl = container.querySelector(`.activity-operation[data-op-id="${anchorId}"]`);
         if (anchorEl) {
             const parentRect = scrollParent.getBoundingClientRect();

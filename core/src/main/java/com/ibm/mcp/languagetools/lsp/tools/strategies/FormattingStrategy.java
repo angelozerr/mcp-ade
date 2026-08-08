@@ -110,12 +110,12 @@ public class FormattingStrategy implements LspRequestExecutor.LspRequestStrategy
 
     @Override
     public String formatNoServerFound(FormattingRequestParams params) {
-        return LspJsonFormatter.toJson(LspJsonFormatter.textEditsResult(List.of(), false));
+        return LspJsonFormatter.toJson(LspJsonFormatter.map("changed", false));
     }
 
     @Override
     public String formatNoResultFound(FormattingRequestParams params) {
-        return LspJsonFormatter.toJson(LspJsonFormatter.textEditsResult(List.of(), params.isApply()));
+        return LspJsonFormatter.toJson(LspJsonFormatter.map("changed", false));
     }
 
     /**

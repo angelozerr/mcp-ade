@@ -30,10 +30,13 @@ import java.util.concurrent.CompletableFuture;
  */
 public class CompletionStrategy extends FilePositionBasedStrategy<CompletionParams, Either<List<CompletionItem>, CompletionList>> {
 
-    private static final int MAX_ITEMS_DISPLAYED = 15;
+    private static final int DEFAULT_MAX_ITEMS = 10;
 
-    public CompletionStrategy(LanguageRegistry languageRegistry) {
+    private final int maxItems;
+
+    public CompletionStrategy(LanguageRegistry languageRegistry, Integer maxResults) {
         super(languageRegistry, LspCapability.COMPLETION, "Completion");
+        this.maxItems = maxResults != null && maxResults > 0 ? maxResults : DEFAULT_MAX_ITEMS;
     }
 
     @Override
@@ -81,7 +84,7 @@ public class CompletionStrategy extends FilePositionBasedStrategy<CompletionPara
             return formatNoResultFound(params);
         }
 
-        int displayCount = Math.min(allItems.size(), MAX_ITEMS_DISPLAYED);
+        int displayCount = Math.min(allItems.size(), maxItems);
         return LspJsonFormatter.toJson(allItems.subList(0, displayCount).stream()
                 .map(LspJsonFormatter::completionItem)
                 .toList());

@@ -82,10 +82,10 @@ public class ValidateSyntaxHandler implements ICommandHandler {
         }
 
         Map<String, Object> result = new HashMap<>();
-        result.put("uri", uri);
-        result.put("syntaxErrors", syntaxErrors);
         result.put("valid", syntaxErrors.isEmpty());
-        result.put("count", syntaxErrors.size());
+        if (!syntaxErrors.isEmpty()) {
+            result.put("syntaxErrors", syntaxErrors);
+        }
         return result;
     }
 

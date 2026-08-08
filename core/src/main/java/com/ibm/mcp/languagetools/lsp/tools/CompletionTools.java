@@ -48,13 +48,14 @@ public class CompletionTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
+            @ToolArg(description = "Maximum number of completion items to return (default: 10)") Integer maxResults,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
         return requestExecutor.execute(
                 params,
-                new CompletionStrategy(languageRegistry),
+                new CompletionStrategy(languageRegistry, maxResults),
                 cancellation,
                 progress);
     }

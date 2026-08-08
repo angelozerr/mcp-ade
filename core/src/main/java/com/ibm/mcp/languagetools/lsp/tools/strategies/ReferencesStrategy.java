@@ -66,12 +66,10 @@ public class ReferencesStrategy extends FilePositionBasedStrategy<ReferenceParam
 
     @Override
     public String formatResults(FilePositionRequestParams params, List<List<? extends Location>> results) {
-        // Merge all results
         List<? extends Location> allReferences = results.stream()
                 .flatMap(List::stream)
                 .toList();
 
-        // Deduplicate based on URI + range
         List<? extends Location> references = allReferences.stream()
                 .distinct()
                 .toList();

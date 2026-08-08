@@ -17,6 +17,7 @@ import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
@@ -60,9 +61,11 @@ public class HoverStrategy extends FilePositionBasedStrategy<HoverParams, Hover>
 
     @Override
     public String formatResults(FilePositionRequestParams params, List<Hover> results) {
+        String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
         List<String> contents = results.stream()
                 .map(this::extractContent)
                 .filter(s -> s != null && !s.isEmpty())
+                .map(s -> UriUtils.stripFileUriPrefix(s, cwdUri))
                 .collect(Collectors.toList());
 
         if (contents.isEmpty()) {

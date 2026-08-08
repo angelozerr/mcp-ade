@@ -64,13 +64,11 @@ public class ImplementationStrategy extends FilePositionBasedStrategy<Implementa
 
     @Override
     public String formatResults(FilePositionRequestParams params, List<Either<List<? extends Location>, List<? extends LocationLink>>> results) {
-        // Merge all locations from all results
         List<Location> allLocations = results.stream()
                 .flatMap(either -> {
                     if (either.isLeft()) {
                         return either.getLeft().stream();
                     } else {
-                        // Convert LocationLink to Location
                         return either.getRight().stream()
                                 .map(link -> new Location(link.getTargetUri(), link.getTargetRange()));
                     }
@@ -83,7 +81,7 @@ public class ImplementationStrategy extends FilePositionBasedStrategy<Implementa
         }
 
         String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
-        return LspJsonFormatter.toJson(allLocations.stream().map(loc -> LspJsonFormatter.location(loc, cwdUri)).toList());
+        return LspJsonFormatter.toJson(LspJsonFormatter.locationsByFile(allLocations, cwdUri));
     }
 
     @Override

@@ -113,11 +113,11 @@ public class RangeFormattingStrategy implements LspRequestExecutor.LspRequestStr
 
     @Override
     public String formatNoServerFound(RangeFormattingRequestParams params) {
-        return LspJsonFormatter.toJson(LspJsonFormatter.textEditsResult(List.of(), false));
+        return LspJsonFormatter.toJson(LspJsonFormatter.map("changed", false));
     }
 
     @Override
     public String formatNoResultFound(RangeFormattingRequestParams params) {
-        return LspJsonFormatter.toJson(LspJsonFormatter.textEditsResult(List.of(), params.isApply()));
+        return LspJsonFormatter.toJson(LspJsonFormatter.map("changed", false));
     }
 }

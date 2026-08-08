@@ -83,7 +83,7 @@ public class TypeDefinitionStrategy extends FilePositionBasedStrategy<TypeDefini
         }
 
         String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
-        return LspJsonFormatter.toJson(allLocations.stream().map(loc -> LspJsonFormatter.location(loc, cwdUri)).toList());
+        return LspJsonFormatter.toJson(LspJsonFormatter.locationsByFile(allLocations, cwdUri));
     }
 
     @Override
