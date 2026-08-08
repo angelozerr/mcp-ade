@@ -29,6 +29,12 @@ public class LspRequestConstants {
     public static final String TEXT_DOCUMENT_DOCUMENT_SYMBOL = "textDocument/documentSymbol";
     public static final String TEXT_DOCUMENT_CODE_ACTION = "textDocument/codeAction";
     public static final String TEXT_DOCUMENT_RENAME = "textDocument/rename";
+    public static final String TEXT_DOCUMENT_TYPE_DEFINITION = "textDocument/typeDefinition";
+    public static final String TEXT_DOCUMENT_FORMATTING = "textDocument/formatting";
+    public static final String TEXT_DOCUMENT_RANGE_FORMATTING = "textDocument/rangeFormatting";
+    public static final String TEXT_DOCUMENT_SIGNATURE_HELP = "textDocument/signatureHelp";
+    public static final String TEXT_DOCUMENT_CODE_LENS = "textDocument/codeLens";
+    public static final String TEXT_DOCUMENT_INLAY_HINT = "textDocument/inlayHint";
 
     // workspace/* LSP requests
     public static final String WORKSPACE_SYMBOL = "workspace/symbol";

@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.admin;
 
 import com.ibm.mcp.languagetools.admin.ws.ActivityStateWsMessage;
+import com.ibm.mcp.languagetools.operation.OperationOrigin;
 import com.ibm.mcp.languagetools.operation.OperationTracker;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
@@ -97,6 +98,7 @@ public class ActivityAdminResource {
         Object[] invokeArgs = buildInvocationArgs(method, toolArgs, arguments, cancellation);
 
         CompletableFuture.runAsync(() -> {
+            OperationTracker.setCurrentOrigin(OperationOrigin.USER);
             try {
                 Object result = method.invoke(bean, invokeArgs);
                 if (result instanceof CompletableFuture<?> future) {
@@ -112,6 +114,8 @@ public class ActivityAdminResource {
             } catch (Exception e) {
                 activeReplays.remove(replayId);
                 LOG.errorf(e, "Replay invocation failed for tool %s", toolName);
+            } finally {
+                OperationTracker.clearCurrentOrigin();
             }
         });
 

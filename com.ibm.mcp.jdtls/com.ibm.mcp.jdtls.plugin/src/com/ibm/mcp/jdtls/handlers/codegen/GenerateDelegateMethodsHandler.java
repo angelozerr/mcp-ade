@@ -98,8 +98,7 @@ public class GenerateDelegateMethodsHandler extends AbstractRefactoringHandler {
         String source = cu.getSource();
         int insertOffset = findInsertOffset(enclosingType, source);
 
-        List<Map<String, Object>> edits = createInsertEdit(uri, source, insertOffset, code.toString());
-        return createSuccessResult(edits);
+        return applyInsertEdit(uri, cu, source, insertOffset, code.toString(), isApply(params), monitor);
     }
 
     private IType resolveFieldType(IField field) throws Exception {

@@ -2,7 +2,6 @@ import { escapeHtml } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
 
 let operations = [];
-// let activityFilter = 'all';
 const expandedOps = new Set();
 const collapsedServers = new Set();
 const collapsedWorkspaces = new Set();
@@ -13,6 +12,10 @@ let mcpToolsMap = null;
 let activityEnabled = false;
 const activeReplays = new Map();
 const toggledSections = new Set();
+
+const pendingUpdates = new Set();
+const pendingNewOps = new Set();
+let updateRAF = null;
 
 async function ensureToolsLoaded() {
     if (mcpToolsMap) return;
@@ -39,28 +42,50 @@ function scheduleTick() {
     tickHandle = setTimeout(() => {
         tickHandle = null;
         if (operations.some(op => op.status === 'RUNNING')) {
-            renderActivity();
+            tickDurations();
             scheduleTick();
         }
     }, 500);
+}
+
+function tickDurations() {
+    const container = document.getElementById('mcp-activity-content')
+        || document.getElementById('mcp-activity-tab');
+    if (!container) return;
+    for (const op of operations) {
+        if (op.status !== 'RUNNING') continue;
+        const el = container.querySelector(`.activity-operation[data-op-id="${op.id}"]`);
+        if (!el) continue;
+        const durEl = el.querySelector(':scope > .activity-operation-header > .activity-duration');
+        if (durEl) {
+            durEl.textContent = formatDuration(liveDuration(op));
+        }
+    }
 }
 
 export function handleOperationUpdate(msg) {
     const idx = operations.findIndex(op => op.id === msg.id);
     if (idx >= 0) {
         operations[idx] = msg;
+        pendingUpdates.add(msg.id);
     } else {
         operations.push(msg);
         if (msg.status === 'RUNNING') {
             expandedOps.add(msg.id);
         }
+        pendingNewOps.add(msg.id);
     }
 
     if (operations.length > 500) {
         operations = operations.slice(-500);
     }
 
-    ensureToolsLoaded().then(() => renderActivity());
+    if (!updateRAF) {
+        updateRAF = requestAnimationFrame(() => {
+            updateRAF = null;
+            ensureToolsLoaded().then(() => flushUpdates());
+        });
+    }
 
     if (msg.status === 'RUNNING') {
         scheduleTick();
@@ -74,6 +99,123 @@ export function handleOperationUpdate(msg) {
             }
         }
     }
+}
+
+function flushUpdates() {
+    if (pendingUpdates.size > 0) {
+        const ids = new Set(pendingUpdates);
+        pendingUpdates.clear();
+        for (const opId of ids) {
+            patchOperation(opId);
+        }
+    }
+    if (pendingNewOps.size > 0) {
+        const ids = [...pendingNewOps];
+        pendingNewOps.clear();
+        insertNewOperations(ids);
+    }
+}
+
+function patchOperation(opId) {
+    const container = document.getElementById('mcp-activity-content')
+        || document.getElementById('mcp-activity-tab');
+    if (!container) return;
+    const existingEl = container.querySelector(`.activity-operation[data-op-id="${opId}"]`);
+    if (!existingEl) return;
+    const op = operations.find(o => o.id === opId);
+    if (!op) return;
+
+    const esc = escapeHtml;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = renderOperation(op, esc);
+    const newEl = tmp.firstElementChild;
+    existingEl.replaceWith(newEl);
+}
+
+function insertNewOperations(opIds) {
+    const container = document.getElementById('mcp-activity-content')
+        || document.getElementById('mcp-activity-tab');
+    if (!container || !container.querySelector('.activity-workspace-group')) {
+        renderActivity();
+        return;
+    }
+
+    const esc = escapeHtml;
+    const scrollParent = container.closest('.activity-list') || container;
+    const wasAtBottom = scrollParent.scrollHeight - scrollParent.scrollTop - scrollParent.clientHeight < 50;
+
+    for (const opId of opIds) {
+        const op = operations.find(o => o.id === opId);
+        if (!op) continue;
+
+        const wsKey = op.workspaceUri || 'global';
+        const wsBody = getOrCreateWorkspaceBody(container, wsKey, esc);
+
+        if (op.sessionId) {
+            insertSessionOperation(wsBody, op, wsKey, esc);
+        } else {
+            wsBody.appendChild(createOpElement(op, esc));
+        }
+
+        updateWorkspaceCount(wsBody, wsKey);
+    }
+
+    if (wasAtBottom) {
+        scrollParent.scrollTop = scrollParent.scrollHeight;
+    }
+}
+
+function getOrCreateWorkspaceBody(container, wsKey, esc) {
+    for (const h of container.querySelectorAll('.activity-workspace-header')) {
+        if (h.dataset.wsKey === wsKey) {
+            return h.closest('.activity-workspace-group').querySelector('.activity-workspace-body');
+        }
+    }
+    const label = wsKey === 'global' ? 'Global' : wsKey.split('/').pop().split('\\').pop();
+    const expanded = !allFolded && !collapsedWorkspaces.has(wsKey);
+    const html = `<div class="activity-workspace-group">` +
+        `<div class="activity-workspace-header" data-action="toggleWorkspace" data-ws-key="${esc(wsKey)}">` +
+        `<span class="activity-toggle">${expanded ? '&#9660;' : '&#9654;'}</span>` +
+        `${esc(label)} <span class="activity-workspace-count">0</span>` +
+        `</div>` +
+        `<div class="activity-workspace-body" style="display: ${expanded ? 'block' : 'none'};"></div></div>`;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    container.appendChild(tmp.firstElementChild);
+    return container.lastElementChild.querySelector('.activity-workspace-body');
+}
+
+function insertSessionOperation(wsBody, op, wsKey, esc) {
+    const sessionKey = `${wsKey}:${op.sessionId}`;
+    for (const h of wsBody.querySelectorAll('.activity-session-header')) {
+        if (h.dataset.sessionKey === sessionKey) {
+            const sg = h.closest('.activity-session-group');
+            const body = sg.querySelector('.activity-session-body');
+            body.appendChild(createOpElement(op, esc));
+            const sc = sg.querySelector('.activity-workspace-count');
+            if (sc) sc.textContent = operations.filter(o => o.sessionId === op.sessionId).length;
+            return;
+        }
+    }
+    const item = { sessionId: op.sessionId, sessionName: op.sessionName || op.sessionId, ops: [op] };
+    const sgHtml = renderSessionGroup(item, wsKey, esc);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = sgHtml;
+    wsBody.appendChild(tmp.firstElementChild);
+}
+
+function updateWorkspaceCount(wsBody, wsKey) {
+    const wsGroup = wsBody.closest('.activity-workspace-group');
+    const countEl = wsGroup.querySelector(':scope > .activity-workspace-header .activity-workspace-count');
+    if (countEl) {
+        countEl.textContent = operations.filter(o => (o.workspaceUri || 'global') === wsKey).length;
+    }
+}
+
+function createOpElement(op, esc) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = renderOperation(op, esc);
+    return tmp.firstElementChild;
 }
 
 export function renderActivity() {
@@ -128,7 +270,7 @@ export function renderActivity() {
         for (const op of noSession) {
             renderItems.push({ type: 'operation', op, sortTime: op.startTime });
         }
-        renderItems.sort((a, b) => b.sortTime - a.sortTime);
+        renderItems.sort((a, b) => a.sortTime - b.sortTime);
 
         for (const item of renderItems) {
             if (item.type === 'session') {
@@ -259,6 +401,11 @@ function renderOperation(op, esc) {
         html += `<span class="activity-toggle-spacer"></span>`;
     }
     html += `<span class="activity-status-icon">${statusIcon}</span>`;
+    if (op.origin === 'USER') {
+        html += `<span class="activity-origin-badge origin-user" title="User"><svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><circle cx="8" cy="4.5" r="2.8"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5z"/></svg></span>`;
+    } else {
+        html += `<span class="activity-origin-badge origin-agent" title="Agent"><svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8 1l1.8 3.2L13.5 5l-2.7 2.8.6 3.7L8 9.8 4.6 11.5l.6-3.7L2.5 5l3.7-.8z"/></svg></span>`;
+    }
     html += `<span class="activity-operation-info"${titleAttr}>`;
     html += `<span class="activity-operation-name">${esc(op.name)}</span>`;
     if (argsSummary) {
@@ -267,12 +414,11 @@ function renderOperation(op, esc) {
     html += `</span>`;
     html += `<span class="activity-time">${formatTime(op.startTime)}</span>`;
     html += `<span class="activity-duration">${duration}</span>`;
-    if (op.status !== 'RUNNING' && op.arguments) {
-        if (activeReplays.has(op.id)) {
-            html += `<span class="activity-replay replaying" data-action="cancelReplay" data-op-id="${op.id}" title="Cancel replay">&#10007;</span>`;
-        } else {
-            html += `<span class="activity-replay" data-action="replayOperation" data-op-id="${op.id}" title="Replay">&#8635;</span>`;
-        }
+    const isActiveReplay = Array.from(activeReplays.values()).includes(op.id);
+    if (isActiveReplay && op.status === 'RUNNING') {
+        html += `<span class="activity-replay replaying" data-action="cancelReplay" data-op-id="${op.id}" title="Cancel replay">&#9632;</span>`;
+    } else if (op.status !== 'RUNNING' && op.arguments && !activeReplays.has(op.id)) {
+        html += `<span class="activity-replay" data-action="replayOperation" data-op-id="${op.id}" title="Replay">&#8635;</span>`;
     }
     html += `</div>`;
 
@@ -654,16 +800,23 @@ async function replayOperation(el) {
 async function cancelReplay(el) {
     const opEl = el.closest('[data-op-id]');
     if (!opEl) return;
-    const opId = opEl.dataset.opId;
-    const replayId = activeReplays.get(opId);
-    if (!replayId) return;
+    const replayOpId = opEl.dataset.opId;
+
+    let originalOpId = null;
+    for (const [origId, repId] of activeReplays) {
+        if (repId === replayOpId) {
+            originalOpId = origId;
+            break;
+        }
+    }
+    if (!originalOpId) return;
 
     try {
-        await fetch(`/api/admin/activity/replay/${replayId}`, { method: 'DELETE' });
+        await fetch(`/api/admin/activity/replay/${replayOpId}`, { method: 'DELETE' });
     } catch (e) {
         // ignore
     }
-    activeReplays.delete(opId);
+    activeReplays.delete(originalOpId);
     renderActivity();
 }
 

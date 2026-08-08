@@ -69,6 +69,11 @@ public class OperationEntry {
         if (context == null) return;
         this.endTime = Instant.now();
         this.status = OperationStatus.COMPLETED;
+        for (OperationEntry child : children) {
+            if (child.status == OperationStatus.RUNNING) {
+                child.complete();
+            }
+        }
         context.notifyUpdate();
     }
 

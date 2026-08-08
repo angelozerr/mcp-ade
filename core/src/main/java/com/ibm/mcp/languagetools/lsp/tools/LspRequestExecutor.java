@@ -95,7 +95,7 @@ public class LspRequestExecutor {
         return strategy.resolveServers(serverResolver, params, installMonitor, operationContext)
                 .thenCompose(servers -> {
                     if (servers.isEmpty()) {
-                        throw new ToolException(strategy.formatNoServerFound(params));
+                        return CompletableFuture.completedFuture(strategy.formatNoServerFound(params));
                     }
 
                     // Build server names for progress messages
@@ -135,7 +135,14 @@ public class LspRequestExecutor {
                                         parentEntry.complete();
                                         return result;
                                     })
-                                    .exceptionally(ToolException::rethrow);
+                                    .exceptionally(ex -> {
+                                        execMonitor.setComplete();
+                                        String errorMessage = ToolException.resolveErrorMessage(ex);
+                                        requestChild.fail(errorMessage);
+                                        parentEntry.fail(errorMessage);
+                                        LOG.warn("LSP request " + lspMethod + " failed on server " + serverId + ": " + errorMessage);
+                                        return strategy.getEmptyResult();
+                                    });
                             })
                             .toList();
 
@@ -223,7 +230,7 @@ public class LspRequestExecutor {
          * Format error message when no server is found.
          */
         default String formatNoServerFound(TRequestParams params) {
-            return String.format("No language server with %s support found", getCapability().getMethod());
+            return "[]";
         }
 
         /**

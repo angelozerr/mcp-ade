@@ -76,38 +76,14 @@ public class ReferencesStrategy extends FilePositionBasedStrategy<ReferenceParam
                 .distinct()
                 .toList();
 
-        // Format results
-        StringBuilder result = new StringBuilder();
-        result.append(String.format("Found %d reference(s) for symbol at %s:%d:%d\n\n",
-                references.size(), params.getFileUri(), params.getLine() + 1, params.getCharacter()));
-
-        // Group by file
-        Map<String, List<Location>> byFile = references.stream()
-                .collect(Collectors.groupingBy(Location::getUri));
-
-        for (Map.Entry<String, List<Location>> entry : byFile.entrySet()) {
-            String file = entry.getKey();
-            List<Location> locations = entry.getValue();
-
-            result.append(String.format("File: %s (%d reference(s))\n", file, locations.size()));
-
-            for (Location location : locations) {
-                Range range = location.getRange();
-                result.append(String.format("  Line %d:%d-%d\n",
-                        range.getStart().getLine() + 1,
-                        range.getStart().getCharacter(),
-                        range.getEnd().getCharacter()));
-            }
-            result.append("\n");
-        }
-
-        return result.toString();
+        return LspJsonFormatter.toJson(references.stream()
+                .map(loc -> LspJsonFormatter.location((Location) loc))
+                .toList());
     }
 
     @Override
     public String formatNoResultFound(FilePositionRequestParams params) {
-        return String.format("No references found for symbol at %s:%d:%d",
-                params.getFileUri(), params.getLine() + 1, params.getCharacter());
+        return LspJsonFormatter.EMPTY_ARRAY;
     }
 }
 

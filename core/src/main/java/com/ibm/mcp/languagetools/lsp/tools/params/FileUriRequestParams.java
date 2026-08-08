@@ -35,7 +35,7 @@ public class FileUriRequestParams extends LspRequestParams {
     @Override
     public Map<String, Object> toArgumentsMap() {
         Map<String, Object> map = super.toArgumentsMap();
-        map.put("fileUri", fileUri);
+        map.put("uri", fileUri);
         return map;
     }
 }

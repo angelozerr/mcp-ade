@@ -25,6 +25,7 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.text.edits.InsertEdit;
 
 import com.ibm.mcp.jdtls.ICommandHandler;
 import com.ibm.mcp.jdtls.JdtUtils;
@@ -197,6 +198,20 @@ public abstract class AbstractRefactoringHandler implements ICommandHandler {
     protected static boolean isApply(Map<String, Object> params) {
         Object apply = params.get("apply");
         return Boolean.TRUE.equals(apply);
+    }
+
+    /**
+     * Apply an insert edit and return a success result.
+     * If apply is true, the text is inserted into the compilation unit and saved to disk.
+     */
+    protected Map<String, Object> applyInsertEdit(String uri, ICompilationUnit cu, String source,
+            int insertOffset, String insertText, boolean apply, IProgressMonitor monitor) throws Exception {
+        List<Map<String, Object>> edits = createInsertEdit(uri, source, insertOffset, insertText);
+        if (apply) {
+            cu.applyTextEdit(new InsertEdit(insertOffset, insertText), monitor);
+            cu.save(monitor, true);
+        }
+        return createSuccessResult(edits, apply);
     }
 
     /**

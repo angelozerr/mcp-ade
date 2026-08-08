@@ -100,7 +100,7 @@ public abstract class FilePositionBasedStrategy<TLspParams, TResult>
 
     @Override
     public String formatNoServerFound(FilePositionRequestParams params) {
-        return String.format("No language server with %s support found for: %s", getCapability(), params.getFileUri());
+        return LspJsonFormatter.EMPTY_ARRAY;
     }
 
     @Override

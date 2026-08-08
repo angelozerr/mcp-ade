@@ -111,8 +111,7 @@ public class GenerateConstructorHandler extends AbstractRefactoringHandler {
 
         int insertOffset = findInsertOffset(type, source);
 
-        List<Map<String, Object>> edits = createInsertEdit(uri, source, insertOffset, code.toString());
-        return createSuccessResult(edits);
+        return applyInsertEdit(uri, cu, source, insertOffset, code.toString(), isApply(params), monitor);
     }
 
     private int findInsertOffset(IType type, String source) throws Exception {

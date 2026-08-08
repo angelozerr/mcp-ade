@@ -46,6 +46,13 @@ public class LspClientFeatures {
     private final DocumentSymbolCapabilityRegistry documentSymbolRegistry;
     private final CodeActionCapabilityRegistry codeActionRegistry;
     private final RenameCapabilityRegistry renameRegistry;
+    private final TypeDefinitionCapabilityRegistry typeDefinitionRegistry;
+    private final FormattingCapabilityRegistry formattingRegistry;
+    private final RangeFormattingCapabilityRegistry rangeFormattingRegistry;
+    private final SignatureHelpCapabilityRegistry signatureHelpRegistry;
+    private final CodeLensCapabilityRegistry codeLensRegistry;
+    private final InlayHintCapabilityRegistry inlayHintRegistry;
+    private final WorkspaceSymbolCapabilityRegistry workspaceSymbolRegistry;
 
     // Dynamic capabilities registered via client/registerCapability
     private final Map<String, Runnable> dynamicRegistrations = new ConcurrentHashMap<>();
@@ -65,6 +72,13 @@ public class LspClientFeatures {
         this.documentSymbolRegistry = new DocumentSymbolCapabilityRegistry(this);
         this.codeActionRegistry = new CodeActionCapabilityRegistry(this);
         this.renameRegistry = new RenameCapabilityRegistry(this);
+        this.typeDefinitionRegistry = new TypeDefinitionCapabilityRegistry(this);
+        this.formattingRegistry = new FormattingCapabilityRegistry(this);
+        this.rangeFormattingRegistry = new RangeFormattingCapabilityRegistry(this);
+        this.signatureHelpRegistry = new SignatureHelpCapabilityRegistry(this);
+        this.codeLensRegistry = new CodeLensCapabilityRegistry(this);
+        this.inlayHintRegistry = new InlayHintCapabilityRegistry(this);
+        this.workspaceSymbolRegistry = new WorkspaceSymbolCapabilityRegistry();
     }
 
     /**
@@ -81,6 +95,13 @@ public class LspClientFeatures {
         documentSymbolRegistry.setServerCapabilities(serverCapabilities);
         codeActionRegistry.setServerCapabilities(serverCapabilities);
         renameRegistry.setServerCapabilities(serverCapabilities);
+        typeDefinitionRegistry.setServerCapabilities(serverCapabilities);
+        formattingRegistry.setServerCapabilities(serverCapabilities);
+        rangeFormattingRegistry.setServerCapabilities(serverCapabilities);
+        signatureHelpRegistry.setServerCapabilities(serverCapabilities);
+        codeLensRegistry.setServerCapabilities(serverCapabilities);
+        inlayHintRegistry.setServerCapabilities(serverCapabilities);
+        workspaceSymbolRegistry.setServerCapabilities(serverCapabilities);
     }
 
     /**
@@ -112,7 +133,20 @@ public class LspClientFeatures {
             case DOCUMENT_SYMBOL -> documentSymbolRegistry.isDocumentSymbolSupported(document);
             case CODE_ACTION -> codeActionRegistry.isCodeActionSupported(document);
             case RENAME -> renameRegistry.isRenameSupported(document);
-            case WORKSPACE_SYMBOL -> false;
+            case TYPE_DEFINITION -> typeDefinitionRegistry.isTypeDefinitionSupported(document);
+            case FORMATTING -> formattingRegistry.isFormattingSupported(document);
+            case RANGE_FORMATTING -> rangeFormattingRegistry.isRangeFormattingSupported(document);
+            case SIGNATURE_HELP -> signatureHelpRegistry.isSignatureHelpSupported(document);
+            case CODE_LENS -> codeLensRegistry.isCodeLensSupported(document);
+            case INLAY_HINT -> inlayHintRegistry.isInlayHintSupported(document);
+            case WORKSPACE_SYMBOL -> workspaceSymbolRegistry.isWorkspaceSymbolSupported();
+        };
+    }
+
+    public boolean supportsCapability(LspCapability capability) {
+        return switch (capability) {
+            case WORKSPACE_SYMBOL -> workspaceSymbolRegistry.isWorkspaceSymbolSupported();
+            default -> false;
         };
     }
 
@@ -173,6 +207,30 @@ public class LspClientFeatures {
                 case LspRequestConstants.TEXT_DOCUMENT_RENAME -> {
                     var options = renameRegistry.registerCapability(jsonOptions);
                     dynamicRegistrations.put(id, () -> renameRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_TYPE_DEFINITION -> {
+                    var options = typeDefinitionRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> typeDefinitionRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_FORMATTING -> {
+                    var options = formattingRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> formattingRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_RANGE_FORMATTING -> {
+                    var options = rangeFormattingRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> rangeFormattingRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_SIGNATURE_HELP -> {
+                    var options = signatureHelpRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> signatureHelpRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_CODE_LENS -> {
+                    var options = codeLensRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> codeLensRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_INLAY_HINT -> {
+                    var options = inlayHintRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> inlayHintRegistry.unregisterCapability(options));
                 }
                 case LspRequestConstants.WORKSPACE_DID_CHANGE_WATCHED_FILES -> {
                     DidChangeWatchedFilesRegistrationOptions options =

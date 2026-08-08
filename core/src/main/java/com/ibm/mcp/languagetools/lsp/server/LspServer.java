@@ -894,6 +894,10 @@ public class LspServer extends ServerBase<LspServerConfig> {
         return clientFeatures.supportsCapability(capability, document);
     }
 
+    public boolean supportsCapability(LspCapability capability) {
+        return clientFeatures.supportsCapability(capability);
+    }
+
     /**
      * Get the client features for this server.
      *

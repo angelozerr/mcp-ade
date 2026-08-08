@@ -459,6 +459,27 @@
     flex: 1;
 }
 
+.activity-origin-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.3rem;
+    flex-shrink: 0;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.activity-origin-badge svg {
+    display: block;
+}
+
+.activity-origin-badge.origin-agent {
+    color: var(--accent-primary);
+}
+
+.activity-origin-badge.origin-user {
+    color: var(--color-warning, #e0a030);
+}
+
 .activity-replay {
     font-size: 0.8rem;
     color: var(--accent-primary);

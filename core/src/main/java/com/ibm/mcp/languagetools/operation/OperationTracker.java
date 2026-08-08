@@ -41,6 +41,8 @@ public class OperationTracker {
     @Inject
     Application application;
 
+    private static final ThreadLocal<OperationOrigin> currentOrigin = new ThreadLocal<>();
+
     private volatile boolean enabled;
     private final ConcurrentLinkedDeque<OperationContext> operations = new ConcurrentLinkedDeque<>();
     private final List<Consumer<OperationEvent>> listeners = new CopyOnWriteArrayList<>();
@@ -76,6 +78,8 @@ public class OperationTracker {
             }
         }
         OperationContext ctx = new OperationContext(name, kind, workspaceUri, this);
+        OperationOrigin origin = currentOrigin.get();
+        ctx.setOrigin(origin != null ? origin : OperationOrigin.AGENT);
         operations.addLast(ctx);
         while (operations.size() > MAX_OPERATIONS) {
             operations.pollFirst();
@@ -90,6 +94,14 @@ public class OperationTracker {
 
     void operationCompleted(OperationContext ctx) {
         fireEvent(new OperationEvent(OperationEvent.Type.COMPLETED, ctx));
+    }
+
+    public static void setCurrentOrigin(OperationOrigin origin) {
+        currentOrigin.set(origin);
+    }
+
+    public static void clearCurrentOrigin() {
+        currentOrigin.remove();
     }
 
     public void addListener(Consumer<OperationEvent> listener) {

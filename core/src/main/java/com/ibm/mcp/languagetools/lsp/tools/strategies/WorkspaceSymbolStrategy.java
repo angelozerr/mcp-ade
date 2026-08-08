@@ -50,7 +50,8 @@ public class WorkspaceSymbolStrategy implements LspRequestExecutor.LspRequestStr
             WorkspaceSymbolRequestParams params, ProgressMonitor progressMonitor,
             OperationContext operationContext) {
 
-        return resolver.getLspServersForWorkspace(params.getCwd(), server -> server.isEnabled());
+        return resolver.getLspServersForWorkspace(params.getCwd(),
+                server -> server.isEnabled() && server.supportsCapability(getCapability()));
     }
 
     @Override
@@ -114,41 +115,11 @@ public class WorkspaceSymbolStrategy implements LspRequestExecutor.LspRequestStr
             return formatNoResultFound(params);
         }
 
-        // Format results
-        StringBuilder result = new StringBuilder();
-        result.append(String.format("Found %d symbol(s) matching '%s'\n\n", allSymbols.size(), params.getQuery()));
-
-        // Group by file
-        Map<String, List<SymbolInformation>> byFile = allSymbols.stream()
-                .filter(s -> s.getLocation() != null)
-                .collect(Collectors.groupingBy(s -> s.getLocation().getUri()));
-
-        for (Map.Entry<String, List<SymbolInformation>> entry : byFile.entrySet()) {
-            String file = entry.getKey();
-            List<SymbolInformation> symbols = entry.getValue();
-
-            result.append(String.format("File: %s (%d symbol(s))\n", file, symbols.size()));
-
-            for (SymbolInformation symbol : symbols) {
-                Range range = symbol.getLocation().getRange();
-                String kind = symbol.getKind() != null ? symbol.getKind().name().toLowerCase() : "symbol";
-                String container = symbol.getContainerName() != null ? " in " + symbol.getContainerName() : "";
-
-                result.append(String.format("  %s %s%s - Line %d:%d\n",
-                        kind,
-                        symbol.getName(),
-                        container,
-                        range.getStart().getLine() + 1,
-                        range.getStart().getCharacter()));
-            }
-            result.append("\n");
-        }
-
-        return result.toString();
+        return LspJsonFormatter.toJson(allSymbols.stream().map(LspJsonFormatter::symbolInfo).toList());
     }
 
     @Override
     public String formatNoResultFound(WorkspaceSymbolRequestParams params) {
-        return String.format("No symbols found matching '%s'", params.getQuery());
+        return LspJsonFormatter.EMPTY_ARRAY;
     }
 }

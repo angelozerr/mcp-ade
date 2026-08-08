@@ -41,13 +41,23 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 |------|-------------|
 | `get_diagnostics` | Get errors and warnings for a file |
 | `get_all_diagnostics` | Get diagnostics for all files in a workspace |
-| `goToDefinition` | Jump to where a symbol is defined |
-| `goToDeclaration` | Jump to where a symbol is declared |
+| `go_to_definition` | Jump to where a symbol is defined |
+| `go_to_declaration` | Jump to where a symbol is declared |
+| `go_to_type_definition` | Jump to where the type of a symbol is defined |
 | `find_references` | Find all usages of a symbol |
-| `findImplementations` | Find implementations of an interface/abstract class |
+| `find_implementations` | Find implementations of an interface/abstract class |
+| `get_hover_info` | Get type information and documentation for a symbol |
+| `get_completions` | Get code completion suggestions at a position |
+| `get_signature_help` | Get parameter information for a function/method call |
+| `get_document_symbols` | Get all symbols (classes, methods, variables) in a document |
 | `get_code_actions` | Get quick fixes and refactoring suggestions |
 | `rename` | Rename a symbol across the workspace |
-| `searchWorkspaceSymbols` | Search for classes, methods, variables by name |
+| `search_workspace_symbols` | Search for classes, methods, variables by name |
+| `format_document` | Format an entire document (supports `apply` parameter) |
+| `format_document_range` | Format a specific range in a document (supports `apply` parameter) |
+| `get_code_lenses` | Get code lenses (run test, reference counts, etc.) |
+| `get_inlay_hints` | Get inlay hints (inferred types, parameter names) |
+| `apply_workspace_edit` | Apply text edits to a file on disk |
 | `open_document` / `close_document` | Keep a file open for multiple LSP operations |
 
 ### DAP Tools

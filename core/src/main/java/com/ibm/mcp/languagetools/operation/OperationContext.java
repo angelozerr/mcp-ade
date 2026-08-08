@@ -38,6 +38,7 @@ public class OperationContext {
     private volatile String result;
     private volatile String sessionId;
     private volatile String sessionName;
+    private volatile OperationOrigin origin;
     private final OperationTracker tracker;
 
     private OperationContext() {
@@ -84,6 +85,11 @@ public class OperationContext {
         if (tracker == null) return;
         this.endTime = Instant.now();
         this.status = OperationStatus.COMPLETED;
+        for (OperationEntry entry : entries) {
+            if (entry.getStatus() == OperationStatus.RUNNING) {
+                entry.complete();
+            }
+        }
         tracker.operationCompleted(this);
     }
 
@@ -192,5 +198,14 @@ public class OperationContext {
 
     public String getSessionName() {
         return sessionName;
+    }
+
+    public void setOrigin(OperationOrigin origin) {
+        if (tracker == null) return;
+        this.origin = origin;
+    }
+
+    public OperationOrigin getOrigin() {
+        return origin;
     }
 }

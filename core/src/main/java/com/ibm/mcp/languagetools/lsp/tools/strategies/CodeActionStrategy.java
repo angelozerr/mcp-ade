@@ -137,90 +137,17 @@ public class CodeActionStrategy
                 .flatMap(List::stream)
                 .toList();
 
-        StringBuilder result = new StringBuilder();
-        result.append(String.format("Found %d code action(s) at %s:%d:%d\n\n",
-                allActions.size(), params.getFileUri(), params.getLine() + 1, params.getCharacter()));
+        List<Map<String, Object>> items = allActions.stream()
+                .map(item -> item.isRight()
+                        ? LspJsonFormatter.codeAction(item.getRight())
+                        : LspJsonFormatter.command(item.getLeft()))
+                .toList();
 
-        for (int i = 0; i < allActions.size(); i++) {
-            Either<Command, CodeAction> item = allActions.get(i);
-            if (item.isRight()) {
-                CodeAction action = item.getRight();
-                result.append(String.format("%d. %s", i + 1, action.getTitle()));
-                if (action.getKind() != null) {
-                    result.append(String.format(" [%s]", action.getKind()));
-                }
-                result.append("\n");
-
-                if (action.getDiagnostics() != null && !action.getDiagnostics().isEmpty()) {
-                    for (Diagnostic diag : action.getDiagnostics()) {
-                        result.append(String.format("   Diagnostic: %s (line %d)\n",
-                                diag.getMessage(),
-                                diag.getRange().getStart().getLine() + 1));
-                    }
-                }
-
-                if (action.getEdit() != null) {
-                    formatWorkspaceEdit(result, action.getEdit(), "   ");
-                }
-            } else {
-                Command command = item.getLeft();
-                result.append(String.format("%d. %s (command: %s)\n", i + 1, command.getTitle(), command.getCommand()));
-            }
-        }
-
-        return result.toString();
-    }
-
-    private void formatWorkspaceEdit(StringBuilder result, WorkspaceEdit edit, String indent) {
-        if (edit.getChanges() != null && !edit.getChanges().isEmpty()) {
-            for (Map.Entry<String, List<TextEdit>> entry : edit.getChanges().entrySet()) {
-                result.append(String.format("%sFile: %s (%d edit(s))\n", indent, entry.getKey(), entry.getValue().size()));
-                for (TextEdit textEdit : entry.getValue()) {
-                    Range range = textEdit.getRange();
-                    result.append(String.format("%s  Line %d:%d-%d:%d -> \"%s\"\n",
-                            indent,
-                            range.getStart().getLine() + 1, range.getStart().getCharacter(),
-                            range.getEnd().getLine() + 1, range.getEnd().getCharacter(),
-                            truncate(textEdit.getNewText(), 80)));
-                }
-            }
-        }
-        if (edit.getDocumentChanges() != null && !edit.getDocumentChanges().isEmpty()) {
-            for (Either<TextDocumentEdit, ResourceOperation> change : edit.getDocumentChanges()) {
-                if (change.isLeft()) {
-                    TextDocumentEdit docEdit = change.getLeft();
-                    result.append(String.format("%sFile: %s (%d edit(s))\n",
-                            indent, docEdit.getTextDocument().getUri(), docEdit.getEdits().size()));
-                    for (Either<TextEdit, SnippetTextEdit> textEdit : docEdit.getEdits()) {
-                        if (!textEdit.isLeft()) continue;
-                        TextEdit te = textEdit.getLeft();
-                        Range range = te.getRange();
-                        result.append(String.format("%s  Line %d:%d-%d:%d -> \"%s\"\n",
-                                indent,
-                                range.getStart().getLine() + 1, range.getStart().getCharacter(),
-                                range.getEnd().getLine() + 1, range.getEnd().getCharacter(),
-                                truncate(te.getNewText(), 80)));
-                    }
-                } else {
-                    ResourceOperation op = change.getRight();
-                    result.append(String.format("%sResource operation: %s\n", indent, op.getKind()));
-                }
-            }
-        }
-    }
-
-    private String truncate(String text, int maxLen) {
-        if (text == null) return "";
-        String oneLine = text.replace("\n", "\\n").replace("\r", "");
-        if (oneLine.length() > maxLen) {
-            return oneLine.substring(0, maxLen) + "...";
-        }
-        return oneLine;
+        return LspJsonFormatter.toJson(items);
     }
 
     @Override
     public String formatNoResultFound(FilePositionRequestParams params) {
-        return String.format("No code actions available at %s:%d:%d",
-                params.getFileUri(), params.getLine() + 1, params.getCharacter());
+        return LspJsonFormatter.EMPTY_ARRAY;
     }
 }

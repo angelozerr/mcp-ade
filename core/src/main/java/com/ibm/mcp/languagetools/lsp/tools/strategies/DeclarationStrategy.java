@@ -82,27 +82,12 @@ public class DeclarationStrategy extends FilePositionBasedStrategy<DeclarationPa
             return formatNoResultFound(params);
         }
 
-        // Format results
-        StringBuilder result = new StringBuilder();
-        result.append(String.format("Found %d declaration(s) for symbol at %s:%d:%d\n\n",
-                allLocations.size(), params.getFileUri(), params.getLine() + 1, params.getCharacter()));
-
-        for (Location location : allLocations) {
-            Range range = location.getRange();
-            result.append(String.format("  %s:%d:%d-%d\n",
-                    location.getUri(),
-                    range.getStart().getLine() + 1,
-                    range.getStart().getCharacter(),
-                    range.getEnd().getCharacter()));
-        }
-
-        return result.toString();
+        return LspJsonFormatter.toJson(allLocations.stream().map(LspJsonFormatter::location).toList());
     }
 
     @Override
     public String formatNoResultFound(FilePositionRequestParams params) {
-        return String.format("No declaration found for symbol at %s:%d:%d",
-                params.getFileUri(), params.getLine() + 1, params.getCharacter());
+        return LspJsonFormatter.EMPTY_ARRAY;
     }
 }
 

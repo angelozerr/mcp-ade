@@ -16,6 +16,7 @@ let mcpTracesLoaded = false;
 let mcpTools = [];
 let mcpToolsLoaded = false;
 let mcpToolsFilter = '';
+let currentMcpConsoleTab = 'traces';
 
 export async function loadMcpClients() {
     try {
@@ -108,19 +109,20 @@ export function loadMcpTracesConsole() {
     const savedMcpLevel = state.traceLevels['mcp'];
     mcpTraceLevel = savedMcpLevel || 'off';
     const consoleArea = document.getElementById('console-area');
+    const tab = currentMcpConsoleTab;
 
     consoleArea.innerHTML = `
         <div class="console-wrapper">
             <div class="console-header">
                 <div class="console-tabs">
-                    <button class="tab-button active" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
-                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
-                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="activity">Activity</button>
+                    <button class="tab-button${tab === 'traces' ? ' active' : ''}" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
+                    <button class="tab-button${tab === 'tools' ? ' active' : ''}" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
+                    <button class="tab-button${tab === 'activity' ? ' active' : ''}" data-action="switchMcpConsoleTab" data-tab="activity">Activity</button>
                 </div>
-                <div class="console-controls" id="mcp-traces-controls">
+                <div class="console-controls" id="mcp-traces-controls"${tab !== 'traces' ? ' style="display: none;"' : ''}>
                     ${renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel')}
                 </div>
-                <div class="console-controls" id="mcp-activity-controls" style="display: none;">
+                <div class="console-controls" id="mcp-activity-controls"${tab !== 'activity' ? ' style="display: none;"' : ''}>
                     <label class="toggle-switch">
                         <input type="checkbox" id="activity-toggle-checkbox" data-action="toggleActivity">
                         <span class="toggle-slider"></span>
@@ -130,12 +132,12 @@ export function loadMcpTracesConsole() {
                 </div>
             </div>
             <div class="tab-content">
-                <div id="mcp-traces-tab" class="tab-panel active">
+                <div id="mcp-traces-tab" class="tab-panel${tab === 'traces' ? ' active' : ''}">
                     <div class="placeholder">
                         &#8592; Select an AI client to view MCP traces
                     </div>
                 </div>
-                <div id="mcp-tools-tab" class="tab-panel">
+                <div id="mcp-tools-tab" class="tab-panel${tab === 'tools' ? ' active' : ''}">
                     <div class="mcp-tools-panel">
                         <div class="mcp-tools-toolbar">
                             <input type="text" class="input-field mcp-tools-search" placeholder="Filter tools..."
@@ -145,7 +147,7 @@ export function loadMcpTracesConsole() {
                         <div class="mcp-tools-list" id="mcp-tools-list"></div>
                     </div>
                 </div>
-                <div id="mcp-activity-tab" class="tab-panel">
+                <div id="mcp-activity-tab" class="tab-panel${tab === 'activity' ? ' active' : ''}">
                     <div class="activity-list" id="mcp-activity-content">
                         <div class="text-secondary p-lg">No operations recorded yet</div>
                     </div>
@@ -153,6 +155,13 @@ export function loadMcpTracesConsole() {
             </div>
         </div>
     `;
+
+    if (tab === 'activity') {
+        updateActivityToggleUI();
+        renderActivity();
+    } else if (tab === 'tools') {
+        loadMcpTools();
+    }
 }
 
 export function loadMcpConsole(clientId) {
@@ -163,22 +172,23 @@ export function loadMcpConsole(clientId) {
 
     const client = mcpClients.find(c => c.id === clientId);
     const clientName = client ? client.name : 'MCP Client';
+    const tab = currentMcpConsoleTab;
 
     consoleArea.innerHTML = `
         <div class="console-wrapper">
             <div class="console-header">
                 <div class="console-tabs">
-                    <button class="tab-button active" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
-                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
-                    <button class="tab-button" data-action="switchMcpConsoleTab" data-tab="activity">Activity</button>
+                    <button class="tab-button${tab === 'traces' ? ' active' : ''}" data-action="switchMcpConsoleTab" data-tab="traces">Traces</button>
+                    <button class="tab-button${tab === 'tools' ? ' active' : ''}" data-action="switchMcpConsoleTab" data-tab="tools">Tools</button>
+                    <button class="tab-button${tab === 'activity' ? ' active' : ''}" data-action="switchMcpConsoleTab" data-tab="activity">Activity</button>
                 </div>
-                <div class="console-controls" id="mcp-traces-controls">
+                <div class="console-controls" id="mcp-traces-controls"${tab !== 'traces' ? ' style="display: none;"' : ''}>
                     ${renderTraceControls('mcp-trace', mcpTraceLevel, 'changeMcpTraceLevel', {
                         foldAction: 'toggleAllMcpTraces',
                         clearAction: 'clearMcpConsole'
                     })}
                 </div>
-                <div class="console-controls" id="mcp-activity-controls" style="display: none;">
+                <div class="console-controls" id="mcp-activity-controls"${tab !== 'activity' ? ' style="display: none;"' : ''}>
                     <label class="toggle-switch">
                         <input type="checkbox" id="activity-toggle-checkbox" data-action="toggleActivity">
                         <span class="toggle-slider"></span>
@@ -188,10 +198,10 @@ export function loadMcpConsole(clientId) {
                 </div>
             </div>
             <div class="tab-content">
-                <div id="mcp-traces-tab" class="tab-panel active">
+                <div id="mcp-traces-tab" class="tab-panel${tab === 'traces' ? ' active' : ''}">
                     <div class="console" id="mcp-console-output" tabindex="0"></div>
                 </div>
-                <div id="mcp-tools-tab" class="tab-panel">
+                <div id="mcp-tools-tab" class="tab-panel${tab === 'tools' ? ' active' : ''}">
                     <div class="mcp-tools-panel">
                         <div class="mcp-tools-toolbar">
                             <input type="text" class="input-field mcp-tools-search" placeholder="Filter tools..."
@@ -201,7 +211,7 @@ export function loadMcpConsole(clientId) {
                         <div class="mcp-tools-list" id="mcp-tools-list"></div>
                     </div>
                 </div>
-                <div id="mcp-activity-tab" class="tab-panel">
+                <div id="mcp-activity-tab" class="tab-panel${tab === 'activity' ? ' active' : ''}">
                     <div class="activity-list" id="mcp-activity-content">
                         <div class="text-secondary p-lg">No operations recorded yet</div>
                     </div>
@@ -212,6 +222,13 @@ export function loadMcpConsole(clientId) {
 
     renderMcpConsole();
     initTraceContainer('mcp-console-output');
+
+    if (tab === 'activity') {
+        updateActivityToggleUI();
+        renderActivity();
+    } else if (tab === 'tools') {
+        loadMcpTools();
+    }
 }
 
 async function changeMcpTraceLevel(newLevel) {
@@ -232,6 +249,7 @@ async function changeMcpTraceLevel(newLevel) {
 }
 
 function switchMcpConsoleTab(tab, clickedBtn) {
+    currentMcpConsoleTab = tab;
     document.querySelectorAll('#console-area .tab-button').forEach(btn => {
         btn.classList.remove('active');
     });

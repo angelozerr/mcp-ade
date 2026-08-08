@@ -88,30 +88,15 @@ public class DiagnosticsStrategy
 
     @Override
     public String formatResults(FileUriRequestParams params, List<List<Diagnostic>> results) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Diagnostics for: ").append(params.getFileUri()).append("\n\n");
-
-        int total = 0;
-        for (List<Diagnostic> diagnostics : results) {
-            for (Diagnostic diagnostic : diagnostics) {
-                sb.append(String.format("  [%s] Line %d: %s\n",
-                        diagnostic.getSeverity(),
-                        diagnostic.getRange().getStart().getLine() + 1,
-                        diagnostic.getMessage()));
-                total++;
-            }
+        List<Diagnostic> all = results.stream().flatMap(List::stream).toList();
+        if (all.isEmpty()) {
+            return formatNoResultFound(params);
         }
-
-        if (total == 0) {
-            return "No diagnostics found for: " + params.getFileUri();
-        }
-
-        sb.insert(sb.indexOf("\n\n") + 2, String.format("Found %d diagnostic(s)\n\n", total));
-        return sb.toString();
+        return LspJsonFormatter.toJson(all.stream().map(LspJsonFormatter::diagnostic).toList());
     }
 
     @Override
     public String formatNoResultFound(FileUriRequestParams params) {
-        return "No diagnostics found for: " + params.getFileUri();
+        return LspJsonFormatter.EMPTY_ARRAY;
     }
 }
