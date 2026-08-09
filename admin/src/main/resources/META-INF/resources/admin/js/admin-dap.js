@@ -604,14 +604,19 @@ function renderDapServerItem(server) {
 
 export async function loadAllDapServers(serverIdToSelect) {
     try {
-        const response = await fetch('/api/admin/dap/configs');
-        const dapServers = (await response.json()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        // Use cached configs if available, otherwise fetch
+        let dapServers;
+        if (state.dapConfigs && Object.keys(state.dapConfigs).length > 0) {
+            dapServers = Object.values(state.dapConfigs).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        } else {
+            const response = await fetch('/api/admin/dap/configs');
+            dapServers = (await response.json()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        }
 
         dapServerConfigs = {};
         dapServers.forEach(server => {
             dapServerConfigs[server.id] = server;
         });
-        // Also update state.dapConfigs so the filter can extract languages
         state.dapConfigs = dapServerConfigs;
 
         const container = document.getElementById('dap-servers-list');
@@ -671,6 +676,7 @@ function buildGlobalContributedByMap(servers) {
  * Show details for a global DAP server with Overview/Install tabs.
  */
 export async function showDapServerDetails(serverId) {
+    const previousServer = selectedDapServer;
     selectedDapServer = serverId;
     state.currentDapServerId = serverId;
 
@@ -680,14 +686,15 @@ export async function showDapServerDetails(serverId) {
     // Hide search box when showing server details (not traces)
     updateSearchBoxVisibility(false);
 
-    // Re-render server list to update active state
-    const dapServers = Object.values(dapServerConfigs).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
+    // Toggle active class instead of re-rendering the entire list
     if (dapLanguageFilter) {
-        const filteredServers = dapLanguageFilter.filterServers(dapServers);
-        dapLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
-            renderDapServerItem(server)
-        ).join('');
+        const container = dapLanguageFilter.getItemsContainer();
+        if (previousServer) {
+            const prev = container.querySelector(`.server-item[data-server-id="${previousServer}"]`);
+            if (prev) prev.classList.remove('active');
+        }
+        const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
+        if (next) next.classList.add('active');
     }
 
     const server = dapServerConfigs[serverId];

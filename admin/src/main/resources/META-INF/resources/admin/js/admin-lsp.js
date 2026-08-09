@@ -91,20 +91,23 @@ export async function loadAllLspServers(serverIdToSelect) {
  */
 export async function showServerDetails(serverId) {
     // Update selected server
+    const previousServer = selectedAllServer;
     selectedAllServer = serverId;
 
-    // Re-render server list to update active state
+    // Toggle active class instead of re-rendering the entire list
+    if (lspLanguageFilter) {
+        const container = lspLanguageFilter.getItemsContainer();
+        if (previousServer) {
+            const prev = container.querySelector(`.server-item[data-server-id="${previousServer}"]`);
+            if (prev) prev.classList.remove('active');
+        }
+        const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
+        if (next) next.classList.add('active');
+    }
+
     const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const dapServers = Object.values(state.dapConfigs || {}).map(s => ({...s, isDap: true}));
     const allServers = [...lspServers, ...dapServers];
-    const contributedByMap = buildGlobalContributedByMap(allServers);
-
-    if (lspLanguageFilter) {
-        const filteredServers = lspLanguageFilter.filterServers(lspServers);
-        lspLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
-            renderLspServerItem(server, contributedByMap)
-        ).join('');
-    }
 
     const details = state.lspConfigs[serverId];
     if (!details) {

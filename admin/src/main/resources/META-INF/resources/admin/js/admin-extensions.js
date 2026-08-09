@@ -84,10 +84,19 @@ export async function loadAllExtensions(extensionIdToSelect) {
  * Show details for an extension in the console panel.
  */
 export function showExtensionDetails(extensionId) {
+    const previousExtension = selectedExtension;
     selectedExtension = extensionId;
 
-    // Re-render list to update active state (no re-fetch)
-    renderExtensionsList();
+    // Toggle active class instead of re-rendering the entire list
+    const container = document.getElementById('extensions-list');
+    if (container) {
+        if (previousExtension) {
+            const prev = container.querySelector(`.extension-item[data-extension-id="${previousExtension}"]`);
+            if (prev) prev.classList.remove('active');
+        }
+        const next = container.querySelector(`.extension-item[data-extension-id="${extensionId}"]`);
+        if (next) next.classList.add('active');
+    }
 
     const ext = extensionsData.find(e => e.id === extensionId);
     if (!ext) return;
