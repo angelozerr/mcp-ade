@@ -481,6 +481,19 @@
     color: var(--color-warning, #e0a030);
 }
 
+.activity-tokens {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.activity-tokens-inline {
+    font-size: 0.75em;
+    color: var(--text-secondary);
+    font-weight: normal;
+}
+
 .activity-replay {
     font-size: 0.8rem;
     color: var(--accent-primary);

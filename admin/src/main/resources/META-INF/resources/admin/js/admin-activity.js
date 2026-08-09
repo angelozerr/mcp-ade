@@ -17,6 +17,8 @@ const toggledSections = new Set();
 const pendingUpdates = new Set();
 const pendingNewOps = new Set();
 let updateRAF = null;
+let scrollToOpAfterFlush = null;
+let pendingReplayToolName = null;
 let visibilityObserver = null;
 
 function getVisibilityObserver() {
@@ -126,6 +128,10 @@ export function handleOperationUpdate(msg) {
             expandedOps.add(msg.id);
         }
         pendingNewOps.add(msg.id);
+        if (msg.status === 'RUNNING' && pendingReplayToolName && msg.name === pendingReplayToolName) {
+            scrollToOpAfterFlush = msg.id;
+            pendingReplayToolName = null;
+        }
     }
 
     if (operations.length > 500) {
@@ -174,7 +180,13 @@ function flushUpdates() {
         insertNewOperations(ids);
     }
 
-    if (wasAtBottom && scrollParent) {
+    if (scrollToOpAfterFlush && container) {
+        const targetEl = container.querySelector(`.activity-operation[data-op-id="${scrollToOpAfterFlush}"]`);
+        scrollToOpAfterFlush = null;
+        if (targetEl && scrollParent) {
+            targetEl.scrollIntoView({ block: 'center' });
+        }
+    } else if (wasAtBottom && scrollParent) {
         scrollParent.scrollTop = scrollParent.scrollHeight;
     }
 }
@@ -284,6 +296,13 @@ function createOpElement(op, esc) {
 }
 
 export function renderActivity() {
+    pendingUpdates.clear();
+    pendingNewOps.clear();
+    if (updateRAF) {
+        cancelAnimationFrame(updateRAF);
+        updateRAF = null;
+    }
+
     const container = document.getElementById('mcp-activity-content')
         || document.getElementById('mcp-activity-tab');
     if (!container) return;
@@ -397,6 +416,17 @@ function liveDuration(item) {
     return item.durationMs;
 }
 
+function estimateTokens(text) {
+    if (!text) return 0;
+    const s = typeof text === 'string' ? text : JSON.stringify(text);
+    return Math.ceil(s.length / 4);
+}
+
+function formatTokens(count) {
+    if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
+    return String(count);
+}
+
 function shortenValue(v) {
     if (typeof v === 'number') return String(v);
     const s = typeof v === 'string' ? v : JSON.stringify(v);
@@ -493,6 +523,12 @@ function renderOperation(op, esc) {
     html += `</span>`;
     html += `<span class="activity-time">${formatTime(op.startTime)}</span>`;
     html += `<span class="activity-duration">${duration}</span>`;
+    const inputTokens = estimateTokens(op.arguments);
+    const outputTokens = estimateTokens(op.result);
+    const totalTokens = inputTokens + outputTokens;
+    if (totalTokens > 0) {
+        html += `<span class="activity-tokens" title="~${formatTokens(inputTokens)} in + ~${formatTokens(outputTokens)} out">~${formatTokens(totalTokens)} tok</span>`;
+    }
     const isActiveReplay = Array.from(activeReplays.values()).includes(op.id);
     if (isActiveReplay && op.status === 'RUNNING') {
         html += `<span class="activity-replay replaying" data-action="cancelReplay" data-op-id="${op.id}" title="Cancel replay">&#9632;</span>`;
@@ -504,7 +540,8 @@ function renderOperation(op, esc) {
     if (hasBody) {
         html += `<div class="activity-operation-body" style="display: ${expanded ? 'block' : 'none'};">`;
         if (op.arguments) {
-            html += renderSection(op.id, 'input', 'Arguments', renderArgsForm(op, esc), esc);
+            const argTokens = estimateTokens(op.arguments);
+            html += renderSection(op.id, 'input', `Arguments <span class="activity-tokens-inline">~${formatTokens(argTokens)} tok</span>`, renderArgsForm(op, esc), esc);
         }
         if (hasEntries) {
             let entriesHtml = '';
@@ -519,8 +556,9 @@ function renderOperation(op, esc) {
             html += renderSection(op.id, 'error', 'Error', errorHtml, esc);
         }
         if (op.result) {
+            const resTokens = estimateTokens(op.result);
             const outputHtml = `<pre class="activity-output-content">${esc(op.result)}</pre>`;
-            html += renderSection(op.id, 'output', 'Result', outputHtml, esc);
+            html += renderSection(op.id, 'output', `Result <span class="activity-tokens-inline">~${formatTokens(resTokens)} tok</span>`, outputHtml, esc);
         }
         html += `</div>`;
     }
@@ -863,6 +901,7 @@ async function replayOperation(el) {
     if (activeReplays.has(opId)) return;
 
     const formArgs = gatherFormArgs(opId) || op.arguments;
+    pendingReplayToolName = op.name;
 
     try {
         const resp = await fetch('/api/admin/activity/replay', {
