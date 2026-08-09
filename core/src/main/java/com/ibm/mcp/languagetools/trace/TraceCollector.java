@@ -89,6 +89,12 @@ public interface TraceCollector {
     }
 
     /**
+     * Remove a previously registered trace listener.
+     */
+    default void removeTraceListener(Consumer<TraceMessage> listener) {
+    }
+
+    /**
      * Get the most recent traces, limited to the given count.
      */
     default List<TraceMessage> getTraces(int limit) {

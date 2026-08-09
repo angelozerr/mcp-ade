@@ -17,12 +17,15 @@ import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
 import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
 import com.ibm.mcp.languagetools.language.PathPatternMatcher;
+import com.ibm.mcp.languagetools.utils.JsonUtils;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TextDocumentRegistrationOptions;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
-import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 
 /**
@@ -33,17 +36,26 @@ import java.util.function.Predicate;
 public abstract class TextDocumentServerCapabilityRegistry<T extends TextDocumentRegistrationOptions> {
 
     private final LspClientFeatures clientFeatures;
+    private final Predicate<ServerCapabilities> serverCapabilitiesPredicate;
+    private final Class<T> optionsClass;
     private ServerCapabilities serverCapabilities;
     private final List<T> dynamicCapabilities;
+    private final Map<T, ExtendedDocumentSelector> documentSelectorCache;
 
-    public TextDocumentServerCapabilityRegistry(LspClientFeatures clientFeatures) {
+    public TextDocumentServerCapabilityRegistry(LspClientFeatures clientFeatures,
+                                                Predicate<ServerCapabilities> serverCapabilitiesPredicate,
+                                                Class<T> optionsClass) {
         this.clientFeatures = clientFeatures;
-        this.dynamicCapabilities = new ArrayList<>();
+        this.serverCapabilitiesPredicate = serverCapabilitiesPredicate;
+        this.optionsClass = optionsClass;
+        this.dynamicCapabilities = new CopyOnWriteArrayList<>();
+        this.documentSelectorCache = new IdentityHashMap<>();
     }
 
     public void setServerCapabilities(ServerCapabilities serverCapabilities) {
         this.serverCapabilities = serverCapabilities;
         this.dynamicCapabilities.clear();
+        this.documentSelectorCache.clear();
     }
 
     public ServerCapabilities getServerCapabilities() {
@@ -60,10 +72,23 @@ public abstract class TextDocumentServerCapabilityRegistry<T extends TextDocumen
         return t;
     }
 
-    protected abstract T create(JsonObject registerOptions);
+    protected T create(JsonObject registerOptions) {
+        return JsonUtils.getLsp4jGson().fromJson(registerOptions, optionsClass);
+    }
 
     public void unregisterCapability(Object options) {
         dynamicCapabilities.remove(options);
+        documentSelectorCache.remove(options);
+    }
+
+    /**
+     * Returns true if the language server supports this capability for the given document.
+     *
+     * @param document the language document.
+     * @return true if the language server supports this capability and false otherwise.
+     */
+    public boolean isSupported(LanguageDocument document) {
+        return isSupported(document, serverCapabilitiesPredicate);
     }
 
     protected boolean isSupported(LanguageDocument document,
@@ -89,7 +114,9 @@ public abstract class TextDocumentServerCapabilityRegistry<T extends TextDocumen
 
         for (var option : dynamicCapabilities) {
             // Match documentSelector?
-            var filters = ((ExtendedDocumentSelector.DocumentFilersProvider) option).getFilters();
+            var selector = documentSelectorCache.computeIfAbsent(option,
+                    o -> new ExtendedDocumentSelector(o.getDocumentSelector()));
+            var filters = selector.getFilters();
             if (filters.isEmpty()) {
                 return matchOption != null ? matchOption.test(option) : true;
             }

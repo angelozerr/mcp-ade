@@ -19,16 +19,25 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * DAP (Debug Adapter Protocol) configuration DTO.
- * Represents a debug adapter's static configuration.
+ * Common contract for server configuration DTOs (LSP and DAP).
+ * <p>
+ * Captures the 7 fields shared by both {@link LspConfigDTO} and {@link DapConfigDTO}.
+ * Java records cannot extend other records, so this is expressed as an interface
+ * that both records implement via their auto-generated accessor methods.
  */
-public record DapConfigDTO(
-    String id,
-    String name,
-    String description,
-    String url,
-    DocumentSelector documentSelector,
-    Map<String, Map<String, List<?>>> contributions,
-    boolean enabled
-) implements ServerConfigDTOBase {
+public interface ServerConfigDTOBase {
+
+    String id();
+
+    String name();
+
+    String description();
+
+    String url();
+
+    DocumentSelector documentSelector();
+
+    Map<String, Map<String, List<?>>> contributions();
+
+    boolean enabled();
 }

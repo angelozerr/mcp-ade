@@ -4,8 +4,8 @@
  * Handles DAP session creation, launching, and management
  */
 
-import { state, getServerApiBase, updateSearchBoxVisibility } from './shared-state.js';
-import { confirmAction, showAlert } from './shared-ui.js';
+import { state, getServerApiBase, updateSearchBoxVisibility, buildGlobalContributedByMap } from './shared-state.js';
+import { confirmAction, showAlert, renderDocumentSelector } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { formatErrorWithFolding } from './error-formatter.js';
@@ -657,22 +657,6 @@ export async function loadAllDapServers(serverIdToSelect) {
 }
 
 /**
- * Build a map of serverId -> [contributorServerIds] from contributions.
- */
-function buildGlobalContributedByMap(servers) {
-    const map = {};
-    servers.forEach(server => {
-        if (server.contributes && server.contributes.contributeServerConfigurations) {
-            server.contributes.contributeServerConfigurations.forEach(targetId => {
-                if (!map[targetId]) map[targetId] = [];
-                map[targetId].push(server.id);
-            });
-        }
-    });
-    return map;
-}
-
-/**
  * Show details for a global DAP server with Overview/Install tabs.
  */
 export async function showDapServerDetails(serverId) {
@@ -710,21 +694,11 @@ export async function showDapServerDetails(serverId) {
     appContainer.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
-    // Build document selector info
-    let docSelectorHTML = '<p class="text-secondary">None configured</p>';
-    if (server.documentSelector && server.documentSelector.length > 0) {
-        docSelectorHTML = server.documentSelector.map(selector => {
-            return `<div class="selector-item">
-                ${selector.language ? `<span class="selector-tag">language: ${selector.language}</span>` : ''}
-                ${selector.scheme ? `<span class="selector-tag">scheme: ${selector.scheme}</span>` : ''}
-                ${selector.pattern ? `<span class="selector-tag">pattern: ${selector.pattern}</span>` : ''}
-            </div>`;
-        }).join('');
-    }
+    const docSelectorHTML = renderDocumentSelector(server.documentSelector);
 
     // Check if server has contributions
     const lspServers = Object.values(state.lspConfigs || {});
-    const dapServersWithFlag = dapServers.map(s => ({...s, isDap: true}));
+    const dapServersWithFlag = Object.values(dapServerConfigs).map(s => ({...s, isDap: true}));
     const allServers = [...lspServers, ...dapServersWithFlag];
     const hasContributions = (server.contributions && Object.keys(server.contributions).length > 0) ||
                             buildGlobalContributedByMap(allServers)[server.id]?.length > 0;
@@ -844,9 +818,14 @@ export async function showDapServerDetails(serverId) {
  */
 export function switchDapServerTab(tab) {
     currentDapServerTab = tab;
-    if (selectedDapServer) {
-        showDapServerDetails(selectedDapServer);
-    }
+    // Toggle tab buttons
+    document.querySelectorAll('#console-area .tab-button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    // Toggle tab panels
+    document.querySelectorAll('#console-area .tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `dap-server-${tab}-tab`);
+    });
     // Render diagram when switching to contributions tab
     if (tab === 'contributions' && state.currentDiagramServers && state.currentDiagramServerId) {
         setTimeout(() => renderServerDiagram(state.currentDiagramServers, state.currentDiagramServerId), 100);
@@ -1283,120 +1262,6 @@ async function addSessionToDOM(message) {
         debuggerContainer.insertAdjacentHTML('afterend', createSessionHTML(session));
     } catch (error) {
         console.error('[DAP] Error adding session to DOM:', error);
-    }
-}
-
-/**
- * Update an existing session in the DOM.
- */
-async function updateSessionInDOM(message) {
-    try {
-        // Determine status text, class, and icon
-        let statusText = message.newStatus ? message.newStatus.charAt(0) + message.newStatus.slice(1).toLowerCase() : '';
-        let statusClass = 'status-stopped';
-        let stateIcon = '<span>⏹️</span>';
-
-        if (message.newStatus === 'INSTALLING') {
-            statusText = 'Installing';
-            statusClass = 'status-installing';
-            stateIcon = '<span>⏳</span>';
-        } else if (message.newStatus === 'STARTING') {
-            statusText = 'Starting';
-            statusClass = 'status-starting';
-            stateIcon = '<span>⏳</span>';
-        } else if (message.newStatus === 'LAUNCHING') {
-            statusText = 'Launching';
-            statusClass = 'status-starting';
-            stateIcon = '<span>🚀</span>';
-        } else if (message.newStatus === 'ATTACHING') {
-            statusText = 'Attaching';
-            statusClass = 'status-starting';
-            stateIcon = '<span>🔗</span>';
-        } else if (message.newStatus === 'TERMINATED') {
-            statusText = 'Terminated';
-            statusClass = 'status-error';
-            stateIcon = '<span>⏹️</span>';
-        } else if (message.newStatus === 'RUNNING') {
-            statusText = 'Running';
-            statusClass = 'status-running';
-            stateIcon = '<span>▶️</span>';
-        } else if (message.newStatus === 'PAUSED') {
-            statusText = 'Paused';
-            statusClass = 'status-paused';
-            stateIcon = '<span>⏸️</span>';
-        } else if (message.newStatus === 'LAUNCH_FAILED') {
-            statusText = 'Launch Failed';
-            statusClass = 'status-error';
-            stateIcon = '<span>❌</span>';
-        } else if (message.newStatus === 'ATTACH_FAILED') {
-            statusText = 'Attach Failed';
-            statusClass = 'status-error';
-            stateIcon = '<span>❌</span>';
-        } else if (message.newStatus === 'ERROR' || message.newStatus === 'START_FAILED') {
-            statusText = 'Error';
-            statusClass = 'status-error';
-            stateIcon = '<span>❌</span>';
-        }
-
-        // Update status badge AND icon in workspace list (left sidebar)
-        const sessionElement = document.querySelector(`[data-session-id="${message.sessionId}"]`);
-        if (sessionElement) {
-            const statusBadge = sessionElement.querySelector('.status-badge');
-            if (statusBadge && message.newStatus) {
-                statusBadge.className = `status-badge status-badge-compact ${statusClass}`;
-                statusBadge.textContent = statusText;
-            }
-            // Update icon (first child element in the session div)
-            const firstChild = sessionElement.firstElementChild;
-            if (firstChild && firstChild.tagName === 'SPAN') {
-                // Parse the new icon HTML and replace the old span
-                const temp = document.createElement('div');
-                temp.innerHTML = stateIcon;
-                const newIcon = temp.firstElementChild;
-                if (newIcon && firstChild.parentNode) {
-                    firstChild.parentNode.replaceChild(newIcon, firstChild);
-                }
-            }
-        }
-
-        // Update status badge in session console (right panel)
-        const sessionStatusBadge = document.getElementById(`dap-session-status-${message.sessionId}`);
-        if (sessionStatusBadge && message.newStatus) {
-            sessionStatusBadge.className = `status-badge status-badge-compact ${statusClass}`;
-            sessionStatusBadge.textContent = statusText;
-        }
-
-        // Update Debug/Launch/Stop buttons state based on status
-        const debugBtn = document.getElementById(`dap-debug-btn-${message.sessionId}`);
-        const launchBtn = document.getElementById(`dap-launch-btn-${message.sessionId}`);
-        const stopBtn = document.getElementById(`dap-stop-btn-${message.sessionId}`);
-
-        if (debugBtn && launchBtn && stopBtn) {
-            // Determine button states based on status
-            const isRunning = message.newStatus === 'RUNNING';
-            const isPaused = message.newStatus === 'PAUSED';
-            const isStarting = message.newStatus === 'STARTING' || message.newStatus === 'INSTALLING' || message.newStatus === 'LAUNCHING' || message.newStatus === 'ATTACHING';
-            const isStopped = message.newStatus === 'STOPPED' || message.newStatus === 'START_FAILED' || message.newStatus === 'ERROR' || message.newStatus === 'LAUNCH_FAILED' || message.newStatus === 'ATTACH_FAILED' || message.newStatus === 'CREATED' || message.newStatus === 'TERMINATED';
-
-            const canLaunch = isStopped;
-            const canStop = isRunning || isStarting || isPaused;
-
-            // Update Debug button (same state as Launch)
-            debugBtn.disabled = !canLaunch;
-            debugBtn.classList.toggle('is-disabled', !canLaunch);
-
-            // Update Launch button
-            launchBtn.disabled = !canLaunch;
-            launchBtn.classList.toggle('is-disabled', !canLaunch);
-
-            // Update Stop button
-            stopBtn.disabled = !canStop;
-            stopBtn.classList.toggle('is-disabled', !canStop);
-        }
-
-        console.log('[DAP] Session status updated in DOM:', message.sessionId, message.oldStatus, '->', message.newStatus);
-    } catch (error) {
-        console.error('[DAP] Error updating session in DOM:', error);
     }
 }
 

@@ -67,7 +67,7 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
     private static final String FIELD_COMMAND = "command";
     private static final String FIELD_SETTINGS = "settings";
     private static final String FIELD_APPLICABLE_SETTINGS = "applicableSettings";
-    protected final Gson gson = new Gson();
+    protected static final Gson gson = new Gson();
 
     protected ServerDescriptorLoaderBase() {
     }

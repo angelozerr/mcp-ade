@@ -13,43 +13,17 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.client.capabilities;
 
-import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
 import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
-import com.ibm.mcp.languagetools.utils.JsonUtils;
 import org.eclipse.lsp4j.ReferenceRegistrationOptions;
-import org.eclipse.lsp4j.ServerCapabilities;
-
-import java.util.List;
-import java.util.function.Predicate;
 
 /**
  * Server capability registry for 'textDocument/references'.
  */
 public class ReferencesCapabilityRegistry extends TextDocumentServerCapabilityRegistry<ReferenceRegistrationOptions> {
 
-    private static final Predicate<ServerCapabilities> SERVER_CAPABILITIES_PREDICATE = sc ->
-            hasCapability(sc.getReferencesProvider());
-
     public ReferencesCapabilityRegistry(LspClientFeatures clientFeatures) {
-        super(clientFeatures);
-    }
-
-    static class ExtendedReferenceRegistrationOptions extends ReferenceRegistrationOptions implements ExtendedDocumentSelector.DocumentFilersProvider {
-        private transient ExtendedDocumentSelector documentSelector;
-
-        @Override
-        public List<ExtendedDocumentSelector.ExtendedDocumentFilter> getFilters() {
-            if (documentSelector == null) {
-                documentSelector = new ExtendedDocumentSelector(super.getDocumentSelector());
-            }
-            return documentSelector.getFilters();
-        }
-    }
-
-    @Override
-    protected ReferenceRegistrationOptions create(JsonObject registerOptions) {
-        return JsonUtils.getLsp4jGson().fromJson(registerOptions, ExtendedReferenceRegistrationOptions.class);
+        super(clientFeatures, sc -> hasCapability(sc.getReferencesProvider()), ReferenceRegistrationOptions.class);
     }
 
     /**
@@ -59,6 +33,6 @@ public class ReferencesCapabilityRegistry extends TextDocumentServerCapabilityRe
      * @return true if the language server can support references and false otherwise.
      */
     public boolean isReferencesSupported(LanguageDocument document) {
-        return super.isSupported(document, SERVER_CAPABILITIES_PREDICATE);
+        return super.isSupported(document);
     }
 }

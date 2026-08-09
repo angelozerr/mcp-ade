@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -25,6 +26,7 @@ public abstract class AbstractTraceCollector implements TraceCollector {
     private static final int MAX_TRACE_MESSAGES = 1000;
 
     private final ConcurrentLinkedDeque<TraceMessage> traces = new ConcurrentLinkedDeque<>();
+    private final AtomicInteger traceCount = new AtomicInteger();
     private final List<Consumer<TraceMessage>> listeners = new CopyOnWriteArrayList<>();
 
     protected abstract TraceKind getTraceKind();
@@ -48,8 +50,11 @@ public abstract class AbstractTraceCollector implements TraceCollector {
                 messageType
         );
         traces.addLast(message);
-        while (traces.size() > MAX_TRACE_MESSAGES) {
-            traces.pollFirst();
+        traceCount.incrementAndGet();
+        while (traceCount.get() > MAX_TRACE_MESSAGES) {
+            if (traces.pollFirst() != null) {
+                traceCount.decrementAndGet();
+            }
         }
         for (Consumer<TraceMessage> listener : listeners) {
             listener.accept(message);
@@ -59,6 +64,11 @@ public abstract class AbstractTraceCollector implements TraceCollector {
     @Override
     public void addTraceListener(Consumer<TraceMessage> listener) {
         listeners.add(listener);
+    }
+
+    @Override
+    public void removeTraceListener(Consumer<TraceMessage> listener) {
+        listeners.remove(listener);
     }
 
     @Override
@@ -97,5 +107,6 @@ public abstract class AbstractTraceCollector implements TraceCollector {
     @Override
     public void clear() {
         traces.clear();
+        traceCount.set(0);
     }
 }

@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 public class LanguageRegistry {
 
     private static final Logger LOG = Logger.getLogger(LanguageRegistry.class);
+    private static final Gson GSON = new Gson();
     private final List<LanguageDefinition> languages;
 
     private final Map<String, LanguageDefinition> byFilename;
@@ -92,8 +93,7 @@ public class LanguageRegistry {
                 return List.of();
             }
 
-            Gson gson = new Gson();
-            List<LanguageDefinition> loaded = gson.fromJson(
+            List<LanguageDefinition> loaded = GSON.fromJson(
                 new InputStreamReader(is),
                 new TypeToken<List<LanguageDefinition>>() {}.getType()
             );

@@ -24,13 +24,6 @@ import java.util.List;
  */
 public class ExtendedDocumentSelector {
 
-    /**
-     * Interface for objects that can provide document filters.
-     */
-    interface DocumentFilersProvider {
-        List<ExtendedDocumentFilter> getFilters();
-    }
-
     private final List<ExtendedDocumentFilter> filters;
 
     /**

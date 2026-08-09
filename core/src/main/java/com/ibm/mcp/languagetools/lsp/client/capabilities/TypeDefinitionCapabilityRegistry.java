@@ -13,43 +13,17 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.client.capabilities;
 
-import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
 import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
-import com.ibm.mcp.languagetools.utils.JsonUtils;
-import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TypeDefinitionRegistrationOptions;
-
-import java.util.List;
-import java.util.function.Predicate;
 
 public class TypeDefinitionCapabilityRegistry extends TextDocumentServerCapabilityRegistry<TypeDefinitionRegistrationOptions> {
 
-    private static final Predicate<ServerCapabilities> SERVER_CAPABILITIES_PREDICATE = sc ->
-            hasCapability(sc.getTypeDefinitionProvider());
-
     public TypeDefinitionCapabilityRegistry(LspClientFeatures clientFeatures) {
-        super(clientFeatures);
-    }
-
-    static class ExtendedTypeDefinitionRegistrationOptions extends TypeDefinitionRegistrationOptions implements ExtendedDocumentSelector.DocumentFilersProvider {
-        private transient ExtendedDocumentSelector documentSelector;
-
-        @Override
-        public List<ExtendedDocumentSelector.ExtendedDocumentFilter> getFilters() {
-            if (documentSelector == null) {
-                documentSelector = new ExtendedDocumentSelector(super.getDocumentSelector());
-            }
-            return documentSelector.getFilters();
-        }
-    }
-
-    @Override
-    protected TypeDefinitionRegistrationOptions create(JsonObject registerOptions) {
-        return JsonUtils.getLsp4jGson().fromJson(registerOptions, ExtendedTypeDefinitionRegistrationOptions.class);
+        super(clientFeatures, sc -> hasCapability(sc.getTypeDefinitionProvider()), TypeDefinitionRegistrationOptions.class);
     }
 
     public boolean isTypeDefinitionSupported(LanguageDocument document) {
-        return super.isSupported(document, SERVER_CAPABILITIES_PREDICATE);
+        return super.isSupported(document);
     }
 }

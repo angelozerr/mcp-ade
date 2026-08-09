@@ -1,5 +1,18 @@
 import { state } from './shared-state.js';
 
+export function renderDocumentSelector(selectors) {
+    if (!selectors || selectors.length === 0) {
+        return '<p class="text-secondary">None configured</p>';
+    }
+    return selectors.map(selector => `
+        <div class="selector-item">
+            ${selector.language ? `<span class="selector-tag">language: ${selector.language}</span>` : ''}
+            ${selector.scheme ? `<span class="selector-tag">scheme: ${selector.scheme}</span>` : ''}
+            ${selector.pattern ? `<span class="selector-tag">pattern: ${selector.pattern}</span>` : ''}
+        </div>
+    `).join('');
+}
+
 export function showModal(title, message, buttons) {
     const modal = document.getElementById('modal-overlay');
     const modalTitle = document.getElementById('modal-title');

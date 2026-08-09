@@ -108,6 +108,10 @@ public class OperationTracker {
         listeners.add(listener);
     }
 
+    public void removeListener(Consumer<OperationEvent> listener) {
+        listeners.remove(listener);
+    }
+
     public List<OperationContext> getRecentOperations(int limit) {
         var all = operations.stream().toList();
         int skip = Math.max(0, all.size() - limit);

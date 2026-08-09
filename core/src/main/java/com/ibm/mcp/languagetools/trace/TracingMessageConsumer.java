@@ -38,6 +38,11 @@ public class TracingMessageConsumer {
 
     private static volatile MessageJsonHandler toStringInstance;
 
+    /**
+     * Timeout in milliseconds for orphaned pending requests (5 minutes).
+     */
+    private static final long PENDING_REQUEST_TIMEOUT_MS = 300_000;
+
     private final TraceCollector collector;
     private final String workspaceUri;
 
@@ -93,6 +98,7 @@ public class TracingMessageConsumer {
             String id = requestMessage.getId();
             String method = requestMessage.getMethod();
             RequestMetadata requestMetadata = new RequestMetadata(method, now);
+            cleanupOrphanedRequests(sentRequests, now);
             sentRequests.put(id, requestMetadata);
             Object params = requestMessage.getParams();
             String paramsJson = toJsonString(params);
@@ -124,6 +130,7 @@ public class TracingMessageConsumer {
             String method = requestMessage.getMethod();
             String id = requestMessage.getId();
             RequestMetadata requestMetadata = new RequestMetadata(method, now);
+            cleanupOrphanedRequests(receivedRequests, now);
             receivedRequests.put(id, requestMetadata);
             Object params = requestMessage.getParams();
             String paramsJson = toJsonString(params);
@@ -228,6 +235,15 @@ public class TracingMessageConsumer {
 
     private static String getLatencyMillis(RequestMetadata requestMetadata, Instant now) {
         return requestMetadata != null ? String.valueOf(now.toEpochMilli() - requestMetadata.start.toEpochMilli()) : "?";
+    }
+
+    /**
+     * Remove pending requests older than {@link #PENDING_REQUEST_TIMEOUT_MS}.
+     */
+    private static void cleanupOrphanedRequests(Map<String, RequestMetadata> requests, Instant now) {
+        long nowMs = now.toEpochMilli();
+        requests.entrySet().removeIf(entry ->
+                nowMs - entry.getValue().start.toEpochMilli() > PENDING_REQUEST_TIMEOUT_MS);
     }
 
     private static class RequestMetadata {

@@ -20,14 +20,13 @@ import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Strategy for LSP textDocument/definition requests.
  */
-public class DefinitionStrategy extends FilePositionBasedStrategy<DefinitionParams, Either<List<? extends Location>, List<? extends LocationLink>>> {
+public class DefinitionStrategy extends LocationBasedStrategy<DefinitionParams> {
 
     public DefinitionStrategy(LanguageRegistry languageRegistry) {
         super(languageRegistry, LspCapability.DEFINITION, "Go to definition");
@@ -48,47 +47,4 @@ public class DefinitionStrategy extends FilePositionBasedStrategy<DefinitionPara
                 .getTextDocumentService()
                 .definition(lspParams);
     }
-
-    @Override
-    public Either<List<? extends Location>, List<? extends LocationLink>> getEmptyResult() {
-        return Either.forLeft(Collections.emptyList());
-    }
-
-    @Override
-    public boolean isValidResult(Either<List<? extends Location>, List<? extends LocationLink>> result) {
-        if (result == null) return false;
-        if (result.isLeft()) return !result.getLeft().isEmpty();
-        if (result.isRight()) return !result.getRight().isEmpty();
-        return false;
-    }
-
-    @Override
-    public String formatResults(FilePositionRequestParams params, List<Either<List<? extends Location>, List<? extends LocationLink>>> results) {
-        // Merge all locations from all results
-        List<Location> allLocations = results.stream()
-                .flatMap(either -> {
-                    if (either.isLeft()) {
-                        return either.getLeft().stream();
-                    } else {
-                        // Convert LocationLink to Location
-                        return either.getRight().stream()
-                                .map(link -> new Location(link.getTargetUri(), link.getTargetRange()));
-                    }
-                })
-                .distinct()
-                .toList();
-
-        if (allLocations.isEmpty()) {
-            return formatNoResultFound(params);
-        }
-
-        String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
-        return LspJsonFormatter.toJson(LspJsonFormatter.locationsByFile(allLocations, cwdUri));
-    }
-
-    @Override
-    public String formatNoResultFound(FilePositionRequestParams params) {
-        return LspJsonFormatter.EMPTY_ARRAY;
-    }
 }
-

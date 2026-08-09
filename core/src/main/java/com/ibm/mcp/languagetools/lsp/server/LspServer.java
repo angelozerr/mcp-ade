@@ -552,6 +552,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
         diagnosticsCache.clear();
 
         if (languageServer == null && getServerProcess() == null && socket == null) {
+            setStatus(ServerStatus.STOPPED);
             return CompletableFuture.completedFuture(null);
         }
 
@@ -562,9 +563,13 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     try {
                         languageServer.shutdown()
                                 .get(5, TimeUnit.SECONDS);
-                        languageServer.exit();
                     } catch (Exception e) {
                         LOG.warnf("Graceful shutdown failed for %s: %s", config.getServerId(), e.getMessage());
+                    }
+                    try {
+                        languageServer.exit();
+                    } catch (Exception e) {
+                        LOG.warnf("Failed to send exit to %s: %s", config.getServerId(), e.getMessage());
                     }
                     languageServer = null;
                 }
@@ -601,20 +606,16 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     }
                 }
 
-                // Shutdown executor
-                executorService.shutdown();
-                if (!executorService.awaitTermination(3, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                }
-
                 LOG.infof("%s shut down for workspace: %s", config.getServerId(), workspaceRoot);
                 setStatus(ServerStatus.STOPPED);
 
             } catch (Exception e) {
                 LOG.errorf(e, "Error during shutdown of %s", config.getServerId());
                 setStatus(ServerStatus.STOPPED);
+            } finally {
+                executorService.shutdown();
             }
-        }, executorService);
+        }, CompletableFuture.delayedExecutor(0, TimeUnit.MILLISECONDS));
     }
 
     public LanguageServer getLanguageServer() {

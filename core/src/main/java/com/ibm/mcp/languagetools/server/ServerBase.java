@@ -32,6 +32,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Base class for server implementations (LSP and DAP).
@@ -87,7 +90,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         this.config = config;
         this.workspace = workspace;
         this.contextId = contextId;
-        this.executorService = Executors.newCachedThreadPool();
+        this.executorService = new ThreadPoolExecutor(2, 8, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
         this.readyFuture = new CompletableFuture<>();
         this.startedFuture = new CompletableFuture<>();
 

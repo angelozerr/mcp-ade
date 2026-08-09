@@ -1,5 +1,5 @@
 import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, updateSearchBoxVisibility } from './shared-state.js';
-import { confirmAction, showAlert, showConfirmModal, hideConfirmModal } from './shared-ui.js';
+import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
@@ -296,9 +296,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         export function renderServers(lspServers, dapSessions = [], workspace = null) {
             const container = document.getElementById('servers-list');
-            console.log('renderServers called - lspServers:', lspServers?.length, 'dapSessions:', dapSessions?.length, 'workspace:', workspace?.rootUri);
-            console.trace('renderServers call stack');
-
             if (!container) {
                 console.error('servers-list element not found!');
                 return;
@@ -1080,18 +1077,10 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     ` : ''}
                 </div>
 
-                ${server.documentSelector && server.documentSelector.length > 0 ? `
                 <div class="details-section">
                     <h4>Document Selector</h4>
-                    ${server.documentSelector.map(selector => `
-                        <div class="selector-item">
-                            ${selector.language ? `<span class="selector-tag">language: ${selector.language}</span>` : ''}
-                            ${selector.scheme ? `<span class="selector-tag">scheme: ${selector.scheme}</span>` : ''}
-                            ${selector.pattern ? `<span class="selector-tag">pattern: ${selector.pattern}</span>` : ''}
-                        </div>
-                    `).join('')}
+                    ${renderDocumentSelector(server.documentSelector)}
                 </div>
-                ` : ''}
 
                 ${commandStr ? `
                 <div class="details-section">

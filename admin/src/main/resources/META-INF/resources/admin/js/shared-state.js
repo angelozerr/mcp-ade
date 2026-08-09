@@ -148,6 +148,19 @@ export function updateSearchBoxVisibility(showSearchBox) {
     }
 }
 
+export function buildGlobalContributedByMap(servers) {
+    const map = {};
+    servers.forEach(server => {
+        if (server.contributes && server.contributes.contributeServerConfigurations) {
+            server.contributes.contributeServerConfigurations.forEach(targetId => {
+                if (!map[targetId]) map[targetId] = [];
+                map[targetId].push(server.id);
+            });
+        }
+    });
+    return map;
+}
+
 export function buildWorkspaceContributedByMap(servers) {
     const map = {};
     for (const server of servers) {

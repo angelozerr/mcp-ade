@@ -4,8 +4,8 @@
  * Handles global LSP server listing with Overview/Install tabs
  */
 
-import { state, getServerApiBase } from './shared-state.js';
-import { showAlert } from './shared-ui.js';
+import { state, getServerApiBase, buildGlobalContributedByMap } from './shared-state.js';
+import { showAlert, renderDocumentSelector } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { LanguageFilter } from './language-filter.js';
@@ -224,17 +224,7 @@ export async function showServerDetails(serverId) {
  * Build server details HTML for Overview tab.
  */
 function buildServerDetailsHTML(details, allServers) {
-    // Document selector
-    let docSelectorHTML = '<p class="text-secondary">None configured</p>';
-    if (details.documentSelector && details.documentSelector.length > 0) {
-        docSelectorHTML = details.documentSelector.map(selector => {
-            return `<div class="selector-item">
-                ${selector.language ? `<span class="selector-tag">language: ${selector.language}</span>` : ''}
-                ${selector.scheme ? `<span class="selector-tag">scheme: ${selector.scheme}</span>` : ''}
-                ${selector.pattern ? `<span class="selector-tag">pattern: ${selector.pattern}</span>` : ''}
-            </div>`;
-        }).join('');
-    }
+    const docSelectorHTML = renderDocumentSelector(details.documentSelector);
 
     // Command
     let commandHTML = '<p class="text-secondary">None (contribution-only server)</p>';
@@ -349,49 +339,18 @@ function updateServerSetting(serverId, settingKey, value) {
 }
 
 /**
- * Build contributions HTML for Contributions tab.
- */
-function buildContributionsHTML(details) {
-    if (!details.contributes) return '';
-
-    let html = '<h3 class="text-success mt-0">Contributions</h3>';
-
-    if (details.contributes.languages) {
-        html += `
-            <div class="mb-xl">
-                <strong class="text-label">Languages:</strong>
-                <ul class="text-value mt-sm mb-sm" style="padding-left: 1.5rem;">
-                    ${details.contributes.languages.map(lang =>
-                        `<li><strong>${lang.id}</strong>${lang.extensions ? ` (${lang.extensions.join(', ')})` : ''}</li>`
-                    ).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    if (details.contributes.snippets) {
-        html += `
-            <div class="mb-xl">
-                <strong class="text-label">Snippets:</strong>
-                <p class="text-value mt-xs mb-xs">${details.contributes.snippets.length} snippet file(s)</p>
-            </div>
-        `;
-    }
-
-    return html;
-}
-
-/**
  * Switch between LSP server tabs (Overview/Contributions/Install).
  */
 export function switchServerTab(tabName) {
     currentServerTab = tabName;
-
-    // Re-render current server to update tabs
-    if (selectedAllServer) {
-        showServerDetails(selectedAllServer);
-    }
-
+    // Toggle tab buttons
+    document.querySelectorAll('#console-area .tab-button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    // Toggle tab panels
+    document.querySelectorAll('#console-area .tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `server-${tabName}-tab`);
+    });
     // Render diagram when switching to contributions tab
     if (tabName === 'contributions' && state.currentDiagramServers && state.currentDiagramServerId) {
         setTimeout(() => renderServerDiagram(state.currentDiagramServers, state.currentDiagramServerId), 100);
@@ -546,22 +505,6 @@ export function updateInstallProgress(msg) {
             header.textContent = `✗ Installation failed`;
         }
     }
-}
-
-/**
- * Helper: Build contributedBy map.
- */
-function buildGlobalContributedByMap(servers) {
-    const map = {};
-    servers.forEach(server => {
-        if (server.contributes && server.contributes.contributeServerConfigurations) {
-            server.contributes.contributeServerConfigurations.forEach(targetId => {
-                if (!map[targetId]) map[targetId] = [];
-                map[targetId].push(server.id);
-            });
-        }
-    });
-    return map;
 }
 
 /**

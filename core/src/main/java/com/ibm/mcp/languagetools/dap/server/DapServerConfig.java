@@ -42,6 +42,7 @@ import java.util.stream.Stream;
 public class DapServerConfig extends ServerConfigBase {
 
     private static final Logger LOG = Logger.getLogger(DapServerConfig.class);
+    private static final Gson GSON = new Gson();
 
     /**
      * Attach configuration for DAP servers.
@@ -167,7 +168,7 @@ public class DapServerConfig extends ServerConfigBase {
 
             // Parse body as JSON object, not raw string
             @SuppressWarnings("unchecked")
-            Map<String, Object> body = new Gson().fromJson(json, Map.class);
+            Map<String, Object> body = GSON.fromJson(json, Map.class);
 
             templates.add(new DapConfigurationTemplate(name, label, body));
 

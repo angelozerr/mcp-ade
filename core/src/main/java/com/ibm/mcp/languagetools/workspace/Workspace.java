@@ -548,6 +548,24 @@ public class Workspace {
     }
 
     /**
+     * Remove an MCP client from this workspace.
+     *
+     * @param clientId MCP connection ID to remove
+     * @return true if the client was removed, false if it was not found
+     */
+    public boolean removeMcpClient(String clientId) {
+        if (clientId != null && !clientId.isEmpty()) {
+            McpClientInfo removed = mcpClientConnections.remove(clientId);
+            if (removed != null) {
+                LOG.infof("Removed MCP client '%s' [%s] from workspace: %s (remaining: %d)",
+                        removed.name(), clientId, rootUri, mcpClientConnections.size());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Get all MCP client connections.
      */
     public Map<String, McpClientInfo> getMcpClientConnections() {

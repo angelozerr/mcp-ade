@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.operation.OperationActor;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
 import com.ibm.mcp.languagetools.language.LanguageRegistry;
+import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -60,6 +61,7 @@ public class DapSessionManager {
     Event<DapSessionEvent> sessionEvent;
 
     private final Map<String, DapSession> sessions = new ConcurrentHashMap<>();
+    private final Map<String, ServerBase.StatusChangeListener> sessionStatusListeners = new ConcurrentHashMap<>();
 
     /**
      * Create a new debug session for a specific DAP server.
@@ -112,10 +114,12 @@ public class DapSessionManager {
         LOG.infof("Created session %s for %s (%s)", sessionId, language, sessionName);
 
         // Register status change listener on the DAP server
-        session.getDapServer().addStatusChangeListener((oldStatus, newStatus) -> {
+        ServerBase.StatusChangeListener statusListener = (oldStatus, newStatus) -> {
             LOG.infof("DAP server status changed: session=%s, %s -> %s", sessionId, oldStatus, newStatus);
             fireStateChangedEvent(session, oldStatus, newStatus);
-        });
+        };
+        sessionStatusListeners.put(sessionId, statusListener);
+        session.getDapServer().addStatusChangeListener(statusListener);
 
         // Register session state change listener
         session.setStateChangeCallback(() -> {
@@ -213,6 +217,12 @@ public class DapSessionManager {
                     "success", false,
                     "message", "Session not found: " + sessionId
             ));
+        }
+
+        // Remove the status change listener that was registered in createSession()
+        ServerBase.StatusChangeListener statusListener = sessionStatusListeners.remove(sessionId);
+        if (statusListener != null) {
+            session.getDapServer().removeStatusChangeListener(statusListener);
         }
 
         return session.terminate()

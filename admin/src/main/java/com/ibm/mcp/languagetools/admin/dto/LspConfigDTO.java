@@ -36,5 +36,5 @@ public record LspConfigDTO(
     boolean isExtension,
     boolean enabled,
     List<ServerSettingDTO> settings
-) {
+) implements ServerConfigDTOBase {
 }

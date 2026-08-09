@@ -34,6 +34,11 @@ import static com.ibm.mcp.languagetools.utils.JsonUtils.getPrettyPrintGson;
  */
 public class McpTraceCollector extends AbstractTraceCollector {
 
+    /**
+     * Timeout in milliseconds for orphaned pending requests (5 minutes).
+     */
+    private static final long PENDING_REQUEST_TIMEOUT_MS = 300_000;
+
     private final Map<String, PendingRequest> pendingRequests = new ConcurrentHashMap<>();
 
     private record PendingRequest(String method, Instant timestamp, String connectionId) {
@@ -75,6 +80,7 @@ public class McpTraceCollector extends AbstractTraceCollector {
             if (isRequest) {
                 header = String.format("[Trace - %s] Sending request '%s - (%s)'",
                         formatTime(now), method, id);
+                cleanupOrphanedRequests(now);
                 pendingRequests.put(key, new PendingRequest(method, now, connectionId));
             } else if (isResponse) {
                 PendingRequest pending = pendingRequests.remove(key);
@@ -122,6 +128,15 @@ public class McpTraceCollector extends AbstractTraceCollector {
                 return jsonText;
             }
         }
+    }
+
+    /**
+     * Remove pending requests older than {@link #PENDING_REQUEST_TIMEOUT_MS}.
+     */
+    private void cleanupOrphanedRequests(Instant now) {
+        long nowMs = now.toEpochMilli();
+        pendingRequests.entrySet().removeIf(entry ->
+                nowMs - entry.getValue().timestamp.toEpochMilli() > PENDING_REQUEST_TIMEOUT_MS);
     }
 
     private String formatTime(Instant instant) {

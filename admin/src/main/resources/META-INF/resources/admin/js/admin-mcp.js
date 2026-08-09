@@ -22,22 +22,19 @@ export async function loadMcpClients() {
     try {
         const response = await fetch('/api/admin/mcp/clients');
         const newClients = await response.json();
+        mcpClients = newClients;
+        renderMcpClients();
 
-        if (JSON.stringify(newClients) !== JSON.stringify(mcpClients)) {
-            mcpClients = newClients;
-            renderMcpClients();
+        if (mcpClients.length > 0 && !selectedMcpClient) {
+            selectMcpClient(mcpClients[0].id);
+        }
 
-            if (mcpClients.length > 0 && !selectedMcpClient) {
-                selectMcpClient(mcpClients[0].id);
-            }
-
-            if (selectedMcpClient) {
-                const stillExists = mcpClients.find(c => c.id === selectedMcpClient);
-                if (!stillExists) {
-                    selectedMcpClient = null;
-                    if (mcpClients.length > 0) {
-                        selectMcpClient(mcpClients[0].id);
-                    }
+        if (selectedMcpClient) {
+            const stillExists = mcpClients.find(c => c.id === selectedMcpClient);
+            if (!stillExists) {
+                selectedMcpClient = null;
+                if (mcpClients.length > 0) {
+                    selectMcpClient(mcpClients[0].id);
                 }
             }
         }
@@ -334,23 +331,21 @@ export function handleMcpTrace(trace) {
 }
 
 export function handleMcpClientsUpdate(newClients) {
-    if (JSON.stringify(newClients) !== JSON.stringify(mcpClients)) {
-        mcpClients = newClients;
-        renderMcpClients();
+    mcpClients = newClients;
+    renderMcpClients();
 
-        if (mcpClients.length > 0 && !selectedMcpClient) {
-            selectMcpClient(mcpClients[0].id);
-        }
+    if (mcpClients.length > 0 && !selectedMcpClient) {
+        selectMcpClient(mcpClients[0].id);
+    }
 
-        if (selectedMcpClient) {
-            const stillExists = mcpClients.find(c => c.id === selectedMcpClient);
-            if (!stillExists) {
-                selectedMcpClient = null;
-                if (mcpClients.length > 0) {
-                    selectMcpClient(mcpClients[0].id);
-                } else if (state.currentTab === 'mcp-traces') {
-                    loadMcpTracesConsole();
-                }
+    if (selectedMcpClient) {
+        const stillExists = mcpClients.find(c => c.id === selectedMcpClient);
+        if (!stillExists) {
+            selectedMcpClient = null;
+            if (mcpClients.length > 0) {
+                selectMcpClient(mcpClients[0].id);
+            } else if (state.currentTab === 'mcp-traces') {
+                loadMcpTracesConsole();
             }
         }
     }

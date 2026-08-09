@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Base class for JSON-based configuration files (application settings, workspace settings).
@@ -39,7 +40,7 @@ public abstract class AbstractConfiguration implements Configuration {
     private static final Gson GSON = new Gson();
     private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    private volatile Map<String, Object> settings = new HashMap<>();
+    private volatile Map<String, Object> settings = new ConcurrentHashMap<>();
 
     /**
      * Return the path to the JSON settings file to load.
@@ -91,7 +92,7 @@ public abstract class AbstractConfiguration implements Configuration {
     protected Map<String, Object> loadFromFile(Path file) {
         if (file == null || !Files.exists(file)) {
             LOG.debugf("No settings file found at: %s", file);
-            return new HashMap<>();
+            return new ConcurrentHashMap<>();
         }
 
         try {
@@ -101,10 +102,10 @@ public abstract class AbstractConfiguration implements Configuration {
             };
             Map<String, Object> loaded = GSON.fromJson(json, typeToken.getType());
             LOG.infof("Loaded settings from %s", file);
-            return loaded != null ? loaded : new HashMap<>();
+            return loaded != null ? new ConcurrentHashMap<>(loaded) : new ConcurrentHashMap<>();
         } catch (Exception e) {
             LOG.warnf("Failed to load settings from %s: %s", file, e.getMessage());
-            return new HashMap<>();
+            return new ConcurrentHashMap<>();
         }
     }
 

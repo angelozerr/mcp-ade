@@ -62,7 +62,13 @@ function connectAdminWebSocket() {
     };
 
     adminWebSocket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
+        let message;
+        try {
+            message = JSON.parse(event.data);
+        } catch (e) {
+            console.error('Failed to parse WebSocket message:', e);
+            return;
+        }
         handleWebSocketMessage(message);
     };
 
@@ -77,7 +83,6 @@ function connectAdminWebSocket() {
 }
 
 function handleWebSocketMessage(message) {
-    console.log('WebSocket message received:', message.type, message);
     switch (message.type) {
         case 'lsp-trace':
             handleLspTrace(message);
@@ -126,8 +131,6 @@ function handleWebSocketMessage(message) {
 // ========== WebSocket message handlers ==========
 
 function handleLspTrace(trace) {
-    console.log('handleLspTrace called for server:', trace.serverId, 'current:', state.currentServerId);
-
     if (state.installOutputServerId === trace.serverId) {
         appendInstallTrace(trace);
     }
@@ -148,8 +151,6 @@ function handleLspTrace(trace) {
     } else {
         state.tracesByServer[tk].push(trace);
     }
-
-    console.log('Stored trace, total for', tk, ':', state.tracesByServer[tk].length);
 
     if (state.tracesByServer[tk].length > 200) {
         state.tracesByServer[tk] = state.tracesByServer[tk].slice(-200);
@@ -231,37 +232,27 @@ function handleDapTrace(trace) {
 }
 
 function handleWorkspacesUpdate(newWorkspaces) {
-    console.log('WebSocket workspaces update:', newWorkspaces);
-
-    const mergedWorkspaces = newWorkspaces;
-
-    if (!workspacesRendered || JSON.stringify(mergedWorkspaces) !== JSON.stringify(state.workspaces)) {
-        // Preserve lazily-loaded lspServers from previous workspace objects
-        for (const newWs of mergedWorkspaces) {
-            const oldWs = state.workspaces.find(w => w.rootUri === newWs.rootUri);
-            if (oldWs?.lspServers) {
-                newWs.lspServers = oldWs.lspServers;
-            }
+    // Preserve lazily-loaded lspServers from previous workspace objects
+    for (const newWs of newWorkspaces) {
+        const oldWs = state.workspaces.find(w => w.rootUri === newWs.rootUri);
+        if (oldWs?.lspServers) {
+            newWs.lspServers = oldWs.lspServers;
         }
-        state.workspaces = mergedWorkspaces;
-        workspacesRendered = true;
-        console.log('Workspaces updated, rendering...');
-        renderWorkspaces();
+    }
+    state.workspaces = newWorkspaces;
+    workspacesRendered = true;
+    renderWorkspaces();
 
-        if (state.selectedWorkspace) {
-            console.log('Selected workspace:', state.selectedWorkspace);
-            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
-            console.log('Found workspace:', workspace);
-            if (workspace) {
-                switchWorkspaceTab(state.currentWorkspaceTab || 'servers');
-            } else {
-                state.selectedWorkspace = null;
-                document.getElementById('servers-list').innerHTML = '<div class="servers-placeholder">No workspaces selected</div>';
-            }
-        } else if (state.workspaces.length > 0 && state.currentTab === 'workspaces') {
-            console.log('Auto-selecting first workspace');
-            selectWorkspace(state.workspaces[0].rootUri);
+    if (state.selectedWorkspace) {
+        const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+        if (workspace) {
+            switchWorkspaceTab(state.currentWorkspaceTab || 'servers');
+        } else {
+            state.selectedWorkspace = null;
+            document.getElementById('servers-list').innerHTML = '<div class="servers-placeholder">No workspaces selected</div>';
         }
+    } else if (state.workspaces.length > 0 && state.currentTab === 'workspaces') {
+        selectWorkspace(state.workspaces[0].rootUri);
     }
 }
 

@@ -13,21 +13,16 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.admin.dto.ErrorResponse;
 import com.ibm.mcp.languagetools.admin.dto.LspConfigDTO;
 import com.ibm.mcp.languagetools.admin.dto.ServerDTOBuilder;
 import com.ibm.mcp.languagetools.admin.dto.StatusResponse;
-import com.ibm.mcp.languagetools.installer.TaskRegistryInstaller;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
-import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
+import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import jakarta.inject.Inject;
@@ -37,7 +32,6 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
-import java.nio.file.Files;
 import java.util.List;
 
 /**
@@ -46,21 +40,22 @@ import java.util.List;
  */
 @Path("/api/admin/lsp")
 @Produces(MediaType.APPLICATION_JSON)
-public class LspAdminResource {
+public class LspAdminResource extends AbstractServerAdminResource {
 
     private static final Logger LOG = Logger.getLogger(LspAdminResource.class);
 
     @Inject
-    Application application;
-
-    @Inject
     ServerDTOBuilder serverDTOBuilder;
 
+    @Override
+    protected ServerConfigBase getServerConfig(String serverId) {
+        return application.getLspServerConfig(serverId);
+    }
 
-    @Inject
-    ProgressBroadcaster progressBroadcaster;
-
-    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    @Override
+    protected String getServerType() {
+        return "LSP";
+    }
 
     // ========== LSP Configs ==========
 
@@ -101,94 +96,6 @@ public class LspAdminResource {
         }
 
         return serverDTOBuilder.buildConfig(config);
-    }
-
-    // ========== LSP Installer ==========
-
-    /**
-     * Get installer.json for a server.
-     */
-    @GET
-    @Path("/configs/{serverId}/installer")
-    public Response getInstaller(@PathParam("serverId") String serverId) {
-        LspServerConfig config = application.getLspServerConfig(serverId);
-
-        if (config == null) {
-            throw new NotFoundException("LSP server not found: " + serverId);
-        }
-
-        var installerConfig = config.getInstallerConfig();
-        if (installerConfig == null) {
-            return Response.ok("{}").build();
-        }
-
-        return Response.ok(gson.toJson(installerConfig)).build();
-    }
-
-    /**
-     * Save installer.json for a server.
-     */
-    @POST
-    @Path("/configs/{serverId}/installer")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveInstaller(@PathParam("serverId") String serverId, JsonObject installerJson) {
-        LspServerConfig config = application.getLspServerConfig(serverId);
-
-        if (config == null) {
-            throw new NotFoundException("LSP server not found: " + serverId);
-        }
-
-        try {
-            var serverHome = config.getServerHome();
-            Files.createDirectories(serverHome);
-            var installerPath = serverHome.resolve("installer.json");
-            String json = gson.toJson(installerJson);
-            Files.writeString(installerPath, json);
-
-            return Response.ok().build();
-        } catch (Exception e) {
-            LOG.errorf("Failed to save installer.json for %s: %s", serverId, e.getMessage());
-            return Response.status(500)
-                    .entity(new ErrorResponse("Failed to save installer.json: " + e.getMessage()))
-                    .build();
-        }
-    }
-
-    /**
-     * Run installer for an LSP server.
-     */
-    @POST
-    @Path("/configs/{serverId}/install")
-    public Response runInstaller(@PathParam("serverId") String serverId,
-                                 @QueryParam("force") @DefaultValue("false") boolean force) {
-        LspServerConfig config = application.getLspServerConfig(serverId);
-        if (config == null) {
-            throw new NotFoundException("LSP server not found: " + serverId);
-        }
-        if (config.getInstaller() == null) {
-            return Response.status(404).entity(new ErrorResponse("No installer configured for: " + serverId)).build();
-        }
-
-        String taskId = "install-" + serverId;
-        String title = "Install " + serverId;
-        TraceProgressMonitor progressMonitor = new TraceProgressMonitor(
-                config.getTraceCollector(), 100.0, progressBroadcaster, taskId, serverId, title);
-        TaskRegistryInstaller.configureInstallerSteps(progressMonitor, config.getInstallerConfig(), force);
-        progressMonitor.initializeSteps();
-
-        config.resetInstallState();
-        config.ensureInstalled(application.getPathManager(), null, progressMonitor, force)
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                        LOG.errorf(ex, "Failed to install server '%s'", serverId);
-                        progressMonitor.setFailed(cause.getMessage());
-                    } else {
-                        progressMonitor.setComplete();
-                    }
-                });
-
-        return Response.ok().entity(new StatusResponse("installing")).build();
     }
 
     // ========== LSP Server Control ==========
@@ -372,7 +279,7 @@ public class LspAdminResource {
     @POST
     @Path("/progress/{taskId}/cancel")
     public Response cancelTask(@PathParam("taskId") String taskId) {
-        // Extract serverId from taskId (e.g., "install-jdtls" → "jdtls", "start-jdtls" → "jdtls")
+        // Extract serverId from taskId (e.g., "install-jdtls" -> "jdtls", "start-jdtls" -> "jdtls")
         String serverId = taskId.replaceFirst("^(install|start|restart)-", "");
 
         var config = application.getLspServerConfig(serverId);
@@ -393,7 +300,7 @@ public class LspAdminResource {
 
     /**
      * Create a TraceProgressMonitor with standard server startup steps
-     * (Installing → Starting → Initializing).
+     * (Installing -> Starting -> Initializing).
      */
     private TraceProgressMonitor createServerStartMonitor(
             TraceCollector traceCollector,
