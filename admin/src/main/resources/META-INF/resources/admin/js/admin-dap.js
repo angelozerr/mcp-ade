@@ -101,12 +101,10 @@ export async function createNewTestSession(dapServerId) {
 function formatSessionActor(actor) {
     if (!actor) return '-';
     switch (actor) {
-        case 'AI_AGENT':
-            return '🤖 AI Agent';
-        case 'MANUAL':
-            return '👤 Manual';
-        case 'UNKNOWN':
-            return 'Unknown';
+        case 'AGENT':
+            return '\u{1F916} Agent';
+        case 'USER':
+            return '\u{1F464} User';
         default:
             return actor;
     }
@@ -1540,12 +1538,10 @@ export function createSessionHTML(session) {
         <button class="server-action-btn session-stop-btn session-btn-sm${stopDisabledClass}" data-session-id="${session.sessionId}" ${canStop ? '' : 'disabled'} data-action="sessionStopBtn" data-stop-propagation title="Stop">⏹</button>
     `;
 
-    // Add creator icon
-    console.log('[DAP] Session createdBy:', session.sessionId, session.createdBy);
-    const creatorIcon = session.createdBy === 'AI_AGENT'
-        ? '<span class="font-sm opacity-70" title="Created by AI Agent">🤖</span>'
-        : session.createdBy === 'MANUAL'
-        ? '<span class="font-sm opacity-70" title="Created manually">👤</span>'
+    const creatorIcon = session.createdBy === 'AGENT'
+        ? '<span class="font-sm opacity-70" title="Created by Agent">\u{1F916}</span>'
+        : session.createdBy === 'USER'
+        ? '<span class="font-sm opacity-70" title="Created by User">\u{1F464}</span>'
         : '<span class="text-dimmed font-sm opacity-50" title="Creator unknown">❓</span>';
 
     return `

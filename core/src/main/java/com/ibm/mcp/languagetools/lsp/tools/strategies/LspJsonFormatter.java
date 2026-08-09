@@ -49,12 +49,19 @@ final class LspJsonFormatter {
     static Map<String, Object> map(Object... keysAndValues) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (int i = 0; i < keysAndValues.length; i += 2) {
-            Object value = keysAndValues[i + 1];
+            Object value = unwrapEither(keysAndValues[i + 1]);
             if (value != null) {
                 result.put((String) keysAndValues[i], value);
             }
         }
         return result;
+    }
+
+    private static Object unwrapEither(Object value) {
+        if (value instanceof org.eclipse.lsp4j.jsonrpc.messages.Either<?, ?> e) {
+            return e.isLeft() ? e.getLeft() : e.getRight();
+        }
+        return value;
     }
 
     // --- URI compaction (delegates to UriUtils) ---
@@ -151,16 +158,8 @@ final class LspJsonFormatter {
                 "severity", d.getSeverity() != null ? d.getSeverity().name() : null,
                 "message", d.getMessage(),
                 "source", d.getSource(),
-                "code", extractEither(d.getCode())
+                "code", d.getCode()
         );
-    }
-
-    private static Object extractEither(Object either) {
-        if (either == null) return null;
-        if (either instanceof org.eclipse.lsp4j.jsonrpc.messages.Either<?, ?> e) {
-            return e.isLeft() ? e.getLeft() : e.getRight();
-        }
-        return either;
     }
 
     // --- Symbols ---

@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.dap.session;
 
+import com.ibm.mcp.languagetools.operation.OperationActor;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 
 import java.time.Instant;
@@ -45,9 +46,9 @@ public class DapSessionEvent {
                             String oldStatus,
                             String newStatus,
                             boolean debugMode,
-                            DapSession.SessionActor createdBy,
+                            OperationActor createdBy,
                             Instant createdAt,
-                            DapSession.SessionActor launchedBy,
+                            OperationActor launchedBy,
                             Instant launchedAt) {
         this.type = type;
         this.sessionId = sessionId;

@@ -15,6 +15,7 @@ package com.ibm.mcp.languagetools.dap.session;
 
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
+import com.ibm.mcp.languagetools.operation.OperationActor;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
 import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.server.ServerStatus;
@@ -72,7 +73,7 @@ public class DapSessionManager {
     public DapSession createSession(URI workspaceUri,
                                     String dapServerId,
                                     String sessionName,
-                                    DapSession.SessionActor createdBy) {
+                                    OperationActor createdBy) {
         LOG.infof("Creating debug session: workspace=%s, dapServerId=%s, name=%s, createdBy=%s",
                 workspaceUri, dapServerId, sessionName, createdBy);
 

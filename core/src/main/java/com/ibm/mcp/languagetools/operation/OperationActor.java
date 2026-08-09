@@ -13,7 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.operation;
 
-public enum OperationOrigin {
+public enum OperationActor {
 
     AGENT,
 

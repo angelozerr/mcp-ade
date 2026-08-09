@@ -38,7 +38,7 @@ public class OperationContext {
     private volatile String result;
     private volatile String sessionId;
     private volatile String sessionName;
-    private volatile OperationOrigin origin;
+    private volatile OperationActor actor;
     private final OperationTracker tracker;
 
     private OperationContext() {
@@ -200,12 +200,12 @@ public class OperationContext {
         return sessionName;
     }
 
-    public void setOrigin(OperationOrigin origin) {
+    public void setActor(OperationActor actor) {
         if (tracker == null) return;
-        this.origin = origin;
+        this.actor = actor;
     }
 
-    public OperationOrigin getOrigin() {
-        return origin;
+    public OperationActor getActor() {
+        return actor;
     }
 }

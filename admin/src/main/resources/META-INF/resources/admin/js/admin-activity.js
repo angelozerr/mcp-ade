@@ -3,6 +3,7 @@ import { registerActions } from './event-delegation.js';
 
 let operations = [];
 const expandedOps = new Set();
+const userExpandedOps = new Set();
 const collapsedServers = new Set();
 const collapsedWorkspaces = new Set();
 const collapsedSessions = new Set();
@@ -16,6 +17,34 @@ const toggledSections = new Set();
 const pendingUpdates = new Set();
 const pendingNewOps = new Set();
 let updateRAF = null;
+let visibilityObserver = null;
+
+function getVisibilityObserver() {
+    if (visibilityObserver) return visibilityObserver;
+    const root = document.getElementById('mcp-activity-content')
+        || document.getElementById('mcp-activity-tab');
+    const scrollRoot = root ? (root.closest('.activity-list') || root) : null;
+    visibilityObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            const opEl = entry.target;
+            const opId = opEl.dataset.opId;
+            if (!opId || !expandedOps.has(opId) || userExpandedOps.has(opId) || !entry.target.isConnected) continue;
+            if (!entry.isIntersecting) {
+                expandedOps.delete(opId);
+                const body = opEl.querySelector('.activity-operation-body');
+                if (body) body.style.display = 'none';
+                const toggle = opEl.querySelector('.activity-toggle');
+                if (toggle) toggle.innerHTML = '&#9654;';
+            }
+        }
+    }, { root: scrollRoot, rootMargin: '0px' });
+    return visibilityObserver;
+}
+
+function observeOperation(opEl) {
+    if (!opEl) return;
+    getVisibilityObserver().observe(opEl);
+}
 
 async function ensureToolsLoaded() {
     if (mcpToolsMap) return;
@@ -163,7 +192,11 @@ function patchOperation(opId) {
     const tmp = document.createElement('div');
     tmp.innerHTML = renderOperation(op, esc);
     const newEl = tmp.firstElementChild;
+    if (visibilityObserver) visibilityObserver.unobserve(existingEl);
     existingEl.replaceWith(newEl);
+    if (expandedOps.has(opId) && !userExpandedOps.has(opId)) {
+        observeOperation(newEl);
+    }
 }
 
 function insertNewOperations(opIds) {
@@ -243,7 +276,11 @@ function updateWorkspaceCount(wsBody, wsKey) {
 function createOpElement(op, esc) {
     const tmp = document.createElement('div');
     tmp.innerHTML = renderOperation(op, esc);
-    return tmp.firstElementChild;
+    const el = tmp.firstElementChild;
+    if (expandedOps.has(op.id) && !userExpandedOps.has(op.id)) {
+        observeOperation(el);
+    }
+    return el;
 }
 
 export function renderActivity() {
@@ -328,6 +365,10 @@ export function renderActivity() {
         }
     }
 
+    if (visibilityObserver) {
+        visibilityObserver.disconnect();
+        visibilityObserver = null;
+    }
     container.innerHTML = html;
 
     if (wasAtBottom) {
@@ -338,6 +379,13 @@ export function renderActivity() {
             const parentRect = scrollParent.getBoundingClientRect();
             const drift = (anchorEl.getBoundingClientRect().top - parentRect.top) - anchorOffset;
             scrollParent.scrollTop += drift;
+        }
+    }
+
+    for (const opEl of container.querySelectorAll('.activity-operation[data-op-id]')) {
+        const opId = opEl.dataset.opId;
+        if (opId && expandedOps.has(opId) && !userExpandedOps.has(opId)) {
+            observeOperation(opEl);
         }
     }
 }
@@ -432,10 +480,10 @@ function renderOperation(op, esc) {
         html += `<span class="activity-toggle-spacer"></span>`;
     }
     html += `<span class="activity-status-icon">${statusIcon}</span>`;
-    if (op.origin === 'USER') {
-        html += `<span class="activity-origin-badge origin-user" title="User"><svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><circle cx="8" cy="4.5" r="2.8"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5z"/></svg></span>`;
+    if (op.actor === 'USER') {
+        html += `<span class="activity-origin-badge origin-user" title="User">&#128100;</span>`;
     } else {
-        html += `<span class="activity-origin-badge origin-agent" title="Agent"><svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8 1l1.8 3.2L13.5 5l-2.7 2.8.6 3.7L8 9.8 4.6 11.5l.6-3.7L2.5 5l3.7-.8z"/></svg></span>`;
+        html += `<span class="activity-origin-badge origin-agent" title="Agent">&#129302;</span>`;
     }
     html += `<span class="activity-operation-info"${titleAttr}>`;
     html += `<span class="activity-operation-name">${esc(op.name)}</span>`;
@@ -649,8 +697,10 @@ function toggleActivityOperation(el) {
     if (opId) {
         if (isVisible) {
             expandedOps.delete(opId);
+            userExpandedOps.delete(opId);
         } else {
             expandedOps.add(opId);
+            userExpandedOps.add(opId);
         }
     }
 }
@@ -741,6 +791,7 @@ function toggleWorkspace(el) {
 
 function foldAllActivity() {
     expandedOps.clear();
+    userExpandedOps.clear();
     collapsedServers.clear();
     collapsedWorkspaces.clear();
     collapsedSessions.clear();
@@ -752,6 +803,7 @@ function foldAllActivity() {
 function clearActivity() {
     operations = [];
     expandedOps.clear();
+    userExpandedOps.clear();
     renderActivity();
 }
 

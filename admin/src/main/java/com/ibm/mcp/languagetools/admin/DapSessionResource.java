@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.admin.dto.CreateDapSessionRequest;
 import com.ibm.mcp.languagetools.admin.dto.ErrorResponse;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
+import com.ibm.mcp.languagetools.operation.OperationActor;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import jakarta.inject.Inject;
@@ -77,7 +78,7 @@ public class DapSessionResource {
                     workspaceUri,
                     request.dapServerId(),
                     request.sessionName(),
-                    DapSession.SessionActor.MANUAL // Created manually via REST API
+                    OperationActor.USER // Created manually via REST API
             );
 
             // Return session info
@@ -123,7 +124,7 @@ public class DapSessionResource {
             ProgressMonitor progressMonitor = AdminProgressMonitorHelper.forDapSession(session);
 
             // Launch the session asynchronously (don't block HTTP thread!)
-            session.launch(launchConfig, debugMode, DapSession.SessionActor.MANUAL, progressMonitor)
+            session.launch(launchConfig, debugMode, OperationActor.USER, progressMonitor)
                     .whenComplete((result, error) -> {
                         progressMonitor.setComplete();
                         if (error != null) {

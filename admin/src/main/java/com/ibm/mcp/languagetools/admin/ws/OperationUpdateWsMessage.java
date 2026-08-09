@@ -35,7 +35,7 @@ public class OperationUpdateWsMessage extends WsMessage {
     private final String result;
     private final String sessionId;
     private final String sessionName;
-    private final String origin;
+    private final String actor;
     private final List<EntryDTO> entries;
 
     public OperationUpdateWsMessage(String eventType, OperationContext ctx) {
@@ -54,7 +54,7 @@ public class OperationUpdateWsMessage extends WsMessage {
         this.result = ctx.getResult();
         this.sessionId = ctx.getSessionId();
         this.sessionName = ctx.getSessionName();
-        this.origin = ctx.getOrigin() != null ? ctx.getOrigin().name() : null;
+        this.actor = ctx.getActor() != null ? ctx.getActor().name() : null;
         this.entries = ctx.getEntries().stream().map(EntryDTO::from).toList();
     }
 
@@ -72,7 +72,7 @@ public class OperationUpdateWsMessage extends WsMessage {
     public String getResult() { return result; }
     public String getSessionId() { return sessionId; }
     public String getSessionName() { return sessionName; }
-    public String getOrigin() { return origin; }
+    public String getActor() { return actor; }
     public List<EntryDTO> getEntries() { return entries; }
 
     public static class EntryDTO {

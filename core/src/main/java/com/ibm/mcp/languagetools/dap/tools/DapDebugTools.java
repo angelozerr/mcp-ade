@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapConfigurationTemplate;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
+import com.ibm.mcp.languagetools.operation.OperationActor;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
 import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
@@ -425,7 +426,7 @@ public class DapDebugTools {
         boolean actualDebugMode = debugMode != null ? debugMode : false;
 
         // Create session (created by AI agent via MCP)
-        DapSession session = sessionManager.createSession(uri, debuggerId, actualSessionName, DapSession.SessionActor.AI_AGENT);
+        DapSession session = sessionManager.createSession(uri, debuggerId, actualSessionName, OperationActor.AGENT);
         String sessionId = session.getSessionId();
 
         // Set breakpoints before launching (if provided and in debug mode)
@@ -456,11 +457,11 @@ public class DapDebugTools {
                     return session.attach(processId, progressMonitor);
                 } else {
                     // Attach via port/host
-                    return session.launch(configuration, actualDebugMode, DapSession.SessionActor.AI_AGENT, progressMonitor, serverEntry);
+                    return session.launch(configuration, actualDebugMode, OperationActor.AGENT, progressMonitor, serverEntry);
                 }
             } else {
                 // Launch mode (default)
-                return session.launch(configuration, actualDebugMode, DapSession.SessionActor.AI_AGENT, progressMonitor, serverEntry);
+                return session.launch(configuration, actualDebugMode, OperationActor.AGENT, progressMonitor, serverEntry);
             }
         }).thenApply(result -> {
             // Add sessionId to result

@@ -20,6 +20,7 @@ import com.ibm.mcp.languagetools.dap.server.DapServer;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerFactoryRegistry;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
+import com.ibm.mcp.languagetools.operation.OperationActor;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerStatus;
@@ -50,29 +51,6 @@ public class DapSession implements DapEventListener {
 
     private static final Logger LOG = Logger.getLogger(DapSession.class);
 
-    /**
-     * Enum for tracking who created/launched a debug session.
-     */
-    public enum SessionActor {
-        AI_AGENT("AI Agent"),    // Created/launched by an AI agent (Claude, etc.)
-        MANUAL("Manual"),        // Created/launched manually via UI/API
-        UNKNOWN("Unknown");      // Unknown source
-
-        private final String displayName;
-
-        SessionActor(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-
-        @Override
-        public String toString() {
-            return displayName;
-        }
-    }
 
     private final String sessionId;
     /**
@@ -81,7 +59,7 @@ public class DapSession implements DapEventListener {
     private final String contextId;
     private final String language;
     private final String sessionName;
-    private final SessionActor createdBy; // Who created the session
+    private final OperationActor createdBy; // Who created the session
     private final DapServerConfig serverConfig;
     private final DapServer dapServer; // Not final - can be recreated after error
     private final Workspace workspace;
@@ -93,7 +71,7 @@ public class DapSession implements DapEventListener {
     private volatile String errorMessage;
     private boolean attachMode = false;
     private boolean debugMode = false; // Default to run mode (without debugging)
-    private SessionActor launchedBy; // Who last launched the session
+    private OperationActor launchedBy; // Who last launched the session
     private Instant launchedAt; // When the session was last launched
     private Runnable stateChangeCallback; // Callback when session state changes
     private final Map<String, BreakpointInfo> breakpoints = new ConcurrentHashMap<>();
@@ -167,14 +145,14 @@ public class DapSession implements DapEventListener {
     public DapSession(String sessionId,
                       String language,
                       String sessionName,
-                      SessionActor createdBy,
+                      OperationActor createdBy,
                       DapServerConfig serverConfig,
                       Workspace workspace) {
         this.sessionId = sessionId;
         this.contextId = serverConfig.getServerId() + "#" + sessionId;
         this.language = language;
         this.sessionName = sessionName;
-        this.createdBy = createdBy != null ? createdBy : SessionActor.UNKNOWN;
+        this.createdBy = createdBy != null ? createdBy : OperationActor.AGENT;
         this.createdAt = Instant.now(); // Record creation timestamp
         this.launchedBy = createdBy; // Initially, createdBy is also launchedBy
         this.serverConfig = serverConfig;
@@ -450,14 +428,14 @@ public class DapSession implements DapEventListener {
      */
     public CompletableFuture<Map<String, Object>> launch(Map<String, Object> launchConfig,
                                                          boolean debugMode,
-                                                         SessionActor launchedBy,
+                                                         OperationActor launchedBy,
                                                          ProgressMonitor progressMonitor) {
         return launch(launchConfig, debugMode, launchedBy, progressMonitor, null);
     }
 
     public CompletableFuture<Map<String, Object>> launch(Map<String, Object> launchConfig,
                                                          boolean debugMode,
-                                                         SessionActor launchedBy,
+                                                         OperationActor launchedBy,
                                                          ProgressMonitor progressMonitor,
                                                          OperationEntry serverEntry) {
         LOG.infof("Launching debug session: %s (debugMode=%s, launchedBy=%s) with config: %s", sessionId, debugMode, launchedBy, launchConfig);
@@ -1591,7 +1569,7 @@ public class DapSession implements DapEventListener {
         return sessionName;
     }
 
-    public SessionActor getCreatedBy() {
+    public OperationActor getCreatedBy() {
         return createdBy;
     }
 
@@ -1599,7 +1577,7 @@ public class DapSession implements DapEventListener {
         return createdAt;
     }
 
-    public SessionActor getLaunchedBy() {
+    public OperationActor getLaunchedBy() {
         return launchedBy;
     }
 
@@ -1607,7 +1585,7 @@ public class DapSession implements DapEventListener {
         return launchedAt;
     }
 
-    public void setLaunchedBy(SessionActor launchedBy) {
+    public void setLaunchedBy(OperationActor launchedBy) {
         this.launchedBy = launchedBy;
     }
 
