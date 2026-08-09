@@ -1,0 +1,12 @@
+{
+  "id": "ada-language-server",
+  "name": "Ada Language Server",
+  "description": "Language server for Ada/SPARK",
+  "url": "https://github.com/AdaCore/ada_language_server",
+  "command": "ada_language_server",
+  "documentSelector": [
+    {
+      "language": "ada"
+    }
+  ]
+}

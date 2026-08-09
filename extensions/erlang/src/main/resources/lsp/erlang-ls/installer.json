@@ -1,0 +1,11 @@
+{
+  "id": "erlang-ls-installer",
+  "name": "erlang-ls",
+  "check": {
+    "exec": {
+      "name": "Check if erlang_ls is available",
+      "command": "erlang_ls --version",
+      "timeout": 5000
+    }
+  }
+}

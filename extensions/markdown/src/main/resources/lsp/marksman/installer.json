@@ -1,0 +1,55 @@
+{
+  "id": "marksman-installer",
+  "name": "marksman",
+  "check": {
+    "fileExists": {
+      "name": "Check if marksman is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/marksman.exe",
+        "default": "$SERVER_HOME$/marksman"
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download marksman",
+      "github": {
+        "owner": "artempyanykh",
+        "repository": "marksman",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "marksman.exe"
+          },
+          "unix": {
+            "x86_64": "marksman-linux-x64",
+            "arm64": "marksman-linux-arm64"
+          },
+          "mac": {
+            "x86_64": "marksman-macos",
+            "arm64": "marksman-macos"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "marksman.exe",
+            "default": "marksman"
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure marksman command",
+          "command": {
+            "windows": "$SERVER_HOME$/marksman.exe server",
+            "default": "$SERVER_HOME$/marksman server"
+          }
+        }
+      }
+    }
+  }
+}

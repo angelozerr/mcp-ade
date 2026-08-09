@@ -1,0 +1,23 @@
+{
+  "id": "haskell-language-server-installer",
+  "name": "haskell-language-server",
+  "check": {
+    "exec": {
+      "name": "Check if haskell-language-server-wrapper is available",
+      "command": "haskell-language-server-wrapper --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install Haskell Language Server via ghcup",
+      "command": "ghcup install hls",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure haskell-language-server command",
+          "command": "haskell-language-server-wrapper --lsp"
+        }
+      }
+    }
+  }
+}

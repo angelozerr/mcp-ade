@@ -1,0 +1,11 @@
+{
+  "id": "terraform-ls-installer",
+  "name": "terraform-ls",
+  "check": {
+    "exec": {
+      "name": "Check if terraform-ls is available",
+      "command": "terraform-ls --version",
+      "timeout": 5000
+    }
+  }
+}

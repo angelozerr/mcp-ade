@@ -1,0 +1,56 @@
+{
+  "id": "texlab-installer",
+  "name": "texlab",
+  "check": {
+    "fileExists": {
+      "name": "Check if texlab is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/texlab.exe",
+        "default": "$SERVER_HOME$/texlab"
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download texlab",
+      "github": {
+        "owner": "latex-lsp",
+        "repository": "texlab",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "texlab-x86_64-windows.zip",
+            "arm64": "texlab-aarch64-windows.zip"
+          },
+          "unix": {
+            "x86_64": "texlab-x86_64-linux.tar.gz",
+            "arm64": "texlab-aarch64-linux.tar.gz"
+          },
+          "mac": {
+            "x86_64": "texlab-x86_64-macos.tar.gz",
+            "arm64": "texlab-aarch64-macos.tar.gz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "texlab.exe",
+            "default": "texlab"
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure texlab command",
+          "command": {
+            "windows": "$SERVER_HOME$/texlab.exe",
+            "default": "$SERVER_HOME$/texlab"
+          }
+        }
+      }
+    }
+  }
+}

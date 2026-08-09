@@ -1,0 +1,11 @@
+{
+  "id": "texlab",
+  "name": "Texlab (LaTeX Language Server)",
+  "description": "Language server for LaTeX",
+  "url": "https://github.com/latex-lsp/texlab",
+  "documentSelector": [
+    {
+      "language": "latex"
+    }
+  ]
+}

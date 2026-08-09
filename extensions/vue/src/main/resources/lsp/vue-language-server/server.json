@@ -1,0 +1,11 @@
+{
+  "id": "vue-language-server",
+  "name": "Vue Language Server",
+  "description": "Language server for Vue single-file components",
+  "url": "https://github.com/vuejs/language-tools",
+  "documentSelector": [
+    {
+      "language": "vue"
+    }
+  ]
+}

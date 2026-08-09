@@ -1,0 +1,23 @@
+{
+  "id": "solargraph-installer",
+  "name": "solargraph",
+  "check": {
+    "exec": {
+      "name": "Check if Solargraph is available",
+      "command": "solargraph --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install Solargraph",
+      "command": "gem install solargraph",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Solargraph command",
+          "command": "solargraph stdio"
+        }
+      }
+    }
+  }
+}

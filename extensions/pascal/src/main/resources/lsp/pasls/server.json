@@ -1,0 +1,14 @@
+{
+  "id": "pasls",
+  "name": "Pascal Language Server",
+  "description": "Language server for Pascal and Object Pascal",
+  "url": "https://github.com/zen010101/pascal-language-server",
+  "documentSelector": [
+    {
+      "language": "pascal"
+    },
+    {
+      "language": "objectpascal"
+    }
+  ]
+}

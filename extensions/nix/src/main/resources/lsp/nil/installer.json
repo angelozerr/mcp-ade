@@ -1,0 +1,11 @@
+{
+  "id": "nil-installer",
+  "name": "nil",
+  "check": {
+    "exec": {
+      "name": "Check if nil is available",
+      "command": "nil --version",
+      "timeout": 5000
+    }
+  }
+}

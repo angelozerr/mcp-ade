@@ -1,0 +1,29 @@
+{
+  "id": "vscode-json-language-server-installer",
+  "name": "vscode-json-language-server",
+  "check": {
+    "fileExists": {
+      "name": "Check if vscode-json-language-server is installed",
+      "file": "$SERVER_HOME$/node_modules/.bin/vscode-json-language-server*"
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install vscode-langservers-extracted",
+      "workingDir": "$SERVER_HOME$/node_modules",
+      "command": {
+        "windows": "npm.cmd install vscode-langservers-extracted --force",
+        "default": "npm install vscode-langservers-extracted --force"
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure JSON language server command",
+          "command": {
+            "windows": "$SERVER_HOME$/node_modules/.bin/vscode-json-language-server.cmd --stdio",
+            "default": "$SERVER_HOME$/node_modules/.bin/vscode-json-language-server --stdio"
+          }
+        }
+      }
+    }
+  }
+}

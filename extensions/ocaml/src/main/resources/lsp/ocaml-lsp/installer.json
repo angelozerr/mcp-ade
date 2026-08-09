@@ -1,0 +1,23 @@
+{
+  "id": "ocaml-lsp-installer",
+  "name": "ocaml-lsp-server",
+  "check": {
+    "exec": {
+      "name": "Check if ocamllsp is available",
+      "command": "ocamllsp --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install ocaml-lsp-server",
+      "command": "opam install ocaml-lsp-server -y",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure ocamllsp command",
+          "command": "ocamllsp"
+        }
+      }
+    }
+  }
+}

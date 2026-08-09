@@ -1,0 +1,56 @@
+{
+  "id": "zls-installer",
+  "name": "zls",
+  "check": {
+    "fileExists": {
+      "name": "Check if zls is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/zls.exe",
+        "default": "$SERVER_HOME$/zls"
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download zls",
+      "github": {
+        "owner": "zigtools",
+        "repository": "zls",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "zls-x86_64-windows.zip",
+            "arm64": "zls-aarch64-windows.zip"
+          },
+          "unix": {
+            "x86_64": "zls-x86_64-linux.tar.xz",
+            "arm64": "zls-aarch64-linux.tar.xz"
+          },
+          "mac": {
+            "x86_64": "zls-x86_64-macos.tar.xz",
+            "arm64": "zls-aarch64-macos.tar.xz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "zls.exe",
+            "default": "zls"
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure zls command",
+          "command": {
+            "windows": "$SERVER_HOME$/zls.exe",
+            "default": "$SERVER_HOME$/zls"
+          }
+        }
+      }
+    }
+  }
+}

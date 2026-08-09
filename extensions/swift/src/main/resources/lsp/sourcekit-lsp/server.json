@@ -1,0 +1,12 @@
+{
+  "id": "sourcekit-lsp",
+  "name": "SourceKit-LSP (Swift Language Server)",
+  "description": "Language server for Swift, included with the Swift toolchain",
+  "url": "https://github.com/swiftlang/sourcekit-lsp",
+  "command": "sourcekit-lsp",
+  "documentSelector": [
+    {
+      "language": "swift"
+    }
+  ]
+}

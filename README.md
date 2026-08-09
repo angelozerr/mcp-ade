@@ -10,13 +10,13 @@ and exposes all their capabilities as MCP tools to any AI assistant.
 
 *— OK but what can it actually do?*
 
-Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [10+ more languages](docs/why-mcp-lt.md). Java alone has **60 dedicated tools** powered by Eclipse JDT.LS.
+Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [40+ more languages](docs/why-mcp-lt.md). **47 bundled extensions**, **52 LSP servers**, **8 DAP servers**. Java alone has **60 dedicated tools** powered by Eclipse JDT.LS.
 
 *— [Read the full conversation with our skeptic →](docs/why-mcp-lt.md)*
 
 ### Key highlights
 
-- **Multi-language support**: Java, JavaScript, Python, Go, Rust, C/C++, XML, YAML, Kotlin, Dart, PHP, Lua, Dockerfile, and more
+- **Multi-language support**: 47 extensions covering Java, JavaScript/TypeScript, Python, Go, Rust, C/C++, C#, Ruby, Scala, Kotlin, Dart, Swift, Zig, Haskell, Elixir, Erlang, OCaml, F#, Clojure, HTML/CSS/JSON, Vue, Svelte, Angular, PHP, Lua, Perl, R, Julia, Fortran, Ada, Crystal, Pascal, Bash, Terraform, LaTeX, Markdown, Nix, TOML, Elm, Ansible, XML, YAML, Dockerfile, and more
 - **Both LSP and DAP**: Full language server support (diagnostics, navigation, refactoring) and debug adapter support (breakpoints, stepping, variables)
 - **Server collaboration**: LSP and DAP servers can communicate with each other (e.g., MicroProfile LS leverages JDT.LS for Java type resolution). See [Bind Mechanism](docs/bind-mechanism.md)
 - **Auto-installation**: Language servers and debug adapters are automatically downloaded and installed on first use
@@ -277,26 +277,57 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 
 ## Bundled Extensions
 
-Each extension groups LSP and/or DAP servers for a language:
+**47 extensions** with **52 LSP servers** and **8 DAP servers**:
 
 | Extension | LSP Server | DAP Server |
 |-----------|-----------|------------|
+| **Ada** | ada-language-server | — |
+| **Angular** | angular-language-server | — |
+| **Ansible** | ansible-language-server | — |
+| **Bash** | bash-language-server | — |
+| **C/C++** | clangd | codelldb |
+| **C#** | OmniSharp | — |
+| **Clojure** | clojure-lsp | — |
+| **Crystal** | Crystalline | — |
+| **Dart** | dart-lsp | dart-debug |
+| **Dockerfile** | dockerfile-language-server | buildx-dockerfile |
+| **Elixir** | ElixirLS | — |
+| **Elm** | elm-language-server | — |
+| **Erlang** | erlang-ls | — |
+| **F#** | FsAutoComplete | — |
+| **Fortran** | fortls | — |
+| **Go** | gopls | go-delve |
+| **Haskell** | haskell-language-server | — |
+| **Jakarta EE** | jakarta-ls | — |
 | **Java** | JDT.LS | java-debug |
 | **JavaScript** | typescript-language-server | vscode-js-debug |
+| **Julia** | LanguageServer.jl | — |
+| **Kotlin** | kotlin-language-server | — |
+| **LaTeX** | Texlab | — |
+| **Liberty** | lemminx-liberty, liberty-ls | — |
+| **Lua** | lua-language-server | — |
+| **Markdown** | Marksman | — |
+| **MicroProfile** | microprofile-ls | — |
+| **Nix** | nil | — |
+| **OCaml** | ocaml-lsp | — |
+| **Pascal** | pasls | — |
+| **Perl** | PerlNavigator | — |
+| **PHP** | Intelephense | vscode-php-debug |
 | **Python** | Pyright | debugpy |
-| **Go** | gopls | go-delve |
+| **Quarkus** | quarkus-ls, qute-ls | — |
+| **R** | R Language Server | — |
+| **Ruby** | Solargraph | — |
 | **Rust** | rust-analyzer | — |
-| **C/C++** | clangd | codelldb |
+| **Scala** | Metals | — |
+| **Svelte** | svelte-language-server | — |
+| **Swift** | SourceKit-LSP | — |
+| **Terraform** | terraform-ls | — |
+| **TOML** | Taplo | — |
+| **Vue** | vue-language-server | — |
+| **Web** | HTML LS, CSS LS, JSON LS | — |
 | **XML** | LemMinX | — |
 | **YAML** | yaml-language-server | — |
-| **Kotlin** | kotlin-language-server | — |
-| **Dart** | dart-lsp | dart-debug |
-| **PHP** | Intelephense | vscode-php-debug |
-| **Lua** | lua-language-server | — |
-| **Dockerfile** | dockerfile-language-server | buildx-dockerfile |
-| **MicroProfile** | microprofile-ls | — |
-| **Quarkus** | quarkus-ls, qute-ls | — |
-| **Liberty** | lemminx-liberty, liberty-ls | — |
+| **Zig** | ZLS | — |
 
 ## Adding Your Own Extensions
 
@@ -349,23 +380,35 @@ The server starts at `http://localhost:7654`. Admin UI at `http://localhost:7654
 ```
 mcp-lsp/
 ├── core/                        # Core framework (LSP/DAP integration, MCP tools, admin UI)
-├── extensions/                  # Language extensions
+├── extensions/                  # 47 language extensions
 │   ├── java/                    # Java (JDT.LS + java-debug)
-│   ├── xml/                     # XML (LemMinX)
 │   ├── javascript/              # JavaScript/TypeScript (ts-language-server + vscode-js-debug)
 │   ├── python/                  # Python (Pyright + debugpy)
 │   ├── go/                      # Go (gopls + go-delve)
 │   ├── rust/                    # Rust (rust-analyzer)
 │   ├── c/                       # C/C++ (clangd + codelldb)
+│   ├── csharp/                  # C# (OmniSharp)
+│   ├── web/                     # HTML, CSS, JSON (vscode-langservers-extracted)
+│   ├── angular/                 # Angular
+│   ├── vue/                     # Vue
+│   ├── svelte/                  # Svelte
 │   ├── dart/                    # Dart (dart-lsp + dart-debug)
-│   ├── yaml/                    # YAML
 │   ├── kotlin/                  # Kotlin
+│   ├── scala/                   # Scala (Metals)
+│   ├── ruby/                    # Ruby (Solargraph)
 │   ├── php/                     # PHP (Intelephense + vscode-php-debug)
+│   ├── elixir/                  # Elixir (ElixirLS)
+│   ├── haskell/                 # Haskell
+│   ├── clojure/                 # Clojure
+│   ├── xml/                     # XML (LemMinX)
+│   ├── yaml/                    # YAML
+│   ├── bash/                    # Bash
 │   ├── lua/                     # Lua
+│   ├── terraform/               # Terraform
 │   ├── dockerfile/              # Dockerfile
-│   ├── microprofile/            # MicroProfile
-│   ├── quarkus/                 # Quarkus + Qute
-│   └── liberty/                 # Liberty
+│   ├── ...                      # + 22 more (Ada, Ansible, Crystal, Elm, Erlang, F#, Fortran,
+│   │                            #   Julia, Jakarta EE, LaTeX, Liberty, Markdown, MicroProfile,
+│   │                            #   Nix, OCaml, Pascal, Perl, Quarkus, R, Swift, TOML, Zig)
 ├── admin/                       # Admin UI module
 └── dev/                         # Dev distribution (core + all extensions)
 ```

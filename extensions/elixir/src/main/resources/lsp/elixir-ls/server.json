@@ -1,0 +1,11 @@
+{
+  "id": "elixir-ls",
+  "name": "ElixirLS (Elixir Language Server)",
+  "description": "Language server for Elixir",
+  "url": "https://github.com/elixir-lsp/elixir-ls",
+  "documentSelector": [
+    {
+      "language": "elixir"
+    }
+  ]
+}

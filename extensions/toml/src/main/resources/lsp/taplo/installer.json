@@ -1,0 +1,23 @@
+{
+  "id": "taplo-installer",
+  "name": "taplo",
+  "check": {
+    "exec": {
+      "name": "Check if taplo is available",
+      "command": "taplo --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install taplo via cargo",
+      "command": "cargo install taplo-cli --locked",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure taplo command",
+          "command": "taplo lsp stdio"
+        }
+      }
+    }
+  }
+}

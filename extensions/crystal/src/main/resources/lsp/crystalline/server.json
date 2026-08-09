@@ -1,0 +1,12 @@
+{
+  "id": "crystalline",
+  "name": "Crystalline (Crystal Language Server)",
+  "description": "Language server for Crystal",
+  "url": "https://github.com/elbywan/crystalline",
+  "command": "crystalline",
+  "documentSelector": [
+    {
+      "language": "crystal"
+    }
+  ]
+}

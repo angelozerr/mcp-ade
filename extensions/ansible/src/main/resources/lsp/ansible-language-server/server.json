@@ -1,0 +1,11 @@
+{
+  "id": "ansible-language-server",
+  "name": "Ansible Language Server",
+  "description": "Language server for Ansible playbooks and roles",
+  "url": "https://github.com/ansible/vscode-ansible",
+  "documentSelector": [
+    {
+      "language": "ansible"
+    }
+  ]
+}

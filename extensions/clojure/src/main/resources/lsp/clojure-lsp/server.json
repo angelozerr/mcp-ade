@@ -1,0 +1,11 @@
+{
+  "id": "clojure-lsp",
+  "name": "Clojure Language Server",
+  "description": "Language server for Clojure",
+  "url": "https://github.com/clojure-lsp/clojure-lsp",
+  "documentSelector": [
+    {
+      "language": "clojure"
+    }
+  ]
+}

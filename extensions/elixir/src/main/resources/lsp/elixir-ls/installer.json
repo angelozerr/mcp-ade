@@ -1,0 +1,55 @@
+{
+  "id": "elixir-ls-installer",
+  "name": "elixir-ls",
+  "check": {
+    "fileExists": {
+      "name": "Check if ElixirLS is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/language_server.bat",
+        "default": "$SERVER_HOME$/language_server.sh"
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download ElixirLS",
+      "github": {
+        "owner": "elixir-lsp",
+        "repository": "elixir-ls",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "elixir-ls-*.zip"
+          },
+          "unix": {
+            "x86_64": "elixir-ls-*.zip",
+            "arm64": "elixir-ls-*.zip"
+          },
+          "mac": {
+            "x86_64": "elixir-ls-*.zip",
+            "arm64": "elixir-ls-*.zip"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "language_server.bat",
+            "default": "language_server.sh"
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure ElixirLS command",
+          "command": {
+            "windows": "$SERVER_HOME$/language_server.bat",
+            "default": "$SERVER_HOME$/language_server.sh"
+          }
+        }
+      }
+    }
+  }
+}

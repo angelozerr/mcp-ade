@@ -1,0 +1,58 @@
+{
+  "id": "crystalline-installer",
+  "name": "crystalline",
+  "check": {
+    "fileExists": {
+      "name": "Check if crystalline is installed",
+      "file": "$SERVER_HOME$/crystalline"
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download crystalline",
+      "github": {
+        "owner": "elbywan",
+        "repository": "crystalline",
+        "prerelease": false,
+        "asset": {
+          "unix": {
+            "x86_64": "crystalline_x86_64-unknown-linux-musl.gz"
+          },
+          "mac": {
+            "x86_64": "crystalline_x86_64-apple-darwin.gz",
+            "arm64": "crystalline_arm64-apple-darwin.gz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "unix": {
+              "x86_64": "crystalline_x86_64-unknown-linux-musl"
+            },
+            "mac": {
+              "x86_64": "crystalline_x86_64-apple-darwin",
+              "arm64": "crystalline_arm64-apple-darwin"
+            }
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure crystalline command",
+          "command": {
+            "unix": {
+              "x86_64": "$SERVER_HOME$/crystalline_x86_64-unknown-linux-musl"
+            },
+            "mac": {
+              "x86_64": "$SERVER_HOME$/crystalline_x86_64-apple-darwin",
+              "arm64": "$SERVER_HOME$/crystalline_arm64-apple-darwin"
+            }
+          }
+        }
+      }
+    }
+  }
+}

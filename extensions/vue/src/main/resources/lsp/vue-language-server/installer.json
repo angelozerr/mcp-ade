@@ -1,0 +1,29 @@
+{
+  "id": "vue-language-server-installer",
+  "name": "vue-language-server",
+  "check": {
+    "fileExists": {
+      "name": "Check if vue-language-server is installed",
+      "file": "$SERVER_HOME$/node_modules/.bin/vue-language-server*"
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install @vue/language-server",
+      "workingDir": "$SERVER_HOME$/node_modules",
+      "command": {
+        "windows": "npm.cmd install @vue/language-server --force",
+        "default": "npm install @vue/language-server --force"
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure vue-language-server command",
+          "command": {
+            "windows": "$SERVER_HOME$/node_modules/.bin/vue-language-server.cmd --stdio",
+            "default": "$SERVER_HOME$/node_modules/.bin/vue-language-server --stdio"
+          }
+        }
+      }
+    }
+  }
+}

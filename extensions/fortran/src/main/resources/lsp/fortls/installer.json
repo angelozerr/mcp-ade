@@ -1,0 +1,23 @@
+{
+  "id": "fortls-installer",
+  "name": "fortls",
+  "check": {
+    "exec": {
+      "name": "Check if fortls is available",
+      "command": "fortls --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install fortls",
+      "command": "pip install fortls",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure fortls command",
+          "command": "fortls"
+        }
+      }
+    }
+  }
+}

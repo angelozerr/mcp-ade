@@ -1,0 +1,29 @@
+{
+  "id": "elm-language-server-installer",
+  "name": "elm-language-server",
+  "check": {
+    "fileExists": {
+      "name": "Check if elm-language-server is installed",
+      "file": "$SERVER_HOME$/node_modules/.bin/elm-language-server*"
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install @elm-tooling/elm-language-server",
+      "workingDir": "$SERVER_HOME$/node_modules",
+      "command": {
+        "windows": "npm.cmd install @elm-tooling/elm-language-server --force",
+        "default": "npm install @elm-tooling/elm-language-server --force"
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure elm-language-server command",
+          "command": {
+            "windows": "$SERVER_HOME$/node_modules/.bin/elm-language-server.cmd --stdio",
+            "default": "$SERVER_HOME$/node_modules/.bin/elm-language-server --stdio"
+          }
+        }
+      }
+    }
+  }
+}

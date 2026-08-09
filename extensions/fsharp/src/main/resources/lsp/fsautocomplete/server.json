@@ -1,0 +1,12 @@
+{
+  "id": "fsautocomplete",
+  "name": "FsAutoComplete (F# Language Server)",
+  "description": "F# language server based on FsAutoComplete",
+  "url": "https://github.com/fsharp/FsAutoComplete",
+  "command": "fsautocomplete --adaptive-lsp-server-enabled",
+  "documentSelector": [
+    {
+      "language": "fsharp"
+    }
+  ]
+}

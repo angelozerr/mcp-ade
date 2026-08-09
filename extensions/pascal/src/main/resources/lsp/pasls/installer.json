@@ -1,0 +1,55 @@
+{
+  "id": "pasls-installer",
+  "name": "pasls",
+  "check": {
+    "fileExists": {
+      "name": "Check if pasls is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/pasls.exe",
+        "default": "$SERVER_HOME$/pasls"
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download pasls",
+      "github": {
+        "owner": "zen010101",
+        "repository": "pascal-language-server",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "pasls-x86_64-win64.zip"
+          },
+          "unix": {
+            "x86_64": "pasls-x86_64-linux.tar.gz",
+            "arm64": "pasls-aarch64-linux.tar.gz"
+          },
+          "mac": {
+            "x86_64": "pasls-x86_64-darwin.zip",
+            "arm64": "pasls-aarch64-darwin.zip"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "pasls.exe",
+            "default": "pasls"
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure pasls command",
+          "command": {
+            "windows": "$SERVER_HOME$/pasls.exe",
+            "default": "$SERVER_HOME$/pasls"
+          }
+        }
+      }
+    }
+  }
+}

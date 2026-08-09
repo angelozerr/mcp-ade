@@ -1,8 +1,23 @@
 [
   {
+    "id": "ansible",
+    "filenamePatterns": ["**/playbooks/**/*.yml", "**/playbooks/**/*.yaml", "**/roles/**/*.yml", "**/roles/**/*.yaml"],
+    "aliases": ["Ansible", "ansible"]
+  },
+  {
     "id": "ada",
     "extensions": [".ada", ".adb", ".adc", ".ads"],
     "aliases": ["Ada", "ada"]
+  },
+  {
+    "id": "clojure",
+    "extensions": [".clj", ".cljs", ".cljc", ".cljx", ".clojure", ".edn"],
+    "aliases": ["Clojure", "clojure"]
+  },
+  {
+    "id": "css",
+    "extensions": [".css"],
+    "aliases": ["CSS", "css"]
   },
   {
     "id": "arm",
@@ -55,6 +70,21 @@
     "aliases": ["Dart"]
   },
   {
+    "id": "elixir",
+    "extensions": [".ex", ".exs"],
+    "aliases": ["Elixir", "elixir"]
+  },
+  {
+    "id": "elm",
+    "extensions": [".elm"],
+    "aliases": ["Elm", "elm"]
+  },
+  {
+    "id": "erlang",
+    "extensions": [".erl", ".hrl"],
+    "aliases": ["Erlang", "erlang"]
+  },
+  {
     "id": "dockercompose",
     "filenamePatterns": [
       "compose.yml",
@@ -84,6 +114,11 @@
     "aliases": ["Fortran - Modern"]
   },
   {
+    "id": "fsharp",
+    "extensions": [".fs", ".fsi", ".fsx", ".fsscript"],
+    "aliases": ["F#", "FSharp", "fsharp"]
+  },
+  {
     "id": "go",
     "extensions": [".go"],
     "aliases": ["Go"]
@@ -104,6 +139,11 @@
     "aliases": ["Haskell", "haskell"]
   },
   {
+    "id": "html",
+    "extensions": [".html", ".htm", ".shtml", ".xhtml", ".xht", ".mdoc", ".jsp", ".asp", ".aspx", ".jshtm", ".volt", ".ejs", ".rhtml"],
+    "aliases": ["HTML", "htm", "html", "xhtml"]
+  },
+  {
     "id": "jai",
     "extensions": [".jai"],
     "aliases": ["Jai", "jai"]
@@ -119,6 +159,18 @@
     "aliases": ["JavaScript"]
   },
   {
+    "id": "json",
+    "extensions": [".json", ".bowerrc", ".jscsrc", ".webmanifest", ".js.map", ".css.map", ".ts.map", ".har", ".jslintrc", ".jsonld", ".geojson", ".vuerc"],
+    "filenames": ["composer.lock", ".watchmanconfig"],
+    "aliases": ["JSON", "json"]
+  },
+  {
+    "id": "jsonc",
+    "extensions": [".jsonc", ".eslintrc", ".eslintrc.json", ".jsfmtrc", ".jshintrc", ".swcrc", ".hintrc", ".babelrc"],
+    "filenames": ["babel.config.json", ".babelrc.json", ".ember-cli", "typedoc.json"],
+    "aliases": ["JSON with Comments"]
+  },
+  {
     "id": "julia",
     "extensions": [".jl"],
     "aliases": ["Julia", "julia"]
@@ -129,14 +181,34 @@
     "aliases": ["Kotlin", "kotlin"]
   },
   {
+    "id": "latex",
+    "extensions": [".tex", ".sty", ".cls", ".bib", ".dtx", ".ltx"],
+    "aliases": ["LaTeX", "TeX", "latex"]
+  },
+  {
+    "id": "less",
+    "extensions": [".less"],
+    "aliases": ["Less", "less"]
+  },
+  {
     "id": "lua",
     "extensions": [".lua"],
     "aliases": ["Lua", "lua"]
   },
   {
+    "id": "markdown",
+    "extensions": [".md", ".mkd", ".mkdn", ".mdwn", ".mdown", ".markdown", ".markdn", ".mdtxt", ".mdtext"],
+    "aliases": ["Markdown", "markdown"]
+  },
+  {
     "id": "lldb.disassembly",
     "extensions": [".disasm"],
     "aliases": ["Disassembly"]
+  },
+  {
+    "id": "nix",
+    "extensions": [".nix"],
+    "aliases": ["Nix", "nix"]
   },
   {
     "id": "nim",
@@ -179,6 +251,12 @@
     "aliases": ["Pascal", "pascal"]
   },
   {
+    "id": "perl",
+    "extensions": [".pl", ".pm", ".pod", ".t", ".PL", ".psgi"],
+    "aliases": ["Perl", "perl"],
+    "firstLine": "^#!.*\\bperl\\b"
+  },
+  {
     "id": "properties",
     "extensions": [".properties"],
     "aliases": ["Properties"]
@@ -194,9 +272,43 @@
     "aliases": ["Python"]
   },
   {
+    "id": "r",
+    "extensions": [".R", ".Rhistory", ".Rprofile", ".rt"],
+    "aliases": ["R", "r"]
+  },
+  {
+    "id": "ruby",
+    "extensions": [".rb", ".rbx", ".rjs", ".gemspec", ".rake", ".ru", ".erb", ".podspec", ".rbi"],
+    "filenames": ["rakefile", "gemfile", "guardfile", "podfile", "capfile", "vagrantfile", "appraisals", "brewfile", "fastfile"],
+    "aliases": ["Ruby", "rb"],
+    "firstLine": "^#!\\s*/.*\\bruby\\b"
+  },
+  {
     "id": "rust",
     "extensions": [".rs"],
     "aliases": ["Rust"]
+  },
+  {
+    "id": "scala",
+    "extensions": [".scala", ".sbt", ".sc"],
+    "aliases": ["Scala", "scala"]
+  },
+  {
+    "id": "scss",
+    "extensions": [".scss"],
+    "aliases": ["SCSS", "scss"]
+  },
+  {
+    "id": "shellscript",
+    "extensions": [".sh", ".bash", ".bashrc", ".bash_aliases", ".bash_profile", ".bash_login", ".ebuild", ".profile", ".bash_logout", ".zsh", ".zshrc", ".zprofile", ".zlogin", ".zlogout", ".zshenv", ".ksh", ".csh", ".cshrc", ".tcshrc"],
+    "filenames": ["APKBUILD", "PKGBUILD", ".envrc", ".hushlogin"],
+    "aliases": ["Shell Script", "shellscript", "bash", "sh", "zsh", "ksh", "csh"],
+    "firstLine": "^#!.*\\b(bash|sh|zsh|ksh|csh).*"
+  },
+  {
+    "id": "svelte",
+    "extensions": [".svelte"],
+    "aliases": ["Svelte", "svelte"]
   },
   {
     "id": "swift",
@@ -204,9 +316,25 @@
     "aliases": ["Swift", "swift"]
   },
   {
+    "id": "terraform",
+    "extensions": [".tf", ".tfvars"],
+    "aliases": ["Terraform", "HCL", "terraform"]
+  },
+  {
+    "id": "toml",
+    "extensions": [".toml"],
+    "filenames": ["Cargo.toml", "pyproject.toml"],
+    "aliases": ["TOML", "toml"]
+  },
+  {
     "id": "typescript",
     "extensions": [".ts", ".tsx", ".mts", ".cts"],
     "aliases": ["TypeScript"]
+  },
+  {
+    "id": "vue",
+    "extensions": [".vue"],
+    "aliases": ["Vue", "vue"]
   },
   {
     "id": "xml",

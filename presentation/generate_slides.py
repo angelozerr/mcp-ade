@@ -324,7 +324,7 @@ add_text_box(slide, 4.0, 5.7, 2.6, 1.3, "contributes: bundles, classpath,\nbindR
 
 add_card(slide, 7.0, 5.2, 2.8, 2.0, RGBColor(0x1A, 0x3A, 0x5C))
 add_text_box(slide, 7.2, 5.3, 2.4, 0.35, "Open platform", font_size=14, bold=True, color=TEXT_YELLOW)
-add_text_box(slide, 7.2, 5.7, 2.4, 1.3, "18+ language extensions\nAdd any LSP/DAP server\nAdmin console", font_size=12, color=TEXT_GRAY)
+add_text_box(slide, 7.2, 5.7, 2.4, 1.3, "47 language extensions\n52 LSP + 8 DAP servers\nAdmin console", font_size=12, color=TEXT_GRAY)
 
 add_card(slide, 10.0, 5.2, 2.8, 2.0, RGBColor(0x1A, 0x3A, 0x5C))
 add_text_box(slide, 10.2, 5.3, 2.4, 0.35, "Practical", font_size=14, bold=True, color=TEXT_YELLOW)
@@ -607,21 +607,22 @@ add_bullet_list(slide, 10.1, 3.1, 2.5, 3, [
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(slide)
-slide_title(slide, "Open Platform: 18 Built-in Extensions", "Easy to add your own language — just 2 JSON files, no code required")
+slide_title(slide, "Open Platform: 47 Built-in Extensions", "Easy to add your own language — just 2 JSON files, no code required")
 
 add_card(slide, 0.8, 2.2, 7.5, 2.2)
-add_text_box(slide, 1.2, 2.3, 7, 0.5, "21 LSP servers (built-in)", font_size=20, bold=True, color=ACCENT2)
+add_text_box(slide, 1.2, 2.3, 7, 0.5, "52 LSP servers (built-in)", font_size=20, bold=True, color=ACCENT2)
 add_text_box(slide, 1.2, 2.9, 7, 1.2,
-    "Java (JDT.LS)  ·  JavaScript/TS  ·  Angular  ·  Python (Pyright)  ·  Go (gopls)\n"
-    "Rust (rust-analyzer)  ·  C/C++ (clangd)  ·  C# (OmniSharp)  ·  XML (LemMinX)\n"
-    "YAML  ·  Kotlin  ·  Dart  ·  PHP  ·  Lua  ·  Dockerfile  ·  MicroProfile  ·  Quarkus  ·  Qute  ·  Liberty",
-    font_size=14, color=TEXT_GRAY)
+    "Java (JDT.LS)  ·  JavaScript/TS  ·  Angular  ·  Python (Pyright)  ·  Go (gopls)  ·  Rust  ·  C/C++  ·  C#\n"
+    "HTML/CSS/JSON  ·  Vue  ·  Svelte  ·  Bash  ·  Ruby  ·  Scala  ·  Kotlin  ·  Dart  ·  Swift  ·  Zig  ·  Haskell\n"
+    "Elixir  ·  Erlang  ·  OCaml  ·  F#  ·  Clojure  ·  PHP  ·  Lua  ·  Perl  ·  R  ·  Julia  ·  Fortran  ·  Ada  ·  Crystal\n"
+    "Pascal  ·  Terraform  ·  LaTeX  ·  Markdown  ·  Nix  ·  TOML  ·  Elm  ·  Ansible  ·  XML  ·  YAML  ·  Dockerfile  ·  ...",
+    font_size=12, color=TEXT_GRAY)
 
 add_card(slide, 0.8, 4.7, 7.5, 1.6)
-add_text_box(slide, 1.2, 4.8, 7, 0.5, "9 DAP servers (built-in)", font_size=20, bold=True, color=ORANGE)
+add_text_box(slide, 1.2, 4.8, 7, 0.5, "8 DAP servers (built-in)", font_size=20, bold=True, color=ORANGE)
 add_text_box(slide, 1.2, 5.3, 7, 0.8,
     "Java (vscode-java-debug)  ·  JavaScript (vscode-js-debug)  ·  Python (debugpy)\n"
-    "Go (delve)  ·  C/C++ (codelldb)  ·  C# (netcoredbg)  ·  Dart  ·  PHP  ·  Dockerfile",
+    "Go (delve)  ·  C/C++ (codelldb)  ·  Dart  ·  PHP  ·  Dockerfile",
     font_size=14, color=TEXT_GRAY)
 
 add_card(slide, 8.8, 2.2, 3.8, 4.1)
@@ -655,8 +656,8 @@ slide_title(slide, "Admin Console", "Real-time monitoring at localhost:7654/admi
 
 tabs = [
     ("Workspaces", "Monitor opened projects,\nserver status (Running/Error),\nstart/stop/restart,\ncontribution diagrams"),
-    ("Servers", "All 21 LSP servers,\nenable/disable, install,\nlanguage filter,\nconfiguration"),
-    ("Debuggers", "9 debug adapters,\ninstallation status,\nconfiguration,\ntrace level control"),
+    ("Servers", "All 52 LSP servers,\nenable/disable, install,\nlanguage filter,\nconfiguration"),
+    ("Debuggers", "8 debug adapters,\ninstallation status,\nconfiguration,\ntrace level control"),
     ("MCP", "Connected MCP clients,\nlive protocol traces,\ntool calls & results,\nreal-time search"),
 ]
 
@@ -676,7 +677,7 @@ add_bullet_list(slide, 0.8, 6.0, 11, 1.2, [
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(slide)
-slide_title(slide, "Admin: Servers", "21 LSP servers — enable/disable, install, language filter, configuration")
+slide_title(slide, "Admin: Servers", "52 LSP servers — enable/disable, install, language filter, configuration")
 
 add_screenshot(slide, 'admin-servers.png')
 
@@ -685,7 +686,7 @@ add_screenshot(slide, 'admin-servers.png')
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(slide)
-slide_title(slide, "Admin: Debuggers", "9 debug adapters — installation status, configuration, trace level")
+slide_title(slide, "Admin: Debuggers", "8 debug adapters — installation status, configuration, trace level")
 
 add_screenshot(slide, 'admin-debuggers.png')
 

@@ -1,0 +1,23 @@
+{
+  "id": "r-languageserver-installer",
+  "name": "r-languageserver",
+  "check": {
+    "exec": {
+      "name": "Check if R languageserver is available",
+      "command": "Rscript -e library(languageserver)",
+      "timeout": 10000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install R languageserver",
+      "command": "Rscript -e install.packages('languageserver',repos='https://cloud.r-project.org')",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure R languageserver command",
+          "command": "R --slave -e languageserver::run()"
+        }
+      }
+    }
+  }
+}

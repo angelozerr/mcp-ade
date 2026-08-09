@@ -1,0 +1,11 @@
+{
+  "id": "elm-language-server",
+  "name": "Elm Language Server",
+  "description": "Language server for Elm",
+  "url": "https://github.com/elm-tooling/elm-language-server",
+  "documentSelector": [
+    {
+      "language": "elm"
+    }
+  ]
+}

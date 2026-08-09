@@ -1,0 +1,11 @@
+{
+  "id": "perlnavigator",
+  "name": "PerlNavigator (Perl Language Server)",
+  "description": "Language server for Perl",
+  "url": "https://github.com/bscan/PerlNavigator",
+  "documentSelector": [
+    {
+      "language": "perl"
+    }
+  ]
+}

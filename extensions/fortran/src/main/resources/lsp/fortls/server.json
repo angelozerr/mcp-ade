@@ -1,0 +1,14 @@
+{
+  "id": "fortls",
+  "name": "Fortran Language Server",
+  "description": "Fortran language server based on fortls",
+  "url": "https://github.com/fortran-lang/fortls",
+  "documentSelector": [
+    {
+      "language": "fortran"
+    },
+    {
+      "language": "fortran-modern"
+    }
+  ]
+}

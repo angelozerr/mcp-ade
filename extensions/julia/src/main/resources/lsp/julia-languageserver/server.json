@@ -1,0 +1,12 @@
+{
+  "id": "julia-languageserver",
+  "name": "Julia Language Server",
+  "description": "Language server for Julia based on LanguageServer.jl",
+  "url": "https://github.com/julia-vscode/LanguageServer.jl",
+  "command": "julia --project=@languageserver -e using\ LanguageServer;\ runserver()",
+  "documentSelector": [
+    {
+      "language": "julia"
+    }
+  ]
+}

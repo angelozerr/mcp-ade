@@ -1,0 +1,12 @@
+{
+  "id": "haskell-language-server",
+  "name": "Haskell Language Server",
+  "description": "Language server for Haskell",
+  "url": "https://github.com/haskell/haskell-language-server",
+  "command": "haskell-language-server-wrapper --lsp",
+  "documentSelector": [
+    {
+      "language": "haskell"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "zls",
+  "name": "Zig Language Server",
+  "description": "Language server for Zig",
+  "url": "https://github.com/zigtools/zls",
+  "documentSelector": [
+    {
+      "language": "zig"
+    }
+  ]
+}

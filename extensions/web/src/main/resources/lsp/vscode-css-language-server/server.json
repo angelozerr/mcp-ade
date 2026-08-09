@@ -1,0 +1,17 @@
+{
+  "id": "vscode-css-language-server",
+  "name": "CSS Language Server",
+  "description": "CSS/SCSS/LESS language server extracted from Visual Studio Code",
+  "url": "https://github.com/microsoft/vscode/tree/main/extensions/css-language-features",
+  "documentSelector": [
+    {
+      "language": "css"
+    },
+    {
+      "language": "scss"
+    },
+    {
+      "language": "less"
+    }
+  ]
+}

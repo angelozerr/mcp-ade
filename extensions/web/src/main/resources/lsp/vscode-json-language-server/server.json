@@ -1,0 +1,14 @@
+{
+  "id": "vscode-json-language-server",
+  "name": "JSON Language Server",
+  "description": "JSON language server extracted from Visual Studio Code",
+  "url": "https://github.com/microsoft/vscode/tree/main/extensions/json-language-features",
+  "documentSelector": [
+    {
+      "language": "json"
+    },
+    {
+      "language": "jsonc"
+    }
+  ]
+}

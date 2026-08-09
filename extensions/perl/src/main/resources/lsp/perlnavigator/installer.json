@@ -1,0 +1,29 @@
+{
+  "id": "perlnavigator-installer",
+  "name": "perlnavigator",
+  "check": {
+    "fileExists": {
+      "name": "Check if PerlNavigator is installed",
+      "file": "$SERVER_HOME$/node_modules/.bin/perlnavigator*"
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install perlnavigator-server",
+      "workingDir": "$SERVER_HOME$/node_modules",
+      "command": {
+        "windows": "npm.cmd install perlnavigator-server --force",
+        "default": "npm install perlnavigator-server --force"
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure PerlNavigator command",
+          "command": {
+            "windows": "$SERVER_HOME$/node_modules/.bin/perlnavigator.cmd --stdio",
+            "default": "$SERVER_HOME$/node_modules/.bin/perlnavigator --stdio"
+          }
+        }
+      }
+    }
+  }
+}

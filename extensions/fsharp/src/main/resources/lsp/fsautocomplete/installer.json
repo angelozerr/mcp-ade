@@ -1,0 +1,23 @@
+{
+  "id": "fsautocomplete-installer",
+  "name": "fsautocomplete",
+  "check": {
+    "exec": {
+      "name": "Check if fsautocomplete is available",
+      "command": "fsautocomplete --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install FsAutoComplete",
+      "command": "dotnet tool install --global fsautocomplete",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure fsautocomplete command",
+          "command": "fsautocomplete --adaptive-lsp-server-enabled"
+        }
+      }
+    }
+  }
+}

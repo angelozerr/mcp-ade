@@ -1,0 +1,11 @@
+{
+  "id": "sourcekit-lsp-installer",
+  "name": "sourcekit-lsp",
+  "check": {
+    "exec": {
+      "name": "Check if sourcekit-lsp is available",
+      "command": "sourcekit-lsp --help",
+      "timeout": 5000
+    }
+  }
+}

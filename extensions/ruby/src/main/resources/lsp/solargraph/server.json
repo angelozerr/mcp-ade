@@ -1,0 +1,11 @@
+{
+  "id": "solargraph",
+  "name": "Solargraph (Ruby Language Server)",
+  "description": "Ruby language server based on Solargraph",
+  "url": "https://github.com/castwide/solargraph",
+  "documentSelector": [
+    {
+      "language": "ruby"
+    }
+  ]
+}

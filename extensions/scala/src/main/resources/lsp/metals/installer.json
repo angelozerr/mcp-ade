@@ -1,0 +1,23 @@
+{
+  "id": "metals-installer",
+  "name": "metals",
+  "check": {
+    "exec": {
+      "name": "Check if Metals is available",
+      "command": "metals --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install Metals via Coursier",
+      "command": "cs install metals",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Metals command",
+          "command": "metals"
+        }
+      }
+    }
+  }
+}

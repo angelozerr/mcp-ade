@@ -1,0 +1,11 @@
+{
+  "id": "bash-language-server",
+  "name": "Bash Language Server",
+  "description": "Language server for Bash/Shell scripts",
+  "url": "https://github.com/bash-lsp/bash-language-server",
+  "documentSelector": [
+    {
+      "language": "shellscript"
+    }
+  ]
+}

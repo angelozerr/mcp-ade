@@ -34,6 +34,34 @@
         <module>extensions/liberty</module>
         <module>extensions/jakarta</module>
         <module>extensions/csharp</module>
+        <module>extensions/web</module>
+        <module>extensions/bash</module>
+        <module>extensions/ruby</module>
+        <module>extensions/svelte</module>
+        <module>extensions/vue</module>
+        <module>extensions/elm</module>
+        <module>extensions/fortran</module>
+        <module>extensions/swift</module>
+        <module>extensions/zig</module>
+        <module>extensions/haskell</module>
+        <module>extensions/scala</module>
+        <module>extensions/clojure</module>
+        <module>extensions/elixir</module>
+        <module>extensions/erlang</module>
+        <module>extensions/ocaml</module>
+        <module>extensions/fsharp</module>
+        <module>extensions/terraform</module>
+        <module>extensions/latex</module>
+        <module>extensions/markdown</module>
+        <module>extensions/toml</module>
+        <module>extensions/nix</module>
+        <module>extensions/r</module>
+        <module>extensions/perl</module>
+        <module>extensions/crystal</module>
+        <module>extensions/ada</module>
+        <module>extensions/julia</module>
+        <module>extensions/ansible</module>
+        <module>extensions/pascal</module>
         <module>dev</module>
     </modules>
 

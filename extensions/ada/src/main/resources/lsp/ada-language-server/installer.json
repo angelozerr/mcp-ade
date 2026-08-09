@@ -1,0 +1,11 @@
+{
+  "id": "ada-language-server-installer",
+  "name": "ada_language_server",
+  "check": {
+    "exec": {
+      "name": "Check if ada_language_server is available",
+      "command": "ada_language_server --version",
+      "timeout": 5000
+    }
+  }
+}
