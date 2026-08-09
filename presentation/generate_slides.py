@@ -824,8 +824,8 @@ set_slide_bg(slide)
 slide_title(slide, "Getting Started")
 
 add_card(slide, 0.8, 2.2, 11.5, 2.0)
-add_text_box(slide, 1.2, 2.3, 11, 0.4, "1. Clone and start MCP Language Tools", font_size=18, bold=True, color=ACCENT)
-add_text_box(slide, 1.2, 2.8, 11, 1.0, "git clone https://github.com/angelozerr/mcp-languagetools\ncd mcp-languagetools\n./mvnw quarkus:dev -f dev/pom.xml", font_size=16, color=TEXT_YELLOW, font_name='Consolas')
+add_text_box(slide, 1.2, 2.3, 11, 0.4, "1. Clone, build, and start MCP Language Tools", font_size=18, bold=True, color=ACCENT)
+add_text_box(slide, 1.2, 2.8, 11, 1.0, "git clone https://github.com/angelozerr/mcp-languagetools\ncd mcp-languagetools\n./mvnw clean install -DskipTests\n./mvnw quarkus:dev -f dev/pom.xml", font_size=14, color=TEXT_YELLOW, font_name='Consolas')
 
 add_card(slide, 0.8, 4.0, 11.5, 1.8)
 add_text_box(slide, 1.2, 4.1, 11, 0.4, "2. Configure your MCP client (Claude Code, Bob...)", font_size=18, bold=True, color=ACCENT)

@@ -353,6 +353,12 @@ See the **[Admin UI Guide](docs/admin-ui.md)** for details.
 
 ## Running
 
+### First time: build the project
+
+```bash
+./mvnw clean install -DskipTests
+```
+
 ### Dev mode (with hot-reload)
 
 ```bash

@@ -29,7 +29,14 @@ Get AI-powered code validation with language servers in 4 steps.
 
 ---
 
-## Step 1: Launch MCP Language Tools
+## Step 1: Build & Launch MCP Language Tools
+
+### First time: build the project
+
+```bash
+cd mcp-languagetools
+./mvnw clean install -DskipTests
+```
 
 ### Start the server
 
