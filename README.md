@@ -353,7 +353,7 @@ See the **[Admin UI Guide](docs/admin-ui.md)** for details.
 
 ## Running
 
-### First time: build the project
+### Build
 
 ```bash
 ./mvnw clean install -DskipTests
@@ -368,7 +368,18 @@ cd dev
 
 The server starts at `http://localhost:7654`. Admin UI at `http://localhost:7654/admin`.
 
-### Configure your MCP client
+In dev mode, only the HTTP transport is active (stdio is disabled to avoid conflicts with the Quarkus dev console).
+
+### HTTP transport
+
+Start the server manually, then configure your MCP client to connect via HTTP:
+
+```bash
+cd dev
+java -jar target/quarkus-app/quarkus-run.jar
+```
+
+MCP client configuration:
 
 ```json
 {
@@ -380,6 +391,26 @@ The server starts at `http://localhost:7654`. Admin UI at `http://localhost:7654
   }
 }
 ```
+
+### Stdio transport
+
+The MCP client launches the server as a subprocess and communicates via stdin/stdout. The HTTP server still runs in the background for the admin UI.
+
+MCP client configuration (Claude Code, Claude Desktop, etc.):
+
+```json
+{
+  "mcpServers": {
+    "mcp-languagetools": {
+      "type": "stdio",
+      "command": "java",
+      "args": ["-jar", "/path/to/dev/target/quarkus-app/quarkus-run.jar"]
+    }
+  }
+}
+```
+
+Admin UI remains accessible at `http://localhost:7654/admin` in both modes.
 
 ## Project Structure
 

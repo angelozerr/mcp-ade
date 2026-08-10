@@ -49,10 +49,15 @@
             <version>${lsp4j.version}</version>
         </dependency>
 
-        <!-- Quarkus MCP Server (HTTP/SSE) -->
+        <!-- Quarkus MCP Server (HTTP/SSE + Stdio) -->
         <dependency>
             <groupId>io.quarkiverse.mcp</groupId>
             <artifactId>quarkus-mcp-server-http</artifactId>
+            <version>${quarkus-mcp-server.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkiverse.mcp</groupId>
+            <artifactId>quarkus-mcp-server-stdio</artifactId>
             <version>${quarkus-mcp-server.version}</version>
         </dependency>
 
