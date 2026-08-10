@@ -16,6 +16,7 @@ package com.ibm.mcp.jdtls.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -216,11 +217,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = params(uri, 14, 19);
             p.put("newName", "name");
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"), "Should return an error for same name rename");
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -270,11 +267,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = selectionParams(uri, 52, 12, 52, 12);
             p.put("methodName", "filterAdult");
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -388,12 +381,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // Point to a method call, not a variable declaration
             Map<String, Object> p = params(uri, 33, 18);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"),
-                    "Should report error when not positioned on a variable declaration");
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -525,11 +513,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = params(uri, 15, 30);
             p.put("newName", "something");
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -550,11 +534,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // 'department' field is on line 6 (0-based), character 19
             Map<String, Object> p = params(uri, 6, 19);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"), "Should return error when getter/setter already exist");
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -564,11 +544,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // Line 9 (0-based) is the constructor, not a field
             Map<String, Object> p = params(uri, 9, 11);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -628,11 +604,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("interfaceName", "IUserService");
             p.put("methodNames", List.of("nonExistentMethod"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -643,12 +615,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("interfaceName", "IValidator");
             p.put("methodNames", List.of("validate"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
-            assertTrue(resultMap.get("error").toString().contains("interface"),
+            RuntimeException ex = assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
+            assertTrue(ex.getMessage().contains("interface"),
                     "Error should mention that source is already an interface");
         }
     }
@@ -747,12 +715,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("superclassName", "User");
             p.put("memberNames", List.of("department"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"),
-                    "Should return error when superclass name conflicts with existing type");
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -763,11 +726,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("superclassName", "AbstractUserService");
             p.put("memberNames", List.of("nonExistentMember"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -817,11 +776,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = params(uri, 4, 13);
             p.put("memberNames", List.of("nonExistent"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -843,14 +798,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = params(uri, 12, 13);
             p.put("memberNames", List.of("getDisplayName"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            // PushDown may succeed or fail depending on the type hierarchy
-            // constraints. Either way it should not throw.
-            assertNotNull(resultMap);
-            assertEquals(false, resultMap.get("applied"),
-                    "Preview mode should not apply changes");
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -860,11 +808,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = params(uri, 12, 13);
             p.put("memberNames", List.of("nonExistent"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -887,11 +831,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("className", "SearchCriteria");
             p.put("parameterNames", List.of("query", "minAge", "maxAge"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertNotNull(resultMap);
-            assertEquals(false, resultMap.get("applied"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -903,11 +843,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("className", "SomeParams");
             p.put("parameterNames", List.of("a"));
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -928,12 +864,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // User is a top-level type
             Map<String, Object> p = params(uri, 12, 13);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
-            assertTrue(resultMap.get("error").toString().contains("top-level"),
+            RuntimeException ex = assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
+            assertTrue(ex.getMessage().contains("top-level"),
                     "Error should mention that type is already top-level");
         }
 
@@ -958,11 +890,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // No anonymous class exists here
             Map<String, Object> p = params(uri, 33, 18);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         // TODO: Add test with anonymous class when test project has one.
@@ -1007,11 +935,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = new HashMap<>();
             // No uri provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1060,12 +984,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // Admin class at line 4 (0-based), character 13
             Map<String, Object> p = params(uri, 4, 13);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
-            assertTrue(resultMap.get("error").toString().contains("superclass"),
+            RuntimeException ex = assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
+            assertTrue(ex.getMessage().contains("superclass"),
                     "Error should mention superclass");
         }
 
@@ -1076,12 +996,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // Validator interface at line 2 (0-based), character 17
             Map<String, Object> p = params(uri, 2, 17);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
-            assertTrue(resultMap.get("error").toString().contains("interface"),
+            RuntimeException ex = assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
+            assertTrue(ex.getMessage().contains("interface"),
                     "Error should mention interface");
         }
 
@@ -1092,11 +1008,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             // StringUtils class at line 2 (0-based), character 13
             Map<String, Object> p = params(uri, 2, 13);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -1118,12 +1030,8 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("uri", uri);
             p.put("targetPackage", "com.example.util");
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
-            assertTrue(resultMap.get("error").toString().contains("already in package"),
+            RuntimeException ex = assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
+            assertTrue(ex.getMessage().contains("already in package"),
                     "Error should mention type is already in the target package");
         }
 
@@ -1134,11 +1042,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = new HashMap<>();
             p.put("uri", uri);
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1149,11 +1053,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("uri", uri);
             p.put("targetPackage", "com.example.newpkg");
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertNotNull(resultMap);
-            assertEquals(false, resultMap.get("applied"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1162,11 +1062,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = new HashMap<>();
             p.put("targetPackage", "com.example.other");
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
     }
 
@@ -1186,11 +1082,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = params(uri, 14, 19);
             // No newName provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1201,11 +1093,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = selectionParams(uri, 53, 12, 55, 13);
             // No methodName provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1216,11 +1104,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = selectionParams(uri, 77, 15, 77, 24);
             // No variableName provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1231,11 +1115,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             Map<String, Object> p = selectionParams(uri, 77, 22, 77, 24);
             // No constantName provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1247,11 +1127,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("methodNames", List.of("addUser"));
             // No interfaceName provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1263,11 +1139,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("interfaceName", "IUserService");
             // No methodNames provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1279,11 +1151,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
             p.put("parameterNames", List.of("query"));
             // No className provided
 
-            Object result = handler.execute(args(p), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(args(p), MONITOR));
         }
 
         @Test
@@ -1291,11 +1159,7 @@ public class RefactoringHandlerTest extends AbstractHandlerTest {
         void handler_nullArguments() throws Exception {
             RenameSymbolHandler handler = new RenameSymbolHandler();
 
-            Object result = handler.execute(List.of(Map.of()), MONITOR);
-            Map<String, Object> resultMap = asMap(result);
-
-            assertEquals(false, resultMap.get("applied"));
-            assertNotNull(resultMap.get("error"));
+            assertThrows(RuntimeException.class, () -> handler.execute(List.of(Map.of()), MONITOR));
         }
     }
 }

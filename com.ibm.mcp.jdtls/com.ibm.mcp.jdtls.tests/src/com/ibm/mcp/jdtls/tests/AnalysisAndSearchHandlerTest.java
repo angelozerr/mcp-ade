@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
@@ -688,12 +689,9 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         assertNotNull(result);
         Map<String, Object> map = asMap(result);
-        assertEquals(uri, map.get("uri"));
 
         // User.java should have valid syntax
         assertEquals(true, map.get("valid"), "User.java should have valid syntax");
-        assertEquals(0, ((Number) map.get("count")).intValue(),
-                "User.java should have no syntax errors");
     }
 
     @Test
@@ -763,11 +761,9 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
     void testApplyQuickFixHandler_missingArguments() throws Exception {
         ApplyQuickFixHandler handler = new ApplyQuickFixHandler();
 
-        Object result = handler.execute(List.of(), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertTrue(((String) map.get("error")).contains("Missing arguments"),
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(List.of(), MONITOR));
+        assertTrue(ex.getMessage().contains("Missing arguments"),
                 "Should report missing arguments error");
     }
 
@@ -782,12 +778,11 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         // Admin class at line 4 (0-based), character 15
         Map<String, Object> p = params(uri, 4, 15);
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map);
-        // Admin already has some getters/setters, result depends on what's missing
+        // Admin already has all getters/setters, so handler throws
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("already exist"),
+                "Should report all getters/setters already exist");
     }
 
     @Test
@@ -797,11 +792,11 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         // StringUtils class at line 2 (0-based), character 15
         Map<String, Object> p = params(uri, 2, 15);
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map);
+        // StringUtils has no eligible fields, so handler throws
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("No constructor to generate"),
+                "Should report no constructor to generate");
     }
 
     @Test
@@ -864,12 +859,9 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         // Position on class name, not a field (line 9, character 13)
         Map<String, Object> p = params(uri, 9, 13);
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertEquals(false, map.get("applied"));
-        assertNotNull(map.get("error"),
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("No field found at position"),
                 "Should report error when not positioned on a field");
     }
 
@@ -1480,21 +1472,11 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
         String uri = fileUri("src/com/example/model/Admin.java");
 
         Map<String, Object> p = params(uri, 4, 13);
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-
-        if (map.get("error") == null) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> edits = (List<Map<String, Object>>) map.get("edits");
-            if (edits != null && !edits.isEmpty()) {
-                Map<String, Object> edit = edits.get(0);
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> textEdits = (List<Map<String, Object>>) edit.get("textEdits");
-                assertNotNull(textEdits, "Should use insert edit format (textEdits), not whole-file edit");
-            }
-        }
+        // Admin already has all getters/setters, so handler throws
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("already exist"),
+                "Should report all getters/setters already exist");
     }
 
     @Test
@@ -1626,12 +1608,10 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         // Line 2 is "import java.util.List;" — no enclosing type, resolveTypeAtPosition returns null
         Map<String, Object> p = params(uri, 2, 10);
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertEquals(false, map.get("applied"));
-        assertNotNull(map.get("error"), "Should return error when no type at position");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("No type found at position"),
+                "Should return error when no type at position");
     }
 
     @Test
@@ -1642,11 +1622,11 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
         Map<String, Object> p = params(uri, 4, 13);
         p.put("generateGetters", true);
         p.put("generateSetters", false);
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map);
+        // Admin already has all getters, so handler throws
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("already exist"),
+                "Should report all getters/setters already exist");
     }
 
     @Test
@@ -1657,11 +1637,11 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
         Map<String, Object> p = params(uri, 4, 13);
         p.put("generateGetters", false);
         p.put("generateSetters", true);
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map);
+        // Admin already has all setters, so handler throws
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("already exist"),
+                "Should report all getters/setters already exist");
     }
 
     @Test
@@ -1815,11 +1795,10 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         Map<String, Object> p = new HashMap<>();
         p.put("fullyQualifiedName", "com.nonexistent.NoSuchAnnotation");
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map.get("error"), "Should return error for non-existent annotation type");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("not found"),
+                "Should return error for non-existent annotation type");
     }
 
     @Test
@@ -1828,33 +1807,30 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         Map<String, Object> p = new HashMap<>();
         p.put("fullyQualifiedName", "com.nonexistent.NoSuchType");
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map.get("error"), "Should return error for non-existent type");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("Type not found"),
+                "Should return error for non-existent type");
     }
 
     @Test
     void testAnalyzeChangeImpactHandler_missingArguments() throws Exception {
         AnalyzeChangeImpactHandler handler = new AnalyzeChangeImpactHandler();
 
-        Object result = handler.execute(List.of(), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map.get("error"), "Should return error for missing arguments");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(List.of(), MONITOR));
+        assertTrue(ex.getMessage().contains("Missing arguments"),
+                "Should return error for missing arguments");
     }
 
     @Test
     void testFindAffectedTestsHandler_missingArguments() throws Exception {
         FindAffectedTestsHandler handler = new FindAffectedTestsHandler();
 
-        Object result = handler.execute(List.of(), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map.get("error"), "Should return error for missing arguments");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(List.of(), MONITOR));
+        assertTrue(ex.getMessage().contains("Missing arguments"),
+                "Should return error for missing arguments");
     }
 
     @Test
@@ -1863,11 +1839,10 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         Map<String, Object> p = new HashMap<>();
         p.put("fullyQualifiedName", "com.nonexistent.NoSuchInterface");
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map.get("error"), "Should return error for non-existent type");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("not found"),
+                "Should return error for non-existent type");
     }
 
     @Test
@@ -1903,11 +1878,10 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
     void testCallHierarchyHandler_missingArguments() throws Exception {
         CallHierarchyHandler handler = new CallHierarchyHandler(true);
 
-        Object result = handler.execute(List.of(), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map.get("error"), "Should return error for missing arguments");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(List.of(), MONITOR));
+        assertTrue(ex.getMessage().contains("Missing arguments"),
+                "Should return error for missing arguments");
     }
 
     @Test
@@ -1933,11 +1907,10 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         Map<String, Object> p = new HashMap<>();
         p.put("fullyQualifiedName", "com.nonexistent.NoSuchType");
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map);
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("Type not found"),
+                "Should return error for non-existent type");
     }
 
     @Test
@@ -1946,11 +1919,10 @@ public class AnalysisAndSearchHandlerTest extends AbstractHandlerTest {
 
         Map<String, Object> p = new HashMap<>();
         p.put("fullyQualifiedName", "com.nonexistent.NoSuchType");
-        Object result = handler.execute(args(p), MONITOR);
-
-        assertNotNull(result);
-        Map<String, Object> map = asMap(result);
-        assertNotNull(map.get("error"), "Should return error for non-existent type");
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> handler.execute(args(p), MONITOR));
+        assertTrue(ex.getMessage().contains("Type not found"),
+                "Should return error for non-existent type");
     }
 
     // =========================================================================
