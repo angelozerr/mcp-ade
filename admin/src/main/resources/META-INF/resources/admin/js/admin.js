@@ -13,7 +13,8 @@ import { renderWorkspaces, selectWorkspace, selectServer, selectDapSessionByServ
     switchWorkspaceTab, loadConsole, renderConsole, loadServers,
     onWorkspaceTaskStarted, onWorkspaceTaskCompleted,
     setCreateSessionHTMLFn, setInstallerCallbacks, setChangeDapServerTraceLevelFn,
-    setRenderDapTracesForSessionFn, setRenderMcpConsoleWithHighlightsFn } from './admin-workspace.js';
+    setRenderDapTracesForSessionFn, setRenderMcpConsoleWithHighlightsFn,
+    setCurrentTraceLevel } from './admin-workspace.js';
 import { loadAllLspServers, saveInstallerJson, resetInstallerJson, runInstaller,
     loadInstallerJson, appendInstallTrace, updateInstallProgress } from './admin-lsp.js';
 import { loadAllDapServers, onDapSessionUpdate, renderDapTracesForSession,
@@ -257,25 +258,51 @@ function handleWorkspacesUpdate(newWorkspaces) {
 }
 
 function handleTraceLevelUpdate(message) {
-    const key = message.serverId
-        ? message.serverType + '.' + message.serverId
-        : message.serverType;
-    state.traceLevels[key] = message.traceLevel;
+    const isWorkspaceScoped = !!message.workspaceUri;
+
+    if (!isWorkspaceScoped) {
+        // Global trace level change — update state.traceLevels
+        const key = message.serverId
+            ? message.serverType + '.' + message.serverId
+            : message.serverType;
+        state.traceLevels[key] = message.traceLevel;
+    }
 
     if (message.serverType === 'lsp') {
-        if (state.currentServerId === message.serverId) {
+        // Update in-memory server DTO if this is for the matching workspace
+        if (isWorkspaceScoped) {
+            const ws = (state.workspaces || []).find(w => w.rootUri === message.workspaceUri);
+            const srv = ws?.lspServers?.find(s => s.id === message.serverId);
+            if (srv) srv.traceLevel = message.traceLevel;
+        }
+        // Update workspace view if this server is currently selected in the matching workspace
+        const isCurrentServer = state.currentServerId === message.serverId;
+        const isCurrentWorkspace = !isWorkspaceScoped || state.selectedWorkspace === message.workspaceUri;
+        if (isCurrentServer && isCurrentWorkspace) {
+            setCurrentTraceLevel(message.traceLevel);
             updateTraceControls('trace', message.traceLevel);
             renderConsole();
         }
-        updateTraceControls('lsp-server-trace', message.traceLevel);
     } else if (message.serverType === 'mcp') {
         setMcpTraceLevel(message.traceLevel);
         updateTraceControls('mcp-trace', message.traceLevel);
         renderMcpConsole();
-    } else if (message.serverType === 'dap' && state.currentDapServerId === message.serverId) {
-        updateTraceControls('dap-trace', message.traceLevel);
-        if (state.currentDapSessionId) {
-            renderDapTracesForSession(state.currentDapSessionId);
+    } else if (message.serverType === 'dap') {
+        // Update workspace view selected server
+        if (state.selectedServer?.isDap && state.selectedServer?.id === message.serverId) {
+            const isCurrentWorkspace = !isWorkspaceScoped || state.selectedWorkspace === message.workspaceUri;
+            if (isCurrentWorkspace) {
+                state.selectedServer.traceLevel = message.traceLevel;
+                setCurrentTraceLevel(message.traceLevel);
+                updateTraceControls('trace', message.traceLevel);
+                renderConsole();
+            }
+        }
+        if (state.currentDapServerId === message.serverId) {
+            updateTraceControls('dap-trace', message.traceLevel);
+            if (state.currentDapSessionId) {
+                renderDapTracesForSession(state.currentDapSessionId);
+            }
         }
     }
 }
@@ -580,10 +607,12 @@ registerActions('click', {
 
             const consoleOutput = document.getElementById('console-output');
             if (consoleOutput && state.selectedServer) {
+                const globalTraces = state.tracesByServer[traceKey(null, state.currentServerId)] || [];
+                const workspaceTraces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
                 return {
                     type: 'lsp',
                     containerId: 'console-output',
-                    data: state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || []
+                    data: globalTraces.length > 0 ? [...globalTraces, ...workspaceTraces] : workspaceTraces
                 };
             }
 

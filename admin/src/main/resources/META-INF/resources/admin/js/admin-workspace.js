@@ -698,12 +698,13 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         export function selectDapServer(dapServer) {
-            state.selectedServer = {...dapServer, isDap: true};
+            const dapTraceLevel = (state.traceLevels && state.traceLevels['dap.' + dapServer.id]) || 'off';
+            state.selectedServer = {...dapServer, isDap: true, traceLevel: dapTraceLevel};
             // Sync local variable with state (may have been updated by DELETED handler)
             dapSessions = state.dapSessions || [];
             const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             renderServers([], dapSessions, workspace);
-            loadConsole({...dapServer, isDap: true});
+            loadConsole(state.selectedServer);
         }
 
         export function selectDapSessionByServerId(serverId) {
@@ -756,13 +757,18 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             `;
         }
 
-        let currentTraceLevel = 'verbose';
-        let currentServerTab = 'overview';
+        let currentTraceLevel = 'off';
+        export function setCurrentTraceLevel(level) { currentTraceLevel = level; }
 
         async function changeTraceLevel(level) {
             currentTraceLevel = level;
             updateTracesButtonsState(level);
             renderConsole();
+
+            // Update in-memory server DTO so re-selecting this server keeps the correct level
+            if (state.selectedServer) {
+                state.selectedServer.traceLevel = level;
+            }
 
             const uri = state.selectedWorkspace;
             if (state.selectedServer && state.selectedServer.isDap) {
@@ -915,8 +921,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 setTimeout(() => renderWorkspaceDiagram(allServers, server.id), 100);
             }
 
-            // Trace level will be initialized from workspace-resolved settings in loadServerDetails
-            currentTraceLevel = 'off';
+            currentTraceLevel = server.traceLevel || 'off';
             updateTracesButtonsState(currentTraceLevel);
 
             // Load traces for specific workspace + server
@@ -979,6 +984,17 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             const settingsResponse = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/dap-servers/${encodeURIComponent(serverId)}/settings`);
                             const settings = settingsResponse.ok ? await settingsResponse.json() : [];
                             settingsContent.innerHTML = renderServerSettingsTab({ id: serverId, settings, isDap: true }, workspace, []);
+                            // Sync trace level from workspace-resolved settings (skip re-render if unchanged)
+                            const dapTraceSetting = settings.find(s => s.key === 'trace');
+                            if (dapTraceSetting) {
+                                const resolvedDapLevel = dapTraceSetting.currentValue || 'off';
+                                if (resolvedDapLevel !== currentTraceLevel) {
+                                    currentTraceLevel = resolvedDapLevel;
+                                    if (state.selectedServer) state.selectedServer.traceLevel = resolvedDapLevel;
+                                    updateTraceControls('trace', currentTraceLevel);
+                                    renderConsole();
+                                }
+                            }
                         } catch (e) {
                             settingsContent.innerHTML = '<p class="text-secondary p-lg">Failed to load settings.</p>';
                         }
@@ -1002,12 +1018,16 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         ? await ideSettingsResponse.json()
                         : [];
 
-                    // Sync trace level from workspace-resolved settings
+                    // Sync trace level from workspace-resolved settings (skip re-render if unchanged)
                     const traceSetting = details.settings?.find(s => s.key === 'trace');
                     if (traceSetting) {
-                        currentTraceLevel = traceSetting.currentValue || 'off';
-                        updateTraceControls('trace', currentTraceLevel);
-                        renderConsole();
+                        const resolvedLevel = traceSetting.currentValue || 'off';
+                        if (resolvedLevel !== currentTraceLevel) {
+                            currentTraceLevel = resolvedLevel;
+                            if (state.selectedServer) state.selectedServer.traceLevel = resolvedLevel;
+                            updateTraceControls('trace', currentTraceLevel);
+                            renderConsole();
+                        }
                     }
 
                     // Get all servers for contributedBy calculation
@@ -1183,7 +1203,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         function switchServerTab(tabName) {
-            currentServerTab = tabName; // Save current tab
 
             // Update tab buttons
             document.querySelectorAll('.tab-button').forEach(btn => {
@@ -1206,9 +1225,14 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
 
+        function getServerTraces() {
+            const globalTraces = state.tracesByServer[traceKey(null, state.currentServerId)] || [];
+            const workspaceTraces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
+            return globalTraces.length > 0 ? [...globalTraces, ...workspaceTraces] : workspaceTraces;
+        }
+
         export function renderConsole() {
-            const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
-            renderTracesInContainer('console-output', traces, currentTraceLevel, getCurrentSearchQuery());
+            renderTracesInContainer('console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
             initTraceContainer('console-output');
         }
 
@@ -1512,8 +1536,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         });
 
         function renderConsoleWithHighlights() {
-            const traces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
-            renderTracesInContainer('console-output', traces, currentTraceLevel, getCurrentSearchQuery());
+            renderTracesInContainer('console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
         }
 
         async function toggleFileWatcherFromListAction(uri) {
@@ -1627,11 +1650,10 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ traceLevel: value })
                 });
-                if (type === 'lsp') {
-                    currentTraceLevel = value;
-                    updateTraceControls('trace', value);
-                    renderConsole();
-                }
+                currentTraceLevel = value;
+                if (state.selectedServer) state.selectedServer.traceLevel = value;
+                updateTraceControls('trace', value);
+                renderConsole();
                 await reloadServerSettingsTab(serverId);
                 return;
             }

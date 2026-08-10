@@ -426,6 +426,7 @@ public class WorkspaceAdminResource {
         Workspace workspace = getWorkspaceOrThrow(uriParam);
         ServerTrace level = ServerTrace.fromValue(String.valueOf(body.get("traceLevel")));
         workspace.getWorkspaceConfiguration().setLspTraceLevel(serverId, level);
+        traceLevelEvent.fire(new TraceLevelWsMessage("lsp", serverId, level.toString(), uriParam));
         return Response.noContent().build();
     }
 
@@ -447,6 +448,7 @@ public class WorkspaceAdminResource {
         Workspace workspace = getWorkspaceOrThrow(uriParam);
         ServerTrace level = ServerTrace.fromValue(String.valueOf(body.get("traceLevel")));
         workspace.getWorkspaceConfiguration().setDapTraceLevel(serverId, level);
+        traceLevelEvent.fire(new TraceLevelWsMessage("dap", serverId, level.toString(), uriParam));
         return Response.noContent().build();
     }
 

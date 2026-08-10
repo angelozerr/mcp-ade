@@ -105,6 +105,9 @@ public class Application {
     Event<McpClientChangeEvent> mcpClientChangeEvent;
 
     @Inject
+    io.quarkiverse.mcp.server.runtime.ConnectionManager connectionManager;
+
+    @Inject
     jakarta.enterprise.inject.Instance<ProgressBroadcaster> progressBroadcasterInstance;
 
     private final Map<URI, Workspace> workspaces = new ConcurrentHashMap<>();
@@ -195,6 +198,9 @@ public class Application {
             ws.startFileWatcherIfEnabled();
             return ws;
         });
+
+        // Clean up disconnected MCP clients before adding the new one
+        cleanupDisconnectedMcpClients(workspace);
 
         // Add current MCP client to this workspace
         String clientName = mcpClientTracker.getCurrentClientName();
@@ -533,6 +539,23 @@ public class Application {
 
     public ProgressBroadcaster getProgressBroadcaster() {
         return progressBroadcasterInstance.isResolvable() ? progressBroadcasterInstance.get() : null;
+    }
+
+    private void cleanupDisconnectedMcpClients(Workspace workspace) {
+        var clients = workspace.getMcpClientConnections();
+        if (clients.isEmpty()) {
+            return;
+        }
+        boolean changed = false;
+        for (String connectionId : clients.keySet()) {
+            if (!connectionManager.has(connectionId)) {
+                workspace.removeMcpClient(connectionId);
+                changed = true;
+            }
+        }
+        if (changed) {
+            mcpClientChangeEvent.fire(new McpClientChangeEvent());
+        }
     }
 }
 

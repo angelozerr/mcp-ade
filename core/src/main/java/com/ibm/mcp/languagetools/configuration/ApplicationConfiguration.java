@@ -52,6 +52,14 @@ public class ApplicationConfiguration extends AbstractConfiguration {
     }
 
     @Override
+    public void reload() {
+        super.reload();
+        lspTraceLevels.clear();
+        dapTraceLevels.clear();
+        mcpTraceLevel = null;
+    }
+
+    @Override
     protected Path getSettingsFile() {
         return pathManager.getSettingsFile();
     }

@@ -20,12 +20,18 @@ public class TraceLevelWsMessage extends WsMessage {
     private final String serverType;
     private final String serverId;
     private final String traceLevel;
+    private final String workspaceUri;
 
     public TraceLevelWsMessage(String serverType, String serverId, String traceLevel) {
+        this(serverType, serverId, traceLevel, null);
+    }
+
+    public TraceLevelWsMessage(String serverType, String serverId, String traceLevel, String workspaceUri) {
         super(WsMessageType.TRACE_LEVEL_UPDATE);
         this.serverType = serverType;
         this.serverId = serverId;
         this.traceLevel = traceLevel;
+        this.workspaceUri = workspaceUri;
     }
 
     public String getServerType() {
@@ -39,5 +45,10 @@ public class TraceLevelWsMessage extends WsMessage {
 
     public String getTraceLevel() {
         return traceLevel;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getWorkspaceUri() {
+        return workspaceUri;
     }
 }

@@ -383,21 +383,23 @@ export function renderTracesInContainer(containerId, traces, traceLevel, searchQ
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    if (traceLevel === 'off') {
-        container.innerHTML = `<div class="text-secondary text-center p-2xl">Traces are disabled (level: off)</div>`;
-        return;
-    }
+    const filteredTraces = traceLevel === 'off'
+        ? traces.filter(t => t.messageType === 'INFO' || t.messageType === 'UPDATE' || t.messageType === 'ERROR')
+        : traces;
 
-    if (traces.length === 0) {
-        container.innerHTML = `<div class="text-secondary text-center p-2xl">${emptyMessage || 'No traces yet.'}</div>`;
+    if (filteredTraces.length === 0) {
+        const msg = traceLevel === 'off'
+            ? 'Traces are disabled (level: off)'
+            : (emptyMessage || 'No traces yet.');
+        container.innerHTML = `<div class="text-secondary text-center p-2xl">${msg}</div>`;
         return;
     }
 
     const wasAtBottom = isScrolledToBottom(container);
     const expandedIds = saveExpandedState(container);
 
-    container.innerHTML = traces.map((trace, index) =>
-        renderTrace(trace, index, traceLevel, searchQuery)
+    container.innerHTML = filteredTraces.map((trace, index) =>
+        renderTrace(trace, index, traceLevel === 'off' ? 'verbose' : traceLevel, searchQuery)
     ).join('');
 
     restoreExpandedState(container, expandedIds);

@@ -213,7 +213,7 @@ function showLaunchConfigForm(session, dapServerId) {
                 <div class="d-flex justify-between align-center mb-sm">
                     <label class="text-primary font-medium">Console:</label>
                     <div class="console-controls">
-                        ${renderTraceControls('dap-trace', 'off', 'changeDapTraceLevel', {
+                        ${renderTraceControls('dap-trace', (state.traceLevels && state.traceLevels['dap.' + dapServerId]) || 'off', 'changeDapTraceLevel', {
                             foldAction: 'toggleAllDapTraces',
                             clearAction: 'clearDapConsole'
                         })}

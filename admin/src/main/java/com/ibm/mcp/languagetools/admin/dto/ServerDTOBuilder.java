@@ -143,6 +143,9 @@ public class ServerDTOBuilder {
             }
         }
 
+        String traceLevel = workspace.getWorkspaceConfiguration()
+                .resolveString("lsp." + serverId + ".trace", "off").value();
+
         return new LspServerDTO(
             serverId,
             status,
@@ -152,7 +155,8 @@ public class ServerDTOBuilder {
             command,
             externalInfo,
             parentServerId,
-            installProgress
+            installProgress,
+            traceLevel
         );
     }
 

@@ -107,7 +107,8 @@ export function mergeServerData(runtime) {
         isReady: runtime.isReady,
         pid: runtime.pid,
         externalInstance: runtime.externalInstance,
-        installProgress: runtime.installProgress
+        installProgress: runtime.installProgress,
+        traceLevel: runtime.traceLevel
     };
 }
 
