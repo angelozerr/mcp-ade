@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ibm.mcp</groupId>
+        <artifactId>mcp-language-tools-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mcp-language-tools-integration-tests</artifactId>
+    <packaging>jar</packaging>
+
+    <name>MCP Language Tools Integration Tests</name>
+    <description>Integration tests for MCP Language Tools LSP/DAP tools</description>
+
+    <dependencies>
+        <!-- Core (MCP tools, LSP/DAP framework) -->
+        <dependency>
+            <groupId>com.ibm.mcp</groupId>
+            <artifactId>mcp-language-tools-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- XML extension (LemMinX server config) -->
+        <dependency>
+            <groupId>com.ibm.mcp</groupId>
+            <artifactId>xml-extension</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Quarkus MCP Server Test Framework -->
+        <dependency>
+            <groupId>io.quarkiverse.mcp</groupId>
+            <artifactId>quarkus-mcp-server-test</artifactId>
+            <version>${quarkus-mcp-server.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Quarkus JUnit 5 -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-maven-plugin</artifactId>
+                <version>${quarkus.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Download LemMinX uber jar to the expected $SERVER_HOME$ location -->
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.9.0</version>
+                <executions>
+                    <execution>
+                        <id>download-lemminx</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://download.eclipse.org/lemminx/releases/0.31.2/org.eclipse.lemminx-uber.jar</url>
+                            <outputDirectory>${project.build.directory}/test-mcp-root/.mcp-languagetools/extensions/xml/lsp/lemminx</outputDirectory>
+                            <outputFileName>lemminx.jar</outputFileName>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <mcp.languagetools.root>${project.build.directory}/test-mcp-root</mcp.languagetools.root>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -63,6 +63,7 @@
         <module>extensions/ansible</module>
         <module>extensions/pascal</module>
         <module>dev</module>
+        <module>integration-tests</module>
     </modules>
 
     <properties>
