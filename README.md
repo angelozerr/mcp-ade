@@ -55,6 +55,10 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 | `search_workspace_symbols` | Search for classes, methods, variables by name |
 | `format_document` | Format an entire document (supports `apply` parameter) |
 | `format_document_range` | Format a specific range in a document (supports `apply` parameter) |
+| `get_call_hierarchy_incoming` | Get incoming calls (callers) for a symbol |
+| `get_call_hierarchy_outgoing` | Get outgoing calls (callees) from a symbol |
+| `get_type_hierarchy_supertypes` | Get supertypes (parent classes/interfaces) for a type |
+| `get_type_hierarchy_subtypes` | Get subtypes (child classes/implementations) for a type |
 | `get_code_lenses` | Get code lenses (run test, reference counts, etc.) |
 | `get_inlay_hints` | Get inlay hints (inferred types, parameter names) |
 | `apply_workspace_edit` | Apply text edits to a file on disk |

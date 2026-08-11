@@ -187,38 +187,25 @@ public class LspServer extends ServerBase<LspServerConfig> {
         var config = super.getConfig();
         LOG.infof("Connecting to %s on localhost:%d", config.getServerId(), port);
 
-        socket = new Socket("localhost", port);
-        isSocketConnection = true;
+        Socket newSocket = new Socket("localhost", port);
+        try {
+            InputStream in = newSocket.getInputStream();
+            OutputStream out = newSocket.getOutputStream();
 
-        InputStream in = socket.getInputStream();
-        OutputStream out = socket.getOutputStream();
+            Launcher<LanguageServer> launcher = createLauncher(in, out);
 
-        // Create LSP client (subclasses can override to provide custom client)
-        LanguageClient client = createLanguageClient();
-        if (client instanceof GenericLanguageClient glc) {
-            this.languageClient = glc;
+            languageServer = launcher.getRemoteProxy();
+            listeningFuture = launcher.startListening();
+            socket = newSocket;
+            isSocketConnection = true;
+        } catch (Exception e) {
+            try {
+                newSocket.close();
+            } catch (IOException closeEx) {
+                e.addSuppressed(closeEx);
+            }
+            throw e;
         }
-
-        // Create LSP launcher with message tracing wrapper
-        Launcher<LanguageServer> launcher = new Launcher.Builder<LanguageServer>()
-                .setLocalService(client)
-                .setRemoteInterface(LanguageServer.class)
-                .setInput(in)
-                .setOutput(out)
-                .setExecutorService(executorService)
-                .configureGson(JsonUtils::configureGson)
-                .wrapMessages(consumer -> message -> {
-                    if (getServerTrace() != ServerTrace.off) {
-                        // Log the message
-                        getTracing().log(message, consumer);
-                    }
-                    // Forward to original consumer
-                    consumer.consume(message);
-                })
-                .create();
-
-        languageServer = launcher.getRemoteProxy();
-        listeningFuture = launcher.startListening();
 
         LOG.infof("Socket connection established to %s on port %d", config.getServerId(), port);
     }
@@ -236,31 +223,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
         // Start monitoring stderr for errors (uses shared implementation from ServerBase)
         startStderrMonitoring();
 
-        // Create LSP client (subclasses can override to provide custom client)
-        LanguageClient client = createLanguageClient();
-        if (client instanceof GenericLanguageClient glc) {
-            this.languageClient = glc;
-        }
-
-        // GenericLanguageClient already implements Endpoint for bindRequest routing,
-        // so we can pass it directly - LSP4J will scan it for @JsonNotification
-        // Create LSP launcher with message tracing wrapper (like lsp4ij)
-        Launcher<LanguageServer> launcher = new Launcher.Builder<LanguageServer>()
-                .setLocalService(client)
-                .setRemoteInterface(LanguageServer.class)
-                .setInput(serverProcess.getInputStream())
-                .setOutput(serverProcess.getOutputStream())
-                .setExecutorService(executorService)
-                .configureGson(JsonUtils::configureGson)
-                .wrapMessages(consumer -> message -> {
-                    if (getServerTrace() != ServerTrace.off) {
-                        // Log the message
-                        getTracing().log(message, consumer);
-                    }
-                    // Forward to original consumer
-                    consumer.consume(message);
-                })
-                .create();
+        Launcher<LanguageServer> launcher = createLauncher(serverProcess.getInputStream(), serverProcess.getOutputStream());
 
         languageServer = launcher.getRemoteProxy();
         listeningFuture = launcher.startListening();
@@ -271,6 +234,27 @@ public class LspServer extends ServerBase<LspServerConfig> {
         // Will be overridden by "Ready" after initialization,
         // or by language/status notifications for servers like JDT.LS
         setStatusMessage("Not Ready");
+    }
+
+    private Launcher<LanguageServer> createLauncher(InputStream in, OutputStream out) {
+        LanguageClient client = createLanguageClient();
+        if (client instanceof GenericLanguageClient glc) {
+            this.languageClient = glc;
+        }
+        return new Launcher.Builder<LanguageServer>()
+                .setLocalService(client)
+                .setRemoteInterface(LanguageServer.class)
+                .setInput(in)
+                .setOutput(out)
+                .setExecutorService(executorService)
+                .configureGson(JsonUtils::configureGson)
+                .wrapMessages(consumer -> message -> {
+                    if (getServerTrace() != ServerTrace.off) {
+                        getTracing().log(message, consumer);
+                    }
+                    consumer.consume(message);
+                })
+                .create();
     }
 
     /**
@@ -349,9 +333,20 @@ public class LspServer extends ServerBase<LspServerConfig> {
         textDocument.setCodeAction(new CodeActionCapabilities());
         textDocument.setHover(new HoverCapabilities());
         textDocument.setDefinition(new DefinitionCapabilities());
+        textDocument.setDeclaration(new DeclarationCapabilities());
         textDocument.setReferences(new ReferencesCapabilities());
         textDocument.setDocumentSymbol(new DocumentSymbolCapabilities());
         textDocument.setRename(new RenameCapabilities());
+        textDocument.setImplementation(new ImplementationCapabilities());
+        textDocument.setTypeDefinition(new TypeDefinitionCapabilities());
+        textDocument.setCompletion(new CompletionCapabilities());
+        textDocument.setSignatureHelp(new SignatureHelpCapabilities());
+        textDocument.setFormatting(new FormattingCapabilities());
+        textDocument.setRangeFormatting(new RangeFormattingCapabilities());
+        textDocument.setCodeLens(new CodeLensCapabilities());
+        textDocument.setInlayHint(new InlayHintCapabilities());
+        textDocument.setCallHierarchy(new CallHierarchyCapabilities());
+        textDocument.setTypeHierarchy(new TypeHierarchyCapabilities());
         return textDocument;
     }
 
@@ -613,7 +608,8 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 LOG.errorf(e, "Error during shutdown of %s", config.getServerId());
                 setStatus(ServerStatus.STOPPED);
             } finally {
-                executorService.shutdown();
+                // DON'T shutdown executor - it would reject future start() attempts
+                // (see ServerBase.cleanupResources() for the same reasoning)
             }
         }, CompletableFuture.delayedExecutor(0, TimeUnit.MILLISECONDS));
     }
@@ -793,9 +789,13 @@ public class LspServer extends ServerBase<LspServerConfig> {
             connectToSocket(newInstance.port);
             currentInstance = newInstance;
 
-            // Re-initialize with new instance
             initialize()
-                    .thenRun(() -> LOG.infof("Successfully switched to new instance (PID: %d, port: %d)", newInstance.pid, newInstance.port));
+                    .thenRun(() -> LOG.infof("Successfully switched to new instance (PID: %d, port: %d)", newInstance.pid, newInstance.port))
+                    .exceptionally(ex -> {
+                        LOG.errorf(ex, "Failed to initialize after switching to new instance (PID: %d, port: %d)", newInstance.pid, newInstance.port);
+                        handleInstanceRemoved();
+                        return null;
+                    });
         } catch (IOException e) {
             LOG.errorf(e, "Failed to connect to new instance, will try to restart our own server");
             handleInstanceRemoved();
@@ -832,7 +832,12 @@ public class LspServer extends ServerBase<LspServerConfig> {
             try {
                 launchProcess();
                 initialize()
-                        .thenRun(() -> LOG.infof("Successfully launched our own server after instance removal"));
+                        .thenRun(() -> LOG.infof("Successfully launched our own server after instance removal"))
+                        .exceptionally(ex -> {
+                            LOG.errorf(ex, "Failed to initialize after instance removal");
+                            setStatus(ServerStatus.ERROR);
+                            return null;
+                        });
             } catch (IOException e) {
                 LOG.errorf(e, "Failed to launch server after instance removal");
                 setStatus(ServerStatus.STOPPED);

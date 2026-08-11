@@ -52,6 +52,8 @@ public class LspClientFeatures {
     private final SignatureHelpCapabilityRegistry signatureHelpRegistry;
     private final CodeLensCapabilityRegistry codeLensRegistry;
     private final InlayHintCapabilityRegistry inlayHintRegistry;
+    private final CallHierarchyCapabilityRegistry callHierarchyRegistry;
+    private final TypeHierarchyCapabilityRegistry typeHierarchyRegistry;
     private final WorkspaceSymbolCapabilityRegistry workspaceSymbolRegistry;
 
     // Dynamic capabilities registered via client/registerCapability
@@ -78,6 +80,8 @@ public class LspClientFeatures {
         this.signatureHelpRegistry = new SignatureHelpCapabilityRegistry(this);
         this.codeLensRegistry = new CodeLensCapabilityRegistry(this);
         this.inlayHintRegistry = new InlayHintCapabilityRegistry(this);
+        this.callHierarchyRegistry = new CallHierarchyCapabilityRegistry(this);
+        this.typeHierarchyRegistry = new TypeHierarchyCapabilityRegistry(this);
         this.workspaceSymbolRegistry = new WorkspaceSymbolCapabilityRegistry();
     }
 
@@ -101,6 +105,8 @@ public class LspClientFeatures {
         signatureHelpRegistry.setServerCapabilities(serverCapabilities);
         codeLensRegistry.setServerCapabilities(serverCapabilities);
         inlayHintRegistry.setServerCapabilities(serverCapabilities);
+        callHierarchyRegistry.setServerCapabilities(serverCapabilities);
+        typeHierarchyRegistry.setServerCapabilities(serverCapabilities);
         workspaceSymbolRegistry.setServerCapabilities(serverCapabilities);
     }
 
@@ -139,6 +145,8 @@ public class LspClientFeatures {
             case SIGNATURE_HELP -> signatureHelpRegistry.isSignatureHelpSupported(document);
             case CODE_LENS -> codeLensRegistry.isCodeLensSupported(document);
             case INLAY_HINT -> inlayHintRegistry.isInlayHintSupported(document);
+            case CALL_HIERARCHY -> callHierarchyRegistry.isCallHierarchySupported(document);
+            case TYPE_HIERARCHY -> typeHierarchyRegistry.isTypeHierarchySupported(document);
             case WORKSPACE_SYMBOL -> workspaceSymbolRegistry.isWorkspaceSymbolSupported();
         };
     }
@@ -231,6 +239,14 @@ public class LspClientFeatures {
                 case LspRequestConstants.TEXT_DOCUMENT_INLAY_HINT -> {
                     var options = inlayHintRegistry.registerCapability(jsonOptions);
                     dynamicRegistrations.put(id, () -> inlayHintRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_PREPARE_CALL_HIERARCHY -> {
+                    var options = callHierarchyRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> callHierarchyRegistry.unregisterCapability(options));
+                }
+                case LspRequestConstants.TEXT_DOCUMENT_PREPARE_TYPE_HIERARCHY -> {
+                    var options = typeHierarchyRegistry.registerCapability(jsonOptions);
+                    dynamicRegistrations.put(id, () -> typeHierarchyRegistry.unregisterCapability(options));
                 }
                 case LspRequestConstants.WORKSPACE_DID_CHANGE_WATCHED_FILES -> {
                     DidChangeWatchedFilesRegistrationOptions options =

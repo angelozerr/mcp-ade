@@ -36,6 +36,16 @@ public class LspRequestConstants {
     public static final String TEXT_DOCUMENT_CODE_LENS = "textDocument/codeLens";
     public static final String TEXT_DOCUMENT_INLAY_HINT = "textDocument/inlayHint";
 
+    // callHierarchy/* LSP requests
+    public static final String TEXT_DOCUMENT_PREPARE_CALL_HIERARCHY = "textDocument/prepareCallHierarchy";
+    public static final String CALL_HIERARCHY_INCOMING_CALLS = "callHierarchy/incomingCalls";
+    public static final String CALL_HIERARCHY_OUTGOING_CALLS = "callHierarchy/outgoingCalls";
+
+    // typeHierarchy/* LSP requests
+    public static final String TEXT_DOCUMENT_PREPARE_TYPE_HIERARCHY = "textDocument/prepareTypeHierarchy";
+    public static final String TYPE_HIERARCHY_SUPERTYPES = "typeHierarchy/supertypes";
+    public static final String TYPE_HIERARCHY_SUBTYPES = "typeHierarchy/subtypes";
+
     // workspace/* LSP requests
     public static final String WORKSPACE_SYMBOL = "workspace/symbol";
     public static final String WORKSPACE_DID_CHANGE_WATCHED_FILES = "workspace/didChangeWatchedFiles";

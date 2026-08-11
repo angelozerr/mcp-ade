@@ -34,6 +34,8 @@ public enum LspCapability {
     SIGNATURE_HELP(LspRequestConstants.TEXT_DOCUMENT_SIGNATURE_HELP),
     CODE_LENS(LspRequestConstants.TEXT_DOCUMENT_CODE_LENS),
     INLAY_HINT(LspRequestConstants.TEXT_DOCUMENT_INLAY_HINT),
+    CALL_HIERARCHY(LspRequestConstants.TEXT_DOCUMENT_PREPARE_CALL_HIERARCHY),
+    TYPE_HIERARCHY(LspRequestConstants.TEXT_DOCUMENT_PREPARE_TYPE_HIERARCHY),
     WORKSPACE_SYMBOL(LspRequestConstants.WORKSPACE_SYMBOL);
 
     private final String method;

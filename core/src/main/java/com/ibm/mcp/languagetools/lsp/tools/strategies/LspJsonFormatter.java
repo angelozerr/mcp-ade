@@ -314,6 +314,46 @@ final class LspJsonFormatter {
         return result;
     }
 
+    // --- CallHierarchy ---
+
+    static Map<String, Object> callHierarchyItem(CallHierarchyItem item, String cwdUri) {
+        Map<String, Object> result = new LinkedHashMap<>(UriUtils.compactUriToMap(item.getUri(), cwdUri));
+        result.put("name", item.getName());
+        if (item.getKind() != null) result.put("kind", item.getKind().name());
+        if (item.getDetail() != null) result.put("detail", item.getDetail());
+        result.put("range", range(item.getRange()));
+        result.put("selectionRange", range(item.getSelectionRange()));
+        return result;
+    }
+
+    static Map<String, Object> callHierarchyIncomingCall(CallHierarchyIncomingCall call, String cwdUri) {
+        Map<String, Object> result = callHierarchyItem(call.getFrom(), cwdUri);
+        if (call.getFromRanges() != null && !call.getFromRanges().isEmpty()) {
+            result.put("fromRanges", call.getFromRanges().stream().map(LspJsonFormatter::range).toList());
+        }
+        return result;
+    }
+
+    static Map<String, Object> callHierarchyOutgoingCall(CallHierarchyOutgoingCall call, String cwdUri) {
+        Map<String, Object> result = callHierarchyItem(call.getTo(), cwdUri);
+        if (call.getFromRanges() != null && !call.getFromRanges().isEmpty()) {
+            result.put("fromRanges", call.getFromRanges().stream().map(LspJsonFormatter::range).toList());
+        }
+        return result;
+    }
+
+    // --- TypeHierarchy ---
+
+    static Map<String, Object> typeHierarchyItem(TypeHierarchyItem item, String cwdUri) {
+        Map<String, Object> result = new LinkedHashMap<>(UriUtils.compactUriToMap(item.getUri(), cwdUri));
+        result.put("name", item.getName());
+        if (item.getKind() != null) result.put("kind", item.getKind().name());
+        if (item.getDetail() != null) result.put("detail", item.getDetail());
+        result.put("range", range(item.getRange()));
+        result.put("selectionRange", range(item.getSelectionRange()));
+        return result;
+    }
+
     // --- Helpers ---
 
     @SuppressWarnings("unchecked")

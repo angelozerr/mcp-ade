@@ -17,8 +17,6 @@ import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.tools.LspRequestExecutor;
 import com.ibm.mcp.languagetools.lsp.tools.params.FileUriRequestParams;
-import org.eclipse.lsp4j.DidCloseTextDocumentParams;
-import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
@@ -71,14 +69,7 @@ public abstract class DidOpenBasedStrategy<TRequestParams extends FileUriRequest
                 .thenCompose(diags -> executeAfterDiagnostics(server, lspParams))
                 .whenComplete((result, ex) -> {
                     if (!autoClose() && server.isFileOpened(fileUri)) {
-                        try {
-                            DidCloseTextDocumentParams closeParams = new DidCloseTextDocumentParams();
-                            closeParams.setTextDocument(new TextDocumentIdentifier(fileUri));
-                            server.getLanguageServer().getTextDocumentService().didClose(closeParams);
-                            server.markFileClosed(fileUri);
-                        } catch (Exception e) {
-                            LOG.warnf(e, "Failed to send didClose for %s", fileUri);
-                        }
+                        server.closeFile(fileUri);
                     }
                 });
     }
