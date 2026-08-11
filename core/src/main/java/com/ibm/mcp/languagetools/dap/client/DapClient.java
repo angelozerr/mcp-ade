@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
 /**
@@ -45,11 +47,12 @@ public class DapClient implements IDebugProtocolClient {
 
     // Parent-child session support
     private DapClient parentClient;
-    private final List<DapClient> childrenClients = new ArrayList<>();
+    private final List<DapClient> childrenClients = new CopyOnWriteArrayList<>();
     private Process runningProcess; // Process launched via runInTerminal
 
     // Factory for creating child debug sessions
     private Function<Map<String, Object>, CompletableFuture<DapClient>> childSessionFactory;
+    private ExecutorService executorService;
 
     public DapClient() {
     }
@@ -74,6 +77,10 @@ public class DapClient implements IDebugProtocolClient {
      */
     public void setChildSessionFactory(Function<Map<String, Object>, CompletableFuture<DapClient>> factory) {
         this.childSessionFactory = factory;
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
     }
 
     public DapClient getParentClient() {
@@ -307,7 +314,6 @@ public class DapClient implements IDebugProtocolClient {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Build process from args
                 ProcessBuilder pb = new ProcessBuilder(java.util.Arrays.asList(args.getArgs()));
 
                 // Set working directory if provided
@@ -331,7 +337,7 @@ public class DapClient implements IDebugProtocolClient {
                 runningProcess = process;
 
                 // Capture stdout and send to DAP client
-                CompletableFuture.runAsync(() -> {
+                runOnExecutor(() -> {
                     try (java.io.BufferedReader reader = new java.io.BufferedReader(
                             new java.io.InputStreamReader(process.getInputStream()))) {
                         String line;
@@ -349,7 +355,7 @@ public class DapClient implements IDebugProtocolClient {
                 });
 
                 // Capture stderr and send to DAP client
-                CompletableFuture.runAsync(() -> {
+                runOnExecutor(() -> {
                     try (java.io.BufferedReader reader = new java.io.BufferedReader(
                             new java.io.InputStreamReader(process.getErrorStream()))) {
                         String line;
@@ -364,7 +370,7 @@ public class DapClient implements IDebugProtocolClient {
                 });
 
                 // Monitor process termination in background
-                CompletableFuture.runAsync(() -> {
+                runOnExecutor(() -> {
                     try {
                         int exitCode = process.waitFor();
                         LOG.infof("Process %d exited with code: %d", pid, exitCode);
@@ -383,7 +389,9 @@ public class DapClient implements IDebugProtocolClient {
                 });
 
                 RunInTerminalResponse response = new RunInTerminalResponse();
-                response.setProcessId((int) pid);
+                if (pid <= Integer.MAX_VALUE) {
+                    response.setProcessId((int) pid);
+                }
                 return response;
 
             } catch (Exception e) {
@@ -404,6 +412,13 @@ public class DapClient implements IDebugProtocolClient {
      * Terminate all child debug sessions.
      */
     public CompletableFuture<Void> terminateChildSessions() {
+        // Kill any process launched via runInTerminal
+        if (runningProcess != null && runningProcess.isAlive()) {
+            LOG.infof("Destroying runInTerminal process (PID: %d)", runningProcess.pid());
+            runningProcess.destroyForcibly();
+            runningProcess = null;
+        }
+
         if (childrenClients.isEmpty()) {
             return CompletableFuture.completedFuture(null);
         }
@@ -502,6 +517,7 @@ public class DapClient implements IDebugProtocolClient {
                             String.format("Error during initialize/%s: %s",
                                 isAttach ? "attach" : "launch", t.getMessage())));
                     }
+                    capabilitiesFuture.completeExceptionally(t);
                     initializedEventFuture.completeExceptionally(t);
                 }
             });
@@ -574,9 +590,14 @@ public class DapClient implements IDebugProtocolClient {
             });
     }
 
-    /**
-     * Helper to create error output for UI display.
-     */
+    private void runOnExecutor(Runnable task) {
+        if (executorService != null) {
+            executorService.submit(task);
+        } else {
+            CompletableFuture.runAsync(task);
+        }
+    }
+
     private OutputEventArguments createErrorOutput(String message) {
         var output = new OutputEventArguments();
         output.setCategory("stderr");

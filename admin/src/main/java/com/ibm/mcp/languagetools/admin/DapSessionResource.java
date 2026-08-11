@@ -44,6 +44,9 @@ public class DapSessionResource {
     @Inject
     Application application;
 
+    @Inject
+    AdminProgressMonitorHelper progressMonitorHelper;
+
     /**
      * List all active DAP sessions.
      */
@@ -121,7 +124,7 @@ public class DapSessionResource {
             }
 
             // Launch from Admin UI - create ProgressMonitor for user feedback
-            ProgressMonitor progressMonitor = AdminProgressMonitorHelper.forDapSession(session);
+            ProgressMonitor progressMonitor = progressMonitorHelper.forDapSession(session);
 
             // Launch the session asynchronously (don't block HTTP thread!)
             session.launch(launchConfig, debugMode, OperationActor.USER, progressMonitor)

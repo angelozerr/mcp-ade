@@ -13,6 +13,9 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin.dto;
 
+import com.ibm.mcp.languagetools.workspace.Workspace;
+
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public record WorkspaceDTO(
@@ -26,4 +29,17 @@ public record WorkspaceDTO(
         String name,
         String connectedAt
     ) {}
+
+    public static WorkspaceDTO fromWorkspace(Workspace workspace) {
+        List<McpClientInfo> mcpClients = workspace.getMcpClientConnections().values().stream()
+                .map(clientInfo -> new McpClientInfo(
+                        clientInfo.name(),
+                        DateTimeFormatter.ISO_INSTANT.format(clientInfo.connectedAt())
+                ))
+                .toList();
+
+        var uri = workspace.getNormalizedUri();
+        var fwResolved = workspace.getWorkspaceConfiguration().resolveBoolean("fileWatchers.enabled", true);
+        return new WorkspaceDTO(uri, mcpClients, fwResolved.value(), fwResolved.source().name(), workspace.isFileWatcherRunning());
+    }
 }

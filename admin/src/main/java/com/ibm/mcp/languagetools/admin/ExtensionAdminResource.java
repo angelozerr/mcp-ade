@@ -14,10 +14,9 @@
 package com.ibm.mcp.languagetools.admin;
 
 import com.ibm.mcp.languagetools.Application;
-import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
+import com.ibm.mcp.languagetools.admin.dto.ExtensionDTO;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
-import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -30,7 +29,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * REST endpoints for extension management.
@@ -45,15 +43,11 @@ public class ExtensionAdminResource {
     Application application;
 
     @GET
-    public List<Map<String, Object>> listExtensions() {
+    public List<ExtensionDTO> listExtensions() {
         ExtensionRegistry registry = application.getExtensionRegistry();
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (Extension ext : registry.getExtensions()) {
-            result.add(toMap(ext, registry));
-        }
-
-        return result;
+        return registry.getExtensions().stream()
+                .map(ext -> ExtensionDTO.fromExtension(ext, registry))
+                .toList();
     }
 
     @GET
@@ -66,7 +60,7 @@ public class ExtensionAdminResource {
                     .entity(Map.of("error", "Extension '" + id + "' not found"))
                     .build();
         }
-        return Response.ok(toMap(ext, registry)).build();
+        return Response.ok(ExtensionDTO.fromExtension(ext, registry)).build();
     }
 
     @POST
@@ -87,7 +81,7 @@ public class ExtensionAdminResource {
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("extension", toMap(ext, registry));
+            result.put("extension", ExtensionDTO.fromExtension(ext, registry));
             return Response.status(Response.Status.CREATED).entity(result).build();
         } catch (Exception e) {
             LOG.error("Failed to add extension", e);
@@ -125,7 +119,7 @@ public class ExtensionAdminResource {
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("extension", toMap(ext, registry));
+            result.put("extension", ExtensionDTO.fromExtension(ext, registry));
             return Response.status(Response.Status.CREATED).entity(result).build();
         } catch (Exception e) {
             LOG.error("Failed to upload extension", e);
@@ -216,34 +210,4 @@ public class ExtensionAdminResource {
         return Response.ok(Map.of("success", true, "message", "DAP server '" + serverId + "' disabled")).build();
     }
 
-    // ========== Helpers ==========
-
-    private Map<String, Object> toMap(Extension ext, ExtensionRegistry registry) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("id", ext.getId());
-        map.put("source", ext.getSource().name());
-        map.put("enabled", registry.isExtensionEnabled(ext.getId()));
-
-        map.put("lspServers", ext.getLspServerConfigs().stream()
-                .map(c -> {
-                    Map<String, Object> s = new LinkedHashMap<>();
-                    s.put("id", c.getServerId());
-                    s.put("name", c.getName());
-                    s.put("enabled", registry.isServerEnabled(c.getServerId()));
-                    return s;
-                })
-                .collect(Collectors.toList()));
-
-        map.put("dapServers", ext.getDapServerConfigs().stream()
-                .map(c -> {
-                    Map<String, Object> s = new LinkedHashMap<>();
-                    s.put("id", c.getServerId());
-                    s.put("name", c.getName());
-                    s.put("enabled", registry.isServerEnabled(c.getServerId()));
-                    return s;
-                })
-                .collect(Collectors.toList()));
-
-        return map;
-    }
 }

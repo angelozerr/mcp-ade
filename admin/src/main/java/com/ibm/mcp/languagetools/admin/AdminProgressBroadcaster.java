@@ -127,8 +127,8 @@ public class AdminProgressBroadcaster implements ProgressBroadcaster {
     }
 
     public static class ActiveTask {
-        ProgressInitWsMessage initMessage;
-        ProgressUpdateWsMessage lastUpdate;
+        volatile ProgressInitWsMessage initMessage;
+        volatile ProgressUpdateWsMessage lastUpdate;
 
         ActiveTask(ProgressInitWsMessage initMessage, ProgressUpdateWsMessage lastUpdate) {
             this.initMessage = initMessage;

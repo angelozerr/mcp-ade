@@ -24,7 +24,6 @@ import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
-import org.eclipse.lsp4j.debug.InitializeRequestArguments;
 import org.eclipse.lsp4j.debug.launch.DSPLauncher;
 import org.eclipse.lsp4j.debug.services.IDebugProtocolServer;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
@@ -51,6 +50,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
     protected DapClient dapClient;
     protected Integer allocatedPort; // Port allocated via ${port} substitution
     protected TransportStreams transportStreams; // Transport layer (stdio or socket)
+    private final List<TransportStreams> childTransportStreams = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final DapSession session;
 
     public DapServer(DapSession session, DapServerConfig config, Workspace workspace) {
@@ -287,9 +287,9 @@ public class DapServer extends ServerBase<DapServerConfig> {
     }
 
     /**
-         * Container for tracker and init args.
-         */
-        private record ServerReadyResult(DAPServerReadyTracker tracker, InitializeRequestArguments initArgs) {
+     * Container for the server ready tracker.
+     */
+    private record ServerReadyResult(DAPServerReadyTracker tracker) {
     }
 
     /**
@@ -303,22 +303,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
                 addTrace(String.format("DAP server ready (address=%s, port=%s)",
                         readyTracker.getAddress(), readyTracker.getPort()));
 
-                // Prepare InitializeRequestArguments
-                InitializeRequestArguments initArgs = new InitializeRequestArguments();
-                initArgs.setClientID("mcp-languagetools");
-                initArgs.setClientName("MCP Language Tools");
-                initArgs.setAdapterID(getConfig().getServerId());
-                initArgs.setPathFormat("path");
-                initArgs.setLinesStartAt1(true);
-                initArgs.setColumnsStartAt1(true);
-
-                // Declare support for reverse requests
-                initArgs.setSupportsRunInTerminalRequest(true);
-                initArgs.setSupportsStartDebuggingRequest(true);
-                initArgs.setSupportsVariableType(true);
-                initArgs.setSupportsVariablePaging(false);
-
-                return new ServerReadyResult(readyTracker, initArgs);
+                return new ServerReadyResult(readyTracker);
             });
     }
 
@@ -330,7 +315,6 @@ public class DapServer extends ServerBase<DapServerConfig> {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 var tracker = result.tracker;
-                var initArgs = result.initArgs;
 
                 // Create transport streams
                 // Like lsp4ij: if a port was detected/allocated, use SOCKET, else use STDIO
@@ -391,6 +375,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
      */
     protected void createLauncherFromTransport(TransportStreams transport) {
         dapClient = createDapClient();
+        dapClient.setExecutorService(executorService);
 
         // Wrapper for tracing
         Launcher<IDebugProtocolServer> launcher = DSPLauncher.createClientLauncher(
@@ -466,17 +451,17 @@ public class DapServer extends ServerBase<DapServerConfig> {
         int port = parentSocket.getSocket().getPort();
 
         LOG.infof("Creating new socket connection to %s:%d for child", host, port);
-        TransportStreams childTransportStreams;
+        TransportStreams childTransport;
         try {
-            childTransportStreams = new SocketTransportStreams(host, port);
+            childTransport = new SocketTransportStreams(host, port);
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to child debug adapter at " + host + ":" + port, e);
         }
         try {
             Launcher<IDebugProtocolServer> launcher = DSPLauncher.createClientLauncher(
                     childClient,
-                    childTransportStreams.getInputStream(),
-                    childTransportStreams.getOutputStream(),
+                    childTransport.getInputStream(),
+                    childTransport.getOutputStream(),
                     executorService,
                     consumer -> message -> {
                         if (getServerTrace() != ServerTrace.off) {
@@ -490,12 +475,13 @@ public class DapServer extends ServerBase<DapServerConfig> {
                     });
 
             launcher.startListening();
+            childTransportStreams.add(childTransport);
 
             LOG.infof("Child launcher created and listening on new connection");
             return launcher.getRemoteProxy();
         } catch (Exception e) {
             try {
-                childTransportStreams.close();
+                childTransport.close();
             } catch (Exception closeEx) {
                 e.addSuppressed(closeEx);
             }
@@ -516,7 +502,17 @@ public class DapServer extends ServerBase<DapServerConfig> {
             // Kill the server process FIRST to unblock the JSON-RPC message reader
             destroyProcess(5000, 2000);
 
-            // Then close transport streams
+            // Close child transport streams first
+            for (TransportStreams childTransport : childTransportStreams) {
+                try {
+                    childTransport.close();
+                } catch (Exception e) {
+                    LOG.debugf("Error closing child transport (expected if already closed): %s", e.getMessage());
+                }
+            }
+            childTransportStreams.clear();
+
+            // Then close parent transport streams
             if (transportStreams != null) {
                 try {
                     transportStreams.close();

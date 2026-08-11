@@ -135,7 +135,9 @@ public class DAPServerReadyTracker extends CompletableFuture<Void> {
                 }
             }
             if (!this.isDone()) {
-                LOG.warnf("Timeout waiting for DAP server socket on %s:%d", host, port);
+                String msg = String.format("Timeout waiting for DAP server socket on %s:%d", host, port);
+                LOG.warnf(msg);
+                this.completeExceptionally(new java.util.concurrent.TimeoutException(msg));
             }
         });
     }

@@ -26,10 +26,8 @@ import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
 import com.ibm.mcp.languagetools.operation.OperationTracker;
 import com.ibm.mcp.languagetools.trace.TraceMessage;
-import com.ibm.mcp.languagetools.workspace.Workspace;
 import com.ibm.mcp.languagetools.workspace.WorkspaceChangeEvent;
 import io.quarkiverse.mcp.server.runtime.ConnectionManager;
-import io.quarkiverse.mcp.server.runtime.McpConnectionBase;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -39,8 +37,6 @@ import jakarta.websocket.server.ServerEndpoint;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -213,7 +209,7 @@ public class AdminWebSocketEndpoint {
     private void sendDapTraceHistory(Session session) {
         try {
             var dapSessions = dapSessionManager.getAllSessions();
-            LOG.infof("Sending DAP trace history: %d sessions", dapSessions.size());
+            LOG.debugf("Sending DAP trace history: %d sessions", dapSessions.size());
 
             for (var dapSession : dapSessions) {
                 String serverId = dapSession.getDapServer() != null
@@ -225,33 +221,13 @@ public class AdminWebSocketEndpoint {
                 // Get both installation traces (contextId=serverId) and protocol traces (contextId=serverId#sessionId)
                 var traces = application.getDapTraceCollector().getTracesForSession(serverId, dapSession.getSessionId(), 200);
 
-                LOG.infof("Session %s: sending %d traces", dapSession.getSessionId(), traces.size());
+                LOG.debugf("Session %s: sending %d traces", dapSession.getSessionId(), traces.size());
 
                 for (var trace : traces) {
-                    // Parse composite contextId to extract serverId and sessionId
-                    String contextId = trace.contextId();
-                    String traceServerId;
-                    String traceSessionId;
-                    int hashIndex = contextId.indexOf('#');
-                    if (hashIndex >= 0) {
-                        traceServerId = contextId.substring(0, hashIndex);
-                        traceSessionId = contextId.substring(hashIndex + 1);
-                    } else {
-                        traceServerId = contextId;
-                        traceSessionId = null;
-                    }
-
-                    DapTraceWsMessage msg = new DapTraceWsMessage(
-                            trace.workspaceUri(),
-                            traceServerId,
-                            traceSessionId,
-                            trace.content(),
-                            trace.messageType()
-                    );
-                    sendToSession(session, msg);
+                    sendToSession(session, toDapTraceWsMessage(trace));
                 }
             }
-            LOG.infof("DAP trace history sent to session: %s", session.getId());
+            LOG.debugf("DAP trace history sent to session: %s", session.getId());
         } catch (Exception e) {
             LOG.errorf(e, "Failed to send DAP trace history to session: %s", session.getId());
         }
@@ -327,23 +303,7 @@ public class AdminWebSocketEndpoint {
             case LSP -> broadcast(new LspTraceWsMessage(
                     trace.workspaceUri(), trace.contextId(),
                     trace.content(), trace.messageType()));
-            case DAP -> {
-                // Parse composite contextId: "serverId#sessionId" or just "serverId" (installation)
-                String contextId = trace.contextId();
-                String serverId;
-                String sessionId;
-                int hashIndex = contextId.indexOf('#');
-                if (hashIndex >= 0) {
-                    serverId = contextId.substring(0, hashIndex);
-                    sessionId = contextId.substring(hashIndex + 1);
-                } else {
-                    serverId = contextId;
-                    sessionId = null;
-                }
-                broadcast(new DapTraceWsMessage(
-                        trace.workspaceUri(), serverId, sessionId,
-                        trace.content(), trace.messageType()));
-            }
+            case DAP -> broadcast(toDapTraceWsMessage(trace));
             case MCP -> broadcast(new McpTraceWsMessage(
                     trace.contextId(), trace.content()));
         }
@@ -535,64 +495,31 @@ public class AdminWebSocketEndpoint {
         }
     }
 
-    /**
-     * Get current workspaces (copied from AdminResource logic).
-     */
     private List<WorkspaceDTO> getCurrentWorkspaces() {
         return application.getWorkspaces()
                 .stream()
-                .map(this::toWorkspaceDTO)
+                .map(WorkspaceDTO::fromWorkspace)
                 .toList();
     }
 
-    /**
-     * Get current MCP clients (copied from McpClientsResource logic).
-     */
     private List<McpClientDTO> getCurrentMcpClients() {
-        List<McpClientDTO> clients = new ArrayList<>();
-
-        for (McpConnectionBase connection : connectionManager) {
-            var initialRequest = connection.initialRequest();
-
-            String name = "Unknown";
-            String version = null;
-            String protocolVersion = null;
-
-            if (initialRequest != null) {
-                if (initialRequest.implementation() != null) {
-                    name = initialRequest.implementation().name();
-                    version = initialRequest.implementation().version();
-                }
-                protocolVersion = initialRequest.protocolVersion().toString();
-            }
-
-            clients.add(new McpClientDTO(
-                    connection.id(),
-                    name,
-                    version,
-                    protocolVersion,
-                    null  // connectedAt not persisted
-            ));
-        }
-
-        return clients;
+        return McpClientDTO.fromConnections(connectionManager);
     }
 
-    /**
-     * Convert workspace to DTO (copied from AdminResource).
-     */
-    private WorkspaceDTO toWorkspaceDTO(Workspace workspace) {
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
-        List<WorkspaceDTO.McpClientInfo> mcpClients = workspace.getMcpClientConnections().values()
-                .stream()
-                .map(clientInfo -> new WorkspaceDTO.McpClientInfo(
-                        clientInfo.name(),
-                        formatter.format(clientInfo.connectedAt())
-                ))
-                .toList();
-
-        var uri = workspace.getNormalizedUri();
-        var fwResolved = workspace.getWorkspaceConfiguration().resolveBoolean("fileWatchers.enabled", true);
-        return new WorkspaceDTO(uri, mcpClients, fwResolved.value(), fwResolved.source().name(), workspace.isFileWatcherRunning());
+    private static DapTraceWsMessage toDapTraceWsMessage(TraceMessage trace) {
+        String contextId = trace.contextId();
+        String serverId;
+        String sessionId;
+        int hashIndex = contextId.indexOf('#');
+        if (hashIndex >= 0) {
+            serverId = contextId.substring(0, hashIndex);
+            sessionId = contextId.substring(hashIndex + 1);
+        } else {
+            serverId = contextId;
+            sessionId = null;
+        }
+        return new DapTraceWsMessage(
+                trace.workspaceUri(), serverId, sessionId,
+                trace.content(), trace.messageType());
     }
 }

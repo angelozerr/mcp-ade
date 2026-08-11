@@ -20,7 +20,6 @@ import com.ibm.mcp.languagetools.admin.dto.StatusResponse;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
-import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
@@ -65,22 +64,10 @@ public class LspAdminResource extends AbstractServerAdminResource {
     @GET
     @Path("/configs")
     public List<LspConfigDTO> listConfigs() {
-        LOG.info("listConfigs() called");
-        try {
-            var serverConfigs = application.getLspServerConfigs();
-            LOG.infof("Found %d LSP configs", serverConfigs.size());
-
-            var result = serverConfigs
-                    .stream()
-                    .map(serverDTOBuilder::buildConfig)
-                    .toList();
-
-            LOG.infof("Returning %d LSP configs", result.size());
-            return result;
-        } catch (Exception e) {
-            LOG.error("Error in listConfigs", e);
-            throw e;
-        }
+        return application.getLspServerConfigs()
+                .stream()
+                .map(serverDTOBuilder::buildConfig)
+                .toList();
     }
 
     /**
@@ -264,6 +251,7 @@ public class LspAdminResource extends AbstractServerAdminResource {
             workspace.restartLspServer(serverId, progressMonitor)
                     .whenComplete((result, error) -> {
                         if (error != null) {
+                            LOG.errorf(error, "Failed to connect server '%s' to IDE", serverId);
                             progressMonitor.setFailed(error.getMessage());
                         } else {
                             progressMonitor.setComplete();

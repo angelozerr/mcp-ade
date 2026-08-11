@@ -15,8 +15,9 @@ package com.ibm.mcp.languagetools.dap.session;
 
 import org.eclipse.lsp4j.debug.OutputEventArguments;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.LinkedBlockingDeque;
 
 /**
  * Captures and buffers program output (stdout/stderr/console) from a DAP debug session.
@@ -34,8 +35,8 @@ public class DapProgramOutput {
         }
     }
 
-    private final List<OutputLine> lines = new CopyOnWriteArrayList<>();
     private static final int MAX_LINES = 200;
+    private final LinkedBlockingDeque<OutputLine> lines = new LinkedBlockingDeque<>(MAX_LINES);
 
     /**
      * Add output from a DAP OutputEvent.
@@ -46,11 +47,10 @@ public class DapProgramOutput {
         }
 
         String category = event.getCategory() != null ? event.getCategory() : "stdout";
-        lines.add(new OutputLine(category, event.getOutput()));
+        OutputLine line = new OutputLine(category, event.getOutput());
 
-        // Keep only the last MAX_LINES
-        if (lines.size() > MAX_LINES) {
-            lines.remove(0);
+        while (!lines.offerLast(line)) {
+            lines.pollFirst();
         }
     }
 
@@ -58,13 +58,15 @@ public class DapProgramOutput {
      * Get all captured output as a single string (all categories mixed).
      */
     public String getAll() {
-        if (lines.isEmpty()) {
+        List<OutputLine> snapshot = new ArrayList<>(lines);
+        if (snapshot.isEmpty()) {
             return "";
         }
-        return lines.stream()
-            .map(OutputLine::text)
-            .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append)
-            .toString();
+        StringBuilder sb = new StringBuilder();
+        for (OutputLine line : snapshot) {
+            sb.append(line.text());
+        }
+        return sb.toString();
     }
 
     /**
@@ -72,13 +74,13 @@ public class DapProgramOutput {
      * Format: [stdout] text\n[stderr] error\n
      */
     public String getAllWithCategories() {
-        if (lines.isEmpty()) {
+        List<OutputLine> snapshot = new ArrayList<>(lines);
+        if (snapshot.isEmpty()) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
-        for (OutputLine line : lines) {
+        for (OutputLine line : snapshot) {
             if (!"stdout".equals(line.category())) {
-                // Only prefix non-stdout (stdout is default, no need to annotate)
                 sb.append("[").append(line.category()).append("] ");
             }
             sb.append(line.text());

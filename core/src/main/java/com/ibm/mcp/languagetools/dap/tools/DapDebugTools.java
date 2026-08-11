@@ -838,9 +838,9 @@ public class DapDebugTools {
             description = "Evaluate an expression in the current debug context (e.g., 'x + y', 'myFunction()').",
             structuredContent = true)
     public EvaluateResponse evaluateExpressionSync(
-            String sessionId,
-            String expression,
-            Integer frameId,
+            @ToolArg(description = "The debug session ID") String sessionId,
+            @ToolArg(description = "Expression to evaluate (e.g., 'x + y', 'myFunction()')") String expression,
+            @ToolArg(description = "Stack frame ID for context (uses top frame if not provided)", required = false) Integer frameId,
             Cancellation cancellation) {
         return tracked(buildArgs("sessionId", sessionId, "expression", expression, "frameId", frameId), () ->
                 evaluateExpression(sessionId, expression, frameId, cancellation).join());
@@ -898,11 +898,11 @@ public class DapDebugTools {
 
             // Group templates by type (launch vs attach)
             var launchTemplates = allTemplates.stream()
-                    .filter(t -> t.name.startsWith("launch."))
+                    .filter(t -> t.name().startsWith("launch."))
                     .toList();
 
             var attachTemplates = allTemplates.stream()
-                    .filter(t -> t.name.startsWith("attach."))
+                    .filter(t -> t.name().startsWith("attach."))
                     .toList();
 
             return new DebugTemplatesResult(debuggerId, launchTemplates, attachTemplates, null);

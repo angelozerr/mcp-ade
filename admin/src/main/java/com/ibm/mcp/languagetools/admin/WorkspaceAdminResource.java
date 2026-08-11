@@ -14,7 +14,7 @@
 package com.ibm.mcp.languagetools.admin;
 
 import com.ibm.mcp.languagetools.Application;
-import com.ibm.mcp.languagetools.admin.dto.ContributionDTOBuilder;
+import com.ibm.mcp.languagetools.admin.dto.DapSessionDTO;
 import com.ibm.mcp.languagetools.admin.dto.IdeSettingDTO;
 import com.ibm.mcp.languagetools.admin.dto.LspServerDTO;
 import com.ibm.mcp.languagetools.admin.dto.ServerDTOBuilder;
@@ -32,7 +32,6 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -52,9 +51,6 @@ public class WorkspaceAdminResource {
     DapSessionManager dapSessionManager;
 
     @Inject
-    ContributionDTOBuilder contributionBuilder;
-
-    @Inject
     Event<TraceLevelWsMessage> traceLevelEvent;
 
     @GET
@@ -72,19 +68,15 @@ public class WorkspaceAdminResource {
     private List<WorkspaceDTO> getCurrentWorkspaces() {
         return application.getWorkspaces()
                 .stream()
-                .map(this::toDTO)
+                .map(WorkspaceDTO::fromWorkspace)
                 .toList();
     }
 
     @GET
     @Path("/workspaces/{uri}")
     public WorkspaceDTO getWorkspace(@PathParam("uri") String uriParam) {
-        URI uri = URI.create(uriParam);
-        Workspace workspace = application.getWorkspace(uri);
-        if (workspace == null) {
-            throw new NotFoundException("Workspace not found: " + uri);
-        }
-        return toDTO(workspace);
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        return WorkspaceDTO.fromWorkspace(workspace);
     }
 
     /**
@@ -157,36 +149,11 @@ public class WorkspaceAdminResource {
      */
     @GET
     @Path("/workspaces/{uri}/dap-sessions")
-    public List<Map<String, Object>> getDapSessions(@PathParam("uri") String uriParam) {
+    public List<DapSessionDTO> getDapSessions(@PathParam("uri") String uriParam) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
         URI uri = URI.create(uriParam);
-        Workspace workspace = application.getWorkspace(uri);
-        if (workspace == null) {
-            throw new NotFoundException("Workspace not found: " + uri);
-        }
-
         return dapSessionManager.getSessionsForWorkspace(uri).stream()
-                .map(session -> {
-                    Map<String, Object> sessionInfo = new java.util.HashMap<>();
-                    sessionInfo.put("sessionId", session.getSessionId());
-                    sessionInfo.put("serverId", session.getServerConfig().getServerId());
-                    sessionInfo.put("workspaceUri", session.getWorkspace().getNormalizedUri());
-                    sessionInfo.put("language", session.getLanguage());
-                    sessionInfo.put("sessionName", session.getSessionName());
-                    sessionInfo.put("state", session.getState().name());
-                    sessionInfo.put("createdBy", session.getCreatedBy());
-                    sessionInfo.put("launchedBy", session.getLaunchedBy());
-                    sessionInfo.put("debugMode", session.isDebugMode());
-                    if (session.getCreatedAt() != null) {
-                        sessionInfo.put("createdAt", session.getCreatedAt().toString());
-                    }
-                    if (session.getLaunchedAt() != null) {
-                        sessionInfo.put("launchedAt", session.getLaunchedAt().toString());
-                    }
-                    if (session.getLaunchConfiguration() != null) {
-                        sessionInfo.put("launchConfiguration", session.getLaunchConfiguration());
-                    }
-                    return sessionInfo;
-                })
+                .map(DapSessionDTO::fromSession)
                 .toList();
     }
 
@@ -470,20 +437,4 @@ public class WorkspaceAdminResource {
         return workspace;
     }
 
-    private WorkspaceDTO toDTO(Workspace workspace) {
-        var uri = workspace.getNormalizedUri();
-
-        // Build MCP client info with timestamps
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
-        List<WorkspaceDTO.McpClientInfo> mcpClients = workspace.getMcpClientConnections().values().stream()
-                .map(clientInfo -> new WorkspaceDTO.McpClientInfo(
-                    clientInfo.name(),
-                    formatter.format(clientInfo.connectedAt())
-                ))
-                .toList();
-
-        var fwResolved = workspace.getWorkspaceConfiguration().resolveBoolean("fileWatchers.enabled", true);
-
-        return new WorkspaceDTO(uri, mcpClients, fwResolved.value(), fwResolved.source().name(), workspace.isFileWatcherRunning());
-    }
 }

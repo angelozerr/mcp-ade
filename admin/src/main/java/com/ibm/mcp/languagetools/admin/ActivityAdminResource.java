@@ -173,7 +173,6 @@ public class ActivityAdminResource {
 
             if (Cancellation.class.isAssignableFrom(type)) {
                 args[i] = cancellation;
-                argIdx++;
                 continue;
             }
             if (Progress.class.isAssignableFrom(type)) {

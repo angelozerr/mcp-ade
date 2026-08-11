@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.dap.session;
 
 import com.ibm.mcp.languagetools.dap.client.DapClient;
+import com.ibm.mcp.languagetools.dap.client.ForwardingDapEventListener;
 import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.dap.client.DapEventListener;
 import com.ibm.mcp.languagetools.dap.server.DapServer;
@@ -35,6 +36,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Represents a single debug session.
@@ -67,7 +69,7 @@ public class DapSession implements DapEventListener {
     private final DapProgramOutput programOutput; // Captures stdout/stderr from debugged program
     private final Instant createdAt; // When the session was created
 
-    private SessionState state = SessionState.CREATED;
+    private volatile SessionState state = SessionState.CREATED;
     private volatile String errorMessage;
     private boolean attachMode = false;
     private boolean debugMode = false; // Default to run mode (without debugging)
@@ -83,7 +85,7 @@ public class DapSession implements DapEventListener {
     private boolean sentTerminateRequest = false; // Track if terminate request was sent
 
     // Parent-child session support
-    private final List<DapSession> childSessions = new ArrayList<>();
+    private final AtomicInteger childSessionCounter = new AtomicInteger();
     private boolean isChildSession = false; // True if this is a child session created via startDebugging
 
     // Track which server has the active thread (for routing stackTrace/scopes/variables requests)
@@ -196,7 +198,7 @@ public class DapSession implements DapEventListener {
         // Only ONE vscode-js-debug server handles parent + all children
         // Each child gets its own DapClient but shares the same IDebugProtocolServer
 
-        String childSessionId = sessionId + "-child-" + (childSessions.size() + 1);
+        String childSessionId = sessionId + "-child-" + childSessionCounter.incrementAndGet();
         LOG.infof("Creating child debug session: %s", childSessionId);
 
         // Create a new DapClient for the child (like lsp4ij)
@@ -207,97 +209,15 @@ public class DapSession implements DapEventListener {
         // The launcher will share the same transport streams but route messages correctly
         IDebugProtocolServer childDebugServer = this.dapServer.createChildLauncher(childClient);
 
-        // IMPORTANT: Like lsp4ij DAPDebugProcess, child clients forward events to the parent session
-        // But we need to know WHICH server to use for stackTrace/scopes/variables
-        // So we wrap the events to capture the child's debug server
+        // Forward all events to the parent session, but intercept onStopped
+        // to track which server has the active thread
         final IDebugProtocolServer childServer = childDebugServer;
-        childClient.setEventListener(new DapEventListener() {
-            @Override
-            public void onInitialized() {
-                DapSession.this.onInitialized();
-            }
-
+        childClient.setEventListener(new ForwardingDapEventListener(DapSession.this) {
             @Override
             public void onStopped(StoppedEventArguments event) {
-                // Like lsp4ij: when stopped arrives, store THIS client's server as the active one
                 LOG.infof("Child session %s stopped - setting as active server", childSessionId);
                 activeServer = childServer;
-                DapSession.this.onStopped(event);
-            }
-
-            @Override
-            public void onContinued(ContinuedEventArguments event) {
-                DapSession.this.onContinued(event);
-            }
-
-            @Override
-            public void onExited(ExitedEventArguments event) {
-                DapSession.this.onExited(event);
-            }
-
-            @Override
-            public void onTerminated(TerminatedEventArguments event) {
-                DapSession.this.onTerminated(event);
-            }
-
-            @Override
-            public void onThread(ThreadEventArguments event) {
-                DapSession.this.onThread(event);
-            }
-
-            @Override
-            public void onOutput(OutputEventArguments event) {
-                DapSession.this.onOutput(event);
-            }
-
-            @Override
-            public void onBreakpoint(BreakpointEventArguments event) {
-                DapSession.this.onBreakpoint(event);
-            }
-
-            @Override
-            public void onModule(ModuleEventArguments event) {
-                DapSession.this.onModule(event);
-            }
-
-            @Override
-            public void onLoadedSource(LoadedSourceEventArguments event) {
-                DapSession.this.onLoadedSource(event);
-            }
-
-            @Override
-            public void onProcess(ProcessEventArguments event) {
-                DapSession.this.onProcess(event);
-            }
-
-            @Override
-            public void onCapabilities(CapabilitiesEventArguments event) {
-                DapSession.this.onCapabilities(event);
-            }
-
-            @Override
-            public void onProgressStart(ProgressStartEventArguments event) {
-                DapSession.this.onProgressStart(event);
-            }
-
-            @Override
-            public void onProgressUpdate(ProgressUpdateEventArguments event) {
-                DapSession.this.onProgressUpdate(event);
-            }
-
-            @Override
-            public void onProgressEnd(ProgressEndEventArguments event) {
-                DapSession.this.onProgressEnd(event);
-            }
-
-            @Override
-            public void onInvalidated(InvalidatedEventArguments event) {
-                DapSession.this.onInvalidated(event);
-            }
-
-            @Override
-            public void onMemory(MemoryEventArguments event) {
-                DapSession.this.onMemory(event);
+                super.onStopped(event);
             }
         });
 
@@ -370,28 +290,11 @@ public class DapSession implements DapEventListener {
     /**
      * Track a CompletableFuture so it can be cancelled if the session terminates.
      * Automatically removes the future from tracking when it completes.
-     *
-     * @param future the future to track
-     * @return the same future for chaining
      */
     private <T> CompletableFuture<T> trackFuture(CompletableFuture<T> future) {
-        return trackFuture(future, null);
-    }
-
-    /**
-     * Track a CompletableFuture so it can be cancelled if the session terminates.
-     * Automatically removes the future from tracking when it completes.
-     *
-     * @param future the future to track
-     * @return the same future for chaining
-     */
-    private <T> CompletableFuture<T> trackFuture(CompletableFuture<T> future, ProgressMonitor progressMonitor) {
-        CompletableFuture<T> trackedFuture = future;
-
-        pendingRequests.add(trackedFuture);
-        trackedFuture.whenComplete((result, error) -> pendingRequests.remove(trackedFuture));
-
-        return trackedFuture;
+        pendingRequests.add(future);
+        future.whenComplete((result, error) -> pendingRequests.remove(future));
+        return future;
     }
 
     /**
@@ -615,7 +518,7 @@ public class DapSession implements DapEventListener {
                             }
                         }
                     });
-        }), progressMonitor);
+        }));
     }
 
     /**
@@ -653,19 +556,18 @@ public class DapSession implements DapEventListener {
      * Follows lsp4ij pattern: disconnect first, then stop server, handling errors gracefully.
      */
     public CompletableFuture<Void> terminate() {
-        LOG.infof("Terminating DAP session: %s (with %d child sessions)", sessionId, childSessions.size());
+        LOG.infof("Terminating DAP session: %s", sessionId);
 
         // Cancel all pending requests FIRST to unblock any waiting .join() calls
         cancelAllPendingRequests();
 
-        // First, terminate all child sessions
-        List<CompletableFuture<Void>> childTerminations = new ArrayList<>();
-        for (DapSession child : childSessions) {
-            childTerminations.add(child.terminate());
-        }
+        // First, terminate all child sessions via DapClient
+        CompletableFuture<Void> childTermination = dapServer.getDapClient() != null
+                ? dapServer.getDapClient().terminateChildSessions()
+                : CompletableFuture.completedFuture(null);
 
         // DO NOT track terminate() itself - it should never be cancelled
-        return CompletableFuture.allOf(childTerminations.toArray(new CompletableFuture[0]))
+        return childTermination
                 .thenCompose(v -> {
                     // Then terminate this session
                     IDebugProtocolServer server = dapServer.getDebugServer();
@@ -703,7 +605,6 @@ public class DapSession implements DapEventListener {
                 .handle((result, error) -> {
                     // Always mark as terminated and clean up
                     setState(SessionState.TERMINATED);
-                    childSessions.clear();
 
                     if (error != null) {
                         LOG.errorf(error, "Error during session termination: %s", sessionId);
@@ -745,17 +646,7 @@ public class DapSession implements DapEventListener {
 
         LOG.infof("Sending %d breakpoint(s) for file: %s", fileBreakpoints.size(), file);
 
-        // Convert to SourceBreakpoint[]
-        SourceBreakpoint[] sourceBps = fileBreakpoints.stream()
-                .map(info -> {
-                    SourceBreakpoint bp = new SourceBreakpoint();
-                    bp.setLine(info.line);
-                    if (info.condition != null && !info.condition.isEmpty()) {
-                        bp.setCondition(info.condition);
-                    }
-                    return bp;
-                })
-                .toArray(SourceBreakpoint[]::new);
+        SourceBreakpoint[] sourceBps = toSourceBreakpoints(fileBreakpoints);
 
         // Resolve file path to absolute if needed
         String absolutePath = resolveFilePath(file);
@@ -790,6 +681,19 @@ public class DapSession implements DapEventListener {
                     LOG.errorf(t, "Failed to send breakpoints for file: %s", file);
                     return null;
                 });
+    }
+
+    private static SourceBreakpoint[] toSourceBreakpoints(List<BreakpointInfo> breakpointInfos) {
+        return breakpointInfos.stream()
+                .map(info -> {
+                    SourceBreakpoint bp = new SourceBreakpoint();
+                    bp.setLine(info.line);
+                    if (info.condition != null && !info.condition.isEmpty()) {
+                        bp.setCondition(info.condition);
+                    }
+                    return bp;
+                })
+                .toArray(SourceBreakpoint[]::new);
     }
 
     /**
@@ -842,17 +746,7 @@ public class DapSession implements DapEventListener {
             String file = entry.getKey();
             List<BreakpointInfo> fileBps = entry.getValue();
 
-            // Convert to SourceBreakpoint[]
-            SourceBreakpoint[] sourceBps = fileBps.stream()
-                    .map(info -> {
-                        SourceBreakpoint bp = new SourceBreakpoint();
-                        bp.setLine(info.line);
-                        if (info.condition != null && !info.condition.isEmpty()) {
-                            bp.setCondition(info.condition);
-                        }
-                        return bp;
-                    })
-                    .toArray(SourceBreakpoint[]::new);
+            SourceBreakpoint[] sourceBps = toSourceBreakpoints(fileBps);
 
             // Build setBreakpoints request
             SetBreakpointsArguments args = new SetBreakpointsArguments();

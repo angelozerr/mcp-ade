@@ -86,7 +86,7 @@ public class DapSessionManager {
         }
 
         // Find DAP server config
-        DapServerConfig serverConfig = findDapServerById(workspace, dapServerId);
+        DapServerConfig serverConfig = findDapServerById(dapServerId);
         if (serverConfig == null) {
             throw new IllegalArgumentException("DAP server not found: " + dapServerId);
         }
@@ -327,17 +327,8 @@ public class DapSessionManager {
 
     // ========== Helper Methods ==========
 
-    /**
-     * Find DAP server by ID.
-     */
-    private DapServerConfig findDapServerById(Workspace workspace, String dapServerId) {
-        // First check global DAP servers
-        DapServerConfig config = application.getDapServerConfig(dapServerId);
-        if (config != null) {
-            return config;
-        }
-
-        return null;
+    private DapServerConfig findDapServerById(String dapServerId) {
+        return application.getDapServerConfig(dapServerId);
     }
 
     /**
@@ -354,8 +345,6 @@ public class DapSessionManager {
         // Fallback: derive from server ID
         return config.getServerId();
     }
-
-    // ========== Helper Methods ==========
 
     /**
      * Fire STATE_CHANGED event (with null check).
@@ -410,6 +399,7 @@ public class DapSessionManager {
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                 .thenAccept(v -> {
                     sessions.clear();
+                    sessionStatusListeners.clear();
                     LOG.info("All debug sessions shut down");
                 });
     }

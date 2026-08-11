@@ -21,11 +21,8 @@ import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * REST endpoint for all DAP-related admin operations.
@@ -62,7 +59,7 @@ public class DapAdminResource extends AbstractServerAdminResource {
         return application.getDapServerConfigs()
                 .stream()
                 .map(this::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -90,24 +87,6 @@ public class DapAdminResource extends AbstractServerAdminResource {
             contributionBuilder.buildContributions(config),
             extensionRegistry.isServerEnabled(config.getServerId())
         );
-    }
-
-    // ========== DAP Launch Configuration Templates ==========
-
-    /**
-     * Get launch configuration templates for a DAP server.
-     */
-    @GET
-    @Path("/configs/{serverId}/templates")
-    public Response getTemplates(@PathParam("serverId") String serverId) {
-        DapServerConfig serverConfig = application.getDapServerConfig(serverId);
-
-        if (serverConfig == null) {
-            throw new NotFoundException("DAP server not found: " + serverId);
-        }
-
-        var templates = serverConfig.getConfigurationTemplates();
-        return Response.ok(Map.of("serverId", serverId, "templates", templates)).build();
     }
 
 }

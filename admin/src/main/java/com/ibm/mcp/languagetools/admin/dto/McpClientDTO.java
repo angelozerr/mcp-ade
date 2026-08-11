@@ -13,7 +13,11 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin.dto;
 
+import io.quarkiverse.mcp.server.runtime.McpConnectionBase;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @RegisterForReflection
 public record McpClientDTO(
@@ -23,4 +27,30 @@ public record McpClientDTO(
         String protocolVersion, // MCP protocol version
         String connectedAt      // ISO timestamp
 ) {
+
+    public static McpClientDTO fromConnection(McpConnectionBase connection) {
+        var initialRequest = connection.initialRequest();
+
+        String name = "Unknown";
+        String version = null;
+        String protocolVersion = null;
+
+        if (initialRequest != null) {
+            if (initialRequest.implementation() != null) {
+                name = initialRequest.implementation().name();
+                version = initialRequest.implementation().version();
+            }
+            protocolVersion = initialRequest.protocolVersion().toString();
+        }
+
+        return new McpClientDTO(connection.id(), name, version, protocolVersion, null);
+    }
+
+    public static List<McpClientDTO> fromConnections(Iterable<McpConnectionBase> connections) {
+        List<McpClientDTO> clients = new ArrayList<>();
+        for (McpConnectionBase connection : connections) {
+            clients.add(fromConnection(connection));
+        }
+        return clients;
+    }
 }

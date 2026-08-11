@@ -56,7 +56,8 @@ public class DownloadUtils {
     public static DownloadResult download(String downloadUrl,
                                           Path downloadedFile,
                                           ProgressMonitor progressMonitor) throws IOException {
-        try (HttpClient client = HttpClient.newHttpClient()) {
+        HttpClient client = HttpClient.newHttpClient();
+        try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(downloadUrl))
                     .build();

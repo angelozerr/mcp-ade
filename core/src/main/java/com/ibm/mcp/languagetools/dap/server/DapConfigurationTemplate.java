@@ -21,28 +21,10 @@ import java.util.Map;
  * Templates provide pre-configured launch/attach configurations for debug adapters.
  * The filename convention is: {@code launch.<name>.json} or {@code attach.<name>.json}
  * </p>
+ *
+ * @param name  Template name derived from filename (e.g., "launch.program", "attach.port").
+ * @param label Display label from JSON "name" field, or fallback to filename.
+ * @param body  The complete DAP configuration object (type, request, program, port, etc.).
  */
-public class DapConfigurationTemplate {
-
-    /**
-     * Template name derived from filename (e.g., "launch.program", "attach.port").
-     */
-    public String name;
-
-    /**
-     * Display label from JSON "name" field, or fallback to filename.
-     */
-    public String label;
-
-    /**
-     * The complete DAP configuration object.
-     * Contains fields like: type, request, program, port, etc.
-     */
-    public Map<String, Object> body;
-
-    public DapConfigurationTemplate(String name, String label, Map<String, Object> body) {
-        this.name = name;
-        this.label = label;
-        this.body = body;
-    }
+public record DapConfigurationTemplate(String name, String label, Map<String, Object> body) {
 }

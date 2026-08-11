@@ -32,6 +32,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Python extension (debugpy DAP config) -->
+        <dependency>
+            <groupId>com.ibm.mcp</groupId>
+            <artifactId>python-extension</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Quarkus MCP Server Test Framework -->
         <dependency>
             <groupId>io.quarkiverse.mcp</groupId>

@@ -1,0 +1,50 @@
+/*******************************************************************************
+ * Copyright (c) 2026 IBM Corporation and others.
+ *
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *     Angelo ZERR - initial API and implementation
+ *******************************************************************************/
+package com.ibm.mcp.languagetools.admin.dto;
+
+import com.ibm.mcp.languagetools.extension.Extension;
+import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
+import java.util.List;
+
+@RegisterForReflection
+public record ExtensionDTO(
+        String id,
+        String source,
+        boolean enabled,
+        List<ServerInfo> lspServers,
+        List<ServerInfo> dapServers
+) {
+
+    public record ServerInfo(String id, String name, boolean enabled) {}
+
+    public static ExtensionDTO fromExtension(Extension ext, ExtensionRegistry registry) {
+        List<ServerInfo> lspServers = ext.getLspServerConfigs().stream()
+                .map(c -> new ServerInfo(c.getServerId(), c.getName(), registry.isServerEnabled(c.getServerId())))
+                .toList();
+
+        List<ServerInfo> dapServers = ext.getDapServerConfigs().stream()
+                .map(c -> new ServerInfo(c.getServerId(), c.getName(), registry.isServerEnabled(c.getServerId())))
+                .toList();
+
+        return new ExtensionDTO(
+                ext.getId(),
+                ext.getSource().name(),
+                registry.isExtensionEnabled(ext.getId()),
+                lspServers,
+                dapServers
+        );
+    }
+}
