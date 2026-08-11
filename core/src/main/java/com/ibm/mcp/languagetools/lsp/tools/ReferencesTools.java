@@ -52,7 +52,7 @@ public class ReferencesTools {
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new ReferencesStrategy(languageRegistry),
                 cancellation,

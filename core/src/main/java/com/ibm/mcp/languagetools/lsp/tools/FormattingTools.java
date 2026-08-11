@@ -50,7 +50,7 @@ public class FormattingTools {
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
         FormattingRequestParams params = new FormattingRequestParams(cwd, uri, tabSize, insertSpaces, apply != null && apply);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new FormattingStrategy(languageRegistry),
                 cancellation,
@@ -75,7 +75,7 @@ public class FormattingTools {
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
         RangeFormattingRequestParams params = new RangeFormattingRequestParams(cwd, uri, tabSize, insertSpaces, apply != null && apply, startLine, startCharacter, endLine, endCharacter);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new RangeFormattingStrategy(languageRegistry),
                 cancellation,

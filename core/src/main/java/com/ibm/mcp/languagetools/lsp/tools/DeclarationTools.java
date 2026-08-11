@@ -52,7 +52,7 @@ public class DeclarationTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new DeclarationStrategy(languageRegistry),
                 cancellation,

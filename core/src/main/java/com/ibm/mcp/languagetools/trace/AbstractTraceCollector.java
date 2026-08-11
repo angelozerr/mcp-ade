@@ -100,8 +100,7 @@ public abstract class AbstractTraceCollector implements TraceCollector {
 
     protected List<TraceMessage> filterTraces(Predicate<TraceMessage> predicate, int limit) {
         var filtered = traces.stream().filter(predicate).toList();
-        int skip = Math.max(0, filtered.size() - limit);
-        return filtered.stream().skip(skip).toList();
+        return filtered.subList(Math.max(0, filtered.size() - limit), filtered.size());
     }
 
     @Override

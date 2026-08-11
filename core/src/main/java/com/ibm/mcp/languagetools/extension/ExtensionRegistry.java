@@ -42,7 +42,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -582,7 +581,7 @@ public class ExtensionRegistry {
     public Collection<LspServerConfig> getAllLspServerConfigs() {
         return extensions.values().stream()
                 .flatMap(ext -> ext.getLspServerConfigs().stream())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -593,7 +592,7 @@ public class ExtensionRegistry {
                 .filter(e -> isExtensionEnabled(e.getKey()))
                 .flatMap(e -> e.getValue().getLspServerConfigs().stream())
                 .filter(c -> isServerEnabled(c.getServerId()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -602,7 +601,7 @@ public class ExtensionRegistry {
     public Collection<DapServerConfig> getAllDapServerConfigs() {
         return extensions.values().stream()
                 .flatMap(ext -> ext.getDapServerConfigs().stream())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -613,7 +612,7 @@ public class ExtensionRegistry {
                 .filter(e -> isExtensionEnabled(e.getKey()))
                 .flatMap(e -> e.getValue().getDapServerConfigs().stream())
                 .filter(c -> isServerEnabled(c.getServerId()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public LspServerConfig getLspServerConfig(String serverId) {

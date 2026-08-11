@@ -22,16 +22,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-final class LspJsonFormatter {
+public final class LspJsonFormatter {
 
-    static final String EMPTY_ARRAY = "[]";
+    public static final String EMPTY_ARRAY = "[]";
 
     private static final Gson GSON = new Gson();
 
     private LspJsonFormatter() {
     }
 
-    static String toJson(Object obj) {
+    public static String toJson(Object obj) {
         return GSON.toJson(obj);
     }
 
@@ -143,7 +143,7 @@ final class LspJsonFormatter {
         );
     }
 
-    static Map<String, Object> textEditsResult(List<TextEdit> edits, boolean applied) {
+    public static Map<String, Object> textEditsResult(List<TextEdit> edits, boolean applied) {
         return map(
                 "applied", applied,
                 "edits", edits.stream().map(LspJsonFormatter::textEdit).toList()

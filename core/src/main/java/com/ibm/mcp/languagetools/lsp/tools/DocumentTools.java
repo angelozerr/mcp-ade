@@ -79,7 +79,7 @@ public class DocumentTools {
             throw new ToolException("No language server found for: " + fileUri);
         }
         List<CompletableFuture<String>> futures = servers.stream()
-                .map(server -> server.waitUntilReady()
+                .map(server -> server.waitForReady()
                         .thenApply(v -> {
                             server.openFileExplicitly(fileUri, languageId);
                             return server.getConfig().getName();

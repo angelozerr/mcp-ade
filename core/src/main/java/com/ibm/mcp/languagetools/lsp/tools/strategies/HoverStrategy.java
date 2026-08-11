@@ -66,7 +66,7 @@ public class HoverStrategy extends FilePositionBasedStrategy<HoverParams, Hover>
                 .map(this::extractContent)
                 .filter(s -> s != null && !s.isEmpty())
                 .map(s -> UriUtils.stripFileUriPrefix(s, cwdUri))
-                .collect(Collectors.toList());
+                .toList();
 
         if (contents.isEmpty()) {
             return formatNoResultFound(params);

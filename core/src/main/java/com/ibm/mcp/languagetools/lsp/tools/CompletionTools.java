@@ -53,7 +53,7 @@ public class CompletionTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new CompletionStrategy(languageRegistry, maxResults),
                 cancellation,

@@ -50,7 +50,7 @@ public class TypeHierarchyTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new TypeHierarchySupertypesStrategy(languageRegistry),
                 cancellation,
@@ -71,7 +71,7 @@ public class TypeHierarchyTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new TypeHierarchySubtypesStrategy(languageRegistry),
                 cancellation,

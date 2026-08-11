@@ -30,7 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * MCP tools for extension management: list, add, remove, enable, disable.
@@ -66,7 +65,7 @@ public class ExtensionTools {
                             s.put("enabled", registry.isServerEnabled(c.getServerId()));
                             return s;
                         })
-                        .collect(Collectors.toList());
+                        .toList();
                 entry.put("lspServers", lspServers);
 
                 List<Map<String, Object>> dapServers = ext.getDapServerConfigs().stream()
@@ -77,7 +76,7 @@ public class ExtensionTools {
                             s.put("enabled", registry.isServerEnabled(c.getServerId()));
                             return s;
                         })
-                        .collect(Collectors.toList());
+                        .toList();
                 entry.put("dapServers", dapServers);
 
                 result.add(entry);
@@ -106,9 +105,9 @@ public class ExtensionTools {
             result.put("success", true);
             result.put("extensionId", extension.getId());
             result.put("lspServers", extension.getLspServerConfigs().stream()
-                    .map(LspServerConfig::getServerId).collect(Collectors.toList()));
+                    .map(LspServerConfig::getServerId).toList());
             result.put("dapServers", extension.getDapServerConfigs().stream()
-                    .map(DapServerConfig::getServerId).collect(Collectors.toList()));
+                    .map(DapServerConfig::getServerId).toList());
             return result;
         } catch (Exception e) {
             LOG.error("Failed to add extension", e);

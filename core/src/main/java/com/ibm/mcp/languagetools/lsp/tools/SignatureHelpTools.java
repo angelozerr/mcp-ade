@@ -52,7 +52,7 @@ public class SignatureHelpTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new SignatureHelpStrategy(languageRegistry),
                 cancellation,

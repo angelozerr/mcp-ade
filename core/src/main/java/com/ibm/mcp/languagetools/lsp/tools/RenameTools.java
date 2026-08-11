@@ -49,7 +49,7 @@ public class RenameTools {
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
         RenameRequestParams params = new RenameRequestParams(cwd, uri, line, character, newName);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new RenameStrategy(languageRegistry),
                 cancellation,

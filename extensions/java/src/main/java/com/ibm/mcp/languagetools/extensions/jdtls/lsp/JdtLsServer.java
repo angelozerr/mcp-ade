@@ -339,6 +339,8 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             return;
         }
         LOG.infof("Contributor '%s' installed in same workspace, reloading bundles", config.getServerId());
+        getWorkspace().getApplication().getContributionManager()
+                .invalidateContributionCache(getId(), JdtLsContributes.BUNDLES);
         reloadBundles()
                 .exceptionally(error -> {
                     LOG.errorf(error, "Failed to reload bundles into JDT.LS");

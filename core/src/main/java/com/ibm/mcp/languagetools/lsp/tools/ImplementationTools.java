@@ -52,7 +52,7 @@ public class ImplementationTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new ImplementationStrategy(languageRegistry),
                 cancellation,

@@ -50,7 +50,7 @@ public class CallHierarchyTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new CallHierarchyIncomingCallsStrategy(languageRegistry),
                 cancellation,
@@ -71,7 +71,7 @@ public class CallHierarchyTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new CallHierarchyOutgoingCallsStrategy(languageRegistry),
                 cancellation,

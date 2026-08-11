@@ -52,7 +52,7 @@ public class HoverTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new HoverStrategy(languageRegistry),
                 cancellation,

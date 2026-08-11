@@ -52,7 +52,7 @@ public class TypeDefinitionTools {
             Progress progress) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new TypeDefinitionStrategy(languageRegistry),
                 cancellation,

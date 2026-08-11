@@ -48,7 +48,7 @@ public class InlayHintTools {
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
         InlayHintRequestParams params = new InlayHintRequestParams(cwd, uri, startLine, startCharacter, endLine, endCharacter);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new InlayHintStrategy(languageRegistry),
                 cancellation,

@@ -56,26 +56,15 @@ public class DownloadUtils {
     public static DownloadResult download(String downloadUrl,
                                           Path downloadedFile,
                                           ProgressMonitor progressMonitor) throws IOException {
-        HttpClient client = HttpClient.newHttpClient();
+        HttpClient client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(downloadUrl))
                     .build();
 
             HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-
-            // Handle redirects (e.g., Eclipse downloads return 302)
-            if (response.statusCode() == 301 || response.statusCode() == 302 ||
-                response.statusCode() == 307 || response.statusCode() == 308) {
-                String redirectUrl = response.headers().firstValue("Location").orElse(null);
-                if (redirectUrl != null) {
-                    LOG.infof("Following redirect to: %s", redirectUrl);
-                    HttpRequest redirectRequest = HttpRequest.newBuilder()
-                            .uri(URI.create(redirectUrl))
-                            .build();
-                    response = client.send(redirectRequest, HttpResponse.BodyHandlers.ofInputStream());
-                }
-            }
 
             if (response.statusCode() != 200) {
                 throw new IOException("Download failed with status " + response.statusCode() + ": " + downloadUrl);
@@ -118,6 +107,14 @@ public class DownloadUtils {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Download interrupted", e);
+        } finally {
+            // HttpClient implements AutoCloseable only in Java 21+
+            if (client instanceof AutoCloseable) {
+                try {
+                    ((AutoCloseable) client).close();
+                } catch (Exception ignored) {
+                }
+            }
         }
     }
 }

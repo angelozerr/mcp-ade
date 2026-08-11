@@ -656,44 +656,8 @@ public class Workspace {
 
     public CompletableFuture<String> refreshWorkspace(String taskId) {
         String workspaceName = rootPath.getFileName().toString();
-        String title = "Refresh " + workspaceName;
-        ProgressBroadcaster broadcaster = application.getProgressBroadcaster();
-
-        if (broadcaster != null) {
-            broadcaster.taskRunning(taskId, normalizedRootUriString, title, 0.0, "Refreshing...");
-        }
-
-        List<CompletableFuture<String>> futures = new ArrayList<>();
-        for (LspServer server : lspServers.values()) {
-            if (isServerStarted(server)) {
-                futures.add(server.refreshWorkspace());
-            }
-        }
-        if (futures.isEmpty()) {
-            if (broadcaster != null) {
-                broadcaster.taskCompleted(taskId, normalizedRootUriString, title);
-            }
-            return CompletableFuture.completedFuture("No ready servers");
-        }
-
-        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                .thenApply(v -> {
-                    String result = futures.stream()
-                            .map(f -> f.getNow(""))
-                            .filter(s -> !s.isEmpty())
-                            .reduce((a, b) -> a + "\n" + b)
-                            .orElse("OK");
-                    if (broadcaster != null) {
-                        broadcaster.taskCompleted(taskId, normalizedRootUriString, title);
-                    }
-                    return result;
-                })
-                .exceptionally(error -> {
-                    if (broadcaster != null) {
-                        broadcaster.taskFailed(taskId, normalizedRootUriString, title, error.getMessage());
-                    }
-                    return "Refresh failed: " + error.getMessage();
-                });
+        return executeOnServers(taskId, "Refresh " + workspaceName, "Refreshing...",
+                LspServer::refreshWorkspace, "Refresh");
     }
 
     public CompletableFuture<String> buildWorkspace() {
@@ -704,16 +668,23 @@ public class Workspace {
         boolean fullBuild = needsFullBuild;
         String workspaceName = rootPath.getFileName().toString();
         String title = (fullBuild ? "Full Build " : "Build ") + workspaceName;
+        return executeOnServers(taskId, title, "Building...",
+                server -> server.buildWorkspace(fullBuild), "Build");
+    }
+
+    private CompletableFuture<String> executeOnServers(String taskId, String title, String progressMessage,
+                                                       java.util.function.Function<LspServer, CompletableFuture<String>> serverAction,
+                                                       String operationName) {
         ProgressBroadcaster broadcaster = application.getProgressBroadcaster();
 
         if (broadcaster != null) {
-            broadcaster.taskRunning(taskId, normalizedRootUriString, title, 0.0, "Building...");
+            broadcaster.taskRunning(taskId, normalizedRootUriString, title, 0.0, progressMessage);
         }
 
         List<CompletableFuture<String>> futures = new ArrayList<>();
         for (LspServer server : lspServers.values()) {
             if (isServerStarted(server)) {
-                futures.add(server.buildWorkspace(fullBuild));
+                futures.add(serverAction.apply(server));
             }
         }
         if (futures.isEmpty()) {
@@ -739,7 +710,7 @@ public class Workspace {
                     if (broadcaster != null) {
                         broadcaster.taskFailed(taskId, normalizedRootUriString, title, error.getMessage());
                     }
-                    return "Build failed: " + error.getMessage();
+                    return operationName + " failed: " + error.getMessage();
                 });
     }
 

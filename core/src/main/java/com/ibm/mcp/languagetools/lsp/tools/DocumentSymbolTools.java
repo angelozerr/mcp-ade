@@ -45,7 +45,7 @@ public class DocumentSymbolTools {
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
         FileUriRequestParams params = new FileUriRequestParams(cwd, uri);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new DocumentSymbolStrategy(languageRegistry),
                 cancellation,

@@ -61,6 +61,9 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 | `get_type_hierarchy_subtypes` | Get subtypes (child classes/implementations) for a type |
 | `get_code_lenses` | Get code lenses (run test, reference counts, etc.) |
 | `get_inlay_hints` | Get inlay hints (inferred types, parameter names) |
+| `insert_before_symbol` | Insert code before a symbol identified by name path (e.g., `MyClass/myMethod`) |
+| `insert_after_symbol` | Insert code after a symbol identified by name path |
+| `replace_symbol_body` | Replace the entire body of a symbol identified by name path |
 | `apply_workspace_edit` | Apply text edits to a file on disk |
 | `open_document` / `close_document` | Keep a file open for multiple LSP operations |
 

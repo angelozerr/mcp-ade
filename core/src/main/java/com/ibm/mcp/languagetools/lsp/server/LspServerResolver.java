@@ -25,7 +25,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /**
  * Resolves LSP servers for a given file with optional filtering.
@@ -73,7 +72,7 @@ public class LspServerResolver {
                             .stream()
                             .filter(server -> server.getConfig().canHandle(fileUri, languageId, basePath))
                             .filter(filter)
-                            .collect(Collectors.toList());
+                            .toList();
                 });
     }
 
@@ -94,7 +93,7 @@ public class LspServerResolver {
                 workspace.getLspServers()
                         .stream()
                         .filter(filter)
-                        .collect(Collectors.toList())
+                        .toList()
         );
     }
 }

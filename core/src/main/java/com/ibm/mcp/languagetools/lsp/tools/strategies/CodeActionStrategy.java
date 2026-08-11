@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 public class CodeActionStrategy
         extends DidOpenBasedStrategy<FilePositionRequestParams, CodeActionParams, List<Either<Command, CodeAction>>> {
@@ -111,7 +110,7 @@ public class CodeActionStrategy
         }
         return diagnostics.stream()
                 .filter(d -> containsPosition(d.getRange(), pos))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private boolean containsPosition(Range range, Position pos) {

@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class ContributionManager {
@@ -35,10 +36,23 @@ public class ContributionManager {
 
     private final Application application;
     private final PathManager pathManager;
+    private final ConcurrentHashMap<String, List<String>> resolvedContributionsCache = new ConcurrentHashMap<>();
 
     ContributionManager(Application application) {
         this.application = application;
         this.pathManager = application.getPathManager();
+    }
+
+    private static String cacheKey(String contributeServerId, String contributionName) {
+        return contributeServerId + ":" + contributionName;
+    }
+
+    public void invalidateContributionCache(String contributeServerId, String contributionName) {
+        resolvedContributionsCache.remove(cacheKey(contributeServerId, contributionName));
+    }
+
+    public void invalidateAllCaches() {
+        resolvedContributionsCache.clear();
     }
 
     public static class ContributionResult {
@@ -60,10 +74,21 @@ public class ContributionManager {
     }
 
     public List<String> extractFilesFromContribution(String contributeServerId, String contributionName) {
+        String key = cacheKey(contributeServerId, contributionName);
+        List<String> cached = resolvedContributionsCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
         return extractFilesFromContributionWithStatus(contributeServerId, contributionName).getResolvedFiles();
     }
 
     public ContributionResult extractFilesFromContributionWithStatus(String contributeServerId, String contributionName) {
+        String key = cacheKey(contributeServerId, contributionName);
+        List<String> cached = resolvedContributionsCache.get(key);
+        if (cached != null) {
+            return new ContributionResult(cached, List.of());
+        }
+
         List<String> resolvedFiles = new ArrayList<>();
         List<ServerConfigBase> uninstalledContributors = new ArrayList<>();
         for (var serverConfig : application.getLspServerConfigs()) {
@@ -72,6 +97,11 @@ public class ContributionManager {
         for (var serverConfig : application.getDapServerConfigs()) {
             extractFilesFromContribution(contributeServerId, contributionName, serverConfig, resolvedFiles, uninstalledContributors);
         }
+
+        if (uninstalledContributors.isEmpty() && !resolvedFiles.isEmpty()) {
+            resolvedContributionsCache.put(key, List.copyOf(resolvedFiles));
+        }
+
         return new ContributionResult(resolvedFiles, uninstalledContributors);
     }
 
@@ -115,28 +145,22 @@ public class ContributionManager {
      * This combines extraction + resolution in one step for efficiency.
      */
     private List<String> extractAndResolve(ServerConfigBase contributorConfig, String bundlePattern) {
-        // 1. Extract from resources to filesystem (if not already extracted)
-        extractBundleFromResources(contributorConfig, bundlePattern);
-
-        // 2. Resolve paths from serverHome (filesystem)
-        return resolveBundlesFromServerHome(contributorConfig, bundlePattern);
+        String normalizedPattern = bundlePattern.startsWith("./") ? bundlePattern.substring(2) : bundlePattern;
+        extractBundleFromResources(contributorConfig, normalizedPattern);
+        return resolveBundlesFromServerHome(contributorConfig, normalizedPattern);
     }
 
     /**
      * Resolve bundles from serverHome (installed directory).
      */
-    private List<String> resolveBundlesFromServerHome(ServerConfigBase contributorConfig, String bundlePattern) {
+    private List<String> resolveBundlesFromServerHome(ServerConfigBase contributorConfig, String normalizedPath) {
         List<String> resolved = new ArrayList<>();
 
-        // Get contributor server's home directory
         Path contributorHome = contributorConfig.getServerHome();
         if (contributorHome == null || !Files.exists(contributorHome)) {
             LOG.debugf("Contributor server home not found: %s (looking for installed bundles)", contributorConfig.getServerId());
             return resolved;
         }
-
-        // Resolve path (remove leading ./)
-        String normalizedPath = bundlePattern.startsWith("./") ? bundlePattern.substring(2) : bundlePattern;
 
         // Check for wildcards
         if (normalizedPath.contains("*") || normalizedPath.contains("?")) {
@@ -187,11 +211,7 @@ public class ContributionManager {
     /**
      * Extract a bundle (or bundle directory) from resources to filesystem.
      */
-    private void extractBundleFromResources(ServerConfigBase contributorConfig, String bundlePattern) {
-        // Normalize path (remove leading ./)
-        String normalizedPath = bundlePattern.startsWith("./") ? bundlePattern.substring(2) : bundlePattern;
-
-        // Target directory on filesystem
+    private void extractBundleFromResources(ServerConfigBase contributorConfig, String normalizedPath) {
         Path targetServerHome = contributorConfig.getServerHome();
 
         try {
@@ -217,7 +237,7 @@ public class ContributionManager {
             }
 
         } catch (IOException e) {
-            LOG.warnf("Failed to extract bundle %s from resources: %s", bundlePattern, e.getMessage());
+            LOG.warnf("Failed to extract bundle %s from resources: %s", normalizedPath, e.getMessage());
         }
     }
 
@@ -225,6 +245,9 @@ public class ContributionManager {
      * Extract a single file from resources to filesystem.
      */
     private void extractResourceFile(String resourcePath, Path targetPath) throws IOException {
+        if (Files.exists(targetPath)) {
+            return;
+        }
         try (InputStream is = getClass().getResourceAsStream(resourcePath)) {
             if (is == null) {
                 LOG.debugf("Resource not found (might be in filesystem): %s", resourcePath);
@@ -241,6 +264,14 @@ public class ContributionManager {
      * Extract a directory from resources to filesystem.
      */
     private void extractResourceDirectory(String resourceDirPath, Path targetDir) throws IOException {
+        if (Files.exists(targetDir)) {
+            try (Stream<Path> entries = Files.list(targetDir)) {
+                if (entries.findAny().isPresent()) {
+                    return;
+                }
+            }
+        }
+
         LOG.infof("Extracting resource directory: %s -> %s", resourceDirPath, targetDir);
 
         Files.createDirectories(targetDir);

@@ -147,7 +147,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
      */
     public CompletableFuture<Void> startManagedOnly(ProgressMonitor progressMonitor) {
         var config = super.getConfig();
-        LOG.infof("=== startManagedOnly() called for %s ===", config.getServerId());
+        LOG.infof("Starting managed-only %s for workspace: %s", config.getServerId(), workspaceRoot);
         setStatus(ServerStatus.STARTING);
 
         // Ensure server and its contributors are installed first
@@ -155,15 +155,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 config.ensureInstalled(getWorkspace().getApplication().getPathManager(), this::setStatus, progressMonitor)
                         .thenCompose(v -> ensureContributorsInstalled(progressMonitor))
                         .thenCompose(v -> CompletableFuture.runAsync(() -> {
-                            LOG.infof("=== Inside CompletableFuture.runAsync for %s ===", config.getServerId());
                             String workspacePath = Paths.get(workspaceRoot).toString();
-                            LOG.infof("Workspace path: %s", workspacePath);
-
-                            // Launch new process directly without checking for IDE instance
-                            LOG.infof("About to call launchProcess() for %s", config.getServerId());
                             try {
                                 launchProcess();
-                                LOG.infof("launchProcess() completed for %s", config.getServerId());
                                 startFileWatcher(workspacePath);
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
@@ -335,7 +329,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
         textDocument.setDefinition(new DefinitionCapabilities());
         textDocument.setDeclaration(new DeclarationCapabilities());
         textDocument.setReferences(new ReferencesCapabilities());
-        textDocument.setDocumentSymbol(new DocumentSymbolCapabilities());
+        DocumentSymbolCapabilities documentSymbolCapabilities = new DocumentSymbolCapabilities();
+        documentSymbolCapabilities.setHierarchicalDocumentSymbolSupport(true);
+        textDocument.setDocumentSymbol(documentSymbolCapabilities);
         textDocument.setRename(new RenameCapabilities());
         textDocument.setImplementation(new ImplementationCapabilities());
         textDocument.setTypeDefinition(new TypeDefinitionCapabilities());

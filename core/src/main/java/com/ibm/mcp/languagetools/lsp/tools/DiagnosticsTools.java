@@ -60,7 +60,7 @@ public class DiagnosticsTools {
             Cancellation cancellation,
             Progress progress) {
         FileUriRequestParams params = new FileUriRequestParams(cwd, uri);
-        return requestExecutor.execute(params, new DiagnosticsStrategy(languageRegistry), cancellation, progress);
+        return requestExecutor.executeAsString(params, new DiagnosticsStrategy(languageRegistry), cancellation, progress);
     }
 
     private static final Gson GSON = new Gson();

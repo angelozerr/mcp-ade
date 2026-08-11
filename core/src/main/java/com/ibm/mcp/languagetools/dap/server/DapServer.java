@@ -287,15 +287,9 @@ public class DapServer extends ServerBase<DapServerConfig> {
     }
 
     /**
-     * Container for the server ready tracker.
-     */
-    private record ServerReadyResult(DAPServerReadyTracker tracker) {
-    }
-
-    /**
      * Wait for the DAP server to be ready.
      */
-    private CompletableFuture<ServerReadyResult> waitForServerReady(DAPServerReadyTracker readyTracker) {
+    private CompletableFuture<DAPServerReadyTracker> waitForServerReady(DAPServerReadyTracker readyTracker) {
         return readyTracker.track(executorService)
             .thenApply(v -> {
                 LOG.infof("DAP server ready, creating launcher...");
@@ -303,7 +297,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
                 addTrace(String.format("DAP server ready (address=%s, port=%s)",
                         readyTracker.getAddress(), readyTracker.getPort()));
 
-                return new ServerReadyResult(readyTracker);
+                return readyTracker;
             });
     }
 
@@ -311,10 +305,9 @@ public class DapServer extends ServerBase<DapServerConfig> {
      * Create the LSP4J launcher (but DON'T send initialize yet).
      * Like lsp4ij: just setup the transport and launcher, initialization happens in connectAndInitialize().
      */
-    private CompletableFuture<Void> createLauncher(ServerReadyResult result) {
+    private CompletableFuture<Void> createLauncher(DAPServerReadyTracker tracker) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                var tracker = result.tracker;
 
                 // Create transport streams
                 // Like lsp4ij: if a port was detected/allocated, use SOCKET, else use STDIO
@@ -574,36 +567,6 @@ public class DapServer extends ServerBase<DapServerConfig> {
 
     public DapClient getDapClient() {
         return dapClient;
-    }
-
-    /**
-     * Start monitoring stderr from the DAP server process.
-     * Errors are sent to the trace collector with ERROR type so they appear in red.
-     */
-    @Override
-    protected void startStderrMonitoring() {
-        Process process = getServerProcess();
-        if (process == null) {
-            return;
-        }
-
-        executorService.submit(() -> {
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    var config = super.getConfig();
-                    LOG.warnf("%s stderr: %s", config.getName(), line);
-
-                    addTrace(line, TraceCollector.MessageType.ERROR);
-                }
-            } catch (IOException e) {
-                if (getServerProcess() != null && getServerProcess().isAlive()) {
-                    var config = super.getConfig();
-                    LOG.errorf(e, "Error reading stderr from %s", config.getName());
-                }
-            }
-        });
     }
 
 }

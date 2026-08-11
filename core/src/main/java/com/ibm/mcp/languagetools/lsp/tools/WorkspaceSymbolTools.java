@@ -45,7 +45,7 @@ public class WorkspaceSymbolTools {
             Progress progress) {
 
         WorkspaceSymbolRequestParams params = new WorkspaceSymbolRequestParams(cwd, query);
-        return requestExecutor.execute(
+        return requestExecutor.executeAsString(
                 params,
                 new WorkspaceSymbolStrategy(),
                 cancellation,

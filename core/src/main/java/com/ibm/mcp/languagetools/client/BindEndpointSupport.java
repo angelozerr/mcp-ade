@@ -185,7 +185,7 @@ public class BindEndpointSupport {
             }
 
             // Wait for target server to be ready before routing (important for JDT.LS)
-            targetServer.waitUntilReady()
+            targetServer.waitForReady()
                     .thenCompose(v -> {
                         LOG.debugf("Server %s is ready, routing notification %s", targetServerId, targetMethod);
 

@@ -49,7 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
+
 
 import static com.ibm.mcp.languagetools.tools.CancellationSupport.executeWithCancellation;
 
@@ -243,7 +243,7 @@ public class DapDebugTools {
                         map.put("condition", bp.condition != null ? bp.condition : "");
                         return map;
                     })
-                    .collect(Collectors.toList());
+                    .toList();
 
             return Map.of(
                     "success", true,
@@ -333,7 +333,7 @@ public class DapDebugTools {
                     map.put("condition", bp.condition != null ? bp.condition : "");
                     return map;
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         return Map.of(
                 "success", true,
@@ -628,7 +628,7 @@ public class DapDebugTools {
                         }
                         return frameMap;
                     })
-                    .collect(Collectors.toList());
+                    .toList();
 
             return Map.of(
                     "success", true,
@@ -688,7 +688,7 @@ public class DapDebugTools {
                                 }
                                 return map;
                             })
-                            .collect(Collectors.toList());
+                            .toList();
 
                     return Map.of(
                             "success", true,
@@ -735,7 +735,7 @@ public class DapDebugTools {
                         map.put("name", thread.getName());
                         return map;
                     })
-                    .collect(Collectors.toList());
+                    .toList();
 
             return Map.of(
                     "success", true,
@@ -760,7 +760,7 @@ public class DapDebugTools {
                         map.put("expensive", scope.isExpensive());
                         return map;
                     })
-                    .collect(Collectors.toList());
+                    .toList();
 
             return Map.of(
                     "success", true,
@@ -793,7 +793,7 @@ public class DapDebugTools {
                     varMap.put("expandable", var.getVariablesReference() > 0);
                     return varMap;
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         return Map.of(
                 "success", true,

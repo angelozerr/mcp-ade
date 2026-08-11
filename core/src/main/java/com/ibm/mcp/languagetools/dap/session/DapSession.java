@@ -1270,19 +1270,16 @@ public class DapSession implements DapEventListener {
 
         LOG.debugf("Session %s output [%s]: %s", sessionId, category, output);
 
-        // Capture program output for AI agent
         // Skip telemetry - it's just internal DAP metrics
-        if (!"telemetry".equals(category)) {
-            programOutput.addOutput(event);
+        if ("telemetry".equals(category)) {
+            return;
         }
+
+        // Capture program output for AI agent
+        programOutput.addOutput(event);
 
         // Send to trace collector for UI visibility
         if (traceCollector.isEnabled() && output != null && !output.isBlank()) {
-            // Skip telemetry outputs - they're just internal DAP metrics
-            if ("telemetry".equals(category)) {
-                return;
-            }
-
             // For console/stdout/stderr, send just the output without trace prefix
             // These are ALWAYS shown, regardless of trace level
             String displayText;

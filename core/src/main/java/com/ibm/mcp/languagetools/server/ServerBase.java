@@ -355,8 +355,12 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
      * Uses the stored workspace URI and context ID.
      */
     protected void startStderrMonitoring() {
+        Process process = getServerProcess();
+        if (process == null) {
+            return;
+        }
         executorService.submit(() -> {
-            try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(getServerProcess().getErrorStream()))) {
+            try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getErrorStream()))) {
                 String line;
                 StringBuilder stackTraceBuffer = new StringBuilder();
 
@@ -422,28 +426,6 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
                 indexingChild.complete();
             }
         });
-    }
-
-    /**
-     * @deprecated Use {@link #waitForReady()} instead
-     */
-    @Deprecated
-    public CompletableFuture<Void> waitUntilReady() {
-        if (isReady) {
-            return CompletableFuture.completedFuture(null);
-        }
-        return readyFuture;
-    }
-
-    /**
-     * @deprecated Use {@link #waitForReady()} instead
-     */
-    @Deprecated
-    public CompletableFuture<Void> waitUntilReady(long timeoutMs) {
-        if (isReady) {
-            return CompletableFuture.completedFuture(null);
-        }
-        return readyFuture.orTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     public final boolean isStarted() {
