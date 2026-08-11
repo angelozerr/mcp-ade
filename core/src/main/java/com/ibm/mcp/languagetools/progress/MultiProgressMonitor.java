@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A progress monitor that broadcasts progress to multiple delegates.
@@ -59,7 +60,7 @@ public class MultiProgressMonitor implements ProgressMonitor {
         if (delegates == null || delegates.length == 0) {
             throw new IllegalArgumentException("At least one delegate is required");
         }
-        this.delegates = new ArrayList<>(Arrays.asList(delegates));
+        this.delegates = new CopyOnWriteArrayList<>(Arrays.asList(delegates));
         this.total = total;
     }
 

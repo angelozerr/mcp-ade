@@ -136,6 +136,9 @@ public class OperationContext {
     }
 
     public long getDurationMs() {
+        if (startTime == null) {
+            return 0;
+        }
         if (endTime == null) {
             return Instant.now().toEpochMilli() - startTime.toEpochMilli();
         }

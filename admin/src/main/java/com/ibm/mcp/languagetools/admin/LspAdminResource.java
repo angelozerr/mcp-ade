@@ -258,13 +258,19 @@ public class LspAdminResource extends AbstractServerAdminResource {
             LspServer server = workspace.getLspServer(serverId);
             String taskId = "connect-" + serverId;
             String title = "Connect " + serverId;
-            ProgressMonitor progressMonitor = new TraceProgressMonitor(
+            TraceProgressMonitor progressMonitor = new TraceProgressMonitor(
                     server.getTraceCollector(), 100.0, progressBroadcaster, taskId, serverId, title);
 
-            workspace.restartLspServer(serverId, progressMonitor).join();
-            progressMonitor.setComplete();
+            workspace.restartLspServer(serverId, progressMonitor)
+                    .whenComplete((result, error) -> {
+                        if (error != null) {
+                            progressMonitor.setFailed(error.getMessage());
+                        } else {
+                            progressMonitor.setComplete();
+                        }
+                    });
 
-            return Response.ok().entity(new StatusResponse("connected")).build();
+            return Response.accepted().entity(new StatusResponse("connecting")).build();
         } catch (Exception e) {
             return Response.status(500).entity(new ErrorResponse(e.getMessage())).build();
         }

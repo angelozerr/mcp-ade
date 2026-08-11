@@ -129,13 +129,18 @@ public class DapServerConfig extends ServerConfigBase {
         try {
             URI uri = resourceUrl.toURI();
             if ("jar".equals(uri.getScheme())) {
-                // Running from JAR - need FileSystem
-                FileSystem fs = FileSystems.newFileSystem(uri, Collections.emptyMap());
+                FileSystem fs;
+                try {
+                    fs = FileSystems.newFileSystem(uri, Collections.emptyMap());
+                } catch (FileSystemAlreadyExistsException e) {
+                    fs = FileSystems.getFileSystem(uri);
+                }
                 return fs.getPath(resourceUrl.getPath());
             } else {
-                // Running from filesystem (development)
                 return Paths.get(uri);
             }
+        } catch (FileSystemAlreadyExistsException e) {
+            throw e;
         } catch (Exception e) {
             throw new Exception("Failed to resolve resource path: " + resourceUrl, e);
         }

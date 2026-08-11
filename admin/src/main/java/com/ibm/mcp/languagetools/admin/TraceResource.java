@@ -24,6 +24,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 
 @ApplicationScoped
 @Path("/api/admin/traces")
@@ -72,7 +73,7 @@ public class TraceResource {
             return Response.noContent().build();
         } catch (Exception e) {
             return Response.status(400)
-                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .entity(Map.of("error", String.valueOf(e.getMessage())))
                     .build();
         }
     }
@@ -90,7 +91,7 @@ public class TraceResource {
             return Response.noContent().build();
         } catch (Exception e) {
             return Response.status(400)
-                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .entity(Map.of("error", String.valueOf(e.getMessage())))
                     .build();
         }
     }
@@ -108,7 +109,7 @@ public class TraceResource {
             return Response.noContent().build();
         } catch (Exception e) {
             return Response.status(400)
-                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .entity(Map.of("error", String.valueOf(e.getMessage())))
                     .build();
         }
     }

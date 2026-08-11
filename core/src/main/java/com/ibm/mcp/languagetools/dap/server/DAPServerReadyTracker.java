@@ -121,17 +121,21 @@ public class DAPServerReadyTracker extends CompletableFuture<Void> {
     private void waitForSocket(ExecutorService executorService) {
         executorService.submit(() -> {
             String host = address != null ? address : "127.0.0.1";
-            while (!this.isDone()) {
+            long deadline = System.currentTimeMillis() + 60_000;
+            while (!this.isDone() && System.currentTimeMillis() < deadline) {
                 if (isSocketAvailable(host, port)) {
                     onServerReady();
-                    break;
+                    return;
                 }
                 try {
-                    Thread.sleep(100); // Wait 100ms before retry
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    break;
+                    return;
                 }
+            }
+            if (!this.isDone()) {
+                LOG.warnf("Timeout waiting for DAP server socket on %s:%d", host, port);
             }
         });
     }

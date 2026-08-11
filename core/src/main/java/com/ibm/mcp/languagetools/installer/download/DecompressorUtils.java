@@ -101,7 +101,10 @@ public class DecompressorUtils {
                     topLevel.add(parts[0]);
                 }
 
-                Path entryPath = targetDir.resolve(entryName);
+                Path entryPath = targetDir.resolve(entryName).normalize();
+                if (!entryPath.startsWith(targetDir.normalize())) {
+                    throw new IOException("Zip slip: " + entryName);
+                }
 
                 if (entry.isDirectory()) {
                     Files.createDirectories(entryPath);
@@ -149,7 +152,10 @@ public class DecompressorUtils {
                     topLevel.add(parts[0]);
                 }
 
-                Path entryPath = targetDir.resolve(entryName);
+                Path entryPath = targetDir.resolve(entryName).normalize();
+                if (!entryPath.startsWith(targetDir.normalize())) {
+                    throw new IOException("Zip slip: " + entryName);
+                }
 
                 if (entry.isDirectory()) {
                     Files.createDirectories(entryPath);

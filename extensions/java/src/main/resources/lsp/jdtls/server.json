@@ -17,8 +17,8 @@
     { "globPattern": "**/.classpath" },
     { "globPattern": "**/.project" },
     { "globPattern": "**/.settings/*.prefs" },
-    { "globPattern": "**/gradle.build" },
-    { "globPattern": "**/gradle.build.kts" }
+    { "globPattern": "**/build.gradle" },
+    { "globPattern": "**/build.gradle.kts" }
   ],
   "applicableSettings": ["java.*"],
   "settings": [

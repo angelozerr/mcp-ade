@@ -100,19 +100,23 @@ public class OpenVsxAssetFetcher implements AssetFetcher {
         try {
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Accept", "application/json");
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200) {
-                throw new RuntimeException("Open VSX API returned HTTP " + responseCode);
-            }
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
+            try {
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Accept", "application/json");
+                int responseCode = conn.getResponseCode();
+                if (responseCode != 200) {
+                    throw new RuntimeException("Open VSX API returned HTTP " + responseCode);
                 }
-                return sb.toString();
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    return sb.toString();
+                }
+            } finally {
+                conn.disconnect();
             }
         } catch (Exception e) {
             reporter.setText("Error while loading Open VSX extension info: ", e);

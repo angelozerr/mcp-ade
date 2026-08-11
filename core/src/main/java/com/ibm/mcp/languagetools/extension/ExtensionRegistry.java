@@ -297,14 +297,18 @@ public class ExtensionRegistry {
         Path targetDir = pathManager.getExtensionDir(extensionId);
         ExtensionExtractor.extract(source, targetDir);
 
+        // Validate no duplicate serverIds before registering
         Extension extension = loadExtension(extensionId, ServerConfigSource.USER, application);
-
-        // Validate no duplicate serverIds
-        for (LspServerConfig config : extension.getLspServerConfigs()) {
-            checkServerIdUnique(config.getServerId(), extensionId);
-        }
-        for (DapServerConfig config : extension.getDapServerConfigs()) {
-            checkServerIdUnique(config.getServerId(), extensionId);
+        try {
+            for (LspServerConfig config : extension.getLspServerConfigs()) {
+                checkServerIdUnique(config.getServerId(), extensionId);
+            }
+            for (DapServerConfig config : extension.getDapServerConfigs()) {
+                checkServerIdUnique(config.getServerId(), extensionId);
+            }
+        } catch (Exception e) {
+            extensions.remove(extensionId);
+            throw e;
         }
 
         return extension;

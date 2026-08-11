@@ -20,6 +20,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 
 @ApplicationScoped
 @Path("/api/admin/settings")
@@ -35,10 +36,10 @@ public class SettingsAdminResource {
         String value = applicationConfiguration.getString(key);
         if (value == null) {
             return Response.status(404)
-                    .entity("{\"error\": \"Setting not found: " + key + "\"}")
+                    .entity(Map.of("error", "Setting not found: " + key))
                     .build();
         }
-        return Response.ok("{\"key\": \"" + key + "\", \"value\": \"" + value + "\"}").build();
+        return Response.ok(Map.of("key", key, "value", value)).build();
     }
 
     @PUT
@@ -54,7 +55,7 @@ public class SettingsAdminResource {
             return Response.noContent().build();
         } catch (Exception e) {
             return Response.status(400)
-                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .entity(Map.of("error", String.valueOf(e.getMessage())))
                     .build();
         }
     }

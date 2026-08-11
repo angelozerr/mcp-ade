@@ -59,6 +59,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Manages multiple workspaces, each with its own language server instances.
@@ -181,10 +182,9 @@ public class Application {
         // Normalize URI
         URI workspaceUri = normalizeUri(rootUri);
 
-        // Get or create workspace (without initialization)
-        boolean isNewWorkspace = !workspaces.containsKey(workspaceUri);
-
+        AtomicBoolean created = new AtomicBoolean();
         Workspace workspace = workspaces.computeIfAbsent(workspaceUri, uri -> {
+            created.set(true);
             Workspace ws = new Workspace(uri, this);
 
             // Register callback for LSP server status changes
@@ -219,8 +219,7 @@ public class Application {
             LOG.infof("MCP client already exists in workspace, no event fired");
         }
 
-        // Fire event if workspace was just created
-        if (isNewWorkspace) {
+        if (created.get()) {
             sendWorkspaceChangeEvent(WorkspaceChangeEvent.Type.CREATED, workspaceUri);
         }
 

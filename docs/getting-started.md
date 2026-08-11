@@ -80,7 +80,9 @@ Listening on: http://localhost:7654
 
 ### Add MCP Language Tools to Claude, Bob
 
-See doc at Claude/Bob to register MCP Server like this:
+See doc at Claude/Bob to register MCP Server.
+
+#### HTTP transport (server started manually)
 
 ```json
 {
@@ -92,6 +94,22 @@ See doc at Claude/Bob to register MCP Server like this:
   }
 }
 ```
+
+#### Stdio transport (server launched automatically by the MCP client)
+
+```json
+{
+  "mcpServers": {
+    "mcp-languagetools": {
+      "type": "stdio",
+      "command": "java",
+      "args": ["-jar", "/path/to/dev/target/quarkus-app/quarkus-run.jar"]
+    }
+  }
+}
+```
+
+Admin UI is accessible at `http://localhost:7654/admin` in both modes.
 
 ### Restart Claude/Bob
 
@@ -323,9 +341,9 @@ notify_file_changes with changes: ["src/Main.java:created", "src/Old.java:delete
 ### Claude doesn't see the tools
 
 **Check**:
-1. MCP server is running: `http://localhost:7654/mcp`
-2. Claude Desktop config is correct
-3. Restarted Claude Desktop after config change
+1. MCP server is running (HTTP: `http://localhost:7654/mcp`, or stdio: check process is alive)
+2. MCP client config is correct (see [Step 2](#step-2-configure-claude-bob))
+3. Restarted your MCP client after config change
 
 ### No diagnostics showing
 

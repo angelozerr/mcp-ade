@@ -133,8 +133,8 @@ public class DapDebugTools {
                     "and error details to help diagnose adapter issues. " +
                     "Use the adapter ID with start_debugging.")
     public List<Map<String, Object>> listDebugAdapters(
-            @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Optional file URI to filter adapters (e.g., 'file:///path/to/Main.java')") String uri) {
+            @ToolArg(description = ToolArgDescriptions.CWD, required = false) String cwd,
+            @ToolArg(description = "Optional file URI to filter adapters (e.g., 'file:///path/to/Main.java')", required = false) String uri) {
         return tracked(buildArgs("cwd", cwd, "uri", uri), () -> {
             List<Map<String, Object>> adapters;
             if (uri != null && !uri.isEmpty()) {
@@ -359,9 +359,9 @@ public class DapDebugTools {
             @ToolArg(description = "ID of the debug adapter (e.g., 'java-debug', 'vscode-js-debug', 'debugpy')") String debuggerId,
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Debug configuration with 'request' field ('launch' or 'attach')") Map<String, Object> configuration,
-            @ToolArg(description = "Optional breakpoints to set before starting [{file, line, condition?}]") List<Map<String, Object>> breakpoints,
-            @ToolArg(description = "Optional session name (auto-generated if not provided)") String sessionName,
-            @ToolArg(description = "Debug mode: true=debug with breakpoints, false=run without debugging (default)") Boolean debugMode,
+            @ToolArg(description = "Optional breakpoints to set before starting [{file, line, condition?}]", required = false) List<Map<String, Object>> breakpoints,
+            @ToolArg(description = "Optional session name (auto-generated if not provided)", required = false) String sessionName,
+            @ToolArg(description = "Debug mode: true=debug with breakpoints, false=run without debugging (default)", required = false) Boolean debugMode,
             Cancellation cancellation,
             Progress progress) {
         return startDebugging(debuggerId, cwd, configuration, breakpoints,

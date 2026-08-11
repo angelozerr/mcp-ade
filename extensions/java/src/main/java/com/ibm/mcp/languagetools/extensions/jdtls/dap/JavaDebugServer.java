@@ -64,7 +64,7 @@ public class JavaDebugServer extends DapServer {
      */
     @Override
     public DapClient createDapClient(DapClient parentClient) {
-        return new JavaDebugClient((JavaDebugClient) parentClient);
+        return new JavaDebugClient(parentClient);
     }
 
     @Override

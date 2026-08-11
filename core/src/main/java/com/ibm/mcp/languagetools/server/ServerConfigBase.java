@@ -80,7 +80,7 @@ public class ServerConfigBase implements ServerConfig {
     protected TraceCollector traceCollector;
 
     // Lazy-loaded installer instance
-    private ServerInstaller installer;
+    private volatile ServerInstaller installer;
 
     // Cached: whether the installer JSON contains a configureServer task
     private boolean hasConfigureServer;
@@ -184,10 +184,17 @@ public class ServerConfigBase implements ServerConfig {
      * Returns null if no installer configuration is present.
      */
     public ServerInstaller getInstaller() {
-        if (installer == null && installerConfig != null) {
-            installer = createInstaller();
+        ServerInstaller inst = installer;
+        if (inst == null && installerConfig != null) {
+            synchronized (this) {
+                inst = installer;
+                if (inst == null) {
+                    inst = createInstaller();
+                    installer = inst;
+                }
+            }
         }
-        return installer;
+        return inst;
     }
 
     /**

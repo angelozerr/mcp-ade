@@ -14,9 +14,9 @@
 package com.ibm.mcp.languagetools.utils;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -52,7 +52,11 @@ public final class UriUtils {
         if (path.startsWith("file:")) return URI.create(path);
         String normalized = path.replace("\\", "/");
         if (!normalized.startsWith("/")) normalized = "/" + normalized;
-        return URI.create("file://" + normalized);
+        try {
+            return new URI("file", null, normalized, null);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid path: " + path, e);
+        }
     }
 
     public static String cwdToUriPrefix(String cwd) {

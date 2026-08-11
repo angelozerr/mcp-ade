@@ -68,8 +68,8 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
     private Process serverProcess;
     private volatile boolean isReady;
     private volatile boolean isStarted;
-    private CompletableFuture<Void> readyFuture;
-    private CompletableFuture<Void> startedFuture;
+    private volatile CompletableFuture<Void> readyFuture;
+    private volatile CompletableFuture<Void> startedFuture;
     private volatile OperationEntry operationEntry;
 
     public ServerBase(T config, Workspace workspace) {
