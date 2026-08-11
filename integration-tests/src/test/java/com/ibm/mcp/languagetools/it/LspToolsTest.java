@@ -17,6 +17,7 @@ import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusTest;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
@@ -185,6 +186,51 @@ class LspToolsTest {
                             "uri", testFileUri,
                             "line", 2,
                             "character", 3
+                    ), response -> {
+                        assertFalse(response.isError());
+                    })
+                    .thenAssertResults();
+        }
+    }
+
+    @Disabled("LemMinX does not return XML elements via workspace/symbol - enable with a language server that supports it (e.g. JDT.LS)")
+    @Test
+    void findReferencesBySymbolName() {
+        try (var client = McpAssured.newConnectedSseClient()) {
+            // First, verify workspace/symbol works for "book"
+            client.when()
+                    .toolsCall("search_workspace_symbols", Map.of(
+                            "cwd", cwd,
+                            "query", "book"
+                    ), response -> {
+                        assertFalse(response.isError());
+                        String text = response.firstContent().asText().text();
+                        assertTrue(text.contains("book"), "Should find 'book' symbol");
+                    })
+                    .thenAssertResults();
+        }
+
+        try (var client = McpAssured.newConnectedSseClient()) {
+            // Now test find_references with symbolName instead of position
+            client.when()
+                    .toolsCall("find_references", Map.of(
+                            "cwd", cwd,
+                            "symbolName", "book"
+                    ), response -> {
+                        assertFalse(response.isError());
+                    })
+                    .thenAssertResults();
+        }
+    }
+
+    @Disabled("LemMinX does not return XML elements via workspace/symbol - enable with a language server that supports it (e.g. JDT.LS)")
+    @Test
+    void getHoverInfoBySymbolName() {
+        try (var client = McpAssured.newConnectedSseClient()) {
+            client.when()
+                    .toolsCall("get_hover_info", Map.of(
+                            "cwd", cwd,
+                            "symbolName", "catalog"
                     ), response -> {
                         assertFalse(response.isError());
                     })

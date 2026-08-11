@@ -38,24 +38,30 @@ public class HoverTools {
     @Inject
     LanguageRegistry languageRegistry;
 
+    @Inject
+    SymbolNameResolver symbolNameResolver;
+
     @Tool(name = "get_hover_info",
-          description = "Get hover information (type, documentation) for a symbol at a specific position in a file. " +
+          description = "Get hover information (type, documentation) for a symbol. " +
+                        "Accepts either symbolName (e.g., 'myMethod', 'MyClass.myMethod') or uri+line+character position. " +
                         "Returns type information and documentation if available. " +
-                        "Example: get_hover_info(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py', line=10, character=5)" +
+                        "Example with symbolName: get_hover_info(cwd='/home/user/project', symbolName='myMethod') " +
+                        "Example with position: get_hover_info(cwd='/home/user/project', uri='file:///src/main.py', line=10, character=5)" +
                         ToolArgDescriptions.OPEN_DOCUMENT_HINT)
     public CompletableFuture<String> getHoverInfo(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.URI) String uri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
+            @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,
+            @ToolArg(description = ToolArgDescriptions.URI, required = false) String uri,
+            @ToolArg(description = ToolArgDescriptions.POSITION_LINE, required = false) Integer line,
+            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
-        FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.executeAsString(
-                params,
-                new HoverStrategy(languageRegistry),
-                cancellation,
-                progress);
+        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character)
+                .thenCompose(params -> requestExecutor.executeAsString(
+                        params,
+                        new HoverStrategy(languageRegistry),
+                        cancellation,
+                        progress));
     }
 }

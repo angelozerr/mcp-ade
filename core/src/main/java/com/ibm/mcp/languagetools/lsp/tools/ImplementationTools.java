@@ -38,24 +38,30 @@ public class ImplementationTools {
     @Inject
     LanguageRegistry languageRegistry;
 
+    @Inject
+    SymbolNameResolver symbolNameResolver;
+
     @Tool(name = "find_implementations",
-          description = "Find all implementations of an interface or abstract class at a specific position. " +
+          description = "Find all implementations of an interface or abstract class. " +
+                        "Accepts either symbolName (e.g., 'MyInterface') or uri+line+character position. " +
                         "Returns the locations where the symbol is implemented. " +
-                        "Example: find_implementations(cwd='/home/user/project', fileUri='file:///home/user/project/src/MyInterface.java', line=5, character=15)" +
+                        "Example with symbolName: find_implementations(cwd='/home/user/project', symbolName='MyInterface') " +
+                        "Example with position: find_implementations(cwd='/home/user/project', uri='file:///src/MyInterface.java', line=5, character=15)" +
                         ToolArgDescriptions.OPEN_DOCUMENT_HINT)
     public CompletableFuture<String> findImplementations(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.URI) String uri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
+            @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,
+            @ToolArg(description = ToolArgDescriptions.URI, required = false) String uri,
+            @ToolArg(description = ToolArgDescriptions.POSITION_LINE, required = false) Integer line,
+            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
-        FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.executeAsString(
-                params,
-                new ImplementationStrategy(languageRegistry),
-                cancellation,
-                progress);
+        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character)
+                .thenCompose(params -> requestExecutor.executeAsString(
+                        params,
+                        new ImplementationStrategy(languageRegistry),
+                        cancellation,
+                        progress));
     }
 }

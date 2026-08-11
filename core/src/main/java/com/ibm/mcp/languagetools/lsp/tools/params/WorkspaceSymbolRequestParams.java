@@ -22,6 +22,10 @@ import java.util.Map;
 public class WorkspaceSymbolRequestParams extends LspRequestParams {
 
     private final String query;
+    private String kind;
+    private String pathPattern;
+    private String containerName;
+    private Integer maxResults;
 
     public WorkspaceSymbolRequestParams(String cwd, String query) {
         super(cwd);
@@ -30,6 +34,38 @@ public class WorkspaceSymbolRequestParams extends LspRequestParams {
 
     public String getQuery() {
         return query;
+    }
+
+    public String getKind() {
+        return kind;
+    }
+
+    public void setKind(String kind) {
+        this.kind = kind;
+    }
+
+    public String getPathPattern() {
+        return pathPattern;
+    }
+
+    public void setPathPattern(String pathPattern) {
+        this.pathPattern = pathPattern;
+    }
+
+    public String getContainerName() {
+        return containerName;
+    }
+
+    public void setContainerName(String containerName) {
+        this.containerName = containerName;
+    }
+
+    public Integer getMaxResults() {
+        return maxResults;
+    }
+
+    public void setMaxResults(Integer maxResults) {
+        this.maxResults = maxResults;
     }
 
     @Override

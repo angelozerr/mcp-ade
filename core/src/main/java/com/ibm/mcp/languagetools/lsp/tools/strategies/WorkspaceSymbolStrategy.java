@@ -23,11 +23,16 @@ import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
+import java.net.URI;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Strategy for LSP workspace/symbol requests.
@@ -111,12 +116,69 @@ public class WorkspaceSymbolStrategy implements LspRequestExecutor.LspRequestStr
                 .distinct()
                 .toList();
 
+        // Apply post-query filtering
+        allSymbols = filterSymbols(allSymbols, params.getKind(), params.getPathPattern(),
+                params.getContainerName(), params.getMaxResults());
+
         if (allSymbols.isEmpty()) {
             return formatNoResultFound(params);
         }
 
         String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
         return LspJsonFormatter.toJson(allSymbols.stream().map(sym -> LspJsonFormatter.symbolInfo(sym, cwdUri)).toList());
+    }
+
+    /**
+     * Filters a list of symbols by kind, path pattern, container name, and max results.
+     * Package-visible for unit testing.
+     */
+    static List<SymbolInformation> filterSymbols(List<SymbolInformation> symbols,
+                                                  String kind,
+                                                  String pathPattern,
+                                                  String containerName,
+                                                  Integer maxResults) {
+        Stream<SymbolInformation> stream = symbols.stream();
+
+        // Filter by symbol kind
+        if (kind != null && !kind.isBlank()) {
+            stream = stream.filter(sym -> sym.getKind() != null
+                    && sym.getKind().name().equalsIgnoreCase(kind));
+        }
+
+        // Filter by path pattern (glob)
+        if (pathPattern != null && !pathPattern.isBlank()) {
+            PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + pathPattern);
+            stream = stream.filter(sym -> {
+                if (sym.getLocation() == null || sym.getLocation().getUri() == null) {
+                    return false;
+                }
+                try {
+                    String uriStr = sym.getLocation().getUri();
+                    URI uri = URI.create(uriStr);
+                    String path = uri.getPath();
+                    if (path == null) {
+                        return false;
+                    }
+                    return matcher.matches(Path.of(path).getFileName())
+                            || matcher.matches(Path.of(path));
+                } catch (Exception e) {
+                    return false;
+                }
+            });
+        }
+
+        // Filter by container name
+        if (containerName != null && !containerName.isBlank()) {
+            stream = stream.filter(sym -> sym.getContainerName() != null
+                    && sym.getContainerName().toLowerCase().contains(containerName.toLowerCase()));
+        }
+
+        // Limit results
+        if (maxResults != null && maxResults > 0) {
+            stream = stream.limit(maxResults);
+        }
+
+        return stream.toList();
     }
 
     @Override

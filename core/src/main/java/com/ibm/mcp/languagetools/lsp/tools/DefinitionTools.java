@@ -38,24 +38,30 @@ public class DefinitionTools {
     @Inject
     LanguageRegistry languageRegistry;
 
+    @Inject
+    SymbolNameResolver symbolNameResolver;
+
     @Tool(name = "go_to_definition",
-          description = "Go to the definition of a symbol at a specific position in a file. " +
+          description = "Go to the definition of a symbol. " +
+                        "Accepts either symbolName (e.g., 'myMethod', 'MyClass.myMethod') or uri+line+character position. " +
                         "Returns the location where the symbol is defined. " +
-                        "Example: go_to_definition(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.java', line=10, character=5)" +
+                        "Example with symbolName: go_to_definition(cwd='/home/user/project', symbolName='myMethod') " +
+                        "Example with position: go_to_definition(cwd='/home/user/project', uri='file:///src/Main.java', line=10, character=5)" +
                         ToolArgDescriptions.OPEN_DOCUMENT_HINT)
     public CompletableFuture<String> goToDefinition(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.URI) String uri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
+            @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,
+            @ToolArg(description = ToolArgDescriptions.URI, required = false) String uri,
+            @ToolArg(description = ToolArgDescriptions.POSITION_LINE, required = false) Integer line,
+            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
-        FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
-        return requestExecutor.executeAsString(
-                params,
-                new DefinitionStrategy(languageRegistry),
-                cancellation,
-                progress);
+        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character)
+                .thenCompose(params -> requestExecutor.executeAsString(
+                        params,
+                        new DefinitionStrategy(languageRegistry),
+                        cancellation,
+                        progress));
     }
 }

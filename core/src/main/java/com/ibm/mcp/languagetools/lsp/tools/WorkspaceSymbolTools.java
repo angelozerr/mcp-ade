@@ -35,16 +35,25 @@ public class WorkspaceSymbolTools {
     LspRequestExecutor requestExecutor;
 
     @Tool(name = "search_workspace_symbols",
-          description = "Search for symbols across the entire workspace. " +
+          description = "Search for symbols across the entire workspace with optional filtering. " +
                         "Returns symbols (classes, methods, variables, etc.) matching the query string. " +
-                        "Example: search_workspace_symbols(cwd='/home/user/project', query='MyClass')")
+                        "Results can be filtered by symbol kind, file path pattern, and container name. " +
+                        "Example: search_workspace_symbols(cwd='/home/user/project', query='MyClass', kind='Class', pathPattern='*.java')")
     public CompletableFuture<String> searchWorkspaceSymbols(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "The search query string to match against symbol names") String query,
+            @ToolArg(description = ToolArgDescriptions.SYMBOL_KIND, required = false) String kind,
+            @ToolArg(description = ToolArgDescriptions.PATH_PATTERN, required = false) String pathPattern,
+            @ToolArg(description = ToolArgDescriptions.CONTAINER_NAME, required = false) String containerName,
+            @ToolArg(description = ToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
         WorkspaceSymbolRequestParams params = new WorkspaceSymbolRequestParams(cwd, query);
+        params.setKind(kind);
+        params.setPathPattern(pathPattern);
+        params.setContainerName(containerName);
+        params.setMaxResults(maxResults);
         return requestExecutor.executeAsString(
                 params,
                 new WorkspaceSymbolStrategy(),

@@ -37,6 +37,23 @@ public final class ToolArgDescriptions {
     public static final String OPEN_DOCUMENT_HINT =
         " For multiple operations on the same file, use open_document first to avoid repeated open/close cycles, then close_document when done.";
 
+    // Symbol name (alternative to uri + line + character)
+    public static final String SYMBOL_NAME =
+        "Symbol name to resolve (e.g., 'myMethod', 'MyClass.myMethod'). " +
+        "Alternative to uri+line+character: when provided, the symbol is located via workspace/symbol search. " +
+        "If both symbolName and uri+line+character are provided, symbolName takes precedence.";
+
+    // Symbol filtering arguments
+    public static final String SYMBOL_KIND = "Filter results by symbol kind (e.g., 'Class', 'Method', 'Field', 'Function', 'Variable', 'Interface', 'Enum', 'Constructor'). Case-insensitive.";
+    public static final String PATH_PATTERN = "Glob pattern to filter results by file path (e.g., '*.java', 'src/main/**'). Applied to the file path portion of the URI.";
+    public static final String CONTAINER_NAME = "Filter results by container name (e.g., class name for methods). Matches if the symbol's container name contains this value.";
+    public static final String MAX_RESULTS = "Maximum number of results to return.";
+
+    // Reference enrichment
+    public static final String INCLUDE_ENCLOSING_SYMBOL =
+        "When true, each reference includes the name and kind of its enclosing symbol (e.g., 'processOrder' Method). " +
+        "Requires an extra documentSymbol request per file. Default: false.";
+
     // Refactoring arguments
     public static final String APPLY =
         "Whether to apply the changes to disk (true) or just return a preview (false, default)";

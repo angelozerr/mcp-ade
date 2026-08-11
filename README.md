@@ -41,18 +41,18 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 |------|-------------|
 | `get_diagnostics` | Get errors and warnings for a file |
 | `get_all_diagnostics` | Get diagnostics for all files in a workspace |
-| `go_to_definition` | Jump to where a symbol is defined |
-| `go_to_declaration` | Jump to where a symbol is declared |
-| `go_to_type_definition` | Jump to where the type of a symbol is defined |
-| `find_references` | Find all usages of a symbol |
-| `find_implementations` | Find implementations of an interface/abstract class |
-| `get_hover_info` | Get type information and documentation for a symbol |
+| `go_to_definition` | Jump to where a symbol is defined *(supports `symbolName`)* |
+| `go_to_declaration` | Jump to where a symbol is declared *(supports `symbolName`)* |
+| `go_to_type_definition` | Jump to where the type of a symbol is defined *(supports `symbolName`)* |
+| `find_references` | Find all usages of a symbol *(supports `symbolName`, `includeEnclosingSymbol`)* |
+| `find_implementations` | Find implementations of an interface/abstract class *(supports `symbolName`)* |
+| `get_hover_info` | Get type information and documentation for a symbol *(supports `symbolName`)* |
 | `get_completions` | Get code completion suggestions at a position |
 | `get_signature_help` | Get parameter information for a function/method call |
 | `get_document_symbols` | Get all symbols (classes, methods, variables) in a document |
 | `get_code_actions` | Get quick fixes and refactoring suggestions |
 | `rename` | Rename a symbol across the workspace |
-| `search_workspace_symbols` | Search for classes, methods, variables by name |
+| `search_workspace_symbols` | Search for symbols by name with optional filtering by kind, path pattern, and container |
 | `format_document` | Format an entire document (supports `apply` parameter) |
 | `format_document_range` | Format a specific range in a document (supports `apply` parameter) |
 | `get_call_hierarchy_incoming` | Get incoming calls (callers) for a symbol |
@@ -65,6 +65,7 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 | `insert_after_symbol` | Insert code after a symbol identified by name path |
 | `replace_symbol_body` | Replace the entire body of a symbol identified by name path |
 | `apply_workspace_edit` | Apply text edits to a file on disk |
+| `safe_delete_symbol` | Safely delete a symbol after checking for external references (supports `apply` parameter) |
 | `open_document` / `close_document` | Keep a file open for multiple LSP operations |
 
 ### DAP Tools
@@ -92,6 +93,43 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 ### Java Tools (60 tools from Java extension)
 
 These tools are inspired by [javalens-mcp](https://github.com/pzalutski-pixel/javalens-mcp) and provide deep Java analysis, navigation, refactoring, and code generation capabilities powered by [Eclipse JDT.LS](https://github.com/eclipse-jdtls/eclipse.jdt.ls). Results use compact JSON with relative paths for token efficiency.
+
+#### The `symbolName` Parameter (Symbol-Based Navigation)
+
+Six navigation tools support an optional `symbolName` parameter as an alternative to specifying `uri` + `line` + `character`. Instead of a file position, you can pass a symbol name and the server resolves it automatically via `workspace/symbol`:
+
+| Mode | Parameters | Example |
+|------|-----------|---------|
+| **By name** | `cwd` + `symbolName` | `find_references(cwd='/home/user/project', symbolName='MyClass.myMethod')` |
+| **By position** | `cwd` + `uri` + `line` + `character` | `find_references(cwd='/home/user/project', uri='file:///src/Main.java', line=10, character=5)` |
+
+The `symbolName` parameter accepts:
+- A simple name: `myMethod`, `MyClass`
+- A qualified name with `.` separator: `MyClass.myMethod`
+- A qualified name with `/` separator: `MyClass/myMethod`
+
+When multiple symbols match, the resolver picks the best match: exact name + container > exact name > case-insensitive > first result.
+
+**Note:** `symbolName` requires the language server to support `workspace/symbol`. Most programming language servers (JDT.LS, TypeScript, Pyright, gopls, rust-analyzer, etc.) support it. Some specialized servers (e.g., LemMinX for XML) may not.
+
+Tools supporting `symbolName`: `go_to_definition`, `go_to_declaration`, `go_to_type_definition`, `find_references`, `find_implementations`, `get_hover_info`.
+
+#### The `includeEnclosingSymbol` Parameter (Reference Context)
+
+`find_references` supports an optional `includeEnclosingSymbol` parameter. When set to `true`, each reference is enriched with the name and kind of its enclosing symbol (the method, class, or field that contains the reference):
+
+```json
+// Without includeEnclosingSymbol:
+[{"file": "Service.java", "refs": ["10:5-10:15", "25:8-25:18"]}]
+
+// With includeEnclosingSymbol=true:
+[{"file": "Service.java", "refs": [
+  {"range": "10:5-10:15", "in": "processOrder", "kind": "Method"},
+  {"range": "25:8-25:18", "in": "ServiceImpl", "kind": "Class"}
+]}]
+```
+
+This helps AI agents understand *where* each reference is used without needing to read the full source files.
 
 #### Common Parameters
 

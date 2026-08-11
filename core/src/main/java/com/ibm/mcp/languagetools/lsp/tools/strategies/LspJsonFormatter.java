@@ -35,7 +35,7 @@ public final class LspJsonFormatter {
         return GSON.toJson(obj);
     }
 
-    static String range(Range range) {
+    public static String range(Range range) {
         return (range.getStart().getLine() + 1) + ":" + range.getStart().getCharacter()
                 + "-" + (range.getEnd().getLine() + 1) + ":" + range.getEnd().getCharacter();
     }
@@ -66,11 +66,11 @@ public final class LspJsonFormatter {
 
     // --- URI compaction (delegates to UriUtils) ---
 
-    static String cwdToUriPrefix(String cwd) {
+    public static String cwdToUriPrefix(String cwd) {
         return UriUtils.cwdToUriPrefix(cwd);
     }
 
-    static String compactUri(String uri, String cwdUri) {
+    public static String compactUri(String uri, String cwdUri) {
         return UriUtils.compactUri(uri, cwdUri);
     }
 
