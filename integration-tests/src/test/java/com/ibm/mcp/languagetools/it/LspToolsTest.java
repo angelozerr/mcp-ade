@@ -17,7 +17,6 @@ import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusTest;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
@@ -35,6 +34,7 @@ class LspToolsTest {
     private String cwd;
     private String testFileUri;
     private String testErrorFileUri;
+    private String testTxtFileUri;
 
     @BeforeAll
     void setUp() throws Exception {
@@ -46,6 +46,7 @@ class LspToolsTest {
         cwd = workspacePath.toString();
         testFileUri = workspacePath.resolve("test.xml").toUri().toString();
         testErrorFileUri = workspacePath.resolve("test-error.xml").toUri().toString();
+        testTxtFileUri = workspacePath.resolve("test.txt").toUri().toString();
     }
 
     @Test
@@ -193,19 +194,18 @@ class LspToolsTest {
         }
     }
 
-    @Disabled("LemMinX does not return XML elements via workspace/symbol - enable with a language server that supports it (e.g. JDT.LS)")
     @Test
     void findReferencesBySymbolName() {
         try (var client = McpAssured.newConnectedSseClient()) {
-            // First, verify workspace/symbol works for "book"
+            // First, verify workspace/symbol works for "greet" via the mock server
             client.when()
                     .toolsCall("search_workspace_symbols", Map.of(
                             "cwd", cwd,
-                            "query", "book"
+                            "query", "greet"
                     ), response -> {
                         assertFalse(response.isError());
                         String text = response.firstContent().asText().text();
-                        assertTrue(text.contains("book"), "Should find 'book' symbol");
+                        assertTrue(text.contains("greet"), "Should find 'greet' symbol");
                     })
                     .thenAssertResults();
         }
@@ -215,7 +215,7 @@ class LspToolsTest {
             client.when()
                     .toolsCall("find_references", Map.of(
                             "cwd", cwd,
-                            "symbolName", "book"
+                            "symbolName", "greet"
                     ), response -> {
                         assertFalse(response.isError());
                     })
@@ -223,14 +223,13 @@ class LspToolsTest {
         }
     }
 
-    @Disabled("LemMinX does not return XML elements via workspace/symbol - enable with a language server that supports it (e.g. JDT.LS)")
     @Test
     void getHoverInfoBySymbolName() {
         try (var client = McpAssured.newConnectedSseClient()) {
             client.when()
                     .toolsCall("get_hover_info", Map.of(
                             "cwd", cwd,
-                            "symbolName", "catalog"
+                            "symbolName", "Greeter"
                     ), response -> {
                         assertFalse(response.isError());
                     })
@@ -249,6 +248,98 @@ class LspToolsTest {
                             "character", 3
                     ), response -> {
                         assertFalse(response.isError());
+                    })
+                    .thenAssertResults();
+        }
+    }
+
+    // --- Mock LSP server tests ---
+
+    @Test
+    void searchWorkspaceSymbolsWithMock() {
+        try (var client = McpAssured.newConnectedSseClient()) {
+            client.when()
+                    .toolsCall("search_workspace_symbols", Map.of(
+                            "cwd", cwd,
+                            "query", "Greeter"
+                    ), response -> {
+                        assertFalse(response.isError());
+                        String text = response.firstContent().asText().text();
+                        assertNotNull(text);
+                        assertTrue(text.contains("Greeter"), "Should find 'Greeter' symbol");
+                    })
+                    .thenAssertResults();
+        }
+    }
+
+    @Test
+    void searchWorkspaceSymbolsFilterByKind() {
+        try (var client = McpAssured.newConnectedSseClient()) {
+            client.when()
+                    .toolsCall("search_workspace_symbols", Map.of(
+                            "cwd", cwd,
+                            "query", "",
+                            "kind", "Method"
+                    ), response -> {
+                        assertFalse(response.isError());
+                        String text = response.firstContent().asText().text();
+                        assertNotNull(text);
+                        assertTrue(text.contains("greet") || text.contains("main"),
+                                "Should contain method symbols");
+                        assertFalse(text.contains("\"Greeter\""),
+                                "Should not contain class symbols when filtering by Method kind");
+                    })
+                    .thenAssertResults();
+        }
+    }
+
+    @Test
+    void findReferencesBySymbolNameWithMock() {
+        try (var client = McpAssured.newConnectedSseClient()) {
+            client.when()
+                    .toolsCall("find_references", Map.of(
+                            "cwd", cwd,
+                            "symbolName", "greet"
+                    ), response -> {
+                        assertFalse(response.isError());
+                        String text = response.firstContent().asText().text();
+                        assertNotNull(text);
+                    })
+                    .thenAssertResults();
+        }
+    }
+
+    @Test
+    void getHoverInfoBySymbolNameWithMock() {
+        try (var client = McpAssured.newConnectedSseClient()) {
+            client.when()
+                    .toolsCall("get_hover_info", Map.of(
+                            "cwd", cwd,
+                            "symbolName", "Greeter"
+                    ), response -> {
+                        assertFalse(response.isError());
+                        String text = response.firstContent().asText().text();
+                        assertNotNull(text);
+                    })
+                    .thenAssertResults();
+        }
+    }
+
+    @Test
+    void findReferencesWithEnclosingSymbol() {
+        try (var client = McpAssured.newConnectedSseClient()) {
+            client.when()
+                    .toolsCall("find_references", Map.of(
+                            "cwd", cwd,
+                            "uri", testTxtFileUri,
+                            "line", 2,
+                            "character", 4,
+                            "includeEnclosingSymbol", true
+                    ), response -> {
+                        assertFalse(response.isError());
+                        String text = response.firstContent().asText().text();
+                        assertNotNull(text);
+                        assertTrue(text.contains("in"), "Response should contain enclosing symbol info ('in' field)");
                     })
                     .thenAssertResults();
         }

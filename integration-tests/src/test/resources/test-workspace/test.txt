@@ -1,0 +1,13 @@
+class Greeter {
+    String name;
+    String greet() {
+        return "Hello, " + name;
+    }
+}
+
+class App {
+    void main() {
+        Greeter g = new Greeter();
+        g.greet();
+    }
+}

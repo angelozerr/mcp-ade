@@ -46,7 +46,9 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * Generic Language Server instance.
@@ -56,11 +58,11 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
     private static final Logger LOG = Logger.getLogger(LspServer.class);
 
-    protected final URI workspaceRoot;
-    protected final PathManager pathManager;
+    private final URI workspaceRoot;
+    private final PathManager pathManager;
 
-    protected Socket socket;
-    protected LanguageServer languageServer;
+    private Socket socket;
+    private LanguageServer languageServer;
     private GenericLanguageClient languageClient;
     private final Map<String, List<Diagnostic>> diagnosticsCache = new ConcurrentHashMap<>();
     private final Set<String> openedFiles = ConcurrentHashMap.newKeySet();
@@ -69,7 +71,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
     private InstanceFileWatcher fileWatcher;
     private LspInstanceRegistry.InstanceInfo currentInstance;
     private final LspClientFeatures clientFeatures;
-    private java.util.concurrent.Future<?> listeningFuture;
+    private Future<?> listeningFuture;
 
     public LspServer(LspServerConfig config, Workspace workspace) {
         super(config, workspace);
@@ -96,7 +98,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
         // If null, let it fail with NullPointerException to catch bugs early
 
         // Common startup checks and preparation
-        if (!checkAndPrepareStart()) {
+        if (!prepareStart()) {
             return CompletableFuture.completedFuture(null);
         }
 
@@ -136,7 +138,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
-                        }, executorService))
+                        }, getExecutorService()))
         );
     }
 
@@ -162,7 +164,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
-                        }, executorService))
+                        }, getExecutorService()))
         );
     }
 
@@ -230,7 +232,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
         setStatusMessage("Not Ready");
     }
 
-    private Launcher<LanguageServer> createLauncher(InputStream in, OutputStream out) {
+    protected Launcher<LanguageServer> createLauncher(InputStream in, OutputStream out) {
         LanguageClient client = createLanguageClient();
         if (client instanceof GenericLanguageClient glc) {
             this.languageClient = glc;
@@ -240,7 +242,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 .setRemoteInterface(LanguageServer.class)
                 .setInput(in)
                 .setOutput(out)
-                .setExecutorService(executorService)
+                .setExecutorService(getExecutorService())
                 .configureGson(JsonUtils::configureGson)
                 .wrapMessages(consumer -> message -> {
                     if (getServerTrace() != ServerTrace.off) {
@@ -503,6 +505,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 .thenApply(result -> result);
     }
 
+    /**
+     * Execute a command on the language server with tracing.
+     */
     public CompletableFuture<Object> executeCommand(String command, Object params) {
         ServerTrace trace = getServerTrace();
         boolean verbose = trace == ServerTrace.verbose;
@@ -610,14 +615,38 @@ public class LspServer extends ServerBase<LspServerConfig> {
         }, CompletableFuture.delayedExecutor(0, TimeUnit.MILLISECONDS));
     }
 
+    /**
+     * Returns the workspace root URI.
+     */
+    protected URI getWorkspaceRoot() {
+        return workspaceRoot;
+    }
+
+    /**
+     * Returns the LSP4J language server proxy.
+     */
     public LanguageServer getLanguageServer() {
         return languageServer;
     }
 
+    protected void setLanguageServer(LanguageServer languageServer) {
+        this.languageServer = languageServer;
+    }
+
+    protected void setListeningFuture(Future<?> listeningFuture) {
+        this.listeningFuture = listeningFuture;
+    }
+
+    /**
+     * Returns the diagnostics cache, keyed by file URI.
+     */
     public Map<String, List<Diagnostic>> getDiagnosticsCache() {
         return diagnosticsCache;
     }
 
+    /**
+     * Returns the language client used to receive notifications from the server.
+     */
     public GenericLanguageClient getLanguageClient() {
         return languageClient;
     }
@@ -631,6 +660,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
         return config.getCommand();
     }
 
+    /**
+     * Returns the current external IDE instance info, or {@code null} if using a managed process.
+     */
     public LspInstanceRegistry.InstanceInfo getCurrentInstance() {
         return currentInstance;
     }
@@ -712,7 +744,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
      */
     public <T> CompletableFuture<T> withAutoDidOpen(
             LspCapability capability, String fileUri, String languageId,
-            java.util.function.Supplier<CompletableFuture<T>> request) {
+            Supplier<CompletableFuture<T>> request) {
         if (getConfig().isSkipDidOpen(capability)) {
             return request.get();
         }
@@ -866,7 +898,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
     }
 
     @Override
-    protected boolean isBindRequestTracedByWire() {
+    protected boolean isRouteRequestTracedByWire() {
         return true;
     }
 
@@ -896,6 +928,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
         return clientFeatures.supportsCapability(capability, document);
     }
 
+    /**
+     * Check if the server supports a given capability (without document context).
+     */
     public boolean supportsCapability(LspCapability capability) {
         return clientFeatures.supportsCapability(capability);
     }

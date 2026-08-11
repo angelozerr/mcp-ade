@@ -13,7 +13,6 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.server;
 
-import com.ibm.mcp.languagetools.client.BindEndpointSupport;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
@@ -22,7 +21,9 @@ import com.ibm.mcp.languagetools.trace.TracingMessageConsumer;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.jboss.logging.Logger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -31,19 +32,40 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Base class for server implementations (LSP and DAP).
- * Provides common functionality for managing server configuration and lifecycle,
- * as well as bindRequest/bindNotification support via BindEndpointSupport.
  *
- * @param <T> The type of server configuration (LspServerConfig or DapServerConfig)
+ * <p>Manages the full server lifecycle shared by both language servers
+ * ({@link com.ibm.mcp.languagetools.lsp.server.LspServer}) and debug adapters
+ * ({@link com.ibm.mcp.languagetools.dap.server.DapServer}):</p>
+ * <ul>
+ *   <li><b>Process management</b>: launching, monitoring stderr, and destroying
+ *       the OS process ({@link #startProcess()}, {@link #destroyProcess})</li>
+ *   <li><b>Status lifecycle</b>: NOT_STARTED → STARTING → RUNNING → STOPPED,
+ *       with listener notifications on every transition ({@link #setStatus})</li>
+ *   <li><b>Readiness gates</b>: {@link #waitForStarted()} / {@link #waitForReady()}
+ *       for callers that need the server to be operational before sending requests</li>
+ *   <li><b>Tracing</b>: wire-level message tracing via {@link com.ibm.mcp.languagetools.trace.TracingMessageConsumer}
+ *       and application-level trace messages via {@link #addTrace}</li>
+ *   <li><b>Inter-server routing</b>: inherited from {@link ServerRequestRouter},
+ *       allowing any server to delegate requests to another LSP server
+ *       (e.g., java-debug DAP → JDTLS)</li>
+ * </ul>
+ *
+ * <p>Subclasses must implement:</p>
+ * <ul>
+ *   <li>{@link #getServerTrace()} — returns the configured trace level</li>
+ *   <li>{@link #initializeTraceCollector} — creates the appropriate trace collector</li>
+ * </ul>
+ *
+ * @param <T> the type of server configuration ({@link com.ibm.mcp.languagetools.lsp.server.LspServerConfig}
+ *            or {@link com.ibm.mcp.languagetools.dap.server.DapServerConfig})
  */
-public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpointSupport {
+public abstract class ServerBase<T extends ServerConfigBase> extends ServerRequestRouter {
 
     private static final Logger LOG = Logger.getLogger(ServerBase.class);
 
@@ -56,8 +78,8 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
      *   <li>DAP: "serverId#sessionId" (e.g. "js-debug#session-123")</li>
      * </ul>
      */
-    private final String contextId;
-    protected ExecutorService executorService; // Not final - can be recreated after error
+    private final String traceContextId;
+    private ExecutorService executorService;
     private final TraceCollector traceCollector;
     private final TracingMessageConsumer tracing;
     private volatile ServerStatus status = ServerStatus.NOT_STARTED;
@@ -79,17 +101,17 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
     /**
      * Constructor with explicit context ID for tracing.
      * <p>
-     * The contextId identifies the trace source:
+     * The traceContextId identifies the trace source:
      * <ul>
      *   <li>LSP: the server ID (e.g. "jdtls")</li>
      *   <li>DAP: "serverId#sessionId" (e.g. "js-debug#session-123")</li>
      * </ul>
      */
-    protected ServerBase(T config, Workspace workspace, String contextId) {
+    protected ServerBase(T config, Workspace workspace, String traceContextId) {
         super(config, workspace);
         this.config = config;
         this.workspace = workspace;
-        this.contextId = contextId;
+        this.traceContextId = traceContextId;
         this.executorService = new ThreadPoolExecutor(2, 8, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(),
                 new ThreadPoolExecutor.CallerRunsPolicy());
         this.readyFuture = new CompletableFuture<>();
@@ -97,17 +119,37 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
 
         var workspaceRoot = workspace.getNormalizedUri();
         this.traceCollector = initializeTraceCollector(workspace);
-        this.tracing = new TracingMessageConsumer(traceCollector, workspaceRoot, contextId);
+        this.tracing = new TracingMessageConsumer(traceCollector, workspaceRoot, traceContextId);
     }
 
-    public final String getContextId() {
-        return contextId;
+    /**
+     * Returns the trace context ID that identifies this server instance in trace messages.
+     */
+    public final String getTraceContextId() {
+        return traceContextId;
     }
 
+    /**
+     * Returns the executor service used for background tasks (stderr monitoring, async operations).
+     */
+    protected ExecutorService getExecutorService() {
+        return executorService;
+    }
+
+    /**
+     * Returns the OS process running the server, or {@code null} if not started.
+     */
     protected Process getServerProcess() {
         return serverProcess;
     }
 
+    /**
+     * Start the OS process for this server using the configured command,
+     * environment variables, and working directory.
+     *
+     * @return the started process
+     * @throws IOException if the command is not configured or the process fails to start
+     */
     protected Process startProcess() throws IOException {
         var config = getConfig();
         List<String> command = buildCommand();
@@ -133,6 +175,10 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         return this.serverProcess;
     }
 
+    /**
+     * Build the command line arguments to launch the server.
+     * Subclasses can override to add variable substitution (e.g., {@code ${port}} in DAP).
+     */
     protected List<String> buildCommand() throws IOException {
         String cmd = getConfig().getCommand();
         if (cmd == null) {
@@ -141,6 +187,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         return parseCommandLine(cmd);
     }
 
+    /**
+     * Parse a command line string into a list of arguments, handling quoted strings.
+     */
     protected List<String> parseCommandLine(String commandLine) {
         List<String> args = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -167,6 +216,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         return args;
     }
 
+    /**
+     * Returns the PID of the server process, or {@code null} if not alive.
+     */
     public Long getPid() {
         Process process = this.serverProcess;
         return process != null && process.isAlive() ? process.pid() : null;
@@ -179,7 +231,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         if (!traceCollector.isEnabled()) {
             return;
         }
-        traceCollector.addTrace(workspace.getNormalizedUri(), contextId, content);
+        traceCollector.addTrace(workspace.getNormalizedUri(), traceContextId, content);
     }
 
     /**
@@ -189,7 +241,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         if (!traceCollector.isEnabled()) {
             return;
         }
-        traceCollector.addTrace(workspace.getNormalizedUri(), contextId, content, messageType);
+        traceCollector.addTrace(workspace.getNormalizedUri(), traceContextId, content, messageType);
     }
 
     /**
@@ -199,6 +251,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         return config;
     }
 
+    /**
+     * Returns the server installation directory.
+     */
     public Path getServerHome() {
         return config.getServerHome();
     }
@@ -209,6 +264,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         return status;
     }
 
+    /**
+     * Returns the unique server identifier (e.g. "jdtls", "java-debug").
+     */
     public String getId() {
         return config.getServerId();
     }
@@ -324,10 +382,16 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         LOG.infof("Resources cleaned for %s (executor kept alive)", config.getServerId());
     }
 
+    /**
+     * Returns the human-readable status message (e.g. "Importing Maven projects...").
+     */
     public final String getStatusMessage() {
         return statusMessage;
     }
 
+    /**
+     * Updates the human-readable status message and notifies listeners if it changed.
+     */
     public void setStatusMessage(String statusMessage) {
         String oldMessage = this.statusMessage;
         this.statusMessage = statusMessage;
@@ -360,7 +424,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
             return;
         }
         executorService.submit(() -> {
-            try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getErrorStream()))) {
+            try (var reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                 String line;
                 StringBuilder stackTraceBuffer = new StringBuilder();
 
@@ -388,7 +452,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
                 }
 
                 LOG.infof("Stderr monitor for %s ended", config.getServerId());
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 if (!Thread.currentThread().isInterrupted()) {
                     LOG.errorf(e, "Error reading stderr for %s", config.getServerId());
                 } else {
@@ -400,14 +464,23 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         });
     }
 
+    /**
+     * Sets the current operation entry for progress tracking in the UI.
+     */
     public void setOperationEntry(OperationEntry operationEntry) {
         this.operationEntry = operationEntry;
     }
 
+    /**
+     * Returns the current operation entry for progress tracking, or {@code null}.
+     */
     public OperationEntry getOperationEntry() {
         return operationEntry;
     }
 
+    /**
+     * Returns a future that completes when the server process has started.
+     */
     public CompletableFuture<Void> waitForStarted() {
         if (isStarted) {
             return CompletableFuture.completedFuture(null);
@@ -415,6 +488,10 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         return startedFuture;
     }
 
+    /**
+     * Returns a future that completes when the server is fully ready
+     * (e.g., after indexing for LSP servers).
+     */
     public CompletableFuture<Void> waitForReady() {
         if (isReady) {
             return CompletableFuture.completedFuture(null);
@@ -428,14 +505,23 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         });
     }
 
+    /**
+     * Returns {@code true} if the server process has started.
+     */
     public final boolean isStarted() {
         return isStarted;
     }
 
+    /**
+     * Returns {@code true} if the server is fully operational and ready to handle requests.
+     */
     public final boolean isReady() {
         return isReady;
     }
 
+    /**
+     * Marks the server as started or not started, completing or resetting the started future.
+     */
     public final void setStarted(boolean started) {
         boolean wasStarted = this.isStarted;
         this.isStarted = started;
@@ -456,6 +542,10 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         }
     }
 
+    /**
+     * Marks the server as ready or not ready, completing or resetting the ready future
+     * and notifying status change listeners.
+     */
     public final void setReady(boolean ready) {
         boolean wasReady = this.isReady;
         this.isReady = ready;
@@ -495,13 +585,13 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
             if (gracefulTimeoutMs > 0) {
                 LOG.infof("Destroying server process (PID: %d)", process.pid());
                 process.destroy();
-                if (process.waitFor(gracefulTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                if (process.waitFor(gracefulTimeoutMs, TimeUnit.MILLISECONDS)) {
                     return true;
                 }
                 LOG.warnf("Server process did not terminate gracefully, forcing kill");
             }
             process.destroyForcibly();
-            if (process.waitFor(forceTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+            if (process.waitFor(forceTimeoutMs, TimeUnit.MILLISECONDS)) {
                 return true;
             }
             LOG.errorf("Server process did not terminate after forceful kill (PID: %d) - may be zombie", process.pid());
@@ -512,6 +602,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
         }
     }
 
+    /**
+     * Returns the workspace this server is associated with.
+     */
     public Workspace getWorkspace() {
         return workspace;
     }
@@ -521,7 +614,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
      * Returns true if can proceed, false if should skip (already running).
      * Common logic for both LSP and DAP servers.
      */
-    protected boolean checkAndPrepareStart() {
+    protected boolean prepareStart() {
         // Don't restart if already running or starting
         if (getStatus() == ServerStatus.RUNNING || getStatus() == ServerStatus.INDEXING || getStatus() == ServerStatus.STARTING) {
             LOG.warnf("Server already running/starting (status: %s), ignoring start call", getStatus());
@@ -581,8 +674,8 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
 
 
     @Override
-    protected void onBindRequestStart(String method, Object params) {
-        if (isBindRequestTracedByWire()) {
+    protected void onRouteRequestStart(String method, Object params) {
+        if (isRouteRequestTracedByWire()) {
             return;
         }
         ServerTrace trace = getServerTrace();
@@ -593,8 +686,8 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
     }
 
     @Override
-    protected void onBindRequestEnd(String method, Object params, Object result, Throwable error, long durationMs) {
-        if (isBindRequestTracedByWire()) {
+    protected void onRouteRequestEnd(String method, Object params, Object result, Throwable error, long durationMs) {
+        if (isRouteRequestTracedByWire()) {
             return;
         }
         ServerTrace trace = getServerTrace();
@@ -607,22 +700,35 @@ public abstract class ServerBase<T extends ServerConfigBase> extends BindEndpoin
     /**
      * Returns true if bind requests are already traced at the wire level
      * (e.g., by TracingMessageConsumer via wrapMessages on the LSP connection).
-     * In that case, onBindRequestStart/End should not add duplicate traces.
+     * In that case, onRouteRequestStart/End should not add duplicate traces.
      * Subclasses with wire-level tracing (LspServer) override to return true.
      */
-    protected boolean isBindRequestTracedByWire() {
+    protected boolean isRouteRequestTracedByWire() {
         return false;
     }
 
+    /**
+     * Returns the trace collector used for application-level tracing.
+     */
     public TraceCollector getTraceCollector() {
         return traceCollector;
     }
 
+    /**
+     * Returns the wire-level tracing consumer for LSP/DAP message logging.
+     */
     public TracingMessageConsumer getTracing() {
         return tracing;
     }
 
+    /**
+     * Returns the configured trace level for this server (off, messages, or verbose).
+     */
     public abstract ServerTrace getServerTrace();
 
+    /**
+     * Creates and returns the trace collector for this server type.
+     * Called once during construction.
+     */
     protected abstract TraceCollector initializeTraceCollector(Workspace workspace);
 }

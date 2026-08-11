@@ -51,7 +51,7 @@ public class LspRequestExecutor {
     /**
      * Execute an LSP request across all capable servers and return typed results.
      *
-     * @return Raw results from all servers (filtered by {@link LspRequestStrategy#isValidResult})
+     * @return raw results from all servers (filtered by {@link LspRequestStrategy#isValidResult})
      */
     public <TRequestParams extends LspRequestParams, TLspParams, TResult> CompletableFuture<List<TResult>> execute(
             TRequestParams params,
@@ -59,9 +59,76 @@ public class LspRequestExecutor {
             Cancellation cancellation,
             Progress progress) {
 
+        OperationContext operationContext = createOperationContext(strategy, params);
+
+        return doExecute(params, strategy, cancellation, progress, operationContext)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        operationContext.fail(ToolException.resolveErrorMessage(ex));
+                    } else {
+                        operationContext.complete();
+                    }
+                })
+                .exceptionally(ToolException::rethrow);
+    }
+
+    /**
+     * Execute an LSP request and return a formatted String result.
+     *
+     * <p>Delegates to {@link #doExecute}, applies the strategy's formatting,
+     * and stores the formatted result in the {@link OperationContext} for display
+     * in the MCP Activity panel.</p>
+     */
+    public <TRequestParams extends LspRequestParams, TLspParams, TResult> CompletableFuture<String> executeAsString(
+            TRequestParams params,
+            LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
+            Cancellation cancellation,
+            Progress progress) {
+
+        OperationContext operationContext = createOperationContext(strategy, params);
+
+        return doExecute(params, strategy, cancellation, progress, operationContext)
+                .thenApply(results -> {
+                    if (results.isEmpty()) {
+                        return strategy.formatNoResultFound(params);
+                    }
+                    return strategy.formatResults(params, results);
+                })
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        operationContext.fail(ToolException.resolveErrorMessage(ex));
+                    } else {
+                        operationContext.setResult(result);
+                        operationContext.complete();
+                    }
+                })
+                .exceptionally(ToolException::rethrow);
+    }
+
+    /**
+     * Create and initialize an {@link OperationContext} for the given strategy and params.
+     */
+    private <TRequestParams extends LspRequestParams> OperationContext createOperationContext(
+            LspRequestStrategy<TRequestParams, ?, ?> strategy,
+            TRequestParams params) {
         OperationContext operationContext = operationTracker.startOperation(
                 OperationTracker.resolveToolName(strategy.getTitle()), "tool", params.getCwd());
         operationContext.setArguments(params.toArgumentsMap());
+        return operationContext;
+    }
+
+    /**
+     * Core execution logic: resolve servers, build LSP params, fan out requests,
+     * and collect results. Handles progress monitoring but does NOT manage the
+     * {@link OperationContext} lifecycle — callers are responsible for calling
+     * {@link OperationContext#complete()} or {@link OperationContext#fail(String)}.
+     */
+    private <TRequestParams extends LspRequestParams, TLspParams, TResult> CompletableFuture<List<TResult>> doExecute(
+            TRequestParams params,
+            LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
+            Cancellation cancellation,
+            Progress progress,
+            OperationContext operationContext) {
 
         ProgressMonitor progressMonitor = progressMonitorManager.createProgressMonitor(
                 progress, cancellation, ProgressContext.forOperation(strategy.getCapability().name(), strategy.getTitle()));
@@ -134,30 +201,6 @@ public class LspRequestExecutor {
                 })
                 .whenComplete((result, ex) -> {
                     progressMonitor.setComplete();
-                    if (ex != null) {
-                        operationContext.fail(ToolException.resolveErrorMessage(ex));
-                    } else {
-                        operationContext.complete();
-                    }
-                })
-                .exceptionally(ToolException::rethrow);
-    }
-
-    /**
-     * Execute an LSP request and return a formatted String result.
-     * Delegates to {@link #execute} then applies the strategy's formatting.
-     */
-    public <TRequestParams extends LspRequestParams, TLspParams, TResult> CompletableFuture<String> executeAsString(
-            TRequestParams params,
-            LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
-            Cancellation cancellation,
-            Progress progress) {
-        return execute(params, strategy, cancellation, progress)
-                .thenApply(results -> {
-                    if (results.isEmpty()) {
-                        return strategy.formatNoResultFound(params);
-                    }
-                    return strategy.formatResults(params, results);
                 });
     }
 

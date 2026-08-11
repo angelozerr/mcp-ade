@@ -18,7 +18,12 @@ import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.PathManager;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ServerConfigSource;
-import com.ibm.mcp.languagetools.installer.*;
+import com.ibm.mcp.languagetools.installer.InstallResult;
+import com.ibm.mcp.languagetools.installer.InstallationStatus;
+import com.ibm.mcp.languagetools.installer.InstallerContext;
+import com.ibm.mcp.languagetools.installer.ServerInstaller;
+import com.ibm.mcp.languagetools.installer.TaskRegistryInstaller;
+import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.language.DocumentSelector;
 import com.ibm.mcp.languagetools.lsp.Contributes;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
@@ -36,23 +41,35 @@ import java.util.function.Consumer;
 
 /**
  * Base class for server configurations (LSP and DAP).
- * Contains common fields: id, name, description, installer, documentSelector.
+ *
+ * <p>Holds all configuration fields shared by both language servers ({@link com.ibm.mcp.languagetools.lsp.server.LspServerConfig})
+ * and debug adapters ({@link com.ibm.mcp.languagetools.dap.server.DapServerConfig}):
+ * identity (serverId, name, serverHome), execution (command, env, workingDirectory),
+ * document matching (documentSelector), activation conditions, extension contributions,
+ * declarative settings, and installer configuration.</p>
+ *
+ * <p>A single {@code ServerConfigBase} instance exists per registered server
+ * (shared across all workspaces). Installation state ({@link #ensureInstalled})
+ * is managed here so that only one installation runs even when multiple
+ * workspaces request the same server simultaneously.</p>
+ *
+ * @see ServerBase
  */
-public class ServerConfigBase implements ServerConfig {
+public class ServerConfigBase {
 
     private static final Logger LOG = Logger.getLogger(ServerConfigBase.class);
 
     private final String serverId;
     private final Path serverHome;
     private final Extension extension;
-    protected String name;
-    protected String description;
-    protected String url;
-    protected JsonElement installerConfig;  // Raw JSON from installer.json
-    protected DocumentSelector documentSelector;
-    protected String command;
-    protected Map<String, String> env = new HashMap<>();
-    protected String workingDirectory;
+    private String name;
+    private String description;
+    private String url;
+    private JsonElement installerConfig;
+    private DocumentSelector documentSelector;
+    private String command;
+    private Map<String, String> env = new HashMap<>();
+    private String workingDirectory;
 
     private ActivationCondition activateWhen;
 
@@ -76,8 +93,7 @@ public class ServerConfigBase implements ServerConfig {
      */
     private List<String> applicableSettings;
 
-    // Trace collector (set by workspace/session when server is added)
-    protected TraceCollector traceCollector;
+    private TraceCollector traceCollector;
 
     // Lazy-loaded installer instance
     private volatile ServerInstaller installer;
@@ -95,6 +111,13 @@ public class ServerConfigBase implements ServerConfig {
     private volatile CompletableFuture<InstallResult> installationFuture;
     private volatile String lastInstallError;
 
+    /**
+     * Creates a server configuration with the given identity and extension.
+     *
+     * @param serverId   unique server identifier (e.g. "jdtls")
+     * @param serverHome installation directory for this server
+     * @param extension  the extension that registered this server
+     */
     public ServerConfigBase(String serverId, Path serverHome, Extension extension) {
         this.serverId = serverId;
         this.serverHome = serverHome;
@@ -103,51 +126,80 @@ public class ServerConfigBase implements ServerConfig {
 
     // Common getters
 
-    @Override
+    /**
+     * Returns the unique server identifier (e.g. "jdtls", "java-debug").
+     */
     public String getServerId() {
         return serverId;
     }
 
-    @Override
+    /**
+     * Returns the server installation directory.
+     */
     public Path getServerHome() {
         return serverHome;
     }
 
-    @Override
+    /**
+     * Returns the human-readable server name.
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Sets the human-readable server name.
+     */
     public void setName(String name) {
         this.name = name;
     }
 
+    /**
+     * Returns the server description.
+     */
     public String getDescription() {
         return description;
     }
 
+    /**
+     * Sets the server description.
+     */
     public void setDescription(String description) {
         this.description = description;
     }
 
+    /**
+     * Returns the server homepage URL.
+     */
     public String getUrl() {
         return url;
     }
 
+    /**
+     * Sets the server homepage URL.
+     */
     public void setUrl(String url) {
         this.url = url;
     }
 
-    @Override
+    /**
+     * Returns the installer configuration JSON from server.json.
+     */
     public JsonElement getInstallerConfig() {
         return installerConfig;
     }
 
+    /**
+     * Sets the installer configuration JSON and detects if it contains a configureServer task.
+     */
     public void setInstallerConfig(JsonElement installerConfig) {
         this.installerConfig = installerConfig;
         this.hasConfigureServer = detectConfigureServer(installerConfig);
     }
 
+    /**
+     * Returns {@code true} if the installer configuration contains a configureServer task.
+     */
     public boolean hasConfigureServer() {
         return hasConfigureServer;
     }
@@ -235,86 +287,149 @@ public class ServerConfigBase implements ServerConfig {
         this.traceCollector = traceCollector;
     }
 
+    /**
+     * Returns the document selector for file matching.
+     */
     public DocumentSelector getDocumentSelector() {
         return documentSelector;
     }
 
+    /**
+     * Sets the document selector for file matching.
+     */
     public void setDocumentSelector(DocumentSelector documentSelector) {
         this.documentSelector = documentSelector;
     }
 
+    /**
+     * Returns the activation condition for this server.
+     */
     public ActivationCondition getActivateWhen() {
         return activateWhen;
     }
 
+    /**
+     * Sets the activation condition for this server.
+     */
     public void setActivateWhen(ActivationCondition activateWhen) {
         this.activateWhen = activateWhen;
     }
 
+    /**
+     * Returns the contributions declared by this server.
+     */
     public Contributes getContributes() {
         return contributes;
     }
 
+    /**
+     * Returns {@code true} if this server declares contributions to other servers.
+     */
     public boolean hasContributions() {
         return contributes != null;
     }
 
+    /**
+     * Returns {@code true} if this server only provides contributions (no own command).
+     */
     public boolean isContributionOnly() {
         return !hasCommand() && hasContributions() && !hasConfigureServer();
     }
 
+    /**
+     * Sets the contributions declared by this server.
+     */
     public void setContributes(Contributes contributes) {
         this.contributes = contributes;
     }
 
+    /**
+     * Sets the list of contribution types this server accepts from other servers.
+     */
     public void setAcceptContributions(List<String> acceptContributions) {
         this.acceptContributions = acceptContributions;
     }
 
+    /**
+     * Returns {@code true} if this server accepts the given contribution type (e.g. "classpath", "bundles").
+     */
     public boolean acceptsContribution(String contributionType) {
         return acceptContributions != null && acceptContributions.contains(contributionType);
     }
 
+    /**
+     * Returns the declarative settings descriptors from server.json.
+     */
     public List<ServerSettingDescriptor> getSettings() {
         return settings;
     }
 
+    /**
+     * Sets the declarative settings descriptors.
+     */
     public void setSettings(List<ServerSettingDescriptor> settings) {
         this.settings = settings;
     }
 
+    /**
+     * Returns the glob patterns for IDE settings keys applicable to this server.
+     */
     public List<String> getApplicableSettings() {
         return applicableSettings;
     }
 
+    /**
+     * Sets the glob patterns for IDE settings keys applicable to this server.
+     */
     public void setApplicableSettings(List<String> applicableSettings) {
         this.applicableSettings = applicableSettings;
     }
 
+    /**
+     * Returns the command line used to launch this server.
+     */
     public String getCommand() {
         return command;
     }
 
+    /**
+     * Returns {@code true} if a launch command is configured.
+     */
     public boolean hasCommand() {
         return command != null;
     }
 
+    /**
+     * Sets the command line used to launch this server.
+     */
     public void setCommand(String command) {
         this.command = command;
     }
 
+    /**
+     * Returns the environment variables to set when launching the server.
+     */
     public Map<String, String> getEnv() {
         return env;
     }
 
+    /**
+     * Sets the environment variables to set when launching the server.
+     */
     public void setEnv(Map<String, String> env) {
         this.env = env;
     }
 
+    /**
+     * Returns the working directory for the server process.
+     */
     public String getWorkingDirectory() {
         return workingDirectory;
     }
 
+    /**
+     * Sets the working directory for the server process.
+     */
     public void setWorkingDirectory(String workingDirectory) {
         this.workingDirectory = workingDirectory;
     }
@@ -367,18 +482,30 @@ public class ServerConfigBase implements ServerConfig {
         this.installProgress = installProgress;
     }
 
+    /**
+     * Returns the extension that registered this server.
+     */
     public Extension getExtension() {
         return extension;
     }
 
+    /**
+     * Returns the extension identifier, or {@code null} if no extension.
+     */
     public String getExtensionId() {
         return extension != null ? extension.getId() : null;
     }
 
+    /**
+     * Returns the source of this server configuration (built-in, user, etc.).
+     */
     public ServerConfigSource getSource() {
         return extension != null ? extension.getSource() : null;
     }
 
+    /**
+     * Returns the application that owns this server's extension.
+     */
     public Application getApplication() {
         return extension != null ? extension.getApplication() : null;
     }

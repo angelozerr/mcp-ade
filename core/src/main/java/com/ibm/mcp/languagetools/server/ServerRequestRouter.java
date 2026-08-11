@@ -11,14 +11,13 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.client;
+package com.ibm.mcp.languagetools.server;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
-import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
@@ -29,13 +28,27 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Base class for bind endpoint support (bindRequest and bindNotification).
- * Provides automatic routing via the contributes.*.bindRequest and contributes.*.bindNotification configuration.
- * Handles complex routing modes (executeCommand vs direct) and method name mapping.
+ * Routes requests and notifications between servers using the
+ * {@code contributes.*.bindRequest} and {@code contributes.*.bindNotification}
+ * declarations from {@code server.json}.
+ *
+ * <p>This mechanism allows any server (LSP or DAP) to delegate calls to another
+ * LSP server. For example, the java-debug DAP server routes
+ * {@code vscode.java.startDebugSession} to the JDTLS language server, and
+ * the Qute language server routes {@code qute/template/project} to JDTLS.</p>
+ *
+ * <p>Two routing modes are supported:</p>
+ * <ul>
+ *   <li>{@link BindMode#EXECUTE_COMMAND} (default for bindRequest):
+ *       wraps the call as an LSP {@code workspace/executeCommand}</li>
+ *   <li>{@link BindMode#DIRECT}: sends a raw JSON-RPC request to the target server</li>
+ * </ul>
+ *
+ * @see ServerBase
  */
-public class BindEndpointSupport {
+public class ServerRequestRouter {
 
-    private static final Logger LOG = Logger.getLogger(BindEndpointSupport.class);
+    private static final Logger LOG = Logger.getLogger(ServerRequestRouter.class);
 
     // JSON field names
     private static final String BIND_REQUEST = "bindRequest";
@@ -73,29 +86,45 @@ public class BindEndpointSupport {
     private record BindInfo(String targetServerId, String targetMethod, BindMode mode) {
     }
 
-    protected final ServerConfigBase config;
-    protected final Workspace workspace;
+    private final ServerConfigBase config;
+    private final Workspace workspace;
 
-    public BindEndpointSupport(ServerConfigBase config, Workspace workspace) {
+    /**
+     * Creates a request router for the given server configuration and workspace.
+     */
+    public ServerRequestRouter(ServerConfigBase config, Workspace workspace) {
         this.config = config;
         this.workspace = workspace;
     }
 
     /**
-     * Send a request using the bindRequest mechanism.
-     * Automatically finds the target server from contributes.*.bindRequest configuration
-     * and routes the request to that server.
-     *
-     * Note: This method is called by LSP4J framework, so we can't add parameters.
-     * Progress monitoring is not available for bind requests - they use ProgressMonitor.none().
-     *
-     * @param method Request method (e.g., "vscode.java.startDebugSession")
-     * @param params Request parameters
-     * @return CompletableFuture with the response
+     * Returns the server configuration.
      */
-    public CompletableFuture<?> request(String method, Object params) {
+    protected ServerConfigBase getConfig() {
+        return config;
+    }
+
+    /**
+     * Returns the workspace this router operates in.
+     */
+    protected Workspace getWorkspace() {
+        return workspace;
+    }
+
+    /**
+     * Route a request to the target server declared in {@code contributes.*.bindRequest}.
+     *
+     * <p>Looks up the target server and routing mode from the server's
+     * {@code contributes} configuration, ensures the target LSP server is
+     * running, then forwards the call.</p>
+     *
+     * @param method request method (e.g., "vscode.java.startDebugSession")
+     * @param params request parameters
+     * @return CompletableFuture with the response from the target server
+     */
+    public CompletableFuture<?> routeRequest(String method, Object params) {
         String serverId = config.getServerId();
-        LOG.infof("[%s] BindEndpointSupport.request() called for: %s", serverId, method);
+        LOG.infof("[%s] ServerRequestRouter.routeRequest() called for: %s", serverId, method);
 
         // Check if this is a bindRequest declared in server.json
         BindInfo bindInfo = findBindInfo(method, BIND_REQUEST, BindMode.EXECUTE_COMMAND);
@@ -122,7 +151,7 @@ public class BindEndpointSupport {
                     .thenCompose(targetServer -> {
                         LOG.debugf("Server %s is ready, routing request %s", targetServerId, targetMethod);
 
-                        onBindRequestStart(method, params);
+                        onRouteRequestStart(method, params);
                         long startTime = System.nanoTime();
 
                         CompletableFuture<?> future;
@@ -136,7 +165,7 @@ public class BindEndpointSupport {
 
                         return future.whenComplete((result, error) -> {
                             long durationMs = (System.nanoTime() - startTime) / 1_000_000;
-                            onBindRequestEnd(method, params, result, error, durationMs);
+                            onRouteRequestEnd(method, params, result, error, durationMs);
                         });
                     });
         } else {
@@ -152,16 +181,14 @@ public class BindEndpointSupport {
     }
 
     /**
-     * Send a notification using the bindNotification mechanism.
-     * Automatically finds the target server from contributes.*.bindNotification configuration
-     * and routes the notification to that server.
+     * Route a notification to the target server declared in {@code contributes.*.bindNotification}.
      *
-     * @param method Notification method (e.g., "textDocument/didOpen")
-     * @param params Notification parameters
+     * @param method notification method (e.g., "textDocument/didOpen")
+     * @param params notification parameters
      */
-    public void notify(String method, Object params) {
+    public void routeNotification(String method, Object params) {
         String serverId = config.getServerId();
-        LOG.debugf("[%s] BindEndpointSupport.notify() called: %s", serverId, method);
+        LOG.debugf("[%s] ServerRequestRouter.routeNotification() called: %s", serverId, method);
 
         // Check if this is a bindNotification declared in server.json
         BindInfo bindInfo = findBindInfo(method, BIND_NOTIFICATION, BindMode.DIRECT);
@@ -275,10 +302,16 @@ public class BindEndpointSupport {
         return null;
     }
 
-    protected void onBindRequestStart(String method, Object params) {
+    /**
+     * Hook called before a routed request is sent. Subclasses override for tracing.
+     */
+    protected void onRouteRequestStart(String method, Object params) {
     }
 
-    protected void onBindRequestEnd(String method, Object params, Object result, Throwable error, long durationMs) {
+    /**
+     * Hook called after a routed request completes. Subclasses override for tracing.
+     */
+    protected void onRouteRequestEnd(String method, Object params, Object result, Throwable error, long durationMs) {
     }
 
     /**

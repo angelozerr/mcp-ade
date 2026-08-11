@@ -127,7 +127,7 @@ public class LspServerConfig extends ServerConfigBase {
     public String toString() {
         return "LspServerConfig{" +
                 "id='" + getServerId() + '\'' +
-                ", name='" + name + '\'' +
+                ", name='" + getName() + '\'' +
                 ", command='" + getCommand() + '\'' +
                 ", documentSelector=" + getDocumentSelector() +
                 '}';

@@ -21,6 +21,7 @@ import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.jboss.logging.Logger;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -336,7 +337,7 @@ public class JavaDebugServer extends DapServer {
         String workspaceRootUri = getWorkspace().getNormalizedUri();
 
         // Call vscode.java.startDebugSession via bindRequest mechanism
-        return request(CMD_START_DEBUG_SESSION, List.of())
+        return routeRequest(CMD_START_DEBUG_SESSION, List.of())
                 .thenApply(result -> {
                     if (!(result instanceof Number)) {
                         String error = String.format("%s returned non-numeric result: %s", CMD_START_DEBUG_SESSION, result);
@@ -365,13 +366,13 @@ public class JavaDebugServer extends DapServer {
             String projectName,
             String sessionId) {
 
-        List<Object> args = new java.util.ArrayList<>();
+        List<Object> args = new ArrayList<>();
         args.add(workspaceRootUri);
         args.add(mainClass);
         args.add(projectName);
         args.add(false);
 
-        return request(CMD_VALIDATE_LAUNCH_CONFIG, args)
+        return routeRequest(CMD_VALIDATE_LAUNCH_CONFIG, args)
                 .handle((result, ex) -> {
                     if (ex != null) {
                         String error = String.format("Error calling %s: %s", CMD_VALIDATE_LAUNCH_CONFIG, ex.getMessage());
@@ -397,9 +398,9 @@ public class JavaDebugServer extends DapServer {
             String sessionId) {
 
         // Use Arrays.asList instead of List.of because List.of doesn't allow null values
-        List<Object> args = java.util.Arrays.asList(mainClass, projectName, null);
+        List<Object> args = Arrays.asList(mainClass, projectName, null);
 
-        return request(CMD_RESOLVE_CLASSPATH, args)
+        return routeRequest(CMD_RESOLVE_CLASSPATH, args)
                 .handle((result, ex) -> {
                     if (ex != null) {
                         String error = String.format("Error calling %s: %s", CMD_RESOLVE_CLASSPATH, ex.getMessage());
@@ -422,7 +423,7 @@ public class JavaDebugServer extends DapServer {
         // Use Arrays.asList instead of List.of because List.of doesn't allow null values
         List<Object> args = Arrays.asList(mainClass, projectName);
 
-        return request(CMD_RESOLVE_JAVA_EXECUTABLE, args)
+        return routeRequest(CMD_RESOLVE_JAVA_EXECUTABLE, args)
                 .handle((result, ex) -> {
                     if (ex != null) {
                         String error = String.format("Error calling %s: %s", CMD_RESOLVE_JAVA_EXECUTABLE, ex.getMessage());

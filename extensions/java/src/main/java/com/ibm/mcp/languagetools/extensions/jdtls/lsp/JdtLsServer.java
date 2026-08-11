@@ -407,7 +407,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                 .thenRun(() -> {
                     setReady(false);
                     setStatus(ServerStatus.INDEXING);
-                    LOG.infof("JDT.LS initialized for workspace: %s (waiting for ServiceReady notification)", workspaceRoot);
+                    LOG.infof("JDT.LS initialized for workspace: %s (waiting for ServiceReady notification)", getWorkspaceRoot());
                 });
     }
 

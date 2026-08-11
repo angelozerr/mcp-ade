@@ -48,9 +48,9 @@ public class JdtLsLanguageClient extends GenericLanguageClient {
         String command = params.getCommand();
         LOG.infof("JDT.LS executeClientCommand: %s", command);
 
-        String jdtlsServerId = config.getServerId();
+        String jdtlsServerId = getConfig().getServerId();
 
-        for (LspServerConfig serverConfig : workspace.getApplication().getLspServerConfigs()) {
+        for (LspServerConfig serverConfig : getWorkspace().getApplication().getLspServerConfigs()) {
             Contributes contributes = serverConfig.getContributes();
             if (contributes == null) {
                 continue;
@@ -63,7 +63,7 @@ public class JdtLsLanguageClient extends GenericLanguageClient {
                 String targetServerId = serverConfig.getServerId();
                 LOG.infof("Routing executeClientCommand '%s' to server '%s'", command, targetServerId);
                 Object commandArgs = extractCommandArgs(params);
-                return workspace.ensureLspServerReady(targetServerId, ProgressMonitor.none())
+                return getWorkspace().ensureLspServerReady(targetServerId, ProgressMonitor.none())
                         .thenCompose(targetServer -> targetServer.sendRequest(command, commandArgs))
                         .thenApply(result -> (Object) result);
             }

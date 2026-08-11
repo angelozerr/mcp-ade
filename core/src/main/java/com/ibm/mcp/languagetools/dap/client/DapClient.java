@@ -312,6 +312,7 @@ public class DapClient implements IDebugProtocolClient {
     public CompletableFuture<RunInTerminalResponse> runInTerminal(RunInTerminalRequestArguments args) {
         LOG.infof("RunInTerminal request: kind=%s, title=%s, cwd=%s", args.getKind(), args.getTitle(), args.getCwd());
 
+        ExecutorService executor = executorService;
         return CompletableFuture.supplyAsync(() -> {
             try {
                 ProcessBuilder pb = new ProcessBuilder(java.util.Arrays.asList(args.getArgs()));
@@ -405,7 +406,7 @@ public class DapClient implements IDebugProtocolClient {
 
                 throw new RuntimeException("Failed to launch process", e);
             }
-        });
+        }, executor);
     }
 
     /**

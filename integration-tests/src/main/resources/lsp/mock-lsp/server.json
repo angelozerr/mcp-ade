@@ -1,0 +1,10 @@
+{
+    "id": "mock-lsp",
+    "name": "Mock LSP Server (Test)",
+    "description": "In-process mock LSP server for integration testing",
+    "documentSelector": [
+        {
+            "language": "plaintext"
+        }
+    ]
+}

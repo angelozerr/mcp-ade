@@ -35,6 +35,7 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -46,11 +47,11 @@ public class DapServer extends ServerBase<DapServerConfig> {
 
     private static final Logger LOG = Logger.getLogger(DapServer.class);
 
-    protected IDebugProtocolServer debugServer;
-    protected DapClient dapClient;
-    protected Integer allocatedPort; // Port allocated via ${port} substitution
-    protected TransportStreams transportStreams; // Transport layer (stdio or socket)
-    private final List<TransportStreams> childTransportStreams = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private IDebugProtocolServer debugServer;
+    private DapClient dapClient;
+    private Integer allocatedPort;
+    private TransportStreams transportStreams;
+    private final List<TransportStreams> childTransportStreams = new CopyOnWriteArrayList<>();
     private final DapSession session;
 
     public DapServer(DapSession session, DapServerConfig config, Workspace workspace) {
@@ -58,6 +59,9 @@ public class DapServer extends ServerBase<DapServerConfig> {
         this.session = session;
     }
 
+    /**
+     * Returns the debug session associated with this server.
+     */
     public DapSession getSession() {
         return session;
     }
@@ -83,7 +87,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
      * </ul>
      */
     public final CompletableFuture<Void> start(ProgressMonitor progressMonitor) {
-        if (!checkAndPrepareStart()) {
+        if (!prepareStart()) {
             return CompletableFuture.completedFuture(null);
         }
 
@@ -242,7 +246,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
                 startStderrMonitoring();
 
                 // Monitor process exit
-                executorService.submit(() -> {
+                getExecutorService().submit(() -> {
                     try {
                         while (serverProcess != null && serverProcess.isAlive()) {
                             if (serverProcess.waitFor(1, TimeUnit.SECONDS)) {
@@ -270,7 +274,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }, executorService);
+        }, getExecutorService());
     }
 
     private DAPServerReadyTracker getServerReadyTracker(DapServerConfig config) {
@@ -290,7 +294,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
      * Wait for the DAP server to be ready.
      */
     private CompletableFuture<DAPServerReadyTracker> waitForServerReady(DAPServerReadyTracker readyTracker) {
-        return readyTracker.track(executorService)
+        return readyTracker.track(getExecutorService())
             .thenApply(v -> {
                 LOG.infof("DAP server ready, creating launcher...");
 
@@ -338,7 +342,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }, executorService);
+        }, getExecutorService());
     }
 
     /**
@@ -368,14 +372,14 @@ public class DapServer extends ServerBase<DapServerConfig> {
      */
     protected void createLauncherFromTransport(TransportStreams transport) {
         dapClient = createDapClient();
-        dapClient.setExecutorService(executorService);
+        dapClient.setExecutorService(getExecutorService());
 
         // Wrapper for tracing
         Launcher<IDebugProtocolServer> launcher = DSPLauncher.createClientLauncher(
                 dapClient,
                 transport.getInputStream(),
                 transport.getOutputStream(),
-                executorService,
+                getExecutorService(),
                 consumer -> message -> {
                     try {
                         getTracing().log(message, consumer);
@@ -416,7 +420,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
             } catch (Exception e) {
                 throw new RuntimeException("Failed to connect to DAP server at " + host + ":" + port, e);
             }
-        }, executorService);
+        }, getExecutorService());
     }
 
     /**
@@ -455,7 +459,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
                     childClient,
                     childTransport.getInputStream(),
                     childTransport.getOutputStream(),
-                    executorService,
+                    getExecutorService(),
                     consumer -> message -> {
                         if (getServerTrace() != ServerTrace.off) {
                             try {
@@ -561,10 +565,16 @@ public class DapServer extends ServerBase<DapServerConfig> {
 
     // Getters
 
+    /**
+     * Returns the DAP server proxy for sending debug protocol requests.
+     */
     public IDebugProtocolServer getDebugServer() {
         return debugServer;
     }
 
+    /**
+     * Returns the DAP client that receives events and reverse requests.
+     */
     public DapClient getDapClient() {
         return dapClient;
     }

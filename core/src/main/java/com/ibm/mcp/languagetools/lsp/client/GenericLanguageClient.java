@@ -13,7 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.client;
 
-import com.ibm.mcp.languagetools.client.BindEndpointSupport;
+import com.ibm.mcp.languagetools.server.ServerRequestRouter;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Endpoint;
@@ -29,13 +29,13 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Generic LSP client implementation with support for capability registration, bindRequest and bindNotification routing.
- * Extends BindEndpointSupport to handle bindRequest and bindNotification routing declared in server.json.
+ * Extends {@link ServerRequestRouter} to handle bindRequest and bindNotification routing declared in server.json.
  * Implements Endpoint to handle custom requests.
  *
  * bindRequest: defaults to "executeCommand" mode (workspace/executeCommand)
  * bindNotification: defaults to "direct" mode (direct method call)
  */
-public class GenericLanguageClient extends BindEndpointSupport implements LanguageClient, Endpoint {
+public class GenericLanguageClient extends ServerRequestRouter implements LanguageClient, Endpoint {
 
     private static final Logger LOG = Logger.getLogger(GenericLanguageClient.class);
 
@@ -107,5 +107,17 @@ public class GenericLanguageClient extends BindEndpointSupport implements Langua
     public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams) {
         var workspaceConfig = lspServer.getWorkspace().getIdeConfiguration();
         return CompletableFuture.completedFuture(workspaceConfig.find(configurationParams.getItems()));
+    }
+
+    // -- Endpoint implementation (delegates to ServerRequestRouter) --
+
+    @Override
+    public CompletableFuture<?> request(String method, Object parameter) {
+        return routeRequest(method, parameter);
+    }
+
+    @Override
+    public void notify(String method, Object parameter) {
+        routeNotification(method, parameter);
     }
 }
