@@ -4,7 +4,7 @@
     "description": "In-process mock LSP server for integration testing",
     "documentSelector": [
         {
-            "language": "plaintext"
+            "pattern": "**"
         }
     ]
 }

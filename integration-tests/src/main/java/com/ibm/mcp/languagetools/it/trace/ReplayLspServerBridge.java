@@ -11,7 +11,7 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.it.mock;
+package com.ibm.mcp.languagetools.it.trace;
 
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
@@ -28,39 +28,43 @@ import java.io.PipedOutputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Bridge between the MCP LSP framework and the in-process {@link MockLspLanguageServer}.
+ * Bridge between the MCP LSP framework and the in-process {@link ReplayLspLanguageServer}.
  * <p>
  * Overrides {@link LspServer#launchProcess()} to create an in-process connection
- * via piped streams instead of launching an external OS process. This avoids
- * the need for a separate JAR or executable, making tests self-contained.
+ * via piped streams, connecting a {@link ReplayLspLanguageServer} that replays
+ * responses from recorded LSP trace data.
  */
-public class MockLspServerBridge extends LspServer {
+public class ReplayLspServerBridge extends LspServer {
+
+    private final LspTraceData traceData;
 
     /**
-     * Create a new mock LSP server bridge.
+     * Create a new replay LSP server bridge.
      *
-     * @param config    the LSP server configuration (from server.json)
+     * @param config    the LSP server configuration
      * @param workspace the workspace this server is associated with
+     * @param traceData the parsed LSP trace data for replaying responses
      */
-    public MockLspServerBridge(LspServerConfig config, Workspace workspace) {
+    public ReplayLspServerBridge(LspServerConfig config, Workspace workspace, LspTraceData traceData) {
         super(config, workspace);
+        this.traceData = traceData;
     }
 
     /**
-     * Launch the mock LSP server in-process using piped streams.
+     * Launch the replay LSP server in-process using piped streams.
      * <p>
      * Creates two pairs of {@link PipedInputStream}/{@link PipedOutputStream}
      * for bidirectional communication:
      * <ul>
-     *   <li>Client → Server: client writes to {@code clientToServerOut}, server reads from {@code clientToServerIn}</li>
-     *   <li>Server → Client: server writes to {@code serverToClientOut}, client reads from {@code serverToClientIn}</li>
+     *   <li>Client to Server: client writes to {@code clientToServerOut}, server reads from {@code clientToServerIn}</li>
+     *   <li>Server to Client: server writes to {@code serverToClientOut}, client reads from {@code serverToClientIn}</li>
      * </ul>
      *
      * @throws IOException if the piped streams cannot be created
      */
     @Override
     protected void launchProcess() throws IOException {
-        MockLspLanguageServer mockServer = new MockLspLanguageServer();
+        ReplayLspLanguageServer replayServer = new ReplayLspLanguageServer(traceData);
 
         PipedInputStream clientToServerIn = new PipedInputStream();
         PipedOutputStream clientToServerOut = new PipedOutputStream(clientToServerIn);
@@ -69,8 +73,8 @@ public class MockLspServerBridge extends LspServer {
 
         // Server-side launcher: reads from clientToServerIn, writes to serverToClientOut
         Launcher<LanguageClient> serverLauncher = LSPLauncher.createServerLauncher(
-                mockServer, clientToServerIn, serverToClientOut);
-        mockServer.connect(serverLauncher.getRemoteProxy());
+                replayServer, clientToServerIn, serverToClientOut);
+        replayServer.connect(serverLauncher.getRemoteProxy());
         serverLauncher.startListening();
 
         // Client-side launcher: reads from serverToClientIn, writes to clientToServerOut
@@ -80,7 +84,7 @@ public class MockLspServerBridge extends LspServer {
     }
 
     /**
-     * Skip contributor installation — the mock server has no external dependencies.
+     * Skip contributor installation — the replay server has no external dependencies.
      *
      * @param progressMonitor the progress monitor (unused)
      * @return a completed future

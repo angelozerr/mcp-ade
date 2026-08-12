@@ -79,6 +79,9 @@ public class LspServerResolver {
     /**
      * Get all LSP servers for a workspace (without specific file).
      * Used for workspace-level operations like workspace/symbol.
+     * <p>
+     * Ensures all applicable servers are started before returning,
+     * so this method works even when called as the first operation on a workspace.
      *
      * @param cwd    the current working directory path (not URI)
      * @param filter predicate to filter servers (e.g., by enabled status)
@@ -89,11 +92,11 @@ public class LspServerResolver {
             Predicate<LspServer> filter) {
 
         Workspace workspace = application.getWorkspaceForPath(cwd);
-        return CompletableFuture.completedFuture(
-                workspace.getLspServers()
+        return application.ensureServersForWorkspace(workspace, ProgressMonitor.none())
+                .thenApply(v -> workspace.getLspServers()
                         .stream()
                         .filter(filter)
                         .toList()
-        );
+                );
     }
 }

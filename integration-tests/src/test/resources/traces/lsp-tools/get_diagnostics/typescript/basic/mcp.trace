@@ -1,0 +1,28 @@
+[Trace - 23:56:43] Sending request 'tools/call - (1)'
+{
+  "method": "tools/call",
+  "params": {
+    "name": "get_diagnostics",
+    "arguments": {
+      "cwd": "${workspaceRoot}",
+      "uri": "file:///${workspaceRoot}/service.ts"
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+
+[Trace - 23:56:53] Received response 'tools/call - (1)' in 10453ms
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "isError": false,
+    "content": [
+      {
+        "text": "[]",
+        "type": "text"
+      }
+    ]
+  }
+}

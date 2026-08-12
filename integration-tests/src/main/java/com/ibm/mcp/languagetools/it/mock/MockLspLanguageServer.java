@@ -13,10 +13,15 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.it.mock;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.ibm.mcp.languagetools.it.trace.LspTraceData;
+import com.ibm.mcp.languagetools.it.trace.ReplayLspServerFactory;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.*;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -28,22 +33,54 @@ import java.util.concurrent.CompletableFuture;
  * textDocument/references, textDocument/hover, textDocument/definition,
  * textDocument/declaration, textDocument/typeDefinition, textDocument/implementation,
  * and textDocument/completion.
+ * <p>
+ * The predefined symbols model a simple two-class structure:
+ * <ul>
+ *   <li>{@code Greeter} class with fields {@code name} and method {@code greet()}</li>
+ *   <li>{@code App} class with method {@code main()}</li>
+ * </ul>
  */
 public class MockLspLanguageServer implements LanguageServer, TextDocumentService, WorkspaceService {
 
+    private final Gson gson = ReplayLspServerFactory.getLsp4jGson();
     private LanguageClient client;
+    private String rootUri;
 
     /**
      * Connect the language client (called after launcher creation).
+     *
+     * @param client the language client proxy provided by the LSP4J launcher
      */
     public void connect(LanguageClient client) {
         this.client = client;
     }
 
+    /**
+     * Try to replay a response from registered trace data.
+     *
+     * @return the replayed result, or {@code null} if no trace data is registered
+     */
+    private <T> CompletableFuture<T> tryReplay(String method, Type type) {
+        LspTraceData traceData = ReplayLspServerFactory.getData("mock-lsp");
+        if (traceData == null) {
+            return null;
+        }
+        // Replay mode active — never fall through to mock defaults
+        String json = traceData.getNextResponse(method);
+        if (json == null || json.isBlank()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        T result = gson.fromJson(json, type);
+        return CompletableFuture.completedFuture(result);
+    }
+
+
     // ---- LanguageServer ----
 
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
+        this.rootUri = params.getRootUri();
+
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setReferencesProvider(true);
@@ -61,7 +98,6 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
 
     @Override
     public void initialized(InitializedParams params) {
-        // No-op
     }
 
     @Override
@@ -71,7 +107,6 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
 
     @Override
     public void exit() {
-        // No-op
     }
 
     @Override
@@ -86,9 +121,16 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
 
     // ---- WorkspaceService ----
 
+    /**
+     * Handle workspace/symbol requests.
+     * Returns predefined symbols filtered by the query string (case-insensitive contains).
+     */
     @SuppressWarnings("deprecation")
     @Override
     public CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> symbol(WorkspaceSymbolParams params) {
+        CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> replay =
+                tryReplay("workspace/symbol", new TypeToken<Either<List<SymbolInformation>, List<WorkspaceSymbol>>>() {}.getType());
+        if (replay != null) return replay;
         String query = params.getQuery() != null ? params.getQuery().toLowerCase() : "";
         List<SymbolInformation> allSymbols = getPredefinedWorkspaceSymbols();
 
@@ -106,11 +148,13 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
         return CompletableFuture.completedFuture(Either.forLeft(filtered));
     }
 
+    /**
+     * Build the predefined workspace symbols list using the actual workspace root URI.
+     *
+     * @return list of symbol information for the test workspace
+     */
     private List<SymbolInformation> getPredefinedWorkspaceSymbols() {
-        // Use a placeholder URI; the actual URI is not important for workspace/symbol
-        // because the integration test workspace resolves the file via cwd.
-        // We use a relative-looking URI that the test workspace will match.
-        String fileUri = "file:///test-workspace/test.txt";
+        String fileUri = buildFileUri("test.txt");
 
         List<SymbolInformation> symbols = new ArrayList<>();
 
@@ -122,6 +166,33 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
         return symbols;
     }
 
+    /**
+     * Build a file URI relative to the workspace root.
+     *
+     * @param filename the filename relative to the workspace root
+     * @return the full file URI
+     */
+    private String buildFileUri(String filename) {
+        if (rootUri != null) {
+            String base = rootUri.endsWith("/") ? rootUri : rootUri + "/";
+            return base + filename;
+        }
+        return "file:///test-workspace/" + filename;
+    }
+
+    /**
+     * Create a {@link SymbolInformation} with the given properties.
+     *
+     * @param name          the symbol name
+     * @param kind          the symbol kind
+     * @param uri           the file URI containing the symbol
+     * @param startLine     the start line (0-based)
+     * @param startChar     the start character (0-based)
+     * @param endLine       the end line (0-based)
+     * @param endChar       the end character (0-based)
+     * @param containerName the container name, or {@code null}
+     * @return the symbol information
+     */
     @SuppressWarnings("deprecation")
     private SymbolInformation createSymbolInformation(String name, SymbolKind kind,
                                                        String uri, int startLine, int startChar,
@@ -139,42 +210,41 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
 
     @Override
     public void didChangeConfiguration(DidChangeConfigurationParams params) {
-        // No-op
     }
 
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
-        // No-op
     }
 
     // ---- TextDocumentService ----
 
     @Override
     public void didOpen(DidOpenTextDocumentParams params) {
-        // No-op
     }
 
     @Override
     public void didChange(DidChangeTextDocumentParams params) {
-        // No-op
     }
 
     @Override
     public void didClose(DidCloseTextDocumentParams params) {
-        // No-op
     }
 
     @Override
     public void didSave(DidSaveTextDocumentParams params) {
-        // No-op
     }
 
+    /**
+     * Handle textDocument/documentSymbol requests.
+     * Returns a hierarchical {@link DocumentSymbol} tree matching the test workspace content.
+     */
     @Override
     public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(DocumentSymbolParams params) {
-        String uri = params.getTextDocument().getUri();
+        CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> replay =
+                tryReplay("textDocument/documentSymbol", new TypeToken<List<Either<SymbolInformation, DocumentSymbol>>>() {}.getType());
+        if (replay != null) return replay;
         List<Either<SymbolInformation, DocumentSymbol>> result = new ArrayList<>();
 
-        // Return hierarchical DocumentSymbol structure
         DocumentSymbol greeterClass = new DocumentSymbol();
         greeterClass.setName("Greeter");
         greeterClass.setKind(SymbolKind.Class);
@@ -196,7 +266,6 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
         greeterClass.setChildren(List.of(nameField, greetMethod));
         result.add(Either.forRight(greeterClass));
 
-        // Add App class if URI suggests a second file or same file with App
         DocumentSymbol appClass = new DocumentSymbol();
         appClass.setName("App");
         appClass.setKind(SymbolKind.Class);
@@ -215,18 +284,30 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
         return CompletableFuture.completedFuture(result);
     }
 
+    /**
+     * Handle textDocument/references requests.
+     * Returns fixed reference locations within the requested document.
+     */
     @Override
     public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
+        CompletableFuture<List<? extends Location>> replay =
+                tryReplay("textDocument/references", new TypeToken<List<Location>>() {}.getType());
+        if (replay != null) return replay;
         String uri = params.getTextDocument().getUri();
         List<Location> locations = new ArrayList<>();
-        // Return a few fixed reference locations
         locations.add(new Location(uri, new Range(new Position(9, 8), new Position(9, 20))));
         locations.add(new Location(uri, new Range(new Position(10, 8), new Position(10, 15))));
         return CompletableFuture.completedFuture(locations);
     }
 
+    /**
+     * Handle textDocument/hover requests.
+     * Returns a simple markdown hover with the symbol position.
+     */
     @Override
     public CompletableFuture<Hover> hover(HoverParams params) {
+        CompletableFuture<Hover> replay = tryReplay("textDocument/hover", Hover.class);
+        if (replay != null) return replay;
         String content = "Mock hover info for symbol at line " + params.getPosition().getLine();
         MarkupContent markup = new MarkupContent();
         markup.setKind("markdown");
@@ -235,8 +316,14 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
         return CompletableFuture.completedFuture(hover);
     }
 
+    /**
+     * Handle textDocument/definition requests.
+     * Returns a fixed definition location in the requested document.
+     */
     @Override
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> definition(DefinitionParams params) {
+        CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> replay = tryReplay("textDocument/definition", ReplayLspServerFactory.LOCATION_EITHER_TYPE);
+        if (replay != null) return replay;
         String uri = params.getTextDocument().getUri();
         Location location = new Location(uri, new Range(new Position(0, 0), new Position(0, 10)));
         return CompletableFuture.completedFuture(Either.forLeft(List.of(location)));
@@ -244,6 +331,8 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
 
     @Override
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> declaration(DeclarationParams params) {
+        CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> replay = tryReplay("textDocument/declaration", ReplayLspServerFactory.LOCATION_EITHER_TYPE);
+        if (replay != null) return replay;
         String uri = params.getTextDocument().getUri();
         Location location = new Location(uri, new Range(new Position(0, 0), new Position(0, 10)));
         return CompletableFuture.completedFuture(Either.forLeft(List.of(location)));
@@ -251,6 +340,8 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
 
     @Override
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> typeDefinition(TypeDefinitionParams params) {
+        CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> replay = tryReplay("textDocument/typeDefinition", ReplayLspServerFactory.LOCATION_EITHER_TYPE);
+        if (replay != null) return replay;
         String uri = params.getTextDocument().getUri();
         Location location = new Location(uri, new Range(new Position(0, 0), new Position(0, 10)));
         return CompletableFuture.completedFuture(Either.forLeft(List.of(location)));
@@ -258,13 +349,22 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
 
     @Override
     public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> implementation(ImplementationParams params) {
+        CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> replay = tryReplay("textDocument/implementation", ReplayLspServerFactory.LOCATION_EITHER_TYPE);
+        if (replay != null) return replay;
         String uri = params.getTextDocument().getUri();
         Location location = new Location(uri, new Range(new Position(0, 0), new Position(0, 10)));
         return CompletableFuture.completedFuture(Either.forLeft(List.of(location)));
     }
 
+    /**
+     * Handle textDocument/completion requests.
+     * Returns a fixed set of completion items for testing.
+     */
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams params) {
+        CompletableFuture<Either<List<CompletionItem>, CompletionList>> replay =
+                tryReplay("textDocument/completion", new TypeToken<Either<List<CompletionItem>, CompletionList>>() {}.getType());
+        if (replay != null) return replay;
         List<CompletionItem> items = new ArrayList<>();
 
         CompletionItem item1 = new CompletionItem("greet");

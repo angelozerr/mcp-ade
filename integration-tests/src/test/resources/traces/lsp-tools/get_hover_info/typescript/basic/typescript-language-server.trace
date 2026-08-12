@@ -1,0 +1,215 @@
+[Trace - 23:56:43] Sending request 'initialize - (1)'.
+Params: {
+  "processId": 81468,
+  "rootUri": "file:/${workspaceRoot}",
+  "capabilities": {
+    "workspace": {
+      "didChangeWatchedFiles": {
+        "dynamicRegistration": true
+      },
+      "workspaceFolders": true,
+      "configuration": true
+    },
+    "textDocument": {
+      "completion": {},
+      "hover": {},
+      "signatureHelp": {},
+      "references": {},
+      "documentSymbol": {
+        "hierarchicalDocumentSymbolSupport": true
+      },
+      "formatting": {},
+      "rangeFormatting": {},
+      "declaration": {},
+      "definition": {},
+      "typeDefinition": {},
+      "implementation": {},
+      "codeAction": {},
+      "codeLens": {},
+      "rename": {},
+      "publishDiagnostics": {},
+      "typeHierarchy": {},
+      "callHierarchy": {},
+      "inlayHint": {}
+    }
+  },
+  "trace": "verbose",
+  "workspaceFolders": [
+    {
+      "uri": "file:/${workspaceRoot}",
+      "name": "ts-test"
+    }
+  ]
+}
+
+
+
+[Trace - 23:56:43] Received response 'initialize - (1)' in 224ms.
+Result: {
+  "capabilities": {
+    "textDocumentSync": 2,
+    "hoverProvider": true,
+    "completionProvider": {
+      "resolveProvider": true,
+      "triggerCharacters": [
+        ".",
+        "\"",
+        "\u0027",
+        "/",
+        "@",
+        "\u003c"
+      ]
+    },
+    "signatureHelpProvider": {
+      "triggerCharacters": [
+        "(",
+        ",",
+        "\u003c"
+      ],
+      "retriggerCharacters": [
+        ")"
+      ]
+    },
+    "definitionProvider": true,
+    "typeDefinitionProvider": true,
+    "implementationProvider": true,
+    "referencesProvider": true,
+    "documentHighlightProvider": true,
+    "documentSymbolProvider": true,
+    "workspaceSymbolProvider": true,
+    "codeActionProvider": true,
+    "codeLensProvider": {
+      "resolveProvider": true
+    },
+    "documentFormattingProvider": true,
+    "documentRangeFormattingProvider": true,
+    "renameProvider": true,
+    "foldingRangeProvider": true,
+    "executeCommandProvider": {
+      "commands": [
+        "_typescript.applyRefactoring",
+        "_typescript.configurePlugin",
+        "_typescript.organizeImports",
+        "_typescript.applyRenameFile",
+        "_typescript.goToSourceDefinition",
+        "_typescript.applyCodeActionCommand",
+        "_typescript.applyFixAllCodeAction",
+        "typescript.tsserverRequest"
+      ]
+    },
+    "workspace": {
+      "fileOperations": {
+        "willRename": {
+          "filters": [
+            {
+              "pattern": {
+                "glob": "**/*.{ts,js,jsx,tsx,mjs,mts,cjs,cts}",
+                "matches": "file"
+              },
+              "scheme": "file"
+            },
+            {
+              "pattern": {
+                "glob": "**",
+                "matches": "folder"
+              },
+              "scheme": "file"
+            }
+          ]
+        }
+      }
+    },
+    "callHierarchyProvider": true,
+    "selectionRangeProvider": true,
+    "linkedEditingRangeProvider": false,
+    "semanticTokensProvider": {
+      "legend": {
+        "tokenTypes": [
+          "class",
+          "enum",
+          "interface",
+          "namespace",
+          "typeParameter",
+          "type",
+          "parameter",
+          "variable",
+          "enumMember",
+          "property",
+          "function",
+          "member"
+        ],
+        "tokenModifiers": [
+          "declaration",
+          "static",
+          "async",
+          "readonly",
+          "defaultLibrary",
+          "local"
+        ]
+      },
+      "range": true,
+      "full": true
+    },
+    "inlayHintProvider": true
+  }
+}
+
+
+
+[Trace - 23:56:43] Sending notification 'initialized'
+Params: {}
+
+
+
+[Trace - 23:56:54] Sending notification 'textDocument/didOpen'
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}/service.ts",
+    "languageId": "typescript",
+    "version": 1,
+    "text": "import { HealthCheck, HealthStatus, LivenessCheck, ReadinessCheck } from \"./model\";\n\nexport class HealthService {\n    private checks: HealthCheck[] \u003d [];\n\n    register(check: HealthCheck): void {\n        this.checks.push(check);\n    }\n\n    runAll(): HealthStatus[] {\n        return this.checks.map(c \u003d\u003e c.check());\n    }\n\n    isHealthy(): boolean {\n        return this.runAll().every(s \u003d\u003e s.status \u003d\u003d\u003d \"UP\");\n    }\n}\n\nconst service \u003d new HealthService();\nservice.register(new LivenessCheck());\n\nconst readiness \u003d new ReadinessCheck();\nreadiness.setReady(true);\nservice.register(readiness);\n\nconst results: HealthStatus[] \u003d service.runAll();\nconsole.log(\"Healthy:\", service.isHealthy());\nconsole.log(\"Results:\", results);\n\nconst broken: number \u003d service.isHealthy();\n"
+  }
+}
+
+
+
+[Trace - 23:56:54] Sending request 'textDocument/hover - (2)'.
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}/service.ts"
+  },
+  "position": {
+    "line": 3,
+    "character": 15
+  }
+}
+
+
+
+[Trace - 23:56:54] Received response 'textDocument/hover - (2)' in 31ms.
+Result: {
+  "contents": {
+    "kind": "markdown",
+    "value": "\n```typescript\n(property) HealthService.checks: HealthCheck[]\n```\n"
+  },
+  "range": {
+    "start": {
+      "line": 3,
+      "character": 12
+    },
+    "end": {
+      "line": 3,
+      "character": 18
+    }
+  }
+}
+
+
+
+[Trace - 23:56:54] Sending notification 'textDocument/didClose'
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}/service.ts"
+  }
+}
+

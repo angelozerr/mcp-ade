@@ -305,6 +305,95 @@ public class Application {
     }
 
     /**
+     * Ensure applicable LSP servers are started for the given workspace.
+     * Used by workspace-level operations (e.g., workspace/symbol) that need
+     * servers to be running without a specific file to trigger lazy startup.
+     * <p>
+     * Scans the workspace directory for files, detects their languages,
+     * and starts only servers whose documentSelector matches a detected language.
+     *
+     * @param workspace       the workspace to start servers for
+     * @param progressMonitor the progress monitor
+     * @return a future that completes when all matching servers are started and ready
+     */
+    public CompletableFuture<Void> ensureServersForWorkspace(Workspace workspace,
+                                                              ProgressMonitor progressMonitor) {
+        Set<String> detectedLanguages = scanWorkspaceLanguages(workspace.getRootPath());
+        if (detectedLanguages.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        List<LspServerConfig> configsToStart = new ArrayList<>();
+        for (LspServerConfig config : extensionRegistry.getEnabledLspServerConfigs()) {
+            if (config.isContributionOnly()) {
+                continue;
+            }
+            if (!workspace.isServerActivated(config)) {
+                continue;
+            }
+            LspServer existingServer = workspace.getLspServer(config.getServerId());
+            if (existingServer != null && existingServer.getStatus() != ServerStatus.STOPPED) {
+                continue;
+            }
+            if (config.getDocumentSelector() != null
+                    && !Collections.disjoint(config.getDocumentSelector().getLanguages(), detectedLanguages)) {
+                configsToStart.add(config);
+            }
+        }
+
+        if (configsToStart.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        List<CompletableFuture<Void>> serverFutures = new ArrayList<>();
+        for (LspServerConfig config : configsToStart) {
+            LOG.infof("Starting %s for workspace-level operation in: %s",
+                    config.getName(), workspace.getNormalizedUri());
+
+            CompletableFuture<Void> future = workspace.ensureLspServerReady(
+                            config.getServerId(), progressMonitor)
+                    .thenAccept(server -> {})
+                    .exceptionally(ex -> {
+                        LOG.errorf(ex, "Failed to start %s for workspace", config.getName());
+                        return null;
+                    });
+            serverFutures.add(future);
+        }
+
+        return CompletableFuture.allOf(serverFutures.toArray(new CompletableFuture[0]));
+    }
+
+    /**
+     * Scan the workspace directory for files and detect their languages.
+     * Walks the directory tree up to depth 3, skipping hidden directories.
+     *
+     * @param rootPath the workspace root path
+     * @return set of detected language identifiers
+     */
+    private Set<String> scanWorkspaceLanguages(Path rootPath) {
+        Set<String> languages = new HashSet<>();
+        try (var files = java.nio.file.Files.walk(rootPath, 3)) {
+            files.filter(java.nio.file.Files::isRegularFile)
+                    .filter(p -> !isHiddenPath(p, rootPath))
+                    .forEach(file -> languageRegistry.detectLanguage(file.toUri())
+                            .ifPresent(languages::add));
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to scan workspace languages in: %s", rootPath);
+        }
+        return languages;
+    }
+
+    private static boolean isHiddenPath(Path file, Path root) {
+        Path relative = root.relativize(file);
+        for (Path segment : relative) {
+            if (segment.toString().startsWith(".")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Get or create workspace from a path (String cwd).
      * Converts the path to URI and creates/returns the workspace.
      *

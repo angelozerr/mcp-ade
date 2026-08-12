@@ -20,6 +20,11 @@ import com.ibm.mcp.languagetools.lsp.server.LspServerFactory;
 /**
  * SPI factory that intercepts the {@code mock-lsp} server ID and creates
  * a {@link MockLspServerBridge} backed by an in-process {@link MockLspLanguageServer}.
+ * <p>
+ * The {@link MockLspLanguageServer} dynamically checks for registered replay trace data
+ * on each request, allowing trace-based tests to reuse the same server instance.
+ * <p>
+ * Registered via {@code META-INF/services/com.ibm.mcp.languagetools.lsp.server.LspServerFactory}.
  */
 public class MockLspServerFactory implements LspServerFactory {
 

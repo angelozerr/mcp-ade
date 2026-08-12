@@ -1,0 +1,28 @@
+[Trace - 20:19:32] Sending request 'tools/call - (1)'
+{
+  "method": "tools/call",
+  "params": {
+    "name": "get_diagnostics",
+    "arguments": {
+      "cwd": "C:\\Users\\AngeloZerr\\git\\lsp4mp\\microprofile.jdt\\org.eclipse.lsp4mp.jdt.test\\projects\\maven\\microprofile-health-3",
+      "uri": "file:///${workspaceRoot}pom.xml"
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+
+[Trace - 20:19:34] Received response 'tools/call - (1)' in 2291ms
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "isError": false,
+    "content": [
+      {
+        "text": "[]",
+        "type": "text"
+      }
+    ]
+  }
+}

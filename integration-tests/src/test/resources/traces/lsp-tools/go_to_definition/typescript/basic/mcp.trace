@@ -1,0 +1,30 @@
+[Trace - 08:51:32] Sending request 'tools/call - (1)'
+{
+  "method": "tools/call",
+  "params": {
+    "name": "go_to_definition",
+    "arguments": {
+      "cwd": "${workspaceRoot}",
+      "uri": "file:///${workspaceRoot}/service.ts",
+      "line": 1,
+      "character": 10
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+
+[Trace - 08:51:32] Received response 'tools/call - (1)' in 40ms
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "isError": false,
+    "content": [
+      {
+        "text": "[{\"file\":\"model.ts\",\"refs\":[\"32:13-32:27\",\"35:4-37:5\"]}]",
+        "type": "text"
+      }
+    ]
+  }
+}

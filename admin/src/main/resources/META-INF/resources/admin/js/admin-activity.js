@@ -535,6 +535,9 @@ function renderOperation(op, esc) {
     } else if (op.status !== 'RUNNING' && op.arguments && !activeReplays.has(op.id)) {
         html += `<span class="activity-replay" data-action="replayOperation" data-op-id="${op.id}" title="Replay">&#8635;</span>`;
     }
+    if (op.status !== 'RUNNING' && op.arguments) {
+        html += `<span class="activity-export" data-action="exportTestTraces" data-op-id="${op.id}" title="Export test traces">&#128229;</span>`;
+    }
     html += `</div>`;
 
     if (hasBody) {
@@ -919,6 +922,51 @@ async function replayOperation(el) {
     }
 }
 
+async function exportTestTraces(el) {
+    const opEl = el.closest('[data-op-id]');
+    if (!opEl) return;
+    const opId = opEl.dataset.opId;
+    const op = operations.find(o => o.id === opId);
+    if (!op) return;
+
+    const testName = prompt('Test name:', 'basic');
+    if (!testName) return;
+
+    try {
+        const resp = await fetch(`/api/admin/traces/export/${opId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ testName })
+        });
+
+        const contentType = resp.headers.get('Content-Type') || '';
+        if (contentType.includes('application/zip')) {
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `traces-${op.name}-${testName}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            const data = await resp.json();
+            if (data.error) {
+                alert('Export failed: ' + data.error);
+            } else if (data.status === 'exported') {
+                let msg = `Exported ${data.files} file(s) to:\n${data.path}`;
+                if (data.warnings && data.warnings.length > 0) {
+                    msg += '\n\nWarnings:\n' + data.warnings.join('\n');
+                }
+                alert(msg);
+            }
+        }
+    } catch (e) {
+        alert('Export failed: ' + e.message);
+    }
+}
+
 async function cancelReplay(el) {
     const opEl = el.closest('[data-op-id]');
     if (!opEl) return;
@@ -952,6 +1000,7 @@ registerActions('click', {
     clearActivity: () => clearActivity(),
     replayOperation: (el) => { el.stopPropagation?.(); replayOperation(el); },
     cancelReplay: (el) => { el.stopPropagation?.(); cancelReplay(el); },
+    exportTestTraces: (el) => { el.stopPropagation?.(); exportTestTraces(el); },
 });
 
 registerActions('change', {

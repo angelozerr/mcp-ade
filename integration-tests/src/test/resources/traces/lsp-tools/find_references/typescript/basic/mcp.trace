@@ -1,0 +1,30 @@
+[Trace - 23:56:54] Sending request 'tools/call - (1)'
+{
+  "method": "tools/call",
+  "params": {
+    "name": "find_references",
+    "arguments": {
+      "cwd": "${workspaceRoot}",
+      "uri": "file:///${workspaceRoot}/service.ts",
+      "line": 4,
+      "character": 15
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+
+[Trace - 23:56:54] Received response 'tools/call - (1)' in 41ms
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "isError": false,
+    "content": [
+      {
+        "text": "[{\"file\":\"file:///c%3A/Users/AngeloZerr/git/lsp4mp/microprofile.jdt/org.eclipse.lsp4mp.jdt.test/projects/maven/microprofile-health-3/ts-test/service.ts\",\"refs\":[\"6:13-6:18\",\"7:25-7:30\"]}]",
+        "type": "text"
+      }
+    ]
+  }
+}

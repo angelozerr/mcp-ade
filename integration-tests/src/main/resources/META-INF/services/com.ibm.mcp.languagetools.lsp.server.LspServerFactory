@@ -1,1 +1,2 @@
 com.ibm.mcp.languagetools.it.mock.MockLspServerFactory
+com.ibm.mcp.languagetools.it.trace.ReplayLspServerFactory

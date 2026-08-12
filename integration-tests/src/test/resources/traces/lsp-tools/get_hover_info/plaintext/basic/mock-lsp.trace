@@ -1,0 +1,41 @@
+[Trace - 10:00:00] Sending request 'initialize - (1)'.
+Params: {
+  "processId": 1234
+}
+
+[Trace - 10:00:00] Received response 'initialize - (1)' in 100ms.
+Result: {
+  "capabilities": {
+    "hoverProvider": true,
+    "referencesProvider": true,
+    "definitionProvider": true,
+    "documentSymbolProvider": true,
+    "workspaceSymbolProvider": true,
+    "completionProvider": {},
+    "declarationProvider": true,
+    "typeDefinitionProvider": true,
+    "implementationProvider": true
+  }
+}
+
+[Trace - 10:00:00] Sending notification 'initialized'
+Params: {}
+
+[Trace - 10:00:01] Sending request 'textDocument/hover - (2)'.
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}/test.txt"
+  },
+  "position": {
+    "line": 0,
+    "character": 6
+  }
+}
+
+[Trace - 10:00:01] Received response 'textDocument/hover - (2)' in 50ms.
+Result: {
+  "contents": {
+    "kind": "markdown",
+    "value": "Mock hover content"
+  }
+}

@@ -118,6 +118,14 @@ public class OperationTracker {
         return all.stream().skip(skip).toList();
     }
 
+    public OperationContext findOperationById(String id) {
+        if (id == null) return null;
+        return operations.stream()
+                .filter(op -> id.equals(op.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
     private void fireEvent(OperationEvent event) {
         for (Consumer<OperationEvent> listener : listeners) {
             listener.accept(event);

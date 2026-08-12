@@ -1,0 +1,30 @@
+[Trace - 23:56:53] Sending request 'tools/call - (1)'
+{
+  "method": "tools/call",
+  "params": {
+    "name": "get_hover_info",
+    "arguments": {
+      "cwd": "${workspaceRoot}",
+      "uri": "file:///${workspaceRoot}/service.ts",
+      "line": 3,
+      "character": 15
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+
+[Trace - 23:56:54] Received response 'tools/call - (1)' in 50ms
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "isError": false,
+    "content": [
+      {
+        "text": "{\"contents\":\"\\n```typescript\\n(property) HealthService.checks: HealthCheck[]\\n```\\n\"}",
+        "type": "text"
+      }
+    ]
+  }
+}

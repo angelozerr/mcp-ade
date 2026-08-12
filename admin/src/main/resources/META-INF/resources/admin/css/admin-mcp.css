@@ -513,6 +513,20 @@
     cursor: pointer;
 }
 
+.activity-export {
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+    cursor: pointer;
+    padding: 0.05rem 0.25rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.activity-export:hover {
+    background: var(--accent-bg-light);
+}
+
 .activity-time {
     font-size: 0.65rem;
     font-family: 'Courier New', monospace;

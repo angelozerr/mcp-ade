@@ -629,10 +629,24 @@ public class LspServer extends ServerBase<LspServerConfig> {
         return languageServer;
     }
 
+    /**
+     * Set the LSP4J language server proxy.
+     * Used by subclasses that override {@link #launchProcess()} to provide
+     * an in-process server connection (e.g., for testing).
+     *
+     * @param languageServer the language server proxy
+     */
     protected void setLanguageServer(LanguageServer languageServer) {
         this.languageServer = languageServer;
     }
 
+    /**
+     * Set the future returned by the LSP4J launcher's {@code startListening()}.
+     * Used by subclasses that override {@link #launchProcess()} to provide
+     * an in-process server connection (e.g., for testing).
+     *
+     * @param listeningFuture the listening future
+     */
     protected void setListeningFuture(Future<?> listeningFuture) {
         this.listeningFuture = listeningFuture;
     }

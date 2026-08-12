@@ -1,0 +1,180 @@
+[Installation - 20:19:32] Starting installation for: LemMinX (XML Language Server)
+
+[Installation - 20:19:32] File exists: C:\Users\AngeloZerr\.mcp-languagetools\extensions\xml\lsp\lemminx/lemminx.jar
+
+[Installation - 20:19:32] Server already installed
+
+Starting LemMinX (XML Language Server)...
+
+Command: java -cp C:\Users\AngeloZerr\.mcp-languagetools\extensions\xml\lsp\lemminx/lemminx.jar;C:\Users\AngeloZerr\.mcp-languagetools\extensions\liberty\lsp\lemminx-liberty\lib\liberty-langserver-lemminx.jar org.eclipse.lemminx.XMLServerLauncher
+
+Server process started (PID: 58372)
+
+[Trace - 20:19:32] Sending request 'initialize - (1)'.
+Params: {
+  "processId": 85428,
+  "rootUri": "file:/${workspaceRoot}",
+  "capabilities": {
+    "workspace": {
+      "didChangeWatchedFiles": {
+        "dynamicRegistration": true
+      },
+      "workspaceFolders": true,
+      "configuration": true
+    },
+    "textDocument": {
+      "completion": {},
+      "hover": {},
+      "signatureHelp": {},
+      "references": {},
+      "documentSymbol": {
+        "hierarchicalDocumentSymbolSupport": true
+      },
+      "formatting": {},
+      "rangeFormatting": {},
+      "declaration": {},
+      "definition": {},
+      "typeDefinition": {},
+      "implementation": {},
+      "codeAction": {},
+      "codeLens": {},
+      "rename": {},
+      "publishDiagnostics": {},
+      "typeHierarchy": {},
+      "callHierarchy": {},
+      "inlayHint": {}
+    }
+  },
+  "trace": "verbose",
+  "workspaceFolders": [
+    {
+      "uri": "file:/${workspaceRoot}",
+      "name": "microprofile-health-3"
+    }
+  ]
+}
+
+
+
+[Trace - 20:19:33] Received response 'initialize - (1)' in 289ms.
+Result: {
+  "capabilities": {
+    "textDocumentSync": 2,
+    "hoverProvider": true,
+    "completionProvider": {
+      "resolveProvider": true,
+      "triggerCharacters": [
+        ".",
+        ":",
+        "\u003c",
+        "\"",
+        "\u003d",
+        "/",
+        "\\",
+        "?",
+        "\u0027",
+        "\u0026",
+        "#"
+      ]
+    },
+    "definitionProvider": true,
+    "typeDefinitionProvider": true,
+    "referencesProvider": true,
+    "documentHighlightProvider": true,
+    "documentSymbolProvider": true,
+    "codeActionProvider": {
+      "codeActionKinds": [
+        "quickfix",
+        "source"
+      ],
+      "resolveProvider": true
+    },
+    "codeLensProvider": {},
+    "documentFormattingProvider": true,
+    "documentRangeFormattingProvider": true,
+    "renameProvider": {
+      "prepareProvider": true
+    },
+    "documentLinkProvider": {
+      "resolveProvider": true
+    },
+    "colorProvider": true,
+    "foldingRangeProvider": true,
+    "workspace": {
+      "workspaceFolders": {
+        "supported": true,
+        "changeNotifications": true
+      }
+    },
+    "selectionRangeProvider": true,
+    "linkedEditingRangeProvider": true
+  }
+}
+
+
+
+[Trace - 20:19:33] Sending notification 'initialized'
+Params: {}
+
+
+
+[Trace - 20:19:33] Sending notification 'textDocument/didOpen'
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}pom.xml",
+    "languageId": "xml",
+    "version": 1,
+    "text": "\u003c?xml version\u003d\"1.0\"?\u003e\r\n\u003cproject xsi:schemaLocation\u003d\"http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd\" xmlns\u003d\"http://maven.apache.org/POM/4.0.0\"\r\n    xmlns:xsi\u003d\"http://www.w3.org/2001/XMLSchema-instance\"\u003e\r\n  \u003cmodelVersion\u003e4.0.0\u003c/modelVersion\u003e\r\n  \u003cgroupId\u003eorg.acme\u003c/groupId\u003e\r\n  \u003cartifactId\u003emicroprofile-health-3\u003c/artifactId\u003e\r\n  \u003cversion\u003e1.0.0-SNAPSHOT\u003c/version\u003e\r\n  \u003cproperties\u003e\r\n    \u003ccompiler-plugin.version\u003e3.8.1\u003c/compiler-plugin.version\u003e\r\n    \u003cmaven.compiler.release\u003e17\u003c/maven.compiler.release\u003e\r\n    \u003cproject.build.sourceEncoding\u003eUTF-8\u003c/project.build.sourceEncoding\u003e\r\n    \u003cproject.reporting.outputEncoding\u003eUTF-8\u003c/project.reporting.outputEncoding\u003e\r\n    \u003cquarkus.platform.artifact-id\u003equarkus-bom\u003c/quarkus.platform.artifact-id\u003e\r\n    \u003cquarkus.platform.group-id\u003eio.quarkus.platform\u003c/quarkus.platform.group-id\u003e\r\n    \u003cquarkus.platform.version\u003e2.14.0.Final\u003c/quarkus.platform.version\u003e\r\n    \u003cskipITs\u003etrue\u003c/skipITs\u003e\r\n    \u003csurefire-plugin.version\u003e3.0.0-M7\u003c/surefire-plugin.version\u003e\r\n  \u003c/properties\u003e\r\n  \u003cdependencyManagement\u003e\r\n    \u003cdependencies\u003e\r\n      \u003cdependency\u003e\r\n        \u003cgroupId\u003e${quarkus.platform.group-id}\u003c/groupId\u003e\r\n        \u003cartifactId\u003e${quarkus.platform.artifact-id}\u003c/artifactId\u003e\r\n        \u003cversion\u003e${quarkus.platform.version}\u003c/version\u003e\r\n        \u003ctype\u003epom\u003c/type\u003e\r\n        \u003cscope\u003eimport\u003c/scope\u003e\r\n      \u003c/dependency\u003e\r\n    \u003c/dependencies\u003e\r\n  \u003c/dependencyManagement\u003e\r\n  \u003cdependencies\u003e\r\n    \u003cdependency\u003e\r\n      \u003cgroupId\u003eio.quarkus\u003c/groupId\u003e\r\n      \u003cartifactId\u003equarkus-smallrye-health\u003c/artifactId\u003e\r\n    \u003c/dependency\u003e\r\n    \u003cdependency\u003e\r\n      \u003cgroupId\u003eio.quarkus\u003c/groupId\u003e\r\n      \u003cartifactId\u003equarkus-arc\u003c/artifactId\u003e\r\n    \u003c/dependency\u003e\r\n    \u003cdependency\u003e\r\n      \u003cgroupId\u003eio.quarkus\u003c/groupId\u003e\r\n      \u003cartifactId\u003equarkus-junit5\u003c/artifactId\u003e\r\n      \u003cscope\u003etest\u003c/scope\u003e\r\n    \u003c/dependency\u003e\r\n  \u003c/dependencies\u003e\r\n  \u003cbuild\u003e\r\n    \u003cplugins\u003e\r\n      \u003cplugin\u003e\r\n        \u003cgroupId\u003e${quarkus.platform.group-id}\u003c/groupId\u003e\r\n        \u003cartifactId\u003equarkus-maven-plugin\u003c/artifactId\u003e\r\n        \u003cversion\u003e${quarkus.platform.version}\u003c/version\u003e\r\n        \u003cextensions\u003etrue\u003c/extensions\u003e\r\n        \u003cexecutions\u003e\r\n          \u003cexecution\u003e\r\n            \u003cgoals\u003e\r\n              \u003cgoal\u003ebuild\u003c/goal\u003e\r\n              \u003cgoal\u003egenerate-code\u003c/goal\u003e\r\n              \u003cgoal\u003egenerate-code-tests\u003c/goal\u003e\r\n            \u003c/goals\u003e\r\n          \u003c/execution\u003e\r\n        \u003c/executions\u003e\r\n      \u003c/plugin\u003e\r\n      \u003cplugin\u003e\r\n        \u003cartifactId\u003emaven-compiler-plugin\u003c/artifactId\u003e\r\n        \u003cversion\u003e${compiler-plugin.version}\u003c/version\u003e\r\n        \u003cconfiguration\u003e\r\n          \u003ccompilerArgs\u003e\r\n            \u003carg\u003e-parameters\u003c/arg\u003e\r\n          \u003c/compilerArgs\u003e\r\n        \u003c/configuration\u003e\r\n      \u003c/plugin\u003e\r\n      \u003cplugin\u003e\r\n        \u003cartifactId\u003emaven-surefire-plugin\u003c/artifactId\u003e\r\n        \u003cversion\u003e${surefire-plugin.version}\u003c/version\u003e\r\n        \u003cconfiguration\u003e\r\n          \u003csystemPropertyVariables\u003e\r\n            \u003cjava.util.logging.manager\u003eorg.jboss.logmanager.LogManager\u003c/java.util.logging.manager\u003e\r\n            \u003cmaven.home\u003e${maven.home}\u003c/maven.home\u003e\r\n          \u003c/systemPropertyVariables\u003e\r\n        \u003c/configuration\u003e\r\n      \u003c/plugin\u003e\r\n      \u003cplugin\u003e\r\n        \u003cartifactId\u003emaven-failsafe-plugin\u003c/artifactId\u003e\r\n        \u003cversion\u003e${surefire-plugin.version}\u003c/version\u003e\r\n        \u003cexecutions\u003e\r\n          \u003cexecution\u003e\r\n            \u003cgoals\u003e\r\n              \u003cgoal\u003eintegration-test\u003c/goal\u003e\r\n              \u003cgoal\u003everify\u003c/goal\u003e\r\n            \u003c/goals\u003e\r\n            \u003cconfiguration\u003e\r\n              \u003csystemPropertyVariables\u003e\r\n                \u003cnative.image.path\u003e${project.build.directory}/${project.build.finalName}-runner\u003c/native.image.path\u003e\r\n                \u003cjava.util.logging.manager\u003eorg.jboss.logmanager.LogManager\u003c/java.util.logging.manager\u003e\r\n                \u003cmaven.home\u003e${maven.home}\u003c/maven.home\u003e\r\n              \u003c/systemPropertyVariables\u003e\r\n            \u003c/configuration\u003e\r\n          \u003c/execution\u003e\r\n        \u003c/executions\u003e\r\n      \u003c/plugin\u003e\r\n    \u003c/plugins\u003e\r\n  \u003c/build\u003e\r\n  \u003cprofiles\u003e\r\n    \u003cprofile\u003e\r\n      \u003cid\u003enative\u003c/id\u003e\r\n      \u003cactivation\u003e\r\n        \u003cproperty\u003e\r\n          \u003cname\u003enative\u003c/name\u003e\r\n        \u003c/property\u003e\r\n      \u003c/activation\u003e\r\n      \u003cproperties\u003e\r\n        \u003cskipITs\u003efalse\u003c/skipITs\u003e\r\n        \u003cquarkus.package.type\u003enative\u003c/quarkus.package.type\u003e\r\n      \u003c/properties\u003e\r\n    \u003c/profile\u003e\r\n  \u003c/profiles\u003e\r\n\u003c/project\u003e\r\n"
+  }
+}
+
+
+
+[Trace - 20:19:33] Received request 'client/registerCapability - (1)'
+Params: {
+  "registrations": [
+    {
+      "id": "c0aa98a1-b8a4-4fb0-80ed-9af8fef900f9",
+      "method": "workspace/didChangeWatchedFiles",
+      "registerOptions": {
+        "watchers": [
+          {
+            "globPattern": "**/*.xsd"
+          },
+          {
+            "globPattern": "**/*.dtd"
+          },
+          {
+            "globPattern": "**/*.rng"
+          },
+          {
+            "globPattern": "**/*.rnc"
+          }
+        ]
+      }
+    }
+  ]
+}
+
+
+
+[Trace - 20:19:33] Sending response 'client/registerCapability - (1)'. Processing request took 5ms
+No response returned.
+
+
+
+[Trace - 20:19:34] Received notification 'textDocument/publishDiagnostics'
+Params: {
+  "uri": "file:///${workspaceRoot}pom.xml",
+  "diagnostics": []
+}
+
+
+
+[Trace - 20:19:34] Sending notification 'textDocument/didClose'
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}pom.xml"
+  }
+}
+

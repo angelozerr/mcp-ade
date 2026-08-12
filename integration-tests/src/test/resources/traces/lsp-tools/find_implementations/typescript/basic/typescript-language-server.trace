@@ -1,0 +1,223 @@
+[Trace - 23:56:43] Sending request 'initialize - (1)'.
+Params: {
+  "processId": 81468,
+  "rootUri": "file:/${workspaceRoot}",
+  "capabilities": {
+    "workspace": {
+      "didChangeWatchedFiles": {
+        "dynamicRegistration": true
+      },
+      "workspaceFolders": true,
+      "configuration": true
+    },
+    "textDocument": {
+      "completion": {},
+      "hover": {},
+      "signatureHelp": {},
+      "references": {},
+      "documentSymbol": {
+        "hierarchicalDocumentSymbolSupport": true
+      },
+      "formatting": {},
+      "rangeFormatting": {},
+      "declaration": {},
+      "definition": {},
+      "typeDefinition": {},
+      "implementation": {},
+      "codeAction": {},
+      "codeLens": {},
+      "rename": {},
+      "publishDiagnostics": {},
+      "typeHierarchy": {},
+      "callHierarchy": {},
+      "inlayHint": {}
+    }
+  },
+  "trace": "verbose",
+  "workspaceFolders": [
+    {
+      "uri": "file:/${workspaceRoot}",
+      "name": "ts-test"
+    }
+  ]
+}
+
+
+
+[Trace - 23:56:43] Received response 'initialize - (1)' in 224ms.
+Result: {
+  "capabilities": {
+    "textDocumentSync": 2,
+    "hoverProvider": true,
+    "completionProvider": {
+      "resolveProvider": true,
+      "triggerCharacters": [
+        ".",
+        "\"",
+        "\u0027",
+        "/",
+        "@",
+        "\u003c"
+      ]
+    },
+    "signatureHelpProvider": {
+      "triggerCharacters": [
+        "(",
+        ",",
+        "\u003c"
+      ],
+      "retriggerCharacters": [
+        ")"
+      ]
+    },
+    "definitionProvider": true,
+    "typeDefinitionProvider": true,
+    "implementationProvider": true,
+    "referencesProvider": true,
+    "documentHighlightProvider": true,
+    "documentSymbolProvider": true,
+    "workspaceSymbolProvider": true,
+    "codeActionProvider": true,
+    "codeLensProvider": {
+      "resolveProvider": true
+    },
+    "documentFormattingProvider": true,
+    "documentRangeFormattingProvider": true,
+    "renameProvider": true,
+    "foldingRangeProvider": true,
+    "executeCommandProvider": {
+      "commands": [
+        "_typescript.applyRefactoring",
+        "_typescript.configurePlugin",
+        "_typescript.organizeImports",
+        "_typescript.applyRenameFile",
+        "_typescript.goToSourceDefinition",
+        "_typescript.applyCodeActionCommand",
+        "_typescript.applyFixAllCodeAction",
+        "typescript.tsserverRequest"
+      ]
+    },
+    "workspace": {
+      "fileOperations": {
+        "willRename": {
+          "filters": [
+            {
+              "pattern": {
+                "glob": "**/*.{ts,js,jsx,tsx,mjs,mts,cjs,cts}",
+                "matches": "file"
+              },
+              "scheme": "file"
+            },
+            {
+              "pattern": {
+                "glob": "**",
+                "matches": "folder"
+              },
+              "scheme": "file"
+            }
+          ]
+        }
+      }
+    },
+    "callHierarchyProvider": true,
+    "selectionRangeProvider": true,
+    "linkedEditingRangeProvider": false,
+    "semanticTokensProvider": {
+      "legend": {
+        "tokenTypes": [
+          "class",
+          "enum",
+          "interface",
+          "namespace",
+          "typeParameter",
+          "type",
+          "parameter",
+          "variable",
+          "enumMember",
+          "property",
+          "function",
+          "member"
+        ],
+        "tokenModifiers": [
+          "declaration",
+          "static",
+          "async",
+          "readonly",
+          "defaultLibrary",
+          "local"
+        ]
+      },
+      "range": true,
+      "full": true
+    },
+    "inlayHintProvider": true
+  }
+}
+
+
+
+[Trace - 23:56:43] Sending notification 'initialized'
+Params: {}
+
+
+
+[Trace - 23:56:54] Sending notification 'textDocument/didOpen'
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}/model.ts",
+    "languageId": "typescript",
+    "version": 1,
+    "text": "export interface HealthCheck {\n    name: string;\n    check(): HealthStatus;\n}\n\nexport interface HealthStatus {\n    status: \"UP\" | \"DOWN\";\n    message: string;\n    timestamp: number;\n}\n\nexport abstract class AbstractHealthCheck implements HealthCheck {\n    constructor(public name: string) {}\n\n    abstract check(): HealthStatus;\n\n    protected createStatus(status: \"UP\" | \"DOWN\", message: string): HealthStatus {\n        return { status, message, timestamp: Date.now() };\n    }\n}\n\nexport class LivenessCheck extends AbstractHealthCheck {\n    constructor() {\n        super(\"liveness\");\n    }\n\n    check(): HealthStatus {\n        return this.createStatus(\"UP\", \"Service is alive\");\n    }\n}\n\nexport class ReadinessCheck extends AbstractHealthCheck {\n    private ready: boolean \u003d false;\n\n    constructor() {\n        super(\"readiness\");\n    }\n\n    setReady(ready: boolean): void {\n        this.ready \u003d ready;\n    }\n\n    check(): HealthStatus {\n        return this.createStatus(\n            this.ready ? \"UP\" : \"DOWN\",\n            this.ready ? \"Service is ready\" : \"Service is not ready\"\n        );\n    }\n}\n"
+  }
+}
+
+
+
+[Trace - 23:56:54] Sending request 'textDocument/implementation - (5)'.
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}/model.ts"
+  },
+  "position": {
+    "line": 1,
+    "character": 20
+  }
+}
+
+
+
+[Trace - 23:56:54] Received request 'workspace/configuration - (1)'
+Params: {
+  "items": [
+    {
+      "scopeUri": "file:///c%3A/Users/AngeloZerr/git/lsp4mp/microprofile.jdt/org.eclipse.lsp4mp.jdt.test/projects/maven/microprofile-health-3/ts-test/model.ts",
+      "section": "formattingOptions"
+    }
+  ]
+}
+
+
+
+[Trace - 23:56:54] Sending response 'workspace/configuration - (1)'. Processing request took 0ms
+Result: [
+  null
+]
+
+
+
+[Trace - 23:56:54] Received response 'textDocument/implementation - (5)' in 38ms.
+No response returned.
+Error: {
+  "code": 1,
+  "message": "\u003csemantic\u003e TypeScript Server Error (6.0.3)\nDebug Failure. False expression.\nError: Debug Failure. False expression.\n    at computePositionOfLineAndCharacter (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:11703:11)\n    at TextStorage.lineOffsetToPosition (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:187400:59)\n    at ScriptInfo.lineOffsetToPosition (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:187708:29)\n    at IpcIOSession.getPosition (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:196629:66)\n    at IpcIOSession.getPositionInFile (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:196633:17)\n    at IpcIOSession.getImplementation (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:196281:27)\n    at implementation (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:194950:43)\n    at C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:197591:15\n    at IpcIOSession.executeWithRequestId (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:197580:14)\n    at IpcIOSession.executeCommand (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:197589:29)\n    at IpcIOSession.onMessage (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\typescript.js:197637:68)\n    at process.\u003canonymous\u003e (C:\\Users\\AngeloZerr\\.mcp-languagetools\\extensions\\javascript\\lsp\\typescript-language-server\\node_modules\\typescript\\lib\\_tsserver.js:519:14)\n    at process.emit (node:events:508:28)\n    at emit (node:internal/child_process:949:14)\n    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)"
+}
+
+
+
+[Trace - 23:56:54] Sending notification 'textDocument/didClose'
+Params: {
+  "textDocument": {
+    "uri": "file:///${workspaceRoot}/model.ts"
+  }
+}
+

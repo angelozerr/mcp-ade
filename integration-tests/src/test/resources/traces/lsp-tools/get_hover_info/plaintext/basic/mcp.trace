@@ -1,0 +1,30 @@
+[Trace - 10:00:00] Sending request 'tools/call - (1)'
+{
+  "method" : "tools/call",
+  "params" : {
+    "name" : "get_hover_info",
+    "arguments" : {
+      "cwd" : "${workspaceRoot}",
+      "uri" : "file:///${workspaceRoot}/test.txt",
+      "line" : 0,
+      "character" : 6
+    }
+  },
+  "jsonrpc" : "2.0",
+  "id" : 1
+}
+
+[Trace - 10:00:01] Received response 'tools/call - (1)' in 1000ms
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "isError": false,
+    "content": [
+      {
+        "text": "{\"contents\":\"Mock hover content\"}",
+        "type": "text"
+      }
+    ]
+  }
+}
