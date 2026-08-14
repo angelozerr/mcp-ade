@@ -258,7 +258,7 @@ public class FastModeProjectManager {
                 .thenApply(result -> {
                     ClasspathInfo info = new ClasspathInfo(
                             moduleName, moduleDir.toAbsolutePath().toString(),
-                            sourceRoots, List.of(), List.of());
+                            sourceRoots, List.of(), List.of(), List.of());
                     setup.complete(info);
                     return (Void) null;
                 })

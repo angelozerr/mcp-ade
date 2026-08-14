@@ -23,13 +23,16 @@ import java.util.List;
  * @param sourceRoots       relative paths to source folders (e.g., "src/main/java")
  * @param classpathJars     absolute paths to external dependency JARs
  * @param reactorModuleDeps reactor module dependencies (to be set up as source projects)
+ * @param buildFiles        absolute paths to all build files (POMs, Gradle scripts) that
+ *                          influenced this classpath — used for cache invalidation
  */
 public record ClasspathInfo(
         String moduleName,
         String projectPath,
         List<String> sourceRoots,
         List<String> classpathJars,
-        List<ReactorModule> reactorModuleDeps) {
+        List<ReactorModule> reactorModuleDeps,
+        List<String> buildFiles) {
 
     /**
      * A reactor module dependency that should be set up as a JDT source project

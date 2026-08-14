@@ -22,8 +22,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.parsers.SAXParserFactory;
 
@@ -78,13 +80,15 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             progress.reportProgress("Reactor POM detected, skipping classpath extraction");
             List<String> sourceRoots = detectSourceRoots(moduleDir);
             return new ClasspathInfo(moduleName, moduleDir.toAbsolutePath().toString(),
-                    sourceRoots, List.of(), List.of());
+                    sourceRoots, List.of(), List.of(),
+                    List.of(pomFile.toAbsolutePath().normalize().toString()));
         }
 
         // Fast path: if ALL dependencies are reactor modules, skip Maven entirely
         long start = System.currentTimeMillis();
         Map<String, Path> reactorModules = scanReactorModules(workspaceRoot);
-        List<MavenDependency> dependencies = parseDependencies(pomFile, workspaceRoot);
+        Set<String> buildFiles = new LinkedHashSet<>();
+        List<MavenDependency> dependencies = parseDependencies(pomFile, workspaceRoot, buildFiles);
 
         List<ReactorModule> reactorDeps = new ArrayList<>();
         boolean allReactor = true;
@@ -107,7 +111,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             progress.reportProgress(String.format(
                     "All dependencies are reactor modules, skipping Maven (%d ms)", elapsed));
             return new ClasspathInfo(moduleName, moduleDir.toAbsolutePath().toString(),
-                    sourceRoots, List.of(), reactorDeps);
+                    sourceRoots, List.of(), reactorDeps, List.copyOf(buildFiles));
         }
 
         Path mvnExecutable = findMavenExecutable(workspaceRoot);
@@ -117,7 +121,8 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         try {
             progress.reportProgress("Resolving classpath for " + moduleName + " via Maven (dependency:build-classpath)...");
             start = System.currentTimeMillis();
-            ClasspathInfo result = tryBuildClasspath(mvnExecutable, workspaceRoot, moduleDir, moduleName, progress);
+            ClasspathInfo result = tryBuildClasspath(mvnExecutable, workspaceRoot, moduleDir,
+                    moduleName, buildFiles, progress);
             if (result != null) {
                 long elapsed = System.currentTimeMillis() - start;
                 LOG.infof("Strategy 1 (dependency:build-classpath) completed in %d ms", elapsed);
@@ -132,7 +137,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         // Strategy 2: POM-based resolution (handles missing reactor SNAPSHOTs)
         progress.reportProgress("Resolving classpath for " + moduleName + " from POM (reactor mode)...");
         start = System.currentTimeMillis();
-        ClasspathInfo result = extractFromPom(workspaceRoot, moduleDir, moduleName, progress);
+        ClasspathInfo result = extractFromPom(workspaceRoot, moduleDir, moduleName, buildFiles, progress);
         long elapsed = System.currentTimeMillis() - start;
         LOG.infof("Strategy 2 (POM parsing) completed in %d ms", elapsed);
         progress.reportProgress(String.format("Classpath resolved via POM parsing in %d ms (%d JARs, %d reactor modules)",
@@ -144,6 +149,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
 
     private ClasspathInfo tryBuildClasspath(Path mvnExecutable, Path workspaceRoot,
                                              Path moduleDir, String moduleName,
+                                             Set<String> buildFiles,
                                              ProgressMonitor progress)
             throws ClasspathExtractionException {
         try {
@@ -153,7 +159,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
                         mvnExecutable, workspaceRoot, moduleDir, moduleName, tempFile, progress);
                 List<String> sourceRoots = detectSourceRoots(moduleDir);
                 return new ClasspathInfo(moduleName, moduleDir.toAbsolutePath().toString(),
-                        sourceRoots, classpathJars, List.of());
+                        sourceRoots, classpathJars, List.of(), List.copyOf(buildFiles));
             } finally {
                 Files.deleteIfExists(tempFile);
             }
@@ -238,7 +244,8 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
     // ---- Strategy 2: POM-based resolution ----
 
     private ClasspathInfo extractFromPom(Path workspaceRoot, Path moduleDir,
-                                          String moduleName, ProgressMonitor progress)
+                                          String moduleName, Set<String> buildFiles,
+                                          ProgressMonitor progress)
             throws ClasspathExtractionException {
         try {
             // 0. Download dependencies first (best-effort)
@@ -250,8 +257,9 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             LOG.infof("Found %d reactor modules in workspace", reactorModules.size());
 
             // 2. Parse the target module's POM for dependencies
+            // (buildFiles already populated by parseDependencies in extract())
             Path pomFile = moduleDir.resolve("pom.xml");
-            List<MavenDependency> dependencies = parseDependencies(pomFile, workspaceRoot);
+            List<MavenDependency> dependencies = parseDependencies(pomFile, workspaceRoot, buildFiles);
             LOG.infof("Found %d dependencies in %s", dependencies.size(), moduleName);
 
             // 3. Resolve each dependency: reactor module OR external JAR
@@ -283,7 +291,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
 
             List<String> sourceRoots = detectSourceRoots(moduleDir);
             return new ClasspathInfo(moduleName, moduleDir.toAbsolutePath().toString(),
-                    sourceRoots, classpathJars, reactorDeps);
+                    sourceRoots, classpathJars, reactorDeps, List.copyOf(buildFiles));
 
         } catch (Exception e) {
             throw new ClasspathExtractionException(
@@ -388,9 +396,10 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
     /**
      * Parses dependencies from a pom.xml, resolving properties from parent POMs.
      */
-    private List<MavenDependency> parseDependencies(Path pomFile, Path workspaceRoot) {
+    private List<MavenDependency> parseDependencies(Path pomFile, Path workspaceRoot,
+                                                      Set<String> buildFiles) {
         Map<String, String> properties = new HashMap<>();
-        collectPropertiesFromHierarchy(pomFile, workspaceRoot, properties);
+        collectPropertiesFromHierarchy(pomFile, workspaceRoot, properties, buildFiles);
 
         PomInfo info = parsePomSax(pomFile);
         if (info == null) {
@@ -410,11 +419,14 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
     }
 
     private void collectPropertiesFromHierarchy(Path pomFile, Path workspaceRoot,
-                                                  Map<String, String> properties) {
+                                                  Map<String, String> properties,
+                                                  Set<String> buildFiles) {
         PomInfo info = parsePomSax(pomFile);
         if (info == null) {
             return;
         }
+
+        buildFiles.add(pomFile.toAbsolutePath().normalize().toString());
 
         // Resolve parent POM first (so child properties override)
         if (info.parentRelativePath != null || info.hasParent) {
@@ -423,7 +435,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             Path parentPom = Files.isDirectory(parentDir)
                     ? parentDir.resolve("pom.xml") : parentDir;
             if (Files.exists(parentPom) && parentPom.startsWith(workspaceRoot)) {
-                collectPropertiesFromHierarchy(parentPom, workspaceRoot, properties);
+                collectPropertiesFromHierarchy(parentPom, workspaceRoot, properties, buildFiles);
             }
         }
 

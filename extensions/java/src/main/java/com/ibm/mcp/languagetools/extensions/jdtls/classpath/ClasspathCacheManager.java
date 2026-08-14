@@ -89,7 +89,19 @@ public class ClasspathCacheManager {
                     .toList();
             if (filteredJars.size() != info.classpathJars().size()) {
                 info = new ClasspathInfo(info.moduleName(), info.projectPath(),
-                        info.sourceRoots(), filteredJars, info.reactorModuleDeps());
+                        info.sourceRoots(), filteredJars, info.reactorModuleDeps(),
+                        info.buildFiles() != null ? info.buildFiles() : List.of());
+            }
+
+            // Verify that all cached JARs still exist on disk
+            // (e.g. ~/.m2/repository may have been cleaned)
+            List<String> missingJars = info.classpathJars().stream()
+                    .filter(jar -> !Files.exists(Path.of(jar)))
+                    .toList();
+            if (!missingJars.isEmpty()) {
+                LOG.infof("Cache invalidated: %d JAR(s) no longer exist on disk (first: %s)",
+                        missingJars.size(), missingJars.get(0));
+                return Optional.empty();
             }
 
             LOG.infof("Using cached classpath for module %s (%d JARs)",
@@ -103,57 +115,40 @@ public class ClasspathCacheManager {
 
     /**
      * Saves the extracted {@link ClasspathInfo} to disk along with the current
-     * POM timestamps for invalidation.
+     * build file timestamps for invalidation.
      */
     public void save(Path workspaceRoot, Path moduleDir, ClasspathInfo info) {
         Path cacheFile = getCacheFile(workspaceRoot, moduleDir);
         try {
             Files.createDirectories(cacheFile.getParent());
 
-            Map<String, Long> pomTimestamps = collectPomTimestamps(workspaceRoot, moduleDir);
+            Map<String, Long> buildFileTimestamps = collectBuildFileTimestamps(info);
 
             CacheEntry entry = new CacheEntry();
-            entry.pomTimestamps = pomTimestamps;
+            entry.pomTimestamps = buildFileTimestamps;
             entry.classpathInfo = info;
 
             try (Writer writer = Files.newBufferedWriter(cacheFile)) {
                 GSON.toJson(entry, writer);
             }
 
-            LOG.infof("Classpath cache saved for module %s (%d JARs)",
-                    info.moduleName(), info.classpathJars().size());
+            LOG.infof("Classpath cache saved for module %s (%d JARs, %d build files tracked)",
+                    info.moduleName(), info.classpathJars().size(), buildFileTimestamps.size());
         } catch (IOException e) {
             LOG.warnf(e, "Failed to save classpath cache: %s", cacheFile);
         }
     }
 
-    private Map<String, Long> collectPomTimestamps(Path workspaceRoot, Path moduleDir) throws IOException {
+    private Map<String, Long> collectBuildFileTimestamps(ClasspathInfo info) throws IOException {
         Map<String, Long> timestamps = new LinkedHashMap<>();
-
-        Path rootPom = workspaceRoot.resolve("pom.xml");
-        if (Files.exists(rootPom)) {
-            timestamps.put(rootPom.toAbsolutePath().normalize().toString(),
-                    Files.getLastModifiedTime(rootPom).toMillis());
+        if (info.buildFiles() != null) {
+            for (String buildFile : info.buildFiles()) {
+                Path path = Path.of(buildFile);
+                if (Files.exists(path)) {
+                    timestamps.put(buildFile, Files.getLastModifiedTime(path).toMillis());
+                }
+            }
         }
-
-        Path modulePom = moduleDir.resolve("pom.xml");
-        if (Files.exists(modulePom) && !modulePom.toAbsolutePath().normalize()
-                .equals(rootPom.toAbsolutePath().normalize())) {
-            timestamps.put(modulePom.toAbsolutePath().normalize().toString(),
-                    Files.getLastModifiedTime(modulePom).toMillis());
-        }
-
-        Path gradleBuild = moduleDir.resolve("build.gradle");
-        if (Files.exists(gradleBuild)) {
-            timestamps.put(gradleBuild.toAbsolutePath().normalize().toString(),
-                    Files.getLastModifiedTime(gradleBuild).toMillis());
-        }
-        Path gradleBuildKts = moduleDir.resolve("build.gradle.kts");
-        if (Files.exists(gradleBuildKts)) {
-            timestamps.put(gradleBuildKts.toAbsolutePath().normalize().toString(),
-                    Files.getLastModifiedTime(gradleBuildKts).toMillis());
-        }
-
         return timestamps;
     }
 

@@ -190,12 +190,31 @@ public class GradleClasspathExtractor implements ClasspathExtractor {
                     "Gradle mcpClasspath task failed with exit code " + exitCode);
         }
 
+        List<String> buildFiles = new ArrayList<>();
+        Path gradleBuild = moduleDir.resolve("build.gradle");
+        if (Files.exists(gradleBuild)) {
+            buildFiles.add(gradleBuild.toAbsolutePath().normalize().toString());
+        }
+        Path gradleBuildKts = moduleDir.resolve("build.gradle.kts");
+        if (Files.exists(gradleBuildKts)) {
+            buildFiles.add(gradleBuildKts.toAbsolutePath().normalize().toString());
+        }
+        Path settingsGradle = workspaceRoot.resolve("settings.gradle");
+        if (Files.exists(settingsGradle)) {
+            buildFiles.add(settingsGradle.toAbsolutePath().normalize().toString());
+        }
+        Path settingsGradleKts = workspaceRoot.resolve("settings.gradle.kts");
+        if (Files.exists(settingsGradleKts)) {
+            buildFiles.add(settingsGradleKts.toAbsolutePath().normalize().toString());
+        }
+
         return new ClasspathInfo(
                 moduleName,
                 moduleDir.toAbsolutePath().toString(),
                 sourceRoots,
                 classpathJars,
-                List.of());
+                List.of(),
+                buildFiles);
     }
 
     private static void cleanDebugEnvironment(ProcessBuilder pb) {
