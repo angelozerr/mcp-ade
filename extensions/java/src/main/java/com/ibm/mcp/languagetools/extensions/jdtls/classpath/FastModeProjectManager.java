@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jboss.logging.Logger;
@@ -34,6 +36,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -54,7 +57,18 @@ public class FastModeProjectManager {
     private final ConcurrentHashMap<Path, CompletableFuture<ClasspathInfo>> setupModules =
             new ConcurrentHashMap<>();
 
+    private final ExecutorService executor = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "fast-mode-classpath");
+        t.setDaemon(true);
+        return t;
+    });
+
     private volatile LspServer currentServer;
+
+    @PreDestroy
+    void shutdown() {
+        executor.shutdownNow();
+    }
 
     @Inject
     ClasspathExtractorRegistry extractorRegistry;
@@ -108,6 +122,7 @@ public class FastModeProjectManager {
         final long setupStartTime = System.currentTimeMillis();
         final AtomicBoolean loadedFromCache = new AtomicBoolean(false);
         return CompletableFuture.supplyAsync(() -> {
+            Thread.currentThread().setName("fast-mode-classpath-" + finalModuleDir.getFileName());
             try {
                 if (cacheEnabled) {
                     Optional<ClasspathInfo> cached = cacheManager.loadIfValid(workspaceRoot, finalModuleDir);
@@ -145,7 +160,7 @@ public class FastModeProjectManager {
             } catch (ClasspathExtractionException e) {
                 throw new RuntimeException(e);
             }
-        }).thenCompose(info -> {
+        }, executor).thenCompose(info -> {
             // Skip project creation for reactor POMs with no source code —
             // creating a project at the workspace root would "claim" nested
             // sub-module directories and prevent them from being resolved
