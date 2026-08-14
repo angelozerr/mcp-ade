@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
 
 import java.nio.file.Path;
+import java.util.Map;
 
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 
@@ -40,4 +41,30 @@ public interface ClasspathExtractor {
      */
     ClasspathInfo extract(Path workspaceRoot, Path moduleDir, ProgressMonitor progress)
             throws ClasspathExtractionException;
+
+    /**
+     * Removes debug-related JVM options from the process environment to prevent
+     * child processes (Maven, Gradle) from attempting to attach a debugger.
+     *
+     * @param pb              the process builder whose environment to clean
+     * @param buildToolOptVar the build tool's options environment variable
+     *                        (e.g., {@code "MAVEN_OPTS"} or {@code "GRADLE_OPTS"})
+     */
+    static void cleanDebugEnvironment(ProcessBuilder pb, String buildToolOptVar) {
+        Map<String, String> env = pb.environment();
+        env.remove("JAVA_TOOL_OPTIONS");
+        env.remove("_JAVA_OPTIONS");
+        String opts = env.get(buildToolOptVar);
+        if (opts != null) {
+            String cleaned = opts
+                    .replaceAll("-agentlib:jdwp\\S*", "")
+                    .replaceAll("-javaagent:\\S*", "")
+                    .trim();
+            if (cleaned.isEmpty()) {
+                env.remove(buildToolOptVar);
+            } else {
+                env.put(buildToolOptVar, cleaned);
+            }
+        }
+    }
 }

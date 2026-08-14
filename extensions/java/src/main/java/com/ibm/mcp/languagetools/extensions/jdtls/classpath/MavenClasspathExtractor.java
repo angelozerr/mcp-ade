@@ -53,15 +53,58 @@ import jakarta.enterprise.context.ApplicationScoped;
  * in the project root, falling back to system {@code mvn} on PATH.</p>
  */
 @ApplicationScoped
-public class MavenClasspathExtractor implements ClasspathExtractor {
+public class MavenClasspathExtractor extends AbstractClasspathExtractor {
 
     private static final Logger LOG = Logger.getLogger(MavenClasspathExtractor.class);
 
+    @Override
+    protected String unixWrapperName() { return "mvnw"; }
+
+    @Override
+    protected String windowsWrapperName() { return "mvnw.cmd"; }
+
+    @Override
+    protected String unixSystemName() { return "mvn"; }
+
+    @Override
+    protected String windowsSystemName() { return "mvn.cmd"; }
+
+    @Override
+    protected String buildToolOptsVar() { return "MAVEN_OPTS"; }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Returns {@code true} if a {@code pom.xml} file exists at the workspace root.</p>
+     */
     @Override
     public boolean canHandle(Path workspaceRoot) {
         return Files.exists(workspaceRoot.resolve("pom.xml"));
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Extraction proceeds through two strategies, tried in order:
+     * <ol>
+     *   <li><strong>Strategy 1</strong> — {@code mvn dependency:build-classpath}:
+     *       fast and reliable when all dependencies are installed in the local repository.</li>
+     *   <li><strong>Strategy 2</strong> — POM-based resolution: parses dependency declarations
+     *       from the POM hierarchy, resolves JARs from {@code ~/.m2/repository}, and identifies
+     *       reactor module dependencies as source project references.</li>
+     * </ol>
+     *
+     * <p>Before either strategy, a fast-path check determines if <em>all</em> dependencies are
+     * reactor modules — in that case, Maven is skipped entirely for maximum speed.</p>
+     *
+     * @param workspaceRoot the root of the multi-module project (must contain a {@code pom.xml})
+     * @param moduleDir     the directory of the specific module to extract classpath for
+     * @param progress      progress monitor for reporting download/resolution progress
+     * @return the extracted classpath information including source roots, JARs, reactor deps,
+     *         and the list of build files consulted (for cache invalidation)
+     * @throws ClasspathExtractionException if no {@code pom.xml} exists in {@code moduleDir}
+     *                                      or both strategies fail
+     */
     @Override
     public ClasspathInfo extract(Path workspaceRoot, Path moduleDir, ProgressMonitor progress)
             throws ClasspathExtractionException {
@@ -137,7 +180,8 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         // Strategy 2: POM-based resolution (handles missing reactor SNAPSHOTs)
         progress.reportProgress("Resolving classpath for " + moduleName + " from POM (reactor mode)...");
         start = System.currentTimeMillis();
-        ClasspathInfo result = extractFromPom(workspaceRoot, moduleDir, moduleName, buildFiles, progress);
+        ClasspathInfo result = extractFromPom(workspaceRoot, moduleDir, moduleName,
+                reactorModules, dependencies, buildFiles, progress);
         long elapsed = System.currentTimeMillis() - start;
         LOG.infof("Strategy 2 (POM parsing) completed in %d ms", elapsed);
         progress.reportProgress(String.format("Classpath resolved via POM parsing in %d ms (%d JARs, %d reactor modules)",
@@ -175,28 +219,19 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             throws ClasspathExtractionException, IOException {
         boolean isSubModule = !workspaceRoot.equals(moduleDir);
 
-        List<String> command = new ArrayList<>();
-        String executable = mvnExecutable.toString();
-        if (executable.endsWith(".cmd") || executable.endsWith(".bat")) {
-            command.add("cmd");
-            command.add("/c");
-        }
-        command.add(executable);
-        command.add("dependency:build-classpath");
-        command.add("-DincludeScope=test");
-        command.add("-Dmdep.outputFile=" + outputFile.toAbsolutePath());
+        List<String> args = new ArrayList<>(List.of(
+                "dependency:build-classpath",
+                "-DincludeScope=test",
+                "-Dmdep.outputFile=" + outputFile.toAbsolutePath()));
         if (isSubModule) {
-            command.add("-pl");
-            command.add(":" + moduleName);
+            args.add("-pl");
+            args.add(":" + moduleName);
         }
-        command.add("-B");
+        args.add("-B");
 
-        LOG.infof("Running: %s", String.join(" ", command));
-
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(workspaceRoot.toFile());
-        pb.redirectErrorStream(true);
-        cleanDebugEnvironment(pb);
+        ProcessBuilder pb = createProcess(mvnExecutable, workspaceRoot,
+                args.toArray(String[]::new));
+        LOG.infof("Running: %s", String.join(" ", pb.command()));
 
         Process process = pb.start();
         StringBuilder errorOutput = new StringBuilder();
@@ -212,13 +247,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             }
         }
 
-        int exitCode;
-        try {
-            exitCode = process.waitFor();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ClasspathExtractionException("Maven process interrupted");
-        }
+        int exitCode = waitForProcess(process);
 
         if (exitCode != 0) {
             throw new ClasspathExtractionException(
@@ -244,7 +273,10 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
     // ---- Strategy 2: POM-based resolution ----
 
     private ClasspathInfo extractFromPom(Path workspaceRoot, Path moduleDir,
-                                          String moduleName, Set<String> buildFiles,
+                                          String moduleName,
+                                          Map<String, Path> reactorModules,
+                                          List<MavenDependency> dependencies,
+                                          Set<String> buildFiles,
                                           ProgressMonitor progress)
             throws ClasspathExtractionException {
         try {
@@ -252,17 +284,10 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             Path mvnExecutable = findMavenExecutable(workspaceRoot);
             downloadDependencies(mvnExecutable, workspaceRoot, moduleDir, moduleName, progress);
 
-            // 1. Build a map of all reactor modules: artifactId -> directory path
-            Map<String, Path> reactorModules = scanReactorModules(workspaceRoot);
-            LOG.infof("Found %d reactor modules in workspace", reactorModules.size());
+            LOG.infof("Resolving %d dependencies in %s (%d reactor modules in workspace)",
+                    dependencies.size(), moduleName, reactorModules.size());
 
-            // 2. Parse the target module's POM for dependencies
-            // (buildFiles already populated by parseDependencies in extract())
-            Path pomFile = moduleDir.resolve("pom.xml");
-            List<MavenDependency> dependencies = parseDependencies(pomFile, workspaceRoot, buildFiles);
-            LOG.infof("Found %d dependencies in %s", dependencies.size(), moduleName);
-
-            // 3. Resolve each dependency: reactor module OR external JAR
+            // 1. Resolve each dependency: reactor module OR external JAR
             List<String> classpathJars = new ArrayList<>();
             List<ReactorModule> reactorDeps = new ArrayList<>();
             Path m2Repo = getLocalRepository();
@@ -307,30 +332,20 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
                                        ProgressMonitor progress) {
         boolean isSubModule = !workspaceRoot.equals(moduleDir);
 
-        List<String> command = new ArrayList<>();
-        String executable = mvnExecutable.toString();
-        if (executable.endsWith(".cmd") || executable.endsWith(".bat")) {
-            command.add("cmd");
-            command.add("/c");
-        }
-        command.add(executable);
-        command.add("dependency:resolve");
+        List<String> args = new ArrayList<>(List.of("dependency:resolve"));
         if (isSubModule) {
-            command.add("-pl");
-            command.add(":" + moduleName);
+            args.add("-pl");
+            args.add(":" + moduleName);
         }
-        command.add("-B");
+        args.add("-B");
 
-        LOG.infof("Downloading dependencies: %s", String.join(" ", command));
+        ProcessBuilder pb = createProcess(mvnExecutable, workspaceRoot,
+                args.toArray(String[]::new));
+        LOG.infof("Downloading dependencies: %s", String.join(" ", pb.command()));
         progress.reportProgress("Downloading dependencies for " + moduleName + " (dependency:resolve)...");
 
         long start = System.currentTimeMillis();
         try {
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.directory(workspaceRoot.toFile());
-            pb.redirectErrorStream(true);
-            cleanDebugEnvironment(pb);
-
             Process process = pb.start();
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(process.getInputStream()))) {
@@ -362,9 +377,17 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
     }
 
     /**
-     * Scans the workspace root pom.xml (and sub-aggregators) to find all reactor modules.
+     * Scans the workspace root {@code pom.xml} and any nested aggregator POMs recursively
+     * to build a map of all reactor modules.
+     *
+     * <p>Each entry maps the module's {@code artifactId} to its directory on disk.
+     * This is used to distinguish reactor module dependencies (set up as JDT source projects)
+     * from external dependencies (resolved as JARs from the local repository).</p>
+     *
+     * @param workspaceRoot the root directory containing the top-level {@code pom.xml}
+     * @return a map of {@code artifactId → directory} for every module in the reactor
      */
-    private Map<String, Path> scanReactorModules(Path workspaceRoot) {
+    Map<String, Path> scanReactorModules(Path workspaceRoot) {
         Map<String, Path> modules = new HashMap<>();
         scanModulesRecursive(workspaceRoot, modules);
         return modules;
@@ -394,12 +417,26 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
     }
 
     /**
-     * Parses dependencies from a pom.xml, resolving properties from parent POMs.
+     * Parses the direct dependencies declared in a {@code pom.xml}, resolving any
+     * {@code ${property}} placeholders using the full parent POM hierarchy.
+     *
+     * <p>Only compile-scoped and runtime-scoped dependencies are returned;
+     * test, provided, and system scopes are excluded.</p>
+     *
+     * <p>As a side-effect, every POM file consulted during property resolution
+     * (the module POM and all its ancestors) is added to {@code buildFiles}
+     * for cache invalidation tracking.</p>
+     *
+     * @param pomFile       the POM file to parse dependencies from
+     * @param workspaceRoot the workspace root (parent chain stops at this boundary)
+     * @param buildFiles    accumulator for all build files consulted (modified in-place)
+     * @return the list of resolved dependencies (groupId, artifactId, version)
      */
-    private List<MavenDependency> parseDependencies(Path pomFile, Path workspaceRoot,
+    List<MavenDependency> parseDependencies(Path pomFile, Path workspaceRoot,
                                                       Set<String> buildFiles) {
         Map<String, String> properties = new HashMap<>();
-        collectPropertiesFromHierarchy(pomFile, workspaceRoot, properties, buildFiles);
+        Map<String, String> managedVersions = new HashMap<>();
+        collectPropertiesFromHierarchy(pomFile, workspaceRoot, properties, managedVersions, buildFiles);
 
         PomInfo info = parsePomSax(pomFile);
         if (info == null) {
@@ -411,6 +448,13 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             String groupId = resolveProperty(dep.groupId, properties);
             String artifactId = resolveProperty(dep.artifactId, properties);
             String version = resolveProperty(dep.version, properties);
+            // Fallback to dependencyManagement version from parent hierarchy
+            if (version == null && groupId != null && artifactId != null) {
+                String managedVersion = managedVersions.get(groupId + ":" + artifactId);
+                if (managedVersion != null) {
+                    version = resolveProperty(managedVersion, properties);
+                }
+            }
             if (groupId != null && artifactId != null) {
                 resolved.add(new MavenDependency(groupId, artifactId, version));
             }
@@ -418,15 +462,62 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         return resolved;
     }
 
-    private void collectPropertiesFromHierarchy(Path pomFile, Path workspaceRoot,
+    /**
+     * Walks the parent POM chain starting from {@code pomFile} and collects all
+     * {@code <properties>} into a merged map, following Maven's override semantics
+     * (child properties win over parent properties).
+     *
+     * <p>The parent chain is resolved via {@code <parent><relativePath>}; if omitted,
+     * the default {@code ".."} is assumed. The walk stops at the workspace root boundary
+     * to avoid escaping the project.</p>
+     *
+     * <p>Each POM file visited is added to {@code buildFiles} for cache invalidation.
+     * This includes sibling parent POMs (e.g., {@code ../bom/pom.xml}) that would be
+     * missed by a simple ancestor-directory walk.</p>
+     *
+     * @param pomFile       the starting POM file
+     * @param workspaceRoot the workspace root (boundary for parent chain resolution)
+     * @param properties    accumulator for merged properties (modified in-place)
+     * @param buildFiles    accumulator for all POM files visited (modified in-place)
+     */
+    void collectPropertiesFromHierarchy(Path pomFile, Path workspaceRoot,
                                                   Map<String, String> properties,
                                                   Set<String> buildFiles) {
+        collectPropertiesFromHierarchy(pomFile, workspaceRoot, properties, new HashMap<>(),
+                buildFiles, new LinkedHashSet<>());
+    }
+
+    /**
+     * Overload that also collects {@code <dependencyManagement>} version mappings
+     * from the parent POM hierarchy for version fallback resolution.
+     *
+     * @param managedVersions accumulator for managed versions ({@code groupId:artifactId → version})
+     */
+    void collectPropertiesFromHierarchy(Path pomFile, Path workspaceRoot,
+                                                  Map<String, String> properties,
+                                                  Map<String, String> managedVersions,
+                                                  Set<String> buildFiles) {
+        collectPropertiesFromHierarchy(pomFile, workspaceRoot, properties, managedVersions,
+                buildFiles, new LinkedHashSet<>());
+    }
+
+    private void collectPropertiesFromHierarchy(Path pomFile, Path workspaceRoot,
+                                                Map<String, String> properties,
+                                                Map<String, String> managedVersions,
+                                                Set<String> buildFiles,
+                                                Set<Path> visited) {
+        Path normalized = pomFile.toAbsolutePath().normalize();
+        if (!visited.add(normalized)) {
+            LOG.debugf("Cycle detected in parent POM chain at: %s", normalized);
+            return;
+        }
+
         PomInfo info = parsePomSax(pomFile);
         if (info == null) {
             return;
         }
 
-        buildFiles.add(pomFile.toAbsolutePath().normalize().toString());
+        buildFiles.add(normalized.toString());
 
         // Resolve parent POM first (so child properties override)
         if (info.parentRelativePath != null || info.hasParent) {
@@ -435,7 +526,8 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             Path parentPom = Files.isDirectory(parentDir)
                     ? parentDir.resolve("pom.xml") : parentDir;
             if (Files.exists(parentPom) && parentPom.startsWith(workspaceRoot)) {
-                collectPropertiesFromHierarchy(parentPom, workspaceRoot, properties, buildFiles);
+                collectPropertiesFromHierarchy(parentPom, workspaceRoot, properties,
+                        managedVersions, buildFiles, visited);
             }
         }
 
@@ -446,9 +538,26 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             properties.put("project.groupId", info.groupId);
         }
         properties.putAll(info.properties);
+
+        // Child managedVersions override parent (putAll after parent recursion)
+        managedVersions.putAll(info.managedVersions);
     }
 
-    private String resolveProperty(String value, Map<String, String> properties) {
+    /**
+     * Resolves Maven property placeholders ({@code ${...}}) in the given value
+     * using the provided property map.
+     *
+     * <p>Handles nested property references (e.g., {@code ${${prefix}.version}})
+     * with a maximum resolution depth of 10 to prevent infinite loops from
+     * circular references.</p>
+     *
+     * @param value      the string potentially containing {@code ${property}} placeholders,
+     *                   or {@code null}
+     * @param properties the property map to resolve against
+     * @return the resolved string, or {@code null} if the input was {@code null}.
+     *         Unresolvable placeholders are left as-is.
+     */
+    String resolveProperty(String value, Map<String, String> properties) {
         if (value == null) {
             return null;
         }
@@ -465,7 +574,17 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         return value;
     }
 
-    private Path resolveJarInLocalRepo(Path m2Repo, MavenDependency dep) {
+    /**
+     * Constructs the expected path to a dependency JAR in the Maven local repository.
+     *
+     * <p>Follows the standard Maven repository layout:
+     * {@code {m2Repo}/{groupId-as-path}/{artifactId}/{version}/{artifactId}-{version}.jar}</p>
+     *
+     * @param m2Repo the root of the local Maven repository (typically {@code ~/.m2/repository})
+     * @param dep    the dependency to resolve
+     * @return the expected JAR path, or {@code null} if the dependency has no version
+     */
+    Path resolveJarInLocalRepo(Path m2Repo, MavenDependency dep) {
         if (dep.version == null) {
             return null;
         }
@@ -476,71 +595,39 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
                 .resolve(dep.artifactId + "-" + dep.version + ".jar");
     }
 
-    private Path getLocalRepository() {
+    /**
+     * Returns the path to the Maven local repository ({@code ~/.m2/repository}).
+     *
+     * @return the local repository path derived from the {@code user.home} system property
+     */
+    Path getLocalRepository() {
         String m2Home = System.getProperty("user.home");
         return Path.of(m2Home, ".m2", "repository");
     }
 
-    // ---- Environment cleanup ----
-
-    private static void cleanDebugEnvironment(ProcessBuilder pb) {
-        Map<String, String> env = pb.environment();
-        env.remove("JAVA_TOOL_OPTIONS");
-        env.remove("_JAVA_OPTIONS");
-        String mavenOpts = env.get("MAVEN_OPTS");
-        if (mavenOpts != null) {
-            String cleaned = mavenOpts
-                    .replaceAll("-agentlib:jdwp\\S*", "")
-                    .replaceAll("-javaagent:\\S*", "")
-                    .trim();
-            if (cleaned.isEmpty()) {
-                env.remove("MAVEN_OPTS");
-            } else {
-                env.put("MAVEN_OPTS", cleaned);
-            }
-        }
-    }
-
-    // ---- Source root detection ----
-
-    private List<String> detectSourceRoots(Path moduleDir) {
-        List<String> roots = new ArrayList<>();
-        String[] candidates = {
-                "src/main/java",
-                "src/main/resources",
-                "src/test/java",
-                "src/test/resources"
-        };
-        for (String candidate : candidates) {
-            if (Files.isDirectory(moduleDir.resolve(candidate))) {
-                roots.add(candidate);
-            }
-        }
-        if (roots.isEmpty() && Files.isDirectory(moduleDir.resolve("src"))) {
-            roots.add("src");
-        }
-        return roots;
-    }
-
-    // ---- Maven executable detection ----
-
-    private Path findMavenExecutable(Path projectRoot) {
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        String wrapperName = isWindows ? "mvnw.cmd" : "mvnw";
-        Path dir = projectRoot.toAbsolutePath().normalize();
-        while (dir != null) {
-            Path wrapper = dir.resolve(wrapperName);
-            if (Files.isRegularFile(wrapper)) {
-                return wrapper;
-            }
-            dir = dir.getParent();
-        }
-        return Path.of(isWindows ? "mvn.cmd" : "mvn");
+    /**
+     * Alias for {@link #findBuildToolExecutable(Path)} — kept for test readability.
+     */
+    Path findMavenExecutable(Path projectRoot) {
+        return findBuildToolExecutable(projectRoot);
     }
 
     // ---- SAX-based POM parsing ----
 
-    private PomInfo parsePomSax(Path pomFile) {
+    /**
+     * Parses a {@code pom.xml} using SAX for fast, low-memory extraction of key POM metadata.
+     *
+     * <p>Extracts: coordinates (groupId, artifactId, version, packaging), parent reference,
+     * module declarations, direct dependencies (excluding test/provided/system scope),
+     * and properties. Does <em>not</em> resolve property placeholders — that is handled
+     * by {@link #collectPropertiesFromHierarchy}.</p>
+     *
+     * <p>External entities and DTD loading are disabled for security.</p>
+     *
+     * @param pomFile the POM file to parse
+     * @return the parsed POM information, or {@code null} if parsing fails
+     */
+    PomInfo parsePomSax(Path pomFile) {
         try {
             SAXParserFactory factory = SAXParserFactory.newInstance();
             factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
@@ -557,7 +644,13 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         }
     }
 
-    private static class PomInfo {
+    /**
+     * Holds the metadata extracted from a single {@code pom.xml} by SAX parsing.
+     *
+     * <p>This is a raw parse result — property placeholders are <em>not</em> resolved.
+     * Use {@link #parseDependencies} for fully resolved dependency information.</p>
+     */
+    static class PomInfo {
         String artifactId;
         String groupId;
         String version;
@@ -567,7 +660,12 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         final List<String> moduleNames = new ArrayList<>();
         final List<MavenDependency> dependencies = new ArrayList<>();
         final Map<String, String> properties = new HashMap<>();
+        final Map<String, String> managedVersions = new HashMap<>();
 
+        /**
+         * Returns {@code true} if this POM is a reactor/aggregator POM
+         * (packaging is {@code pom} and at least one {@code <module>} is declared).
+         */
         boolean isReactorPom() {
             return "pom".equals(packaging) && !moduleNames.isEmpty();
         }
@@ -607,6 +705,15 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
         private String depScope;
         private final List<MavenDependency> dependencies = new ArrayList<>();
 
+        // DependencyManagement
+        private boolean inDependencyManagement;
+        private boolean inDmDependencies;
+        private boolean inDmDependency;
+        private String dmDepGroupId;
+        private String dmDepArtifactId;
+        private String dmDepVersion;
+        private final Map<String, String> managedVersions = new HashMap<>();
+
         @Override
         public void startElement(String uri, String localName, String qName, Attributes attributes) {
             depth++;
@@ -618,6 +725,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
                     case "properties" -> inProperties = true;
                     case "modules" -> inModules = true;
                     case "dependencies" -> inTopLevelDependencies = true;
+                    case "dependencyManagement" -> inDependencyManagement = true;
                 }
             } else if (depth == 3) {
                 if (inTopLevelDependencies && "dependency".equals(qName)) {
@@ -627,9 +735,17 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
                     depVersion = null;
                     depScope = null;
                 }
+                if (inDependencyManagement && "dependencies".equals(qName)) {
+                    inDmDependencies = true;
+                }
                 if (inProperties) {
                     currentPropertyName = qName;
                 }
+            } else if (depth == 4 && inDmDependencies && "dependency".equals(qName)) {
+                inDmDependency = true;
+                dmDepGroupId = null;
+                dmDepArtifactId = null;
+                dmDepVersion = null;
             }
         }
 
@@ -654,6 +770,7 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
                     case "properties" -> inProperties = false;
                     case "modules" -> inModules = false;
                     case "dependencies" -> inTopLevelDependencies = false;
+                    case "dependencyManagement" -> inDependencyManagement = false;
                 }
             } else if (depth == 3) {
                 if (inParent && "relativePath".equals(qName)) {
@@ -676,12 +793,29 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
                     }
                     inDependency = false;
                 }
-            } else if (depth == 4 && inDependency) {
+                if (inDependencyManagement && "dependencies".equals(qName)) {
+                    inDmDependencies = false;
+                }
+            } else if (depth == 4) {
+                if (inDependency) {
+                    switch (qName) {
+                        case "groupId" -> depGroupId = content;
+                        case "artifactId" -> depArtifactId = content;
+                        case "version" -> depVersion = content;
+                        case "scope" -> depScope = content;
+                    }
+                }
+                if (inDmDependency && "dependency".equals(qName)) {
+                    if (dmDepGroupId != null && dmDepArtifactId != null && dmDepVersion != null) {
+                        managedVersions.put(dmDepGroupId + ":" + dmDepArtifactId, dmDepVersion);
+                    }
+                    inDmDependency = false;
+                }
+            } else if (depth == 5 && inDmDependency) {
                 switch (qName) {
-                    case "groupId" -> depGroupId = content;
-                    case "artifactId" -> depArtifactId = content;
-                    case "version" -> depVersion = content;
-                    case "scope" -> depScope = content;
+                    case "groupId" -> dmDepGroupId = content;
+                    case "artifactId" -> dmDepArtifactId = content;
+                    case "version" -> dmDepVersion = content;
                 }
             }
 
@@ -700,10 +834,18 @@ public class MavenClasspathExtractor implements ClasspathExtractor {
             info.moduleNames.addAll(moduleNames);
             info.dependencies.addAll(dependencies);
             info.properties.putAll(properties);
+            info.managedVersions.putAll(managedVersions);
             return info;
         }
     }
 
-    private record MavenDependency(String groupId, String artifactId, String version) {
+    /**
+     * Represents a single Maven dependency with resolved coordinates.
+     *
+     * @param groupId    the Maven group ID (e.g., {@code org.apache.commons})
+     * @param artifactId the Maven artifact ID (e.g., {@code commons-lang3})
+     * @param version    the resolved version string, or {@code null} if unresolvable
+     */
+    record MavenDependency(String groupId, String artifactId, String version) {
     }
 }

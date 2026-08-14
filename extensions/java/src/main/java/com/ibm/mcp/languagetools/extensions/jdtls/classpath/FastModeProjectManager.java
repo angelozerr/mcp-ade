@@ -78,13 +78,23 @@ public class FastModeProjectManager {
 
     /**
      * Ensures the module containing the given file is set up in JDT.LS.
-     * If already set up, returns immediately. Otherwise, extracts classpath
-     * and creates the JDT project. Reactor module dependencies are also
-     * set up as source projects.
+     *
+     * <p>If the module has already been configured during this session, returns
+     * immediately. Otherwise, performs classpath extraction (from cache or build tool),
+     * creates the JDT project via the {@code mcp.jdtls.setupProject} delegate command,
+     * and recursively sets up any reactor module dependencies as source projects.</p>
      *
      * <p>Detects JDT.LS restarts by comparing the server instance reference:
      * when the instance changes, all setup state is cleared so modules are
      * re-configured (using the disk cache if available).</p>
+     *
+     * @param workspaceRoot the root directory of the multi-module project
+     * @param filePath      the file URI or path that triggered module setup (used to
+     *                      determine which module to set up)
+     * @param jdtls         the JDT.LS server instance to configure
+     * @param progress      progress monitor for reporting extraction and setup progress
+     * @return a future that completes when the module and all its reactor dependencies
+     *         are set up
      */
     public CompletableFuture<Void> ensureModuleSetup(Path workspaceRoot, String filePath,
                                                       LspServer jdtls, ProgressMonitor progress) {
@@ -271,7 +281,14 @@ public class FastModeProjectManager {
     }
 
     /**
-     * Checks if the JDT IndexManager has pending indexing jobs.
+     * Checks whether the JDT IndexManager is currently indexing.
+     *
+     * <p>Queries the {@code mcp.jdtls.getIndexingStatus} command and returns
+     * {@code true} if the server reports active indexing jobs. Returns {@code false}
+     * on error (e.g., if the command is not supported).</p>
+     *
+     * @param jdtls the JDT.LS server to query
+     * @return a future that resolves to {@code true} if indexing is in progress
      */
     @SuppressWarnings("unchecked")
     public CompletableFuture<Boolean> isIndexing(LspServer jdtls) {

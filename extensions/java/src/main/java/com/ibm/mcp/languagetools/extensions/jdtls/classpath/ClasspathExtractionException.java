@@ -15,13 +15,32 @@ package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
 
 /**
  * Thrown when classpath extraction from a build tool (Maven or Gradle) fails.
+ *
+ * <p>Common causes include:
+ * <ul>
+ *   <li>Missing {@code pom.xml} or {@code build.gradle} in the target directory</li>
+ *   <li>{@code mvn dependency:build-classpath} failing (e.g., unresolvable SNAPSHOT dependencies)</li>
+ *   <li>Gradle init script task failing</li>
+ *   <li>I/O errors reading POM files or accessing the local repository</li>
+ *   <li>Maven/Gradle process interrupted</li>
+ * </ul>
+ *
+ * <p>This is a checked exception because callers typically fall back to
+ * an alternative extraction strategy or report a degraded classpath.</p>
  */
 public class ClasspathExtractionException extends Exception {
 
+    /**
+     * @param message a description of the extraction failure
+     */
     public ClasspathExtractionException(String message) {
         super(message);
     }
 
+    /**
+     * @param message a description of the extraction failure
+     * @param cause   the underlying exception (e.g., {@link java.io.IOException})
+     */
     public ClasspathExtractionException(String message, Throwable cause) {
         super(message, cause);
     }

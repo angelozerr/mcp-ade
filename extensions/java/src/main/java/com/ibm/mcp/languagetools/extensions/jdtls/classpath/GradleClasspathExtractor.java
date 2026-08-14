@@ -23,8 +23,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-
 import org.jboss.logging.Logger;
 
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
@@ -38,7 +36,7 @@ import jakarta.enterprise.context.ApplicationScoped;
  * in the project root, falling back to system {@code gradle} on PATH.</p>
  */
 @ApplicationScoped
-public class GradleClasspathExtractor implements ClasspathExtractor {
+public class GradleClasspathExtractor extends AbstractClasspathExtractor {
 
     private static final Logger LOG = Logger.getLogger(GradleClasspathExtractor.class);
 
@@ -46,16 +44,54 @@ public class GradleClasspathExtractor implements ClasspathExtractor {
     private static final String SOURCES_PREFIX = "MCP_SOURCES:";
 
     @Override
+    protected String unixWrapperName() { return "gradlew"; }
+
+    @Override
+    protected String windowsWrapperName() { return "gradlew.bat"; }
+
+    @Override
+    protected String unixSystemName() { return "gradle"; }
+
+    @Override
+    protected String windowsSystemName() { return "gradle.bat"; }
+
+    @Override
+    protected String buildToolOptsVar() { return "GRADLE_OPTS"; }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Returns {@code true} if a {@code build.gradle} or {@code build.gradle.kts}
+     * file exists at the workspace root.</p>
+     */
+    @Override
     public boolean canHandle(Path workspaceRoot) {
         return Files.exists(workspaceRoot.resolve("build.gradle"))
                 || Files.exists(workspaceRoot.resolve("build.gradle.kts"));
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Injects a temporary Gradle init script that registers an {@code mcpClasspath}
+     * task on all projects. The task outputs the resolved compile + test classpath
+     * and source directories in a parseable format. The init script is deleted after
+     * execution.</p>
+     *
+     * <p>Build files tracked for cache invalidation include: {@code build.gradle},
+     * {@code build.gradle.kts}, {@code settings.gradle}, and {@code settings.gradle.kts}.</p>
+     *
+     * @param workspaceRoot the root of the Gradle project
+     * @param moduleDir     the directory of the specific subproject to extract classpath for
+     * @param progress      progress monitor for reporting download progress
+     * @return the extracted classpath information
+     * @throws ClasspathExtractionException if the Gradle task fails or an I/O error occurs
+     */
     @Override
     public ClasspathInfo extract(Path workspaceRoot, Path moduleDir, ProgressMonitor progress)
             throws ClasspathExtractionException {
         String moduleName = moduleDir.getFileName().toString();
-        Path gradleExecutable = findGradleExecutable(workspaceRoot);
+        Path gradleExecutable = findBuildToolExecutable(workspaceRoot);
         LOG.infof("Using Gradle executable: %s", gradleExecutable);
 
         try {
@@ -119,29 +155,32 @@ public class GradleClasspathExtractor implements ClasspathExtractor {
                 """;
     }
 
+    /**
+     * Alias for {@link #findBuildToolExecutable(Path)} — kept for test readability.
+     */
+    Path findGradleExecutable(Path projectRoot) {
+        return findBuildToolExecutable(projectRoot);
+    }
+
     private ClasspathInfo runGradleTask(Path gradleExecutable, Path workspaceRoot,
                                          Path moduleDir, String moduleName,
                                          Path initScript, ProgressMonitor progress)
             throws ClasspathExtractionException, IOException {
         boolean isSubProject = !workspaceRoot.equals(moduleDir);
 
-        List<String> command = new ArrayList<>();
-        command.add(gradleExecutable.toAbsolutePath().toString());
-        command.add("-I");
-        command.add(initScript.toAbsolutePath().toString());
+        List<String> args = new ArrayList<>();
+        args.add("-I");
+        args.add(initScript.toAbsolutePath().toString());
         if (isSubProject) {
-            command.add(":" + moduleName + ":mcpClasspath");
+            args.add(":" + moduleName + ":mcpClasspath");
         } else {
-            command.add("mcpClasspath");
+            args.add("mcpClasspath");
         }
-        command.add("-q");
+        args.add("-q");
 
-        LOG.infof("Running: %s", String.join(" ", command));
-
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(workspaceRoot.toFile());
-        pb.redirectErrorStream(true);
-        cleanDebugEnvironment(pb);
+        ProcessBuilder pb = createProcess(gradleExecutable, workspaceRoot,
+                args.toArray(String[]::new));
+        LOG.infof("Running: %s", String.join(" ", pb.command()));
 
         Process process = pb.start();
 
@@ -177,36 +216,14 @@ public class GradleClasspathExtractor implements ClasspathExtractor {
             }
         }
 
-        int exitCode;
-        try {
-            exitCode = process.waitFor();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ClasspathExtractionException("Gradle process interrupted");
-        }
+        int exitCode = waitForProcess(process);
 
         if (exitCode != 0) {
             throw new ClasspathExtractionException(
                     "Gradle mcpClasspath task failed with exit code " + exitCode);
         }
 
-        List<String> buildFiles = new ArrayList<>();
-        Path gradleBuild = moduleDir.resolve("build.gradle");
-        if (Files.exists(gradleBuild)) {
-            buildFiles.add(gradleBuild.toAbsolutePath().normalize().toString());
-        }
-        Path gradleBuildKts = moduleDir.resolve("build.gradle.kts");
-        if (Files.exists(gradleBuildKts)) {
-            buildFiles.add(gradleBuildKts.toAbsolutePath().normalize().toString());
-        }
-        Path settingsGradle = workspaceRoot.resolve("settings.gradle");
-        if (Files.exists(settingsGradle)) {
-            buildFiles.add(settingsGradle.toAbsolutePath().normalize().toString());
-        }
-        Path settingsGradleKts = workspaceRoot.resolve("settings.gradle.kts");
-        if (Files.exists(settingsGradleKts)) {
-            buildFiles.add(settingsGradleKts.toAbsolutePath().normalize().toString());
-        }
+        List<String> buildFiles = collectGradleBuildFiles(workspaceRoot, moduleDir);
 
         return new ClasspathInfo(
                 moduleName,
@@ -217,31 +234,22 @@ public class GradleClasspathExtractor implements ClasspathExtractor {
                 buildFiles);
     }
 
-    private static void cleanDebugEnvironment(ProcessBuilder pb) {
-        Map<String, String> env = pb.environment();
-        env.remove("JAVA_TOOL_OPTIONS");
-        env.remove("_JAVA_OPTIONS");
-        String gradleOpts = env.get("GRADLE_OPTS");
-        if (gradleOpts != null) {
-            String cleaned = gradleOpts
-                    .replaceAll("-agentlib:jdwp\\S*", "")
-                    .replaceAll("-javaagent:\\S*", "")
-                    .trim();
-            if (cleaned.isEmpty()) {
-                env.remove("GRADLE_OPTS");
-            } else {
-                env.put("GRADLE_OPTS", cleaned);
+    private List<String> collectGradleBuildFiles(Path workspaceRoot, Path moduleDir) {
+        List<String> buildFiles = new ArrayList<>();
+        for (String fileName : new String[]{
+                "build.gradle", "build.gradle.kts"}) {
+            Path file = moduleDir.resolve(fileName);
+            if (Files.exists(file)) {
+                buildFiles.add(file.toAbsolutePath().normalize().toString());
             }
         }
-    }
-
-    private Path findGradleExecutable(Path projectRoot) {
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        String wrapperName = isWindows ? "gradlew.bat" : "gradlew";
-        Path wrapper = projectRoot.resolve(wrapperName);
-        if (Files.isRegularFile(wrapper)) {
-            return wrapper;
+        for (String fileName : new String[]{
+                "settings.gradle", "settings.gradle.kts"}) {
+            Path file = workspaceRoot.resolve(fileName);
+            if (Files.exists(file)) {
+                buildFiles.add(file.toAbsolutePath().normalize().toString());
+            }
         }
-        return Path.of(isWindows ? "gradle.bat" : "gradle");
+        return buildFiles;
     }
 }

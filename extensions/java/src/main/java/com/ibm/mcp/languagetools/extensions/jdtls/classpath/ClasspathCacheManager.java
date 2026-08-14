@@ -53,8 +53,25 @@ public class ClasspathCacheManager {
     Application application;
 
     /**
-     * Loads the cached {@link ClasspathInfo} for a module if the cache exists
-     * and the POM timestamps haven't changed.
+     * Loads the cached {@link ClasspathInfo} for a module if the cache is still valid.
+     *
+     * <p>Validation checks, applied in order:
+     * <ol>
+     *   <li>Cache file must exist on disk</li>
+     *   <li>All POM files tracked in the cache must still exist with the same
+     *       last-modified timestamp</li>
+     *   <li>Non-JAR entries (e.g., {@code .pom} files from BOM dependencies)
+     *       are filtered out for backward compatibility</li>
+     *   <li>All cached JAR files must still exist on disk (guards against
+     *       {@code ~/.m2/repository} cleanup)</li>
+     * </ol>
+     *
+     * <p>If any check fails, {@code Optional.empty()} is returned and the caller
+     * should re-extract the classpath from the build tool.</p>
+     *
+     * @param workspaceRoot the workspace root directory
+     * @param moduleDir     the module directory
+     * @return the cached classpath info if valid, or empty if the cache is stale/missing
      */
     public Optional<ClasspathInfo> loadIfValid(Path workspaceRoot, Path moduleDir) {
         Path cacheFile = getCacheFile(workspaceRoot, moduleDir);
@@ -115,7 +132,15 @@ public class ClasspathCacheManager {
 
     /**
      * Saves the extracted {@link ClasspathInfo} to disk along with the current
-     * build file timestamps for invalidation.
+     * build file timestamps for cache invalidation.
+     *
+     * <p>The cache file is a JSON document containing the full {@link ClasspathInfo}
+     * record and a map of build file paths to their last-modified timestamps.
+     * On the next load, timestamps are compared to detect changes.</p>
+     *
+     * @param workspaceRoot the workspace root directory (used for cache file path derivation)
+     * @param moduleDir     the module directory (used for cache file naming)
+     * @param info          the classpath information to persist
      */
     public void save(Path workspaceRoot, Path moduleDir, ClasspathInfo info) {
         Path cacheFile = getCacheFile(workspaceRoot, moduleDir);
@@ -139,6 +164,17 @@ public class ClasspathCacheManager {
         }
     }
 
+    /**
+     * Collects the current last-modified timestamps for all build files tracked
+     * in the given {@link ClasspathInfo}.
+     *
+     * <p>Files that no longer exist are silently skipped (they will cause
+     * cache invalidation on the next {@link #loadIfValid} call).</p>
+     *
+     * @param info the classpath info whose {@link ClasspathInfo#buildFiles()} to inspect
+     * @return an ordered map of build file paths to their last-modified timestamps (millis)
+     * @throws IOException if reading a file's timestamp fails
+     */
     private Map<String, Long> collectBuildFileTimestamps(ClasspathInfo info) throws IOException {
         Map<String, Long> timestamps = new LinkedHashMap<>();
         if (info.buildFiles() != null) {
