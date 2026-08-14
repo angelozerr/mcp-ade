@@ -13,12 +13,15 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.it;
 
+import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.it.trace.LspTraceData;
 import com.ibm.mcp.languagetools.it.trace.McpTraceData;
 import com.ibm.mcp.languagetools.it.trace.ReplayLspServerFactory;
 import com.ibm.mcp.languagetools.it.trace.TraceParser;
+import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.*;
 
@@ -53,6 +56,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TraceReplayTest {
+
+    @Inject
+    ExtensionRegistry extensionRegistry;
 
     private String testWorkspaceCwd;
 
@@ -116,7 +122,17 @@ class TraceReplayTest {
         McpTraceData mcpData = TraceParser.parseMcpTrace(testDir.resolve("mcp.trace"));
         assertNotNull(mcpData.toolName(), "MCP trace must contain a tool name");
 
-        // 2. Parse LSP traces and register with the replay factory
+        // 2. Disable all real LSP servers — only mock-lsp should be active
+        List<String> disabledServerIds = new ArrayList<>();
+        for (LspServerConfig config : extensionRegistry.getAllLspServerConfigs()) {
+            String serverId = config.getServerId();
+            if (!"mock-lsp".equals(serverId) && extensionRegistry.isServerEnabled(serverId)) {
+                extensionRegistry.disableLspServer(serverId);
+                disabledServerIds.add(serverId);
+            }
+        }
+
+        // 3. Parse LSP traces and register with the replay factory
         ReplayLspServerFactory.clear();
         List<Path> createdFiles = new ArrayList<>();
         try {
@@ -204,6 +220,10 @@ class TraceReplayTest {
                     Files.deleteIfExists(created);
                 } catch (Exception ignored) {
                 }
+            }
+            // Re-enable servers that were disabled for this trace test
+            for (String serverId : disabledServerIds) {
+                extensionRegistry.enableLspServer(serverId);
             }
         }
     }

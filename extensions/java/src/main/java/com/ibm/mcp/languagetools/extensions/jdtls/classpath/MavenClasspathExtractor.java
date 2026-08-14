@@ -41,12 +41,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 /**
  * Extracts classpath from Maven projects.
  *
- * <p>Strategy:
+ * <p>Strategy (tried in order):
  * <ol>
- *   <li>Try {@code mvn dependency:build-classpath} (fast, works if all deps are installed)</li>
- *   <li>If it fails (e.g., reactor SNAPSHOT modules not installed), fall back to
- *       POM parsing: identify reactor modules and build the classpath manually
- *       from {@code ~/.m2/repository}</li>
+ *   <li>{@code mvn dependency:build-classpath} — fast, works if all deps are in {@code ~/.m2}</li>
+ *   <li>{@code mvn dependency:resolve} then retry {@code dependency:build-classpath}
+ *       — downloads missing JARs first, then uses Maven for full classpath resolution</li>
+ *   <li>POM parsing — last resort when Maven fails entirely (reactor SNAPSHOTs);
+ *       builds classpath manually from {@code ~/.m2/repository}</li>
  * </ol>
  *
  * <p>Prioritizes the Maven wrapper ({@code mvnw}/{@code mvnw.cmd}) if present
@@ -85,13 +86,16 @@ public class MavenClasspathExtractor extends AbstractClasspathExtractor {
     /**
      * {@inheritDoc}
      *
-     * <p>Extraction proceeds through two strategies, tried in order:
+     * <p>Extraction proceeds through three strategies, tried in order:
      * <ol>
      *   <li><strong>Strategy 1</strong> — {@code mvn dependency:build-classpath}:
      *       fast and reliable when all dependencies are installed in the local repository.</li>
-     *   <li><strong>Strategy 2</strong> — POM-based resolution: parses dependency declarations
-     *       from the POM hierarchy, resolves JARs from {@code ~/.m2/repository}, and identifies
-     *       reactor module dependencies as source project references.</li>
+     *   <li><strong>Strategy 2</strong> — {@code mvn dependency:resolve} then retry
+     *       {@code dependency:build-classpath}: downloads missing JARs, then delegates
+     *       classpath resolution to Maven for full correctness (profiles, BOMs, exclusions).</li>
+     *   <li><strong>Strategy 3</strong> — POM-based resolution (last resort): parses dependency
+     *       declarations from the POM hierarchy, resolves JARs from {@code ~/.m2/repository},
+     *       and identifies reactor module dependencies as source project references.</li>
      * </ol>
      *
      * <p>Before either strategy, a fast-path check determines if <em>all</em> dependencies are
@@ -177,13 +181,36 @@ public class MavenClasspathExtractor extends AbstractClasspathExtractor {
             LOG.infof("dependency:build-classpath failed, falling back to POM parsing: %s", e.getMessage());
         }
 
-        // Strategy 2: POM-based resolution (handles missing reactor SNAPSHOTs)
+        // Strategy 2: dependency:resolve + retry dependency:build-classpath
+        progress.reportProgress("Downloading dependencies for " + moduleName + " (dependency:resolve)...");
+        start = System.currentTimeMillis();
+        downloadDependencies(mvnExecutable, workspaceRoot, moduleDir, moduleName, progress);
+        long resolveElapsed = System.currentTimeMillis() - start;
+
+        try {
+            progress.reportProgress("Retrying dependency:build-classpath after resolve...");
+            start = System.currentTimeMillis();
+            ClasspathInfo result = tryBuildClasspath(mvnExecutable, workspaceRoot, moduleDir,
+                    moduleName, buildFiles, progress);
+            if (result != null) {
+                long elapsed = System.currentTimeMillis() - start;
+                LOG.infof("Strategy 2 (resolve + build-classpath) completed in %d ms (resolve: %d ms, classpath: %d ms)",
+                        resolveElapsed + elapsed, resolveElapsed, elapsed);
+                progress.reportProgress(String.format("Classpath resolved after download in %d ms (%d JARs)",
+                        resolveElapsed + elapsed, result.classpathJars().size()));
+                return result;
+            }
+        } catch (ClasspathExtractionException e) {
+            LOG.infof("dependency:build-classpath failed after resolve, falling back to POM parsing: %s", e.getMessage());
+        }
+
+        // Strategy 3: POM-based resolution (last resort — handles reactor SNAPSHOTs)
         progress.reportProgress("Resolving classpath for " + moduleName + " from POM (reactor mode)...");
         start = System.currentTimeMillis();
         ClasspathInfo result = extractFromPom(workspaceRoot, moduleDir, moduleName,
                 reactorModules, dependencies, buildFiles, progress);
         long elapsed = System.currentTimeMillis() - start;
-        LOG.infof("Strategy 2 (POM parsing) completed in %d ms", elapsed);
+        LOG.infof("Strategy 3 (POM parsing) completed in %d ms", elapsed);
         progress.reportProgress(String.format("Classpath resolved via POM parsing in %d ms (%d JARs, %d reactor modules)",
                 elapsed, result.classpathJars().size(), result.reactorModuleDeps().size()));
         return result;
@@ -280,10 +307,6 @@ public class MavenClasspathExtractor extends AbstractClasspathExtractor {
                                           ProgressMonitor progress)
             throws ClasspathExtractionException {
         try {
-            // 0. Download dependencies first (best-effort)
-            Path mvnExecutable = findMavenExecutable(workspaceRoot);
-            downloadDependencies(mvnExecutable, workspaceRoot, moduleDir, moduleName, progress);
-
             LOG.infof("Resolving %d dependencies in %s (%d reactor modules in workspace)",
                     dependencies.size(), moduleName, reactorModules.size());
 

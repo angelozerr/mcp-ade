@@ -23,7 +23,7 @@ public class NoOpProgressMonitor implements ProgressMonitor {
 
     public static final ProgressMonitor INSTANCE = new NoOpProgressMonitor();
 
-    private NoOpProgressMonitor() {
+    protected NoOpProgressMonitor() {
     }
 
     @Override

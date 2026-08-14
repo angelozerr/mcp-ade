@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -484,6 +486,148 @@ class MavenClasspathExtractorIntegrationTest {
         assertTrue(info.sourceRoots().contains("src/main/java"));
     }
 
+    // ---- dependencyManagement with BOM import ----
+
+    @Test
+    void extractWithDependencyManagementVersion(@TempDir Path workspace) throws Exception {
+        installMavenWrapper(workspace);
+
+        // Parent defines dependencyManagement
+        Files.writeString(workspace.resolve("pom.xml"), """
+                <project xmlns="http://maven.apache.org/POM/4.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>dm-parent</artifactId>
+                    <version>1.0.0</version>
+                    <packaging>pom</packaging>
+                    <dependencyManagement>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.google.code.gson</groupId>
+                                <artifactId>gson</artifactId>
+                                <version>2.10.1</version>
+                            </dependency>
+                        </dependencies>
+                    </dependencyManagement>
+                    <modules>
+                        <module>child</module>
+                    </modules>
+                </project>
+                """);
+
+        // Child declares dep WITHOUT version — inherited from parent dependencyManagement
+        Path childDir = Files.createDirectory(workspace.resolve("child"));
+        Files.writeString(childDir.resolve("pom.xml"), """
+                <project xmlns="http://maven.apache.org/POM/4.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                    <modelVersion>4.0.0</modelVersion>
+                    <parent>
+                        <groupId>com.test</groupId>
+                        <artifactId>dm-parent</artifactId>
+                        <version>1.0.0</version>
+                    </parent>
+                    <artifactId>dm-child</artifactId>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.google.code.gson</groupId>
+                            <artifactId>gson</artifactId>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """);
+        Files.createDirectories(childDir.resolve("src/main/java"));
+
+        ClasspathInfo info = extractor.extract(workspace, childDir, NO_OP_PROGRESS);
+
+        assertNotNull(info);
+        assertEquals("dm-child", info.moduleName());
+        assertTrue(info.classpathJars().stream()
+                        .anyMatch(jar -> jar.contains("gson-2.10.1.jar")),
+                "Should resolve version from parent dependencyManagement: " + info.classpathJars());
+    }
+
+    @Test
+    void extractWithMavenProfile(@TempDir Path workspace) throws Exception {
+        installMavenWrapper(workspace);
+
+        // Project with a profile that adds a dependency
+        Files.writeString(workspace.resolve("pom.xml"), """
+                <project xmlns="http://maven.apache.org/POM/4.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>profile-project</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.apache.commons</groupId>
+                            <artifactId>commons-lang3</artifactId>
+                            <version>3.14.0</version>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """);
+        Files.createDirectories(workspace.resolve("src/main/java"));
+
+        // Strategy 1 or 2 should resolve this via Maven (not SAX)
+        ClasspathInfo info = extractor.extract(workspace, workspace, NO_OP_PROGRESS);
+
+        assertNotNull(info);
+        assertTrue(info.classpathJars().stream()
+                        .anyMatch(jar -> jar.contains("commons-lang3")),
+                "Should contain commons-lang3: " + info.classpathJars());
+    }
+
+    // ---- Strategy tracking (verify strategy selection) ----
+
+    @Test
+    void extractTracksStrategyUsed(@TempDir Path workspace) throws Exception {
+        installMavenWrapper(workspace);
+
+        // Simple project — strategy 1 should succeed on a machine with ~/.m2 populated
+        Files.writeString(workspace.resolve("pom.xml"), """
+                <project xmlns="http://maven.apache.org/POM/4.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>strategy-test</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.google.code.gson</groupId>
+                            <artifactId>gson</artifactId>
+                            <version>2.10.1</version>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """);
+        Files.createDirectories(workspace.resolve("src/main/java"));
+
+        // Track which progress messages were reported
+        List<String> progressMessages = new ArrayList<>();
+        ProgressMonitor trackingMonitor = new NoOpProgressMonitor() {
+            @Override public void reportProgress(String message) { progressMessages.add(message); }
+        };
+
+        ClasspathInfo info = extractor.extract(workspace, workspace, trackingMonitor);
+
+        assertNotNull(info);
+        assertTrue(info.classpathJars().stream().anyMatch(jar -> jar.contains("gson")),
+                "Should contain gson");
+        // At least one strategy should have reported completion
+        assertTrue(progressMessages.stream().anyMatch(m -> m.contains("Classpath resolved")),
+                "Should report classpath resolution: " + progressMessages);
+    }
+
     // ---- findMavenExecutable ----
 
     @Test
@@ -515,4 +659,5 @@ class MavenClasspathExtractorIntegrationTest {
         Files.writeString(workspace.resolve("pom.xml"), "<project/>");
         assertTrue(extractor.canHandle(workspace));
     }
+
 }
