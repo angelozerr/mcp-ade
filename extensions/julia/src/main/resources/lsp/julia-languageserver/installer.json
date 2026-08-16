@@ -4,14 +4,14 @@
   "check": {
     "exec": {
       "name": "Check if Julia LanguageServer is available",
-      "command": "julia -e using\ LanguageServer",
+      "command": "julia -e \"using LanguageServer\"",
       "timeout": 30000
     }
   },
   "run": {
     "exec": {
       "name": "Install Julia LanguageServer",
-      "command": "julia -e using\ Pkg;\ Pkg.add(\\\"LanguageServer\\\")"
+      "command": "julia -e \"using Pkg; Pkg.add(\\\"LanguageServer\\\")\""
     }
   }
 }

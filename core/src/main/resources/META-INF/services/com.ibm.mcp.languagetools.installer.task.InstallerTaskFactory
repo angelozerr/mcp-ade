@@ -3,3 +3,4 @@ com.ibm.mcp.languagetools.installer.task.ConfigureServerTask$Factory
 com.ibm.mcp.languagetools.installer.task.DownloadTask$Factory
 com.ibm.mcp.languagetools.installer.task.CopyTask$Factory
 com.ibm.mcp.languagetools.installer.task.ExecTask$Factory
+com.ibm.mcp.languagetools.installer.task.ExtractResourceTask$Factory

@@ -321,6 +321,7 @@ public class TaskRegistryInstaller implements ServerInstaller {
     private static double getTaskWeight(String taskType) {
         return switch (taskType) {
             case "download" -> 20.0;
+            case "extractResource" -> 15.0;
             case "copy" -> 10.0;
             case "fileExists" -> 1.0;
             case "configureServer" -> 1.0;

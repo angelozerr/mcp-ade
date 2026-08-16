@@ -1,0 +1,22 @@
+{
+  "id": "build-server-for-gradle",
+  "name": "Build Server for Gradle",
+  "description": "Build Server Protocol support for Gradle projects. Provides build targets, compilation, dependency resolution, and test execution for Java, Kotlin, and Groovy projects.",
+  "url": "https://github.com/microsoft/build-server-for-gradle",
+  "activateWhen": {
+    "fileExists": "build.gradle"
+  },
+  "documentSelector": [
+    {
+      "language": "java"
+    },
+    {
+      "language": "kotlin"
+    },
+    {
+      "language": "groovy"
+    }
+  ],
+  "connectTimeout": 60000,
+  "initializationOptions": {}
+}

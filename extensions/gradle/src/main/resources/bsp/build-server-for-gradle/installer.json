@@ -1,0 +1,22 @@
+{
+  "check": {
+    "fileExists": {
+      "name": "Check if Gradle BSP server is installed",
+      "file": "$SERVER_HOME$/lib/server.jar"
+    }
+  },
+  "run": {
+    "extractResource": {
+      "name": "Extract Gradle BSP server",
+      "source": "/bsp/build-server-for-gradle/gradle-bsp-server.zip",
+      "destination": "$SERVER_HOME$",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Gradle BSP server command",
+          "command": "java -Dplugin.dir=\"$SERVER_HOME$/plugins\" -cp \"$SERVER_HOME$/lib/*\" com.microsoft.java.bs.core.Launcher",
+          "update": true
+        }
+      }
+    }
+  }
+}
