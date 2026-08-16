@@ -5,7 +5,7 @@
  */
 
 import { state, getServerApiBase, updateSearchBoxVisibility, buildGlobalContributedByMap } from './shared-state.js';
-import { confirmAction, showAlert, renderDocumentSelector } from './shared-ui.js';
+import { confirmAction, showAlert, renderDocumentSelector, runServerInstaller } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { formatErrorWithFolding } from './error-formatter.js';
@@ -886,31 +886,9 @@ async function resetDapInstallerJson(serverId) {
     loadDapInstallerJson(serverId);
 }
 
-/**
- * Run installer for a DAP server.
- */
 async function runDapInstaller(serverId, force) {
-    const outputDiv = document.getElementById('dap-install-output');
-    if (!outputDiv) return;
-
-    const label = force ? 'Force installing' : 'Installing';
-    outputDiv.innerHTML = `<div class="text-success">${label}...</div>`;
-
-    try {
-        const url = `/api/admin/dap/configs/${serverId}/install${force ? '?force=true' : ''}`;
-        const response = await fetch(url, { method: 'POST' });
-
-        if (!response.ok) throw new Error('Installation failed');
-
-        const result = await response.json();
-        outputDiv.innerHTML = `
-            <div class="text-success">Installation started</div>
-            <pre class="text-value mt-sm">${JSON.stringify(result, null, 2)}</pre>
-        `;
-    } catch (error) {
-        console.error('Failed to run DAP installer:', error);
-        outputDiv.innerHTML = `<div class="text-error">Installation failed: ${error.message}</div>`;
-    }
+    const installUrl = `/api/admin/dap/configs/${serverId}/install`;
+    return runServerInstaller(serverId, force, 'dap-install-output', installUrl);
 }
 
 /**

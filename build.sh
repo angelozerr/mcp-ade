@@ -3,12 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TYCHO_DIR="$SCRIPT_DIR/com.ibm.mcp.jdtls"
+
 PLUGIN_TARGET="$TYCHO_DIR/com.ibm.mcp.jdtls.plugin/target"
 DEST_DIR="$SCRIPT_DIR/extensions/java/src/main/resources/lsp/mcp-jdtls/plugins"
 
 echo "=== Building MCP JDT.LS plugin (Tycho) ==="
 cd "$TYCHO_DIR"
-"$SCRIPT_DIR/mvnw" clean package -q
+"$SCRIPT_DIR/mvnw" clean package
 echo "Tycho build OK"
 
 mkdir -p "$DEST_DIR"

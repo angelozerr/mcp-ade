@@ -23,6 +23,7 @@ import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
+import com.ibm.mcp.languagetools.server.ServerType;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.utils.JsonUtils;
@@ -106,7 +107,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
         // Ensure server and its contributors are installed first
         return withErrorLogging(
-                config.ensureInstalled(getWorkspace().getApplication().getPathManager(), this::setStatus, progressMonitor)
+                config.ensureInstalled(getWorkspace(), this::setStatus, progressMonitor)
                         .thenCompose(v -> ensureContributorsInstalled(progressMonitor))
                         .thenCompose(v -> CompletableFuture.runAsync(() -> {
                             // Try to find existing instance first
@@ -154,7 +155,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
         // Ensure server and its contributors are installed first
         return withErrorLogging(
-                config.ensureInstalled(getWorkspace().getApplication().getPathManager(), this::setStatus, progressMonitor)
+                config.ensureInstalled(getWorkspace(), this::setStatus, progressMonitor)
                         .thenCompose(v -> ensureContributorsInstalled(progressMonitor))
                         .thenCompose(v -> CompletableFuture.runAsync(() -> {
                             String workspacePath = Paths.get(workspaceRoot).toString();
@@ -215,9 +216,6 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
         Process serverProcess = startProcess();
         isSocketConnection = false;
-
-        // Start monitoring stderr for errors (uses shared implementation from ServerBase)
-        startStderrMonitoring();
 
         Launcher<LanguageServer> launcher = createLauncher(serverProcess.getInputStream(), serverProcess.getOutputStream());
 
@@ -919,6 +917,11 @@ public class LspServer extends ServerBase<LspServerConfig> {
     @Override
     public ServerTrace getServerTrace() {
         return getWorkspace().getWorkspaceConfiguration().getLspTraceLevel(getConfig().getServerId());
+    }
+
+    @Override
+    public ServerType getServerType() {
+        return ServerType.LSP;
     }
 
     /**

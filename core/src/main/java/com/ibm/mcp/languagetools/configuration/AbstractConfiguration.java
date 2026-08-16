@@ -260,6 +260,14 @@ public abstract class AbstractConfiguration implements Configuration {
         set("dap." + serverId + ".trace", level.toString());
     }
 
+    public ServerTrace getBspTraceLevel(String serverId) {
+        return ServerTrace.fromValue(getString("bsp." + serverId + ".trace"));
+    }
+
+    public void setBspTraceLevel(String serverId, ServerTrace level) {
+        set("bsp." + serverId + ".trace", level.toString());
+    }
+
     // ========== Section-based find ==========
 
     /**

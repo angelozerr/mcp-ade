@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.tools;
 
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.bsp.server.BspServerConfig;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
@@ -45,7 +46,7 @@ public class ExtensionTools {
     // ========== List ==========
 
     @Tool(name = "list_extensions",
-          description = "List all installed extensions with their LSP/DAP servers, source (BUNDLED/USER), and enabled/disabled state.")
+          description = "List all installed extensions with their LSP/DAP/BSP servers, source (BUNDLED/USER), and enabled/disabled state.")
     public List<Map<String, Object>> listExtensions() {
         try {
             ExtensionRegistry registry = application.getExtensionRegistry();
@@ -79,6 +80,17 @@ public class ExtensionTools {
                         .toList();
                 entry.put("dapServers", dapServers);
 
+                List<Map<String, Object>> bspServers = ext.getBspServerConfigs().stream()
+                        .map(c -> {
+                            Map<String, Object> s = new LinkedHashMap<>();
+                            s.put("id", c.getServerId());
+                            s.put("name", c.getName());
+                            s.put("enabled", registry.isServerEnabled(c.getServerId()));
+                            return s;
+                        })
+                        .toList();
+                entry.put("bspServers", bspServers);
+
                 result.add(entry);
             }
 
@@ -93,7 +105,7 @@ public class ExtensionTools {
 
     @Tool(name = "add_extension",
           description = "Add an extension from a source path (folder, ZIP, or JAR). " +
-                        "The source must contain lsp/ and/or dap/ subdirectories with server configurations.")
+                        "The source must contain lsp/, dap/, and/or bsp/ subdirectories with server configurations.")
     public Map<String, Object> addExtension(
             @ToolArg(description = "Unique extension identifier") String extensionId,
             @ToolArg(description = "Path to the source folder, ZIP, or JAR file") String source) {
@@ -108,6 +120,8 @@ public class ExtensionTools {
                     .map(LspServerConfig::getServerId).toList());
             result.put("dapServers", extension.getDapServerConfigs().stream()
                     .map(DapServerConfig::getServerId).toList());
+            result.put("bspServers", extension.getBspServerConfigs().stream()
+                    .map(BspServerConfig::getServerId).toList());
             return result;
         } catch (Exception e) {
             LOG.error("Failed to add extension", e);
@@ -198,6 +212,40 @@ public class ExtensionTools {
         }
     }
 
+    @Tool(name = "add_bsp_server",
+          description = "Add a BSP (Build Server Protocol) server from a source path (folder, ZIP, or JAR containing server.json). " +
+                        "Optionally specify an extensionId to group with other servers.")
+    public Map<String, Object> addBspServer(
+            @ToolArg(description = "Path to the source folder, ZIP, or JAR file") String source,
+            @ToolArg(description = "Optional extension ID (defaults to serverId from config)") String extensionId) {
+        try {
+            ExtensionRegistry registry = application.getExtensionRegistry();
+            BspServerConfig config = registry.addBspServer(Paths.get(source), extensionId, application);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("success", true);
+            result.put("serverId", config.getServerId());
+            result.put("extensionId", config.getExtensionId());
+            return result;
+        } catch (Exception e) {
+            LOG.error("Failed to add BSP server", e);
+            throw new ToolException("Failed to add BSP server: " + e.getMessage(), e);
+        }
+    }
+
+    @Tool(name = "remove_bsp_server",
+          description = "Remove a BSP server. If the extension becomes empty, it is also removed. Bundled servers cannot be removed.")
+    public Map<String, Object> removeBspServer(
+            @ToolArg(description = "Server ID to remove") String serverId) {
+        try {
+            application.getExtensionRegistry().removeBspServer(serverId);
+            return Map.of("success", true, "message", "BSP server '" + serverId + "' removed");
+        } catch (Exception e) {
+            LOG.error("Failed to remove BSP server", e);
+            throw new ToolException("Failed to remove BSP server: " + e.getMessage(), e);
+        }
+    }
+
     // ========== Schemas ==========
 
     @Tool(name = "get_extension_schemas",
@@ -205,8 +253,9 @@ public class ExtensionTools {
                         "An extension is a folder with the following structure: " +
                         "mcp-extension.json (optional root descriptor with extension id), " +
                         "lsp/<server-id>/server.json + installer.json (for each LSP language server), " +
-                        "dap/<server-id>/server.json + installer.json (for each DAP debug adapter). " +
-                        "Both lsp/ and dap/ are optional. " +
+                        "dap/<server-id>/server.json + installer.json (for each DAP debug adapter), " +
+                        "bsp/<server-id>/server.json + installer.json (for each BSP build server). " +
+                        "The lsp/, dap/, and bsp/ directories are all optional. " +
                         "Use the returned schemas to generate valid configuration files, " +
                         "then register the extension with the add_extension tool.")
     public Map<String, Object> getExtensionSchemas() {
@@ -214,6 +263,7 @@ public class ExtensionTools {
         result.put("mcpExtensionSchema", loadSchema("schemas/mcp-extension-schema.json"));
         result.put("lspServerSchema", loadSchema("schemas/lsp-server-schema.json"));
         result.put("dapServerSchema", loadSchema("schemas/dap-server-schema.json"));
+        result.put("bspServerSchema", loadSchema("schemas/bsp-server-schema.json"));
         result.put("installerSchema", loadSchema("schemas/installer-schema.json"));
         return result;
     }
@@ -307,6 +357,32 @@ public class ExtensionTools {
         } catch (Exception e) {
             LOG.error("Failed to disable DAP server", e);
             throw new ToolException("Failed to disable DAP server: " + e.getMessage(), e);
+        }
+    }
+
+    @Tool(name = "enable_bsp_server",
+          description = "Enable a previously disabled BSP build server.")
+    public Map<String, Object> enableBspServer(
+            @ToolArg(description = "Server ID to enable") String serverId) {
+        try {
+            application.enableBspServer(serverId);
+            return Map.of("success", true, "message", "BSP server '" + serverId + "' enabled");
+        } catch (Exception e) {
+            LOG.error("Failed to enable BSP server", e);
+            throw new ToolException("Failed to enable BSP server: " + e.getMessage(), e);
+        }
+    }
+
+    @Tool(name = "disable_bsp_server",
+          description = "Disable a BSP build server. It becomes unavailable for new requests.")
+    public Map<String, Object> disableBspServer(
+            @ToolArg(description = "Server ID to disable") String serverId) {
+        try {
+            application.disableBspServer(serverId);
+            return Map.of("success", true, "message", "BSP server '" + serverId + "' disabled");
+        } catch (Exception e) {
+            LOG.error("Failed to disable BSP server", e);
+            throw new ToolException("Failed to disable BSP server: " + e.getMessage(), e);
         }
     }
 }

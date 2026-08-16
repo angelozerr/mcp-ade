@@ -1,0 +1,14 @@
+{
+  "check": {
+    "fileExists": {
+      "file": "$WORKSPACE_FOLDER$/.bsp/mill-bsp.json"
+    }
+  },
+  "run": {
+    "exec": {
+      "command": "mill mill.bsp.BSP/install",
+      "workingDir": "$WORKSPACE_FOLDER$"
+    }
+  },
+  "documentation": "Mill BSP requires the Mill BSP connection file (.bsp/mill-bsp.json). Runs 'mill mill.bsp.BSP/install' to generate it."
+}

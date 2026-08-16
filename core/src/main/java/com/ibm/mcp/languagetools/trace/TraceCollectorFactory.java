@@ -28,5 +28,7 @@ public interface TraceCollectorFactory {
 
     TraceCollector createDapTraceCollector();
 
+    TraceCollector createBspTraceCollector();
+
     McpTraceCollector createMcpTraceCollector();
 }

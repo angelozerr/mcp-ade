@@ -1,5 +1,5 @@
-import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, updateSearchBoxVisibility } from './shared-state.js';
-import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector } from './shared-ui.js';
+import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility } from './shared-state.js';
+import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector, runServerInstaller, renderServerActions } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
@@ -294,7 +294,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             return `<span class="status-badge ${statusClass}">${label}</span>`;
         }
 
-        export function renderServers(lspServers, dapSessions = [], workspace = null) {
+        export async function renderServers(lspServers, dapSessions = [], workspace = null) {
             const container = document.getElementById('servers-list');
             if (!container) {
                 console.error('servers-list element not found!');
@@ -314,6 +314,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 <div class="tabs bg-panel" style="border-bottom: 1px solid var(--bg-card);">
                     <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'servers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="servers">Servers</div>
                     <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'debuggers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="debuggers">Debuggers</div>
+                    <div class="tab flex-1 text-center ${state.currentWorkspaceTab === 'build' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="build">Build</div>
                 </div>
             `;
 
@@ -353,18 +354,38 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             let contentHTML = '';
             if (state.currentWorkspaceTab === 'servers') {
                 contentHTML = (lspServers && lspServers.length > 0) ? renderLspServers(lspServers) : '<div class="servers-placeholder">No LSP servers</div>';
-            } else {
+            } else if (state.currentWorkspaceTab === 'debuggers') {
                 const dapServers = Object.values(state.dapConfigs || {});
                 contentHTML = (dapServers.length > 0 || dapSessions.length > 0)
                     ? renderDapServers(dapServers, dapSessions)
                     : '<div class="servers-placeholder">No debug adapters</div>';
+            } else if (state.currentWorkspaceTab === 'build') {
+                const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+                if (workspace && !workspace.bspServers) {
+                    await loadBspServersForWorkspace(workspace);
+                }
+                const bspServers = workspace?.bspServers || [];
+                contentHTML = bspServers.length > 0
+                    ? renderBspServersInWorkspace(bspServers)
+                    : '<div class="servers-placeholder">No build servers</div>';
             }
 
             container.innerHTML =
                 '<div class="workspace-servers-header">' + headerHTML + tabsHTML + filterHTML + '</div>' +
                 '<div class="workspace-servers-content">' + contentHTML + '</div>';
 
-            // Auto-select first DAP server after rendering (not session)
+            // Auto-select first BSP server after rendering
+            if (state.currentWorkspaceTab === 'build') {
+                const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+                const bspServers = workspace?.bspServers || [];
+                if (bspServers.length > 0) {
+                    const isBspServerSelected = state.selectedServer && state.selectedServer.isBsp && bspServers.find(s => s.id === state.selectedServer.id);
+                    if (!isBspServerSelected) {
+                        selectBspServer(bspServers[0]);
+                    }
+                }
+            }
+
             if (state.currentWorkspaceTab === 'debuggers' && Object.values(state.dapConfigs || {}) && Object.values(state.dapConfigs || {}).length > 0) {
                 const isDapServerSelected = state.selectedServer && Object.values(state.dapConfigs || {}).find(s => s.id === state.selectedServer.id);
 
@@ -448,6 +469,9 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 // Load DAP sessions lazy
                 await loadDapSessionsForWorkspace();
                 renderServers([], dapSessions, workspace);
+            } else if (tab === 'build') {
+                state.selectedServer = null;
+                renderServers([], [], workspace);
             }
         }
 
@@ -462,6 +486,19 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             } catch (error) {
                 console.error('Failed to load LSP servers:', error);
                 workspace.lspServers = [];
+            }
+        }
+
+        async function loadBspServersForWorkspace(workspace) {
+            try {
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/bsp-servers`);
+                if (response.ok) {
+                    const servers = await response.json();
+                    workspace.bspServers = servers.map(s => mergeBspServerData(s));
+                }
+            } catch (error) {
+                console.error('Failed to load BSP servers:', error);
+                workspace.bspServers = [];
             }
         }
 
@@ -556,28 +593,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     const disabledClass = server.enabled === false ? 'server-disabled' : '';
                     const extensionBadge = server.isExtension ? ' <span class="text-secondary font-md">(Extension)</span>' : '';
 
-                    let actions = '';
-                    if (!server.isExtension) {
-                        if (isExternal) {
-                            actions = `
-                                <button class="server-action-btn server-action-disconnect"
-                                        data-action="disconnectFromIdeAction" data-server-id="${server.id}" data-stop-propagation
-                                        title="Disconnect from IDE">⏏</button>
-                            `;
-                        } else {
-                            if (server.status === 'RUNNING' || server.status === 'STARTING' || server.status === 'INDEXING') {
-                                actions = `
-                                    <button class="server-action-btn" data-action="restartServerAction" data-server-id="${server.id}" data-stop-propagation title="Restart">↻</button>
-                                    <button class="server-action-btn" data-action="stopServerAction" data-server-id="${server.id}" data-stop-propagation title="Stop">■</button>
-                                `;
-                            } else if (server.status === 'STOPPED' || server.status === 'START_FAILED' || server.status === 'INSTALL_FAILED' || server.status === 'ERROR') {
-                                actions = `
-                                    <button class="server-action-btn" data-action="startManagedServerAction" data-server-id="${server.id}" data-stop-propagation title="Start MCP-managed server">▶</button>
-                                    <button class="server-action-btn" data-action="connectToIdeAction" data-server-id="${server.id}" data-stop-propagation title="Try to connect to IDE instance">🔗</button>
-                                `;
-                            }
-                        }
-                    }
+                    const actions = server.isExtension ? '' : renderServerActions(server.id, server);
 
                     const sourceIcon = isExternal ? '🔗' : (server.isExtension ? '🧩' : '🚀');
                     const sourceLabel = isExternal
@@ -692,6 +708,131 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             `;
         }
 
+        function renderBspServersInWorkspace(bspServers) {
+            let servers = bspServers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            if (showOnlyActiveServers) {
+                servers = servers.filter(s => s.status !== 'STOPPED');
+            }
+
+            if (servers.length === 0) {
+                return showOnlyActiveServers ? '<div class="servers-placeholder">No active build servers</div>' : '<div class="servers-placeholder">No build servers</div>';
+            }
+
+            return servers.map(server => {
+                const disabledClass = server.enabled === false ? 'server-disabled' : '';
+                const isSelected = state.selectedServer?.id === server.id && state.selectedServer?.isBsp;
+
+                const actions = renderServerActions(server.id, server);
+
+                return `
+                    <div class="server-item ${disabledClass} ${isSelected ? 'active' : ''} cursor-pointer" data-action="selectBspServerItem" data-server-id="${server.id}">
+                        <div class="server-name d-flex align-center justify-between">
+                            <span>
+                                <span class="server-source-icon">🔨</span>
+                                ${server.name}
+                            </span>
+                            <label class="toggle-switch" onclick="event.stopPropagation()">
+                                <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleWorkspaceBspServerEnabled" data-server-id="${server.id}">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="server-id">${server.id}</div>
+                        <div class="server-status-badge-container">
+                            ${renderStatusBadge(server)}
+                            ${server.statusMessage ? `<span class="server-status-message text-secondary font-md ml-sm">${escapeHtml(server.statusMessage)}</span>` : ''}
+                            ${server.pid ? `<span class="server-ide-info"><span title="Process ID">${server.pid}</span></span>` : ''}
+                        </div>
+                        <div class="server-actions">
+                            ${actions}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectBspServer(bspServer) {
+            state.selectedServer = {...bspServer, isBsp: true};
+            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+            renderServers([], [], workspace);
+            loadConsole(state.selectedServer);
+        }
+
+        async function toggleWorkspaceBspServerEnabled(serverId, enabled) {
+            const action = enabled ? 'enable' : 'disable';
+            try {
+                const response = await fetch(`/api/admin/extensions/bsp/servers/${serverId}/${action}`, { method: 'POST' });
+                if (response.ok) {
+                    if (state.bspConfigs && state.bspConfigs[serverId]) {
+                        state.bspConfigs[serverId].enabled = enabled;
+                    }
+                    const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`);
+                    if (serverElement) {
+                        if (enabled) {
+                            serverElement.classList.remove('server-disabled');
+                        } else {
+                            serverElement.classList.add('server-disabled');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to ${action} BSP server:`, error);
+            }
+        }
+
+        async function startBspServerAction(serverId) {
+            if (!state.selectedWorkspace) return;
+            try {
+                await fetch(
+                    `/api/admin/bsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/start-managed`,
+                    { method: 'POST' }
+                );
+            } catch (error) {
+                console.error('Failed to start BSP server:', error);
+                showAlert('Error', 'Failed to start build server: ' + error.message);
+            }
+        }
+
+        async function restartBspServerAction(serverId) {
+            if (!state.selectedWorkspace) return;
+            const confirmed = await confirmAction(
+                'Restart Build Server',
+                `Restart "${serverId}"?\n\nThe server will be stopped and restarted.`,
+                'Restart',
+                false
+            );
+            if (!confirmed) return;
+            try {
+                await fetch(
+                    `/api/admin/bsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/restart`,
+                    { method: 'POST' }
+                );
+            } catch (error) {
+                console.error('Failed to restart BSP server:', error);
+                showAlert('Error', 'Failed to restart build server: ' + error.message);
+            }
+        }
+
+        async function stopBspServerAction(serverId) {
+            if (!state.selectedWorkspace) return;
+            const confirmed = await confirmAction(
+                'Stop Build Server',
+                `Stop "${serverId}"?\n\nThe build server process will be terminated.`,
+                'Stop',
+                true
+            );
+            if (!confirmed) return;
+            try {
+                await fetch(
+                    `/api/admin/bsp/servers/${encodeURIComponent(state.selectedWorkspace)}/${serverId}/stop`,
+                    { method: 'POST' }
+                );
+            } catch (error) {
+                console.error('Failed to stop BSP server:', error);
+                showAlert('Error', 'Failed to stop build server: ' + error.message);
+            }
+        }
+
         function selectDapSession(sessionId) {
             state.selectedServer = null;
             selectDapSessionImpl(sessionId);
@@ -771,7 +912,20 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
 
             const uri = state.selectedWorkspace;
-            if (state.selectedServer && state.selectedServer.isDap) {
+            if (state.selectedServer && state.selectedServer.isBsp) {
+                if (uri) {
+                    try {
+                        await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/bsp/${encodeURIComponent(state.selectedServer.id)}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ traceLevel: level })
+                        });
+                        reloadServerSettingsTab(state.selectedServer.id);
+                    } catch (error) {
+                        console.error('Failed to change BSP trace level:', error);
+                    }
+                }
+            } else if (state.selectedServer && state.selectedServer.isDap) {
                 if (uri) {
                     try {
                         await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/dap/${encodeURIComponent(state.selectedServer.id)}`, {
@@ -816,7 +970,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             const hasContributions = (server.contributions && Object.keys(server.contributions).length > 0) ||
                                     buildWorkspaceContributedByMap(allServers)[server.id]?.length > 0;
 
-            // Extensions and DAP servers don't have LSP traces - default to overview
+            // Extensions and DAP servers don't have traces tab - default to overview
             if ((server.isExtension || server.isDap) && state.currentConsoleTab === 'traces') {
                 state.currentConsoleTab = 'overview';
             }
@@ -829,7 +983,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             // Build icon for console title
             const isExternal = server.externalInstance != null &&
                               (server.status === 'CONNECTED_TO_IDE' || server.status === 'CONNECTING_TO_IDE');
-            const titleIcon = isExternal ? '🔗' : (server.isExtension ? '🧩' : (server.isDap ? '🐛' : '🚀'));
+            const titleIcon = isExternal ? '🔗' : (server.isExtension ? '🧩' : (server.isDap ? '🐛' : (server.isBsp ? '🔨' : '🚀')));
 
 
             // Setup console UI with tabs
@@ -882,7 +1036,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         </div>
                         <div id="install-tab" class="tab-panel ${state.currentConsoleTab === 'install' ? 'active' : ''}">
                             <div class="install-panel">
-                                <h3>Installer Configuration</h3>
+                                <h3>Global Install</h3>
                                 <div class="install-info">
                                     <p><strong>Server:</strong> ${server.name}</p>
                                     <p><strong>ID:</strong> ${server.id}</p>
@@ -942,6 +1096,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             if (installerCallbacks.loadInstallerJson) {
                 installerCallbacks.loadInstallerJson(server.id);
             }
+
         }
 
 
@@ -957,8 +1112,39 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
                 const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
 
+                // Check if this is a BSP server
+                const bspServer = Object.values(state.bspConfigs || {})?.find(s => s.id === serverId);
+
+                if (bspServer) {
+                    detailsContent.innerHTML = `
+                        <h3>BSP Server Configuration</h3>
+                        ${renderServerDetailsHTML({...bspServer, isBsp: true})}
+                    `;
+
+                    const settingsContent = document.getElementById('settings-content');
+                    if (settingsContent && workspace) {
+                        try {
+                            const settingsResponse = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/bsp-servers/${encodeURIComponent(serverId)}/settings`);
+                            const settings = settingsResponse.ok ? await settingsResponse.json() : [];
+                            settingsContent.innerHTML = renderServerSettingsTab({ id: serverId, settings, isBsp: true }, workspace, []);
+                            const bspTraceSetting = settings.find(s => s.key === 'trace');
+                            if (bspTraceSetting) {
+                                const resolvedBspLevel = bspTraceSetting.currentValue || 'off';
+                                if (resolvedBspLevel !== currentTraceLevel) {
+                                    currentTraceLevel = resolvedBspLevel;
+                                    if (state.selectedServer) state.selectedServer.traceLevel = resolvedBspLevel;
+                                    updateTraceControls('trace', currentTraceLevel);
+                                    renderConsole();
+                                }
+                            }
+                        } catch (e) {
+                            settingsContent.innerHTML = '<p class="text-secondary p-lg">Failed to load settings.</p>';
+                        }
+                    }
+                }
+
                 // Check if this is a DAP server
-                const dapServer = Object.values(state.dapConfigs || {})?.find(s => s.id === serverId);
+                const dapServer = !bspServer ? Object.values(state.dapConfigs || {})?.find(s => s.id === serverId) : null;
 
                 if (dapServer) {
                     // DAP server - display its details directly
@@ -999,7 +1185,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             settingsContent.innerHTML = '<p class="text-secondary p-lg">Failed to load settings.</p>';
                         }
                     }
-                } else {
+                } else if (!bspServer) {
                     // LSP server - fetch config, workspace-resolved settings, and IDE settings
                     const [configResponse, settingsResponse, ideSettingsResponse] = await Promise.all([
                         fetch(`/api/admin/lsp/configs/${serverId}`),
@@ -1120,7 +1306,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         function renderServerSettingsTab(server, workspace, ideSettings) {
             const uri = workspace?.rootUri || state.selectedWorkspace || '';
-            const serverType = server.isDap ? 'dap' : 'lsp';
+            const serverType = server.isBsp ? 'bsp' : (server.isDap ? 'dap' : 'lsp');
             const hasWorkspaceSettings = server.settings && server.settings.length > 0;
             const hasIdeSettings = ideSettings && ideSettings.length > 0;
 
@@ -1680,8 +1866,16 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             const workspace = state.workspaces?.find(w => w.rootUri === state.selectedWorkspace);
             if (!workspace) return;
             const isDap = state.selectedServer?.isDap;
+            const isBsp = state.selectedServer?.isBsp;
             try {
-                if (isDap) {
+                if (isBsp) {
+                    const settingsResponse = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/bsp-servers/${encodeURIComponent(serverId)}/settings`);
+                    const settings = settingsResponse.ok ? await settingsResponse.json() : [];
+                    const settingsContent = document.getElementById('settings-content');
+                    if (settingsContent) {
+                        settingsContent.innerHTML = renderServerSettingsTab({ id: serverId, settings, isBsp: true }, workspace, []);
+                    }
+                } else if (isDap) {
                     const settingsResponse = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/dap-servers/${encodeURIComponent(serverId)}/settings`);
                     const settings = settingsResponse.ok ? await settingsResponse.json() : [];
                     const settingsContent = document.getElementById('settings-content');
@@ -1729,6 +1923,16 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 const dapServer = Object.values(state.dapConfigs || {}).find(s => s.id === serverId);
                 if (dapServer) selectDapServer(dapServer);
             },
+            selectBspServerItem: (el) => {
+                const serverId = el.dataset.serverId;
+                const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+                const bspServer = workspace?.bspServers?.find(s => s.id === serverId)
+                    || Object.values(state.bspConfigs || {}).find(s => s.id === serverId);
+                if (bspServer) selectBspServer(bspServer);
+            },
+            startBspServerAction: (el) => startBspServerAction(el.dataset.serverId),
+            restartBspServerAction: (el) => restartBspServerAction(el.dataset.serverId),
+            stopBspServerAction: (el) => stopBspServerAction(el.dataset.serverId),
             switchWorkspaceTab: (el) => switchWorkspaceTab(el.dataset.tab),
             switchConsoleTab: (el) => switchConsoleTab(el.dataset.tab),
             stopServerAction: (el) => stopServerAction(el.dataset.serverId),
@@ -1756,7 +1960,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 if (installerCallbacks.resetInstallerJson) installerCallbacks.resetInstallerJson(el.dataset.serverId);
             },
             runInstaller: (el) => {
-                if (installerCallbacks.runInstaller) installerCallbacks.runInstaller(el.dataset.serverId, el.dataset.force === 'true');
+                if (installerCallbacks.runInstaller) installerCallbacks.runInstaller(el.dataset.serverId, el.dataset.force === 'true', state.selectedWorkspace);
             },
         });
 
@@ -1769,6 +1973,9 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             },
             toggleWorkspaceDapServerEnabled: (el) => {
                 toggleWorkspaceDapServerEnabled(el.dataset.serverId, el.checked);
+            },
+            toggleWorkspaceBspServerEnabled: (el) => {
+                toggleWorkspaceBspServerEnabled(el.dataset.serverId, el.checked);
             },
             changeTraceLevel: (el) => changeTraceLevel(el.value),
             updateWorkspaceServerSetting: (el) => updateWorkspaceServerSettingAction(

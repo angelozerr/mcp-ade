@@ -16,6 +16,8 @@ package com.ibm.mcp.languagetools.admin.dto;
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
 import com.ibm.mcp.languagetools.configuration.Configuration;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
+import com.ibm.mcp.languagetools.bsp.server.BspServer;
+import com.ibm.mcp.languagetools.bsp.server.BspServerConfig;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
@@ -158,6 +160,45 @@ public class ServerDTOBuilder {
             installProgress,
             traceLevel
         );
+    }
+
+    /**
+     * Build BspServerDTO for a BSP server in a workspace.
+     */
+    public BspServerDTO buildBspRuntime(BspServerConfig config, Workspace workspace) {
+        String serverId = config.getServerId();
+        BspServer bspServer = workspace.getBspServer(serverId);
+
+        ServerStatus status;
+        String statusMessage = null;
+        boolean isReady = false;
+        Long pid = null;
+
+        if (bspServer != null) {
+            status = bspServer.getStatus();
+            statusMessage = bspServer.getStatusMessage();
+            isReady = bspServer.isReady();
+            pid = bspServer.getPid();
+        } else {
+            status = ServerStatus.STOPPED;
+        }
+
+        if (statusMessage != null && statusMessage.length() > 100) {
+            statusMessage = statusMessage.substring(0, 97) + "...";
+        }
+
+        Double installProgress = null;
+        if (status == ServerStatus.INSTALLING) {
+            var progressIndicator = config.getInstallProgress();
+            if (progressIndicator != null) {
+                installProgress = progressIndicator.getFraction();
+            }
+        }
+
+        String traceLevel = workspace.getWorkspaceConfiguration()
+                .resolveString("bsp." + serverId + ".trace", "off").value();
+
+        return new BspServerDTO(serverId, status, statusMessage, isReady, pid, installProgress, traceLevel);
     }
 
     private List<ServerSettingDTO> buildSettings(LspServerConfig config) {

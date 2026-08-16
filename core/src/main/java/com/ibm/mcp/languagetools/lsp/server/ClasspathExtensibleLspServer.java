@@ -75,7 +75,7 @@ public class ClasspathExtensibleLspServer extends LspServer {
                     if (contributor.isContributionOnly() && contributor.getTraceCollector() == null && traceCollector != null) {
                         contributor.setTraceCollector(traceCollector);
                     }
-                    return contributor.ensureInstalled(pathManager, null, progressMonitor)
+                    return contributor.ensureInstalled(getWorkspace(), null, progressMonitor)
                             .exceptionally(error -> {
                                 LOG.warnf(error, "Failed to install contributor '%s' for %s, continuing without it",
                                         contributor.getServerId(), getId());

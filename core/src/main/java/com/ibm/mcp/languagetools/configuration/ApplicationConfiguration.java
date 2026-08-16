@@ -43,6 +43,7 @@ public class ApplicationConfiguration extends AbstractConfiguration {
 
     private final Map<String, ServerTrace> lspTraceLevels = new ConcurrentHashMap<>();
     private final Map<String, ServerTrace> dapTraceLevels = new ConcurrentHashMap<>();
+    private final Map<String, ServerTrace> bspTraceLevels = new ConcurrentHashMap<>();
     private volatile ServerTrace mcpTraceLevel;
 
     @PostConstruct
@@ -56,6 +57,7 @@ public class ApplicationConfiguration extends AbstractConfiguration {
         super.reload();
         lspTraceLevels.clear();
         dapTraceLevels.clear();
+        bspTraceLevels.clear();
         mcpTraceLevel = null;
     }
 
@@ -237,5 +239,18 @@ public class ApplicationConfiguration extends AbstractConfiguration {
     public void setDapTraceLevel(String serverId, ServerTrace level) {
         dapTraceLevels.put(serverId, level);
         super.setDapTraceLevel(serverId, level);
+    }
+
+    // ========== BSP trace (cached) ==========
+
+    @Override
+    public ServerTrace getBspTraceLevel(String serverId) {
+        return bspTraceLevels.computeIfAbsent(serverId, id -> super.getBspTraceLevel(id));
+    }
+
+    @Override
+    public void setBspTraceLevel(String serverId, ServerTrace level) {
+        bspTraceLevels.put(serverId, level);
+        super.setBspTraceLevel(serverId, level);
     }
 }

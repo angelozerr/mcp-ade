@@ -60,6 +60,14 @@ public class TraceResource {
         application.getMcpTraceCollector().clear();
     }
 
+    // ========== Clear BSP Traces ==========
+
+    @DELETE
+    @Path("/bsp")
+    public void clearBspTraces() {
+        application.getBspTraceCollector().clear();
+    }
+
     // ========== LSP Trace Level ==========
 
     @PUT
@@ -88,6 +96,24 @@ public class TraceResource {
             ServerTrace level = parseTraceLevel(body);
             applicationConfiguration.setDapTraceLevel(serverId, level);
             traceLevelEvent.fire(new TraceLevelWsMessage("dap", serverId, level.toString()));
+            return Response.noContent().build();
+        } catch (Exception e) {
+            return Response.status(400)
+                    .entity(Map.of("error", String.valueOf(e.getMessage())))
+                    .build();
+        }
+    }
+
+    // ========== BSP Trace Level ==========
+
+    @PUT
+    @Path("/bsp/{serverId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response setBspTraceLevel(@PathParam("serverId") String serverId, String body) {
+        try {
+            ServerTrace level = parseTraceLevel(body);
+            applicationConfiguration.setBspTraceLevel(serverId, level);
+            traceLevelEvent.fire(new TraceLevelWsMessage("bsp", serverId, level.toString()));
             return Response.noContent().build();
         } catch (Exception e) {
             return Response.status(400)

@@ -16,6 +16,7 @@ package com.ibm.mcp.languagetools.server;
 import com.google.gson.JsonElement;
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.PathManager;
+import com.ibm.mcp.languagetools.workspace.Workspace;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ServerConfigSource;
 import com.ibm.mcp.languagetools.installer.InstallResult;
@@ -539,17 +540,17 @@ public class ServerConfigBase {
      * Returns a CompletableFuture that completes when installation is done.
      * If installation fails, the future is reset to null to allow retry.
      *
-     * @param pathManager          Path manager
+     * @param workspace             Workspace
      * @param serverStatusCallback Status callback
      * @param progressMonitor      Progress monitor (never null, use ProgressMonitor.none() if not available)
      */
-    public CompletableFuture<InstallResult> ensureInstalled(PathManager pathManager,
+    public CompletableFuture<InstallResult> ensureInstalled(Workspace workspace,
                                                             Consumer<ServerStatus> serverStatusCallback,
                                                             ProgressMonitor progressMonitor) {
-        return ensureInstalled(pathManager, serverStatusCallback, progressMonitor, false);
+        return ensureInstalled(workspace, serverStatusCallback, progressMonitor, false);
     }
 
-    public CompletableFuture<InstallResult> ensureInstalled(PathManager pathManager,
+    public CompletableFuture<InstallResult> ensureInstalled(Workspace workspace,
                                                             Consumer<ServerStatus> serverStatusCallback,
                                                             ProgressMonitor progressMonitor,
                                                             boolean force) {
@@ -596,7 +597,7 @@ public class ServerConfigBase {
                     }
 
                     // Map InstallationStatus to ServerStatus
-                    InstallerContext context = createInstallerContext(pathManager, serverStatusCallback, force);
+                    InstallerContext context = createInstallerContext(workspace, serverStatusCallback, force);
 
                     final SharedProgressMonitor installProgress = sharedInstallProgress;
                     future = installer.ensureInstalled(context)
@@ -636,7 +637,7 @@ public class ServerConfigBase {
         return future;
     }
 
-    private InstallerContext createInstallerContext(PathManager pathManager, Consumer<ServerStatus> serverStatusCallback, boolean force) {
+    private InstallerContext createInstallerContext(Workspace workspace, Consumer<ServerStatus> serverStatusCallback, boolean force) {
         Consumer<InstallationStatus> installStatusCallback = installStatus -> {
             ServerStatus serverStatus = switch (installStatus) {
                 case INSTALLING -> ServerStatus.INSTALLING;
@@ -649,7 +650,9 @@ public class ServerConfigBase {
         };
 
         InstallerContext context = new InstallerContext(this, sharedInstallProgress, installStatusCallback);
+        PathManager pathManager = workspace.getApplication().getPathManager();
         context.setVariable("USER_HOME", pathManager.getMcpLangToolsRoot().toString());
+        context.setVariable("WORKSPACE_FOLDER", workspace.getRootPath().toString());
         context.setForceInstall(force);
         return context;
     }

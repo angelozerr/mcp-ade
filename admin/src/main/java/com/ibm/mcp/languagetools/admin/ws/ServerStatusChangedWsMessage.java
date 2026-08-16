@@ -17,6 +17,7 @@ public class ServerStatusChangedWsMessage extends WsMessage {
 
     private final String workspaceUri;
     private final String serverId;
+    private final String serverType;
     private final String oldStatus;
     private final String newStatus;
     private final String statusMessage;
@@ -24,12 +25,14 @@ public class ServerStatusChangedWsMessage extends WsMessage {
     private final Boolean isReady;
 
     public ServerStatusChangedWsMessage(String workspaceUri, String serverId,
+                                        String serverType,
                                         String oldStatus, String newStatus,
                                         String statusMessage, Double installProgress,
                                         Boolean isReady) {
         super(WsMessageType.SERVER_STATUS_CHANGED);
         this.workspaceUri = workspaceUri;
         this.serverId = serverId;
+        this.serverType = serverType;
         this.oldStatus = oldStatus;
         this.newStatus = newStatus;
         this.statusMessage = statusMessage;
@@ -39,6 +42,7 @@ public class ServerStatusChangedWsMessage extends WsMessage {
 
     public String getWorkspaceUri() { return workspaceUri; }
     public String getServerId() { return serverId; }
+    public String getServerType() { return serverType; }
     public String getOldStatus() { return oldStatus; }
     public String getNewStatus() { return newStatus; }
     public String getStatusMessage() { return statusMessage; }

@@ -21,7 +21,10 @@ import com.ibm.mcp.languagetools.installer.TaskRegistryInstaller;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
+import com.ibm.mcp.languagetools.workspace.Workspace;
 import jakarta.inject.Inject;
+
+import java.net.URI;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -115,13 +118,28 @@ public abstract class AbstractServerAdminResource {
     @POST
     @Path("/configs/{serverId}/install")
     public Response runInstaller(@PathParam("serverId") String serverId,
-                                 @QueryParam("force") @DefaultValue("false") boolean force) {
+                                 @QueryParam("force") @DefaultValue("false") boolean force,
+                                 @QueryParam("workspaceUri") String workspaceUriParam) {
         ServerConfigBase config = getServerConfig(serverId);
         if (config == null) {
             throw new NotFoundException(getServerType() + " server not found: " + serverId);
         }
         if (config.getInstaller() == null) {
             return Response.status(404).entity(new ErrorResponse("No installer configured for: " + serverId)).build();
+        }
+
+        Workspace workspace = null;
+        if (workspaceUriParam != null) {
+            workspace = application.getWorkspace(URI.create(workspaceUriParam));
+        }
+        if (workspace == null) {
+            var workspaces = application.getWorkspaces();
+            if (!workspaces.isEmpty()) {
+                workspace = workspaces.iterator().next();
+            }
+        }
+        if (workspace == null) {
+            return Response.status(400).entity(new ErrorResponse("No workspace available for installation")).build();
         }
 
         String taskId = "install-" + serverId;
@@ -132,7 +150,7 @@ public abstract class AbstractServerAdminResource {
         progressMonitor.initializeSteps();
 
         config.resetInstallState();
-        config.ensureInstalled(application.getPathManager(), null, progressMonitor, force)
+        config.ensureInstalled(workspace, null, progressMonitor, force)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         Throwable cause = ex.getCause() != null ? ex.getCause() : ex;

@@ -10,6 +10,7 @@ export const state = {
     traceLevels: {},
     lspConfigs: {},
     dapConfigs: {},
+    bspConfigs: {},
     currentDapSessionId: null,
     currentDapServerId: null,
     dapTracesBySession: {},
@@ -81,7 +82,9 @@ export function formatStatusLabel(status, externalInstance) {
 }
 
 export function getServerApiBase(serverId) {
-    return state.dapConfigs[serverId] ? '/api/admin/dap/configs' : '/api/admin/lsp/configs';
+    if (state.bspConfigs[serverId]) return '/api/admin/bsp/configs';
+    if (state.dapConfigs[serverId]) return '/api/admin/dap/configs';
+    return '/api/admin/lsp/configs';
 }
 
 export function mergeServerData(runtime) {
@@ -112,6 +115,24 @@ export function mergeServerData(runtime) {
     };
 }
 
+export function mergeBspServerData(runtime) {
+    const serverId = runtime.serverId || runtime.id;
+    const config = state.bspConfigs[serverId] || {};
+    return {
+        id: serverId,
+        name: config.name || serverId,
+        description: config.description,
+        enabled: config.enabled,
+        isBsp: true,
+        status: runtime.status,
+        statusMessage: runtime.statusMessage,
+        isReady: runtime.isReady,
+        pid: runtime.pid,
+        installProgress: runtime.installProgress,
+        traceLevel: runtime.traceLevel
+    };
+}
+
 export async function loadLspConfigs() {
     try {
         const response = await fetch('/api/admin/lsp/configs');
@@ -134,6 +155,19 @@ export async function loadDapConfigs() {
     } catch (error) {
         console.error('Failed to load DAP configs:', error);
         state.dapConfigs = {};
+    }
+}
+
+export async function loadBspConfigs() {
+    try {
+        const response = await fetch('/api/admin/bsp/configs');
+        const configs = await response.json();
+        state.bspConfigs = {};
+        configs.forEach(config => { state.bspConfigs[config.id] = config; });
+        console.log('Loaded', configs.length, 'BSP configs');
+    } catch (error) {
+        console.error('Failed to load BSP configs:', error);
+        state.bspConfigs = {};
     }
 }
 

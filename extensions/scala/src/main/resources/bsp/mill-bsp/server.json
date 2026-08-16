@@ -1,0 +1,20 @@
+{
+  "id": "mill-bsp",
+  "name": "Mill BSP (Build Server)",
+  "description": "Built-in BSP server for Mill build tool projects. Provides build targets, compilation, testing, and dependency resolution for Scala and Java projects.",
+  "url": "https://mill-build.org/mill/Installation_IDE_Support.html",
+  "command": "mill --bsp",
+  "activateWhen": {
+    "fileExists": "build.sc"
+  },
+  "documentSelector": [
+    {
+      "language": "scala"
+    },
+    {
+      "language": "java"
+    }
+  ],
+  "connectTimeout": 30000,
+  "initializationOptions": {}
+}

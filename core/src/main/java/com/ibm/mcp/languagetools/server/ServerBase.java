@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.trace.TracingMessageConsumer;
+import com.ibm.mcp.languagetools.utils.OSUtils;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.jboss.logging.Logger;
 
@@ -164,15 +165,26 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
             pb.environment().putAll(config.getEnv());
         }
 
-        if (config.getWorkingDirectory() != null) {
-            String resolvedWorkingDir = ServerVariables.resolve(config.getWorkingDirectory(), config);
+        String workingDir = getWorkingDirectory();
+        if (workingDir != null) {
+            String resolvedWorkingDir = ServerVariables.resolve(workingDir, config);
             pb.directory(Paths.get(resolvedWorkingDir).toFile());
             addTrace(String.format("Working directory: %s", resolvedWorkingDir));
         }
 
         this.serverProcess = pb.start();
         addTrace(String.format("Server process started (PID: %d)", serverProcess.pid()));
+        startStderrMonitoring();
+        startProcessExitMonitoring();
         return this.serverProcess;
+    }
+
+    /**
+     * Get the working directory for this server process.
+     * Subclasses can override to provide a default (e.g., BSP uses workspace root).
+     */
+    protected String getWorkingDirectory() {
+        return getConfig().getWorkingDirectory();
     }
 
     /**
@@ -184,7 +196,15 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         if (cmd == null) {
             throw new IOException("No command configured for current OS");
         }
-        return parseCommandLine(cmd);
+        List<String> args = parseCommandLine(cmd);
+        if (OSUtils.isWindows() && !args.isEmpty()) {
+            String exe = args.get(0).toLowerCase();
+            if (exe.endsWith(".bat") || exe.endsWith(".cmd")) {
+                args.add(0, "cmd.exe");
+                args.add(1, "/c");
+            }
+        }
+        return args;
     }
 
     /**
@@ -464,6 +484,21 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         });
     }
 
+    private void startProcessExitMonitoring() {
+        Process process = getServerProcess();
+        if (process == null) {
+            return;
+        }
+        process.onExit().thenAccept(p -> {
+            int exitCode = p.exitValue();
+            if (getStatus() == ServerStatus.RUNNING || getStatus() == ServerStatus.STARTING) {
+                String message = "Process exited with code " + exitCode;
+                addTrace(message, TraceCollector.MessageType.ERROR);
+                setStatus(ServerStatus.START_FAILED, message);
+            }
+        });
+    }
+
     /**
      * Sets the current operation entry for progress tracking in the UI.
      */
@@ -666,6 +701,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
     protected <T> CompletableFuture<T> withErrorLogging(CompletableFuture<T> future) {
         return future.whenComplete((result, throwable) -> {
             if (throwable != null) {
+                if (getStatus() == ServerStatus.STARTING || getStatus() == ServerStatus.INSTALLING) {
+                    setStatus(ServerStatus.START_FAILED);
+                }
                 Exception e = throwable instanceof Exception ? (Exception) throwable : new Exception(throwable);
                 logErrorToTrace(e);
             }
@@ -725,6 +763,8 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
      * Returns the configured trace level for this server (off, messages, or verbose).
      */
     public abstract ServerTrace getServerTrace();
+
+    public abstract ServerType getServerType();
 
     /**
      * Creates and returns the trace collector for this server type.

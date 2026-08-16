@@ -21,6 +21,7 @@ import com.ibm.mcp.languagetools.dap.transport.TransportStreams;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
+import com.ibm.mcp.languagetools.server.ServerType;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -76,6 +77,11 @@ public class DapServer extends ServerBase<DapServerConfig> {
         return getWorkspace().getWorkspaceConfiguration().getDapTraceLevel(getConfig().getServerId());
     }
 
+    @Override
+    public ServerType getServerType() {
+        return ServerType.DAP;
+    }
+
     /**
      * Start the debug adapter and create the launcher.
      * Does NOT send initialize request - that's done later in connectAndInitialize().
@@ -97,7 +103,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
 
         return withErrorLogging(
             getConfig().ensureInstalled(
-                    getWorkspace().getApplication().getPathManager(),
+                    getWorkspace(),
                     this::setStatus,
                     progressMonitor)
                 .thenCompose(v -> doStart())
@@ -241,34 +247,6 @@ public class DapServer extends ServerBase<DapServerConfig> {
 
                 // Create server ready tracker
                 DAPServerReadyTracker readyTracker = getServerReadyTracker(config);
-
-                // Start monitoring stderr for errors
-                startStderrMonitoring();
-
-                // Monitor process exit
-                getExecutorService().submit(() -> {
-                    try {
-                        while (serverProcess != null && serverProcess.isAlive()) {
-                            if (serverProcess.waitFor(1, TimeUnit.SECONDS)) {
-                                int exitCode = serverProcess.exitValue();
-                                LOG.errorf("DAP server process exited with code %d: %s", exitCode, config.getName());
-                                if (exitCode != 0) {
-                                    setStatus(ServerStatus.START_FAILED, "Process exited with code " + exitCode);
-                                    addTrace(String.format("Process exited with code %d", exitCode),
-                                            TraceCollector.MessageType.ERROR);
-                                }
-                                break;
-                            }
-                            if (Thread.currentThread().isInterrupted()) {
-                                LOG.infof("Process monitor interrupted for %s", config.getName());
-                                break;
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                        LOG.infof("Process monitor interrupted (exception) for %s", config.getName());
-                        Thread.currentThread().interrupt();
-                    }
-                });
 
                 return readyTracker;
             } catch (Exception e) {

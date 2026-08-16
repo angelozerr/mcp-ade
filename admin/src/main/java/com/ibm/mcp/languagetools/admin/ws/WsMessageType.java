@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum WsMessageType {
     LSP_TRACE("lsp-trace"),
     DAP_TRACE("dap-trace"),
+    BSP_TRACE("bsp-trace"),
     MCP_TRACE("mcp-trace"),
     PROGRESS_INIT("progress-init"),
     PROGRESS_UPDATE("progress-update"),

@@ -1,7 +1,7 @@
 import { state, getCurrentTheme, setTheme, updateThemeIcon, traceKey,
     formatStatusClass, formatStatusLabel, updateSearchBoxVisibility,
-    loadLspConfigs, loadDapConfigs } from './shared-state.js';
-import { initModalOverlay, hideConfirmModal } from './shared-ui.js';
+    loadLspConfigs, loadDapConfigs, loadBspConfigs } from './shared-state.js';
+import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, renderServerActions } from './shared-ui.js';
 import { escapeHtml, updateTraceControls, clearHighlights, closeSearch } from './trace-renderer.js';
 import { initEventDelegation, registerActions } from './event-delegation.js';
 import { KeyboardShortcuts } from './keyboard-shortcuts.js';
@@ -16,10 +16,11 @@ import { renderWorkspaces, selectWorkspace, selectServer, selectDapSessionByServ
     setRenderDapTracesForSessionFn, setRenderMcpConsoleWithHighlightsFn,
     setCurrentTraceLevel } from './admin-workspace.js';
 import { loadAllLspServers, saveInstallerJson, resetInstallerJson, runInstaller,
-    loadInstallerJson, appendInstallTrace, updateInstallProgress } from './admin-lsp.js';
+    loadInstallerJson } from './admin-lsp.js';
 import { loadAllDapServers, onDapSessionUpdate, renderDapTracesForSession,
     createSessionHTML, changeDapServerTraceLevel,
     setSelectDapSessionByServerIdCallback } from './admin-dap.js';
+import { loadAllBspServers } from './admin-bsp.js';
 import { loadAllExtensions, showAddExtensionForm, setSwitchTabCallback } from './admin-extensions.js';
 import { getMcpClients, getSelectedMcpClient, getMcpTracesByClient,
     setMcpTraceLevel, handleMcpTrace, handleMcpClientsUpdate,
@@ -91,6 +92,9 @@ function handleWebSocketMessage(message) {
         case 'dap-trace':
             handleDapTrace(message);
             break;
+        case 'bsp-trace':
+            handleBspTrace(message);
+            break;
         case 'dap-session-update':
             onDapSessionUpdate(message);
             break;
@@ -158,7 +162,7 @@ function handleLspTrace(trace) {
     }
 
     if ((trace.messageType === 'INFO' || trace.messageType === 'UPDATE' || trace.messageType === 'ERROR') &&
-        !state.currentServerId) {
+        !state.currentServerId && state.currentTab === 'workspaces') {
         console.log('Auto-selecting server for installation:', trace.serverId);
 
         const workspace = trace.workspaceUri
@@ -181,6 +185,10 @@ function handleLspTrace(trace) {
 }
 
 function handleDapTrace(trace) {
+    if (state.installOutputServerId === trace.serverId) {
+        appendInstallTrace(trace);
+    }
+
     if (trace.sessionId) {
         if (!state.dapTracesBySession[trace.sessionId]) {
             state.dapTracesBySession[trace.sessionId] = [];
@@ -232,12 +240,58 @@ function handleDapTrace(trace) {
     }
 }
 
+function handleBspTrace(trace) {
+    if (!trace.serverId) return;
+
+    if (state.installOutputServerId === trace.serverId) {
+        appendInstallTrace(trace);
+    }
+
+    const tk = traceKey(trace.workspaceUri, trace.serverId);
+    if (!state.tracesByServer[tk]) {
+        state.tracesByServer[tk] = [];
+    }
+
+    if (trace.messageType === 'UPDATE') {
+        const traces = state.tracesByServer[tk];
+        const lastTrace = traces[traces.length - 1];
+        if (lastTrace && lastTrace.messageType === 'UPDATE') {
+            traces[traces.length - 1] = trace;
+        } else {
+            traces.push(trace);
+        }
+    } else {
+        state.tracesByServer[tk].push(trace);
+    }
+
+    if (state.tracesByServer[tk].length > 200) {
+        state.tracesByServer[tk] = state.tracesByServer[tk].slice(-200);
+    }
+
+    if (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
+        (trace.workspaceUri == null && trace.serverId === state.currentServerId)) {
+        renderConsole();
+    }
+
+    if (state.currentWorkspaceTab === 'build') {
+        const workspace = trace.workspaceUri
+            ? state.workspaces.find(w => w.rootUri === trace.workspaceUri)
+            : state.workspaces.find(w => w.bspServers && w.bspServers.some(s => s.id === trace.serverId));
+        if (workspace) {
+            loadServers(state.selectedWorkspace);
+        }
+    }
+}
+
 function handleWorkspacesUpdate(newWorkspaces) {
-    // Preserve lazily-loaded lspServers from previous workspace objects
+    // Preserve lazily-loaded servers from previous workspace objects
     for (const newWs of newWorkspaces) {
         const oldWs = state.workspaces.find(w => w.rootUri === newWs.rootUri);
         if (oldWs?.lspServers) {
             newWs.lspServers = oldWs.lspServers;
+        }
+        if (oldWs?.bspServers) {
+            newWs.bspServers = oldWs.bspServers;
         }
     }
     state.workspaces = newWorkspaces;
@@ -287,6 +341,16 @@ function handleTraceLevelUpdate(message) {
         setMcpTraceLevel(message.traceLevel);
         updateTraceControls('mcp-trace', message.traceLevel);
         renderMcpConsole();
+    } else if (message.serverType === 'bsp') {
+        if (state.selectedServer?.isBsp && state.selectedServer?.id === message.serverId) {
+            const isCurrentWorkspace = !isWorkspaceScoped || state.selectedWorkspace === message.workspaceUri;
+            if (isCurrentWorkspace) {
+                state.selectedServer.traceLevel = message.traceLevel;
+                setCurrentTraceLevel(message.traceLevel);
+                updateTraceControls('trace', message.traceLevel);
+                renderConsole();
+            }
+        }
     } else if (message.serverType === 'dap') {
         // Update workspace view selected server
         if (state.selectedServer?.isDap && state.selectedServer?.id === message.serverId) {
@@ -311,32 +375,50 @@ function handleServerStatusChanged(event) {
     console.log('Server status changed:', event);
 
     const workspace = state.workspaces.find(w => w.rootUri === event.workspaceUri);
-    if (!workspace || !workspace.lspServers) return;
+    if (!workspace) return;
 
-    const changedServer = workspace.lspServers.find(s => s.id === event.serverId);
-    if (!changedServer) return;
+    const serverType = event.serverType || 'LSP';
+    const servers = serverType === 'BSP' ? workspace.bspServers : workspace.lspServers;
+    if (!servers) {
+        if (state.selectedWorkspace === event.workspaceUri) {
+            loadServers(state.selectedWorkspace);
+        }
+        return;
+    }
+
+    const changedServer = servers.find(s => s.id === event.serverId);
+    if (!changedServer) {
+        if (state.selectedWorkspace === event.workspaceUri) {
+            loadServers(state.selectedWorkspace);
+        }
+        return;
+    }
 
     changedServer.status = event.newStatus;
     changedServer.statusMessage = event.statusMessage;
     changedServer.installProgress = event.installProgress;
     changedServer.isReady = event.isReady;
 
-    const extensions = workspace.lspServers.filter(s => s.parentServerId === event.serverId);
-    for (const ext of extensions) {
-        ext.status = event.newStatus;
-        ext.isReady = event.isReady;
-        ext.statusMessage = event.statusMessage;
-        ext.installProgress = event.installProgress;
-        ext.pid = changedServer.pid;
-        ext.command = changedServer.command;
+    if (serverType === 'LSP') {
+        const extensions = servers.filter(s => s.parentServerId === event.serverId);
+        for (const ext of extensions) {
+            ext.status = event.newStatus;
+            ext.isReady = event.isReady;
+            ext.statusMessage = event.statusMessage;
+            ext.installProgress = event.installProgress;
+            ext.pid = changedServer.pid;
+            ext.command = changedServer.command;
+        }
+
+        if (state.selectedWorkspace === event.workspaceUri) {
+            for (const ext of extensions) {
+                updateServerStatusBadge(ext.id, ext);
+            }
+        }
     }
 
     if (state.selectedWorkspace === event.workspaceUri) {
         updateServerStatusBadge(event.serverId, changedServer);
-
-        for (const ext of extensions) {
-            updateServerStatusBadge(ext.id, ext);
-        }
 
         if (state.selectedServer && state.selectedServer.id === event.serverId) {
             updateDetailPanelStatusBadge(changedServer);
@@ -353,6 +435,9 @@ function handleServerEnabledChanged(event) {
     }
     if (state.dapConfigs && state.dapConfigs[serverId]) {
         state.dapConfigs[serverId].enabled = enabled;
+    }
+    if (state.bspConfigs && state.bspConfigs[serverId]) {
+        state.bspConfigs[serverId].enabled = enabled;
     }
 
     for (const ws of state.workspaces) {
@@ -395,21 +480,7 @@ function updateServerStatusBadge(serverId, server) {
 
     const actionsContainer = serverElement.querySelector('.server-actions');
     if (actionsContainer && !server.isExtension) {
-        const isExternal = server.externalInstance != null &&
-                           (server.status === 'CONNECTED_TO_IDE' || server.status === 'CONNECTING_TO_IDE');
-        let actions = '';
-        if (isExternal) {
-            actions = `<button class="server-action-btn server-action-disconnect"
-                              data-action="disconnectFromIdeAction" data-server-id="${serverId}" data-stop-propagation
-                              title="Disconnect from IDE">⏏</button>`;
-        } else if (server.status === 'RUNNING' || server.status === 'STARTING' || server.status === 'INDEXING') {
-            actions = `<button class="server-action-btn" data-action="restartServerAction" data-server-id="${serverId}" data-stop-propagation title="Restart">↻</button>
-                       <button class="server-action-btn" data-action="stopServerAction" data-server-id="${serverId}" data-stop-propagation title="Stop">■</button>`;
-        } else if (server.status === 'STOPPED' || server.status === 'START_FAILED' || server.status === 'INSTALL_FAILED' || server.status === 'ERROR') {
-            actions = `<button class="server-action-btn" data-action="startManagedServerAction" data-server-id="${serverId}" data-stop-propagation title="Start MCP-managed server">▶</button>
-                       <button class="server-action-btn" data-action="connectToIdeAction" data-server-id="${serverId}" data-stop-propagation title="Try to connect to IDE instance">🔗</button>`;
-        }
-        actionsContainer.innerHTML = actions;
+        actionsContainer.innerHTML = renderServerActions(serverId, server);
     }
 }
 
@@ -465,7 +536,7 @@ function switchTab(tab, element, options = {}) {
     const consoleColumn = document.querySelector('.console-container');
 
     function showSidebarPanel(activeId) {
-        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'extensions-container', 'mcp-traces-list'];
+        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'bsp-servers-list', 'extensions-container', 'mcp-traces-list'];
         panels.forEach(id => {
             document.getElementById(id).classList.toggle('d-none', id !== activeId);
         });
@@ -515,6 +586,14 @@ function switchTab(tab, element, options = {}) {
         consoleColumn.style.gridColumn = '2';
 
         loadAllDapServers(options.serverId);
+    } else if (tab === 'bsp-servers') {
+        showSidebarPanel('bsp-servers-list');
+        serversColumn.style.display = 'none';
+        consoleColumn.style.display = 'flex';
+        appContainer.style.gridTemplateColumns = '400px 1fr';
+        consoleColumn.style.gridColumn = '2';
+
+        loadAllBspServers(options.serverId);
     } else if (tab === 'extensions') {
         showSidebarPanel('extensions-container');
         serversColumn.style.display = 'none';
@@ -589,6 +668,7 @@ registerActions('click', {
 (async function init() {
     await loadLspConfigs();
     await loadDapConfigs();
+    await loadBspConfigs();
     connectAdminWebSocket();
 
     KeyboardShortcuts.register({

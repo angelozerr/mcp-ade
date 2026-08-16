@@ -1,0 +1,26 @@
+{
+  "id": "gradle-bsp",
+  "name": "Gradle BSP (Build Server)",
+  "description": "Build Server Protocol support for Gradle projects (Gradle 8.6+). Provides build targets, compilation, dependency resolution, and test execution for Java, Kotlin, and Groovy projects.",
+  "url": "https://docs.gradle.org",
+  "command": {
+    "windows": "gradlew.bat --no-daemon bsp",
+    "default": "./gradlew --no-daemon bsp"
+  },
+  "activateWhen": {
+    "fileExists": "build.gradle"
+  },
+  "documentSelector": [
+    {
+      "language": "java"
+    },
+    {
+      "language": "kotlin"
+    },
+    {
+      "language": "groovy"
+    }
+  ],
+  "connectTimeout": 30000,
+  "initializationOptions": {}
+}

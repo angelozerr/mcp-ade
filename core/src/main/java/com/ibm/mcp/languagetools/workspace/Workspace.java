@@ -14,6 +14,8 @@
 package com.ibm.mcp.languagetools.workspace;
 
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.bsp.server.BspServer;
+import com.ibm.mcp.languagetools.bsp.server.BspServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.configuration.Configuration;
 import com.ibm.mcp.languagetools.configuration.WorkspaceConfiguration;
@@ -23,7 +25,7 @@ import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.lsp.server.LspServerFactoryRegistry;
-import com.ibm.mcp.languagetools.lsp.server.LspServerStatusChangeEvent;
+import com.ibm.mcp.languagetools.server.ServerStatusChangeEvent;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
@@ -73,7 +75,10 @@ public class Workspace {
 
     private final Map<String, LspServer> lspServers = new ConcurrentHashMap<>();
     private final Map<String, McpClientInfo> mcpClientConnections = new ConcurrentHashMap<>();
-    private Consumer<LspServerStatusChangeEvent> statusChangeCallback;
+    private Consumer<ServerStatusChangeEvent> statusChangeCallback;
+
+    // BSP
+    private final Map<String, BspServer> bspServers = new ConcurrentHashMap<>();
 
     // Activation condition cache: serverId -> whether the server should be activated for this workspace
     private final Map<String, Boolean> activationCache = new ConcurrentHashMap<>();
@@ -112,7 +117,7 @@ public class Workspace {
     /**
      * Set callback for LSP server status changes.
      */
-    public void setServerStatusChangeCallback(Consumer<LspServerStatusChangeEvent> callback) {
+    public void setServerStatusChangeCallback(Consumer<ServerStatusChangeEvent> callback) {
         this.statusChangeCallback = callback;
     }
 
@@ -124,9 +129,10 @@ public class Workspace {
     private void registerServerStatusCallback(ServerBase<?> server) {
         server.addStatusChangeListener((oldStatus, newStatus) -> {
             if (statusChangeCallback != null) {
-                statusChangeCallback.accept(new LspServerStatusChangeEvent(
+                statusChangeCallback.accept(new ServerStatusChangeEvent(
                         rootUri,
                         server.getId(),
+                        server.getServerType(),
                         oldStatus,
                         newStatus
                 ));
@@ -317,7 +323,7 @@ public class Workspace {
         // Already running?
         if (hasLspServer(serverId)) {
             LspServer server = getLspServer(serverId);
-            if (server != null && server.getStatus() != ServerStatus.STOPPED) {
+            if (server != null && server.getStatus().isActive()) {
                 LOG.debugf("Server '%s' already running in workspace: %s", serverId, rootUri);
                 return CompletableFuture.completedFuture(server);
             }
@@ -400,12 +406,16 @@ public class Workspace {
         for (LspServer server : lspServers.values()) {
             futures.add(server.shutdown());
         }
+        for (BspServer server : bspServers.values()) {
+            futures.add(server.shutdown());
+        }
 
         return CompletableFuture
                 .allOf(futures.toArray(new CompletableFuture[0]))
                 .thenRun(() -> {
                     stopFileWatcher();
                     lspServers.clear();
+                    bspServers.clear();
                     ideConfiguration.unwatch();
                     configuration.unwatch();
                     LOG.infof("Workspace shut down: %s", rootUri);
@@ -465,6 +475,83 @@ public class Workspace {
             config.setTraceCollector(application.getDapTraceCollector());
         }
         LOG.infof("Added DAP server to workspace %s: %s", rootUri, config.getServerId());
+    }
+
+    // ========== BSP Servers ==========
+
+    /**
+     * Add a BSP server to this workspace.
+     *
+     * @param config BSP server configuration
+     * @return the created BSP server
+     */
+    public BspServer addBspServer(BspServerConfig config) {
+        if (config.getTraceCollector() == null) {
+            config.setTraceCollector(application.getBspTraceCollector());
+        }
+        BspServer bspServer = new BspServer(config, this);
+        bspServers.put(config.getServerId(), bspServer);
+        registerServerStatusCallback(bspServer);
+        LOG.infof("Added BSP server '%s' to workspace: %s", config.getServerId(), rootUri);
+        return bspServer;
+    }
+
+    /**
+     * Get a BSP server by ID.
+     *
+     * @param serverId the server identifier
+     * @return the BSP server, or null if not present
+     */
+    public BspServer getBspServer(String serverId) {
+        return bspServers.get(serverId);
+    }
+
+    /**
+     * Get all BSP servers in this workspace.
+     *
+     * @return collection of BSP servers
+     */
+    public Collection<BspServer> getBspServers() {
+        return bspServers.values();
+    }
+
+    /**
+     * Ensure a BSP server is started in this workspace.
+     * If the server is already running, returns the existing instance.
+     *
+     * @param serverId        the server identifier
+     * @param progressMonitor progress monitor for installation and startup
+     * @return a future completing with the started BSP server
+     */
+    public CompletableFuture<BspServer> ensureBspServerStarted(String serverId, ProgressMonitor progressMonitor) {
+        if (bspServers.containsKey(serverId)) {
+            BspServer server = bspServers.get(serverId);
+            if (server != null && server.getStatus().isActive()) {
+                return CompletableFuture.completedFuture(server);
+            }
+        }
+
+        BspServerConfig config = application.getBspServerConfig(serverId);
+        if (config == null) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("BSP server config not found: " + serverId));
+        }
+
+        BspServer bspServer = addBspServer(config);
+        return bspServer.start(progressMonitor)
+                .thenCompose(v -> bspServer.initialize())
+                .thenApply(v -> bspServer);
+    }
+
+    /**
+     * Ensure a BSP server is started and ready in this workspace.
+     *
+     * @param serverId        the server identifier
+     * @param progressMonitor progress monitor for installation and startup
+     * @return a future completing with the ready BSP server
+     */
+    public CompletableFuture<BspServer> ensureBspServerReady(String serverId, ProgressMonitor progressMonitor) {
+        return ensureBspServerStarted(serverId, progressMonitor)
+                .thenCompose(server -> server.waitForReady().thenApply(v -> server));
     }
 
     /**

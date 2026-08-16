@@ -1,0 +1,20 @@
+{
+  "id": "sbt-bsp",
+  "name": "sbt BSP (Build Server)",
+  "description": "Built-in BSP server for sbt projects (sbt 1.4+). Provides build targets, compilation, testing, and dependency resolution for Scala and Java projects.",
+  "url": "https://www.scala-sbt.org/1.x/docs/bsp.html",
+  "command": "sbt --bsp",
+  "activateWhen": {
+    "fileExists": "build.sbt"
+  },
+  "documentSelector": [
+    {
+      "language": "scala"
+    },
+    {
+      "language": "java"
+    }
+  ],
+  "connectTimeout": 30000,
+  "initializationOptions": {}
+}

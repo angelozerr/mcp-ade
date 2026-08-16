@@ -1,0 +1,20 @@
+{
+  "check": {
+    "fileExists": {
+      "file": {
+        "windows": "$WORKSPACE_FOLDER$/gradlew.bat",
+        "default": "$WORKSPACE_FOLDER$/gradlew"
+      }
+    }
+  },
+  "run": {
+    "exec": {
+      "command": {
+        "windows": "gradlew.bat --version",
+        "default": "./gradlew --version"
+      },
+      "workingDir": "$WORKSPACE_FOLDER$"
+    }
+  },
+  "documentation": "Gradle BSP requires the Gradle wrapper (gradlew) in the project root. Run 'gradle wrapper' to generate it."
+}

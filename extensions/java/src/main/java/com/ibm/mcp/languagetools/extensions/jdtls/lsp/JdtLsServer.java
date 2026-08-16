@@ -130,7 +130,6 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         }
 
         LOG.infof("Installing %d contributor(s) for JDT.LS", contributors.size());
-        var pathManager = application.getPathManager();
         var traceCollector = getConfig().getTraceCollector();
         if (traceCollector != null && traceCollector.isEnabled()) {
             traceCollector.addTrace(getId(),
@@ -143,7 +142,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                     if (contributor.isContributionOnly() && contributor.getTraceCollector() == null && traceCollector != null) {
                         contributor.setTraceCollector(traceCollector);
                     }
-                    return contributor.ensureInstalled(pathManager, null, progressMonitor)
+                    return contributor.ensureInstalled(getWorkspace(), null, progressMonitor)
                             .exceptionally(error -> {
                                 LOG.warnf(error, "Failed to install contributor '%s' for JDT.LS, continuing without it",
                                         contributor.getServerId());

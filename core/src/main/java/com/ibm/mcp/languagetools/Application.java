@@ -13,6 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools;
 
+import com.ibm.mcp.languagetools.bsp.server.BspServer;
+import com.ibm.mcp.languagetools.bsp.server.BspServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.utils.UriUtils;
@@ -23,7 +25,7 @@ import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
-import com.ibm.mcp.languagetools.lsp.server.LspServerStatusChangeEvent;
+import com.ibm.mcp.languagetools.server.ServerStatusChangeEvent;
 import com.ibm.mcp.languagetools.event.ServerEnabledChangeEvent;
 import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
@@ -90,7 +92,7 @@ public class Application {
     // ----------- LSP servers
 
     @Inject
-    Event<LspServerStatusChangeEvent> lspServerStatusChangeEvent;
+    Event<ServerStatusChangeEvent> serverStatusChangeEvent;
 
     // ----------- DAP servers
 
@@ -118,6 +120,7 @@ public class Application {
     // Trace collectors loaded via SPI
     private final TraceCollector lspTraceCollector;
     private final TraceCollector dapTraceCollector;
+    private final TraceCollector bspTraceCollector;
     private final McpTraceCollector mcpTraceCollector;
 
     public Application() {
@@ -127,6 +130,7 @@ public class Application {
                 .orElse(new NoOpTraceCollectorFactory());
         this.lspTraceCollector = factory.createLspTraceCollector();
         this.dapTraceCollector = factory.createDapTraceCollector();
+        this.bspTraceCollector = factory.createBspTraceCollector();
         this.mcpTraceCollector = factory.createMcpTraceCollector();
         LOG.infof("TraceCollectorFactory: %s (enabled=%s)", factory.getClass().getSimpleName(), lspTraceCollector.isEnabled());
     }
@@ -154,6 +158,7 @@ public class Application {
 
         LOG.infof("Loaded %d LSP server descriptors", getLspServerConfigs().size());
         LOG.infof("Loaded %d DAP server descriptors", getDapServerConfigs().size());
+        LOG.infof("Loaded %d BSP server descriptors", getBspServerConfigs().size());
     }
 
     private void loadDisabledState() {
@@ -187,11 +192,10 @@ public class Application {
             created.set(true);
             Workspace ws = new Workspace(uri, this);
 
-            // Register callback for LSP server status changes
             ws.setServerStatusChangeCallback(event -> {
-                LOG.infof("WorkspaceManager: Firing LSP server status change event: %s/%s - %s -> %s",
+                LOG.infof("WorkspaceManager: Firing server status change event: %s/%s - %s -> %s",
                         event.workspaceUri(), event.serverId(), event.oldStatus(), event.newStatus());
-                lspServerStatusChangeEvent.fire(event);
+                serverStatusChangeEvent.fire(event);
             });
 
             LOG.infof("Created workspace %s", uri);
@@ -471,6 +475,22 @@ public class Application {
         serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, true));
     }
 
+    public void disableBspServer(String serverId) {
+        extensionRegistry.disableBspServer(serverId);
+        for (Workspace ws : getWorkspaces()) {
+            BspServer server = ws.getBspServer(serverId);
+            if (server != null && server.getStatus() != ServerStatus.STOPPED) {
+                server.shutdown();
+            }
+        }
+        serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, false));
+    }
+
+    public void enableBspServer(String serverId) {
+        extensionRegistry.enableBspServer(serverId);
+        serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, true));
+    }
+
     /**
      * Close a workspace: shutdown all its LSP servers and remove it from memory.
      */
@@ -603,6 +623,29 @@ public class Application {
      */
     public Collection<DapServerConfig> getDapServerConfigs() {
         return extensionRegistry.getAllDapServerConfigs();
+    }
+
+    // BSP servers
+
+    public BspServerConfig getBspServerConfig(String serverId) {
+        return extensionRegistry.getBspServerConfig(serverId);
+    }
+
+    /**
+     * Get all BSP server configurations.
+     *
+     * @return all BSP server configurations
+     */
+    public Collection<BspServerConfig> getBspServerConfigs() {
+        return extensionRegistry.getAllBspServerConfigs();
+    }
+
+    public TraceCollector getBspTraceCollector() {
+        return bspTraceCollector;
+    }
+
+    public ServerTrace getBspTraceLevel(String serverId) {
+        return applicationConfiguration.getBspTraceLevel(serverId);
     }
 
     public ExtensionRegistry getExtensionRegistry() {

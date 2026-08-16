@@ -41,12 +41,18 @@ public class TaskRegistryInstaller implements ServerInstaller {
     private static final String FIELD_RUN = "run";
 
     private final ServerConfigBase config;
+    private final JsonElement installerConfigJson;
     private final InstallerTaskRegistry registry;
     private final Gson gson;
     private final AtomicReference<InstallationStatus> status = new AtomicReference<>(InstallationStatus.NOT_INSTALLED);
 
     public TaskRegistryInstaller(ServerConfigBase config) {
+        this(config, config.getInstallerConfig());
+    }
+
+    public TaskRegistryInstaller(ServerConfigBase config, JsonElement installerConfigJson) {
         this.config = config;
+        this.installerConfigJson = installerConfigJson;
         this.registry = new InstallerTaskRegistry();
         this.gson = new Gson();
     }
@@ -66,8 +72,6 @@ public class TaskRegistryInstaller implements ServerInstaller {
             Thread.currentThread().setContextClassLoader(callerClassLoader);
             long startTime = System.currentTimeMillis();
             try {
-                // Parse installer.json
-                JsonElement installerConfigJson = config.getInstallerConfig();
                 if (installerConfigJson == null || !installerConfigJson.isJsonObject()) {
                     throw new IllegalStateException("No installer configuration found for " + config.getServerId());
                 }

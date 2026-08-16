@@ -1,0 +1,21 @@
+{
+  "id": "bazel-bsp",
+  "name": "Bazel BSP (Build Server)",
+  "description": "Build Server Protocol implementation for Bazel projects by JetBrains. Supports Java, Scala, and Kotlin build targets with full BSP capabilities including compilation, testing, and dependency resolution.",
+  "url": "https://github.com/JetBrains/bazel-bsp",
+  "activateWhen": {
+    "fileExists": "BUILD"
+  },
+  "documentSelector": [
+    {
+      "language": "java"
+    },
+    {
+      "language": "scala"
+    },
+    {
+      "language": "kotlin"
+    }
+  ],
+  "initializationOptions": {}
+}

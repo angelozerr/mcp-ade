@@ -11,19 +11,15 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.lsp.server;
+package com.ibm.mcp.languagetools.bsp.trace;
 
-import com.ibm.mcp.languagetools.server.ServerStatus;
+import com.ibm.mcp.languagetools.trace.AbstractTraceCollector;
+import com.ibm.mcp.languagetools.trace.TraceKind;
 
-import java.net.URI;
+public class BspTraceCollector extends AbstractTraceCollector {
 
-/**
- * CDI event fired when an LSP server status changes.
- */
-public record LspServerStatusChangeEvent(
-    URI workspaceUri,
-    String serverId,
-    ServerStatus oldStatus,
-    ServerStatus newStatus
-) {
+    @Override
+    protected TraceKind getTraceKind() {
+        return TraceKind.BSP;
+    }
 }

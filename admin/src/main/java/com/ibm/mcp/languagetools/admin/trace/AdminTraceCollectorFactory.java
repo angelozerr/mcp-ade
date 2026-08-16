@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin.trace;
 
+import com.ibm.mcp.languagetools.bsp.trace.BspTraceCollector;
 import com.ibm.mcp.languagetools.dap.trace.DapTraceCollector;
 import com.ibm.mcp.languagetools.lsp.trace.LspTraceCollector;
 import com.ibm.mcp.languagetools.mcp.trace.McpTraceCollector;
@@ -33,6 +34,11 @@ public class AdminTraceCollectorFactory implements TraceCollectorFactory {
     @Override
     public TraceCollector createDapTraceCollector() {
         return new DapTraceCollector();
+    }
+
+    @Override
+    public TraceCollector createBspTraceCollector() {
+        return new BspTraceCollector();
     }
 
     @Override

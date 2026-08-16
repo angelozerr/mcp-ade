@@ -21,8 +21,10 @@ import com.ibm.mcp.languagetools.admin.ws.*;
 import com.ibm.mcp.languagetools.dap.session.DapSessionEvent;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
 import com.ibm.mcp.languagetools.event.ServerEnabledChangeEvent;
-import com.ibm.mcp.languagetools.lsp.server.LspServerStatusChangeEvent;
+import com.ibm.mcp.languagetools.server.ServerBase;
+import com.ibm.mcp.languagetools.server.ServerStatusChangeEvent;
 import com.ibm.mcp.languagetools.server.ServerStatus;
+import com.ibm.mcp.languagetools.server.ServerType;
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
 import com.ibm.mcp.languagetools.operation.OperationTracker;
 import com.ibm.mcp.languagetools.trace.TraceMessage;
@@ -81,6 +83,7 @@ public class AdminWebSocketEndpoint {
         application.getLspTraceCollector().addTraceListener(this::onTrace);
         application.getDapTraceCollector().addTraceListener(this::onTrace);
         application.getMcpTraceCollector().addTraceListener(this::onTrace);
+        application.getBspTraceCollector().addTraceListener(this::onTrace);
         operationTracker.addListener(event -> {
             OperationUpdateWsMessage msg = new OperationUpdateWsMessage(
                     event.type().name(), event.operation());
@@ -138,6 +141,9 @@ public class AdminWebSocketEndpoint {
 
             // Send DAP trace history
             sendDapTraceHistory(session);
+
+            // Send BSP trace history
+            sendBspTraceHistory(session);
 
             // Send active progress state
             sendProgressState(session);
@@ -234,6 +240,31 @@ public class AdminWebSocketEndpoint {
     }
 
     /**
+     * Send BSP trace history for all servers.
+     */
+    private void sendBspTraceHistory(Session session) {
+        try {
+            for (var workspace : application.getWorkspaces()) {
+                for (var server : workspace.getBspServers()) {
+                    var traces = application.getBspTraceCollector().getTraces(workspace.getNormalizedUri(), server.getId(), 200);
+                    for (var trace : traces) {
+                        BspTraceWsMessage msg = new BspTraceWsMessage(
+                                trace.workspaceUri(),
+                                trace.contextId(),
+                                trace.content(),
+                                trace.messageType()
+                        );
+                        sendToSession(session, msg);
+                    }
+                }
+            }
+            LOG.debugf("BSP trace history sent to session: %s", session.getId());
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to send BSP trace history to session: %s", session.getId());
+        }
+    }
+
+    /**
      * Send active progress state (init + last update) for tasks currently in progress.
      */
     private void sendProgressState(Session session) {
@@ -285,6 +316,10 @@ public class AdminWebSocketEndpoint {
             String serverId = key.substring(4, key.length() - 6);
             return new TraceLevelWsMessage("dap", serverId, traceLevel);
         }
+        if (key.startsWith("bsp.") && key.endsWith(".trace")) {
+            String serverId = key.substring(4, key.length() - 6);
+            return new TraceLevelWsMessage("bsp", serverId, traceLevel);
+        }
         return null;
     }
 
@@ -306,6 +341,9 @@ public class AdminWebSocketEndpoint {
             case DAP -> broadcast(toDapTraceWsMessage(trace));
             case MCP -> broadcast(new McpTraceWsMessage(
                     trace.contextId(), trace.content()));
+            case BSP -> broadcast(new BspTraceWsMessage(
+                    trace.workspaceUri(), trace.contextId(),
+                    trace.content(), trace.messageType()));
         }
     }
 
@@ -368,7 +406,7 @@ public class AdminWebSocketEndpoint {
     /**
      * CDI observer for server status changes.
      */
-    void onServerStatusChange(@Observes LspServerStatusChangeEvent event) {
+    void onServerStatusChange(@Observes ServerStatusChangeEvent event) {
         LOG.infof("WebSocket: Server status changed: %s/%s - %s -> %s (broadcasting to %d clients)",
                 event.workspaceUri(), event.serverId(), event.oldStatus(), event.newStatus(), sessions.size());
 
@@ -379,13 +417,16 @@ public class AdminWebSocketEndpoint {
         Boolean isReady = false;
 
         if (workspace != null) {
-            var server = workspace.getLspServer(event.serverId());
+            ServerBase<?> server = switch (event.serverType()) {
+                case LSP -> workspace.getLspServer(event.serverId());
+                case BSP -> workspace.getBspServer(event.serverId());
+                default -> null;
+            };
             if (server != null) {
                 statusMessage = server.getStatusMessage();
                 isReady = server.isReady();
                 LOG.infof("WebSocket: statusMessage='%s', isReady=%s for %s", statusMessage, isReady, event.serverId());
 
-                // Get install progress if installing
                 if (event.newStatus() == ServerStatus.INSTALLING) {
                     var config = server.getConfig();
                     var progressIndicator = config.getInstallProgress();
@@ -404,6 +445,7 @@ public class AdminWebSocketEndpoint {
         ServerStatusChangedWsMessage msg = new ServerStatusChangedWsMessage(
                 event.workspaceUri().toString(),
                 event.serverId(),
+                event.serverType().name(),
                 event.oldStatus().name(),
                 event.newStatus().name(),
                 statusMessage,

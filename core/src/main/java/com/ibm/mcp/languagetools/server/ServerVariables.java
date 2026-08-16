@@ -24,7 +24,6 @@ public class ServerVariables {
 
     // e.g. $SERVER_HOME$ in installer.json / server.json
     private static final String SERVER_HOME = "SERVER_HOME";
-
     /**
      * Populate the given map with server variables resolved from the config.
      *

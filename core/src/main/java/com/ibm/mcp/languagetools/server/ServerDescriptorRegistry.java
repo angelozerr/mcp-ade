@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.server;
 
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.bsp.server.BspServerDescriptorLoader;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerDescriptorLoader;
 import com.ibm.mcp.languagetools.extension.Extension;
@@ -51,11 +52,15 @@ public class ServerDescriptorRegistry {
     @Inject
     DapServerDescriptorLoader dapServerDescriptorLoader;
 
+    @Inject
+    BspServerDescriptorLoader bspServerDescriptorLoader;
+
     void onStart(@Observes @Priority(1) StartupEvent ev) {
         LOG.info("ServerDescriptorRegistry starting...");
         // Register loaders on startup
         registerLoader(lspServerDescriptorLoader);
         registerLoader(dapServerDescriptorLoader);
+        registerLoader(bspServerDescriptorLoader);
         LOG.infof("ServerDescriptorRegistry initialized with %d loaders", loaders.size());
     }
 

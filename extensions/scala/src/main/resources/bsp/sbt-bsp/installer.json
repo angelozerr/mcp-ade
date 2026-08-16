@@ -1,0 +1,14 @@
+{
+  "check": {
+    "fileExists": {
+      "file": "$WORKSPACE_FOLDER$/build.sbt"
+    }
+  },
+  "run": {
+    "exec": {
+      "command": "sbt --batch bspConfig",
+      "workingDir": "$WORKSPACE_FOLDER$"
+    }
+  },
+  "documentation": "sbt BSP requires an sbt project (build.sbt). Runs 'sbt bspConfig' to generate the .bsp/sbt.json connection file (requires sbt 1.4+)."
+}

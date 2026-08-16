@@ -79,5 +79,12 @@ public enum ServerStatus {
     /**
      * Disconnecting from an external LSP server instance.
      */
-    DISCONNECTING
+    DISCONNECTING;
+
+    public boolean isActive() {
+        return this == INSTALLING || this == STARTING || this == INDEXING
+                || this == RUNNING || this == STOPPING
+                || this == SWITCHING || this == CONNECTING_TO_IDE
+                || this == CONNECTED_TO_IDE || this == DISCONNECTING;
+    }
 }

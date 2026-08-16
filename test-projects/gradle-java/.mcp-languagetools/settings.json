@@ -1,0 +1,4 @@
+{
+  "lsp.jdtls.trace": "verbose",
+  "bsp.mill-bsp.trace": "verbose"
+}

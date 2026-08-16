@@ -15,14 +15,20 @@ package com.ibm.mcp.languagetools.admin;
 
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.admin.dto.DapSessionDTO;
+import com.ibm.mcp.languagetools.admin.dto.ErrorResponse;
 import com.ibm.mcp.languagetools.admin.dto.IdeSettingDTO;
+import com.ibm.mcp.languagetools.admin.dto.BspServerDTO;
 import com.ibm.mcp.languagetools.admin.dto.LspServerDTO;
 import com.ibm.mcp.languagetools.admin.dto.ServerDTOBuilder;
 import com.ibm.mcp.languagetools.admin.dto.ServerSettingDTO;
+import com.ibm.mcp.languagetools.admin.dto.StatusResponse;
 import com.ibm.mcp.languagetools.admin.dto.WorkspaceDTO;
 import com.ibm.mcp.languagetools.admin.ws.TraceLevelWsMessage;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
+import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
+import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
+import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
@@ -49,6 +55,9 @@ public class WorkspaceAdminResource {
 
     @Inject
     DapSessionManager dapSessionManager;
+
+    @Inject
+    ProgressBroadcaster progressBroadcaster;
 
     @Inject
     Event<TraceLevelWsMessage> traceLevelEvent;
@@ -94,6 +103,24 @@ public class WorkspaceAdminResource {
         var serverConfigs = application.getLspServerConfigs();
         return serverConfigs.stream()
                 .map(config -> serverDTOBuilder.buildRuntime(config, workspace))
+                .toList();
+    }
+
+    /**
+     * Get BSP servers for a workspace with runtime status.
+     */
+    @GET
+    @Path("/workspaces/{uri}/bsp-servers")
+    public List<BspServerDTO> getBspServers(@PathParam("uri") String uriParam) {
+        URI uri = URI.create(uriParam);
+        Workspace workspace = application.getWorkspace(uri);
+        if (workspace == null) {
+            throw new NotFoundException("Workspace not found: " + uri);
+        }
+
+        var serverConfigs = application.getBspServerConfigs();
+        return serverConfigs.stream()
+                .map(config -> serverDTOBuilder.buildBspRuntime(config, workspace))
                 .toList();
     }
 
@@ -425,6 +452,38 @@ public class WorkspaceAdminResource {
                                                  @PathParam("serverId") String serverId) {
         Workspace workspace = getWorkspaceOrThrow(uriParam);
         workspace.getWorkspaceConfiguration().resetDapTraceLevel(serverId);
+        return Response.noContent().build();
+    }
+
+    // ========== BSP Server Settings ==========
+
+    @GET
+    @Path("/workspaces/{uri}/bsp-servers/{serverId}/settings")
+    public List<ServerSettingDTO> getBspServerSettings(@PathParam("uri") String uriParam,
+                                                       @PathParam("serverId") String serverId) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        return List.of(buildTraceLevelSetting("bsp", serverId, workspace));
+    }
+
+    @PUT
+    @Path("/workspaces/{uri}/traces/bsp/{serverId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response setWorkspaceBspTraceLevel(@PathParam("uri") String uriParam,
+                                               @PathParam("serverId") String serverId,
+                                               Map<String, Object> body) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        ServerTrace level = ServerTrace.fromValue(String.valueOf(body.get("traceLevel")));
+        workspace.getWorkspaceConfiguration().setBspTraceLevel(serverId, level);
+        traceLevelEvent.fire(new TraceLevelWsMessage("bsp", serverId, level.toString(), uriParam));
+        return Response.noContent().build();
+    }
+
+    @DELETE
+    @Path("/workspaces/{uri}/traces/bsp/{serverId}")
+    public Response resetWorkspaceBspTraceLevel(@PathParam("uri") String uriParam,
+                                                 @PathParam("serverId") String serverId) {
+        Workspace workspace = getWorkspaceOrThrow(uriParam);
+        workspace.getWorkspaceConfiguration().resetBspTraceLevel(serverId);
         return Response.noContent().build();
     }
 

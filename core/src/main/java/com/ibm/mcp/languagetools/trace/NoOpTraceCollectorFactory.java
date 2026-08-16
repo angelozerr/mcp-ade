@@ -33,6 +33,11 @@ public class NoOpTraceCollectorFactory implements TraceCollectorFactory {
     }
 
     @Override
+    public TraceCollector createBspTraceCollector() {
+        return NoOpTraceCollector.INSTANCE;
+    }
+
+    @Override
     public McpTraceCollector createMcpTraceCollector() {
         return new NoOpMcpTraceCollector();
     }

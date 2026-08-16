@@ -1,0 +1,23 @@
+{
+  "check": {
+    "fileExists": {
+      "file": "$SERVER_HOME$/bazel-bsp"
+    }
+  },
+  "run": {
+    "exec": {
+      "command": {
+        "windows": "coursier.bat fetch -p org.jetbrains.bsp:bazel-bsp:3.2.0",
+        "default": "coursier fetch -p org.jetbrains.bsp:bazel-bsp:3.2.0"
+      },
+      "onSuccess": {
+        "configureServer": {
+          "command": {
+            "windows": "java -cp \"$SERVER_HOME$/lib/*\" org.jetbrains.bsp.bazel.BazelBspServer",
+            "default": "java -cp \"$SERVER_HOME$/lib/*\" org.jetbrains.bsp.bazel.BazelBspServer"
+          }
+        }
+      }
+    }
+  }
+}

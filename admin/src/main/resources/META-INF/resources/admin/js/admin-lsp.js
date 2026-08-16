@@ -5,7 +5,7 @@
  */
 
 import { state, getServerApiBase, buildGlobalContributedByMap } from './shared-state.js';
-import { showAlert, renderDocumentSelector } from './shared-ui.js';
+import { showAlert, renderDocumentSelector, runServerInstaller } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { LanguageFilter } from './language-filter.js';
@@ -418,93 +418,12 @@ export function resetInstallerJson(serverId) {
 /**
  * Run installer for an LSP server.
  */
-export async function runInstaller(serverId, force) {
-    const outputDiv = document.getElementById('install-output');
-    if (!outputDiv) return;
-
-    const label = force ? 'Force installing' : 'Installing';
-    outputDiv.innerHTML = `
-        <div class="install-output-header text-success mb-sm">${label} ${serverId}...</div>
-        <div id="install-progress-bar" class="bg-input mb-sm d-none" style="height: 4px; border-radius: 2px;">
-            <div id="install-progress-fill" style="height: 100%; background: var(--color-success); border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
-        </div>
-        <div id="install-traces" class="font-mono bg-card p-sm rounded-sm font-sm overflow-auto" style="max-height: 300px;"></div>
-    `;
-
-    state.installOutputServerId = serverId;
-
-    try {
-        const url = `${getServerApiBase(serverId)}/${serverId}/install${force ? '?force=true' : ''}`;
-        const response = await fetch(url, { method: 'POST' });
-
-        if (!response.ok) {
-            state.installOutputServerId = null;
-            throw new Error('Installation failed');
-        }
-    } catch (error) {
-        console.error('Failed to run installer:', error);
-        state.installOutputServerId = null;
-        outputDiv.innerHTML = `<div class="text-error">✗ Installation failed: ${error.message}</div>`;
+export async function runInstaller(serverId, force, workspaceUri) {
+    let installUrl = `${getServerApiBase(serverId)}/${serverId}/install`;
+    if (workspaceUri) {
+        installUrl += `?workspaceUri=${encodeURIComponent(workspaceUri)}`;
     }
-}
-
-/**
- * Append an installation trace to the install output panel.
- */
-export function appendInstallTrace(trace) {
-    const tracesDiv = document.getElementById('install-traces');
-    if (!tracesDiv) return;
-
-    const color = trace.messageType === 'ERROR' ? 'var(--color-error-text)'
-        : trace.messageType === 'UPDATE' ? 'var(--text-secondary)'
-        : 'var(--text-code)';
-
-    if (trace.messageType === 'UPDATE') {
-        const lastLine = tracesDiv.lastElementChild;
-        if (lastLine && lastLine.dataset.update === 'true') {
-            lastLine.textContent = trace.content;
-            return;
-        }
-    }
-
-    const line = document.createElement('div');
-    line.style.color = color;
-    line.textContent = trace.content;
-    if (trace.messageType === 'UPDATE') {
-        line.dataset.update = 'true';
-    }
-    tracesDiv.appendChild(line);
-    tracesDiv.scrollTop = tracesDiv.scrollHeight;
-}
-
-/**
- * Update the install output progress bar.
- */
-export function updateInstallProgress(msg) {
-    const bar = document.getElementById('install-progress-bar');
-    const fill = document.getElementById('install-progress-fill');
-    const header = document.querySelector('.install-output-header');
-
-    if (bar && fill) {
-        bar.style.display = 'block';
-        fill.style.width = `${Math.round((msg.progress || 0) * 100)}%`;
-    }
-
-    if (msg.status === 'completed') {
-        state.installOutputServerId = null;
-        if (fill) fill.style.background = 'var(--color-success)';
-        if (header) {
-            header.style.color = 'var(--color-success)';
-            header.textContent = `✓ Installation completed`;
-        }
-    } else if (msg.status === 'failed') {
-        state.installOutputServerId = null;
-        if (fill) fill.style.background = 'var(--color-error-text)';
-        if (header) {
-            header.style.color = 'var(--color-error-text)';
-            header.textContent = `✗ Installation failed`;
-        }
-    }
+    return runServerInstaller(serverId, force, 'install-output', installUrl);
 }
 
 /**

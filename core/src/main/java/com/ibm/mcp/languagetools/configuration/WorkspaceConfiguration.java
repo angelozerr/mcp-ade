@@ -111,4 +111,13 @@ public class WorkspaceConfiguration extends AbstractConfiguration {
     public void resetDapTraceLevel(String serverId) {
         remove("dap." + serverId + ".trace");
     }
+
+    @Override
+    public ServerTrace getBspTraceLevel(String serverId) {
+        return ServerTrace.fromValue(resolveString("bsp." + serverId + ".trace", ServerTrace.off.toString()).value());
+    }
+
+    public void resetBspTraceLevel(String serverId) {
+        remove("bsp." + serverId + ".trace");
+    }
 }

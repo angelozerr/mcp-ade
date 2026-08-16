@@ -5,10 +5,9 @@ set SCRIPT_DIR=%~dp0
 set TYCHO_DIR=%SCRIPT_DIR%com.ibm.mcp.jdtls
 set PLUGIN_TARGET=%TYCHO_DIR%\com.ibm.mcp.jdtls.plugin\target
 set DEST_DIR=%SCRIPT_DIR%extensions\java\src\main\resources\lsp\mcp-jdtls\plugins
-
 echo === Building MCP JDT.LS plugin (Tycho) ===
 cd /d "%TYCHO_DIR%"
-call "%SCRIPT_DIR%mvnw.cmd" clean package -q
+call "%SCRIPT_DIR%mvnw.cmd" clean package
 if errorlevel 1 (
     echo ERROR: Tycho build failed
     exit /b 1

@@ -15,6 +15,7 @@ package com.ibm.mcp.languagetools.extension;
 
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.PathManager;
+import com.ibm.mcp.languagetools.bsp.server.BspServerConfig;
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
 import com.ibm.mcp.languagetools.configuration.PathConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
@@ -107,10 +108,11 @@ public class ExtensionRegistry {
     public void initialize(Application application) {
         deployBundledConfigs(application);
         scanExtensions(application);
-        LOG.infof("ExtensionRegistry initialized: %d extensions, %d LSP servers, %d DAP servers",
+        LOG.infof("ExtensionRegistry initialized: %d extensions, %d LSP servers, %d DAP servers, %d BSP servers",
                 extensions.size(),
                 getAllLspServerConfigs().size(),
-                getAllDapServerConfigs().size());
+                getAllDapServerConfigs().size(),
+                getAllBspServerConfigs().size());
     }
 
     private static final String MCP_EXTENSION_JSON = "mcp-extension.json";
@@ -145,7 +147,7 @@ public class ExtensionRegistry {
 
             Path basePath = resolveBasePath(descriptorUrl);
 
-            for (String root : List.of(PathConfig.getLspDirName(), PathConfig.getDapDirName())) {
+            for (String root : List.of(PathConfig.getLspDirName(), PathConfig.getDapDirName(), PathConfig.getBspDirName())) {
                 Path rootPath = basePath.resolve(root);
                 if (!Files.isDirectory(rootPath)) {
                     continue;
@@ -271,6 +273,8 @@ public class ExtensionRegistry {
                 extension.addLspServerConfig(lspConfig);
             } else if (config instanceof DapServerConfig dapConfig) {
                 extension.addDapServerConfig(dapConfig);
+            } else if (config instanceof BspServerConfig bspConfig) {
+                extension.addBspServerConfig(bspConfig);
             }
         }
 
@@ -303,6 +307,9 @@ public class ExtensionRegistry {
                 checkServerIdUnique(config.getServerId(), extensionId);
             }
             for (DapServerConfig config : extension.getDapServerConfigs()) {
+                checkServerIdUnique(config.getServerId(), extensionId);
+            }
+            for (BspServerConfig config : extension.getBspServerConfigs()) {
                 checkServerIdUnique(config.getServerId(), extensionId);
             }
         } catch (Exception e) {
@@ -427,6 +434,61 @@ public class ExtensionRegistry {
         fireOnAdded(extension);
     }
 
+    /**
+     * Add a BSP server from a source path. extensionId defaults to serverId from the config.
+     */
+    public BspServerConfig addBspServer(Path source, Application application) throws IOException {
+        return addBspServer(source, null, application);
+    }
+
+    /**
+     * Add a BSP server from a source path into the given extension.
+     */
+    public BspServerConfig addBspServer(Path source, String extensionId, Application application) throws IOException {
+        Path tempDir = Files.createTempDirectory("mcp-bsp-");
+        try {
+            ExtensionExtractor.extract(source, tempDir);
+            String serverId = detectServerId(tempDir);
+
+            if (extensionId == null) {
+                extensionId = serverId;
+            }
+
+            checkServerIdUnique(serverId, extensionId);
+
+            Path targetDir = pathManager.getExtensionServerHome(extensionId, "bsp", serverId);
+            Files.createDirectories(targetDir.getParent());
+            ExtensionExtractor.extract(source, targetDir);
+
+            Extension extension = getOrCreateExtension(extensionId, ServerConfigSource.USER, application);
+            var loader = serverDescriptorRegistry.getLoader("bsp");
+            BspServerConfig config = (BspServerConfig) loader.load(targetDir, extension);
+            extension.addBspServerConfig(config);
+
+            fireOnAdded(extension);
+            return config;
+        } finally {
+            deleteRecursively(tempDir);
+        }
+    }
+
+    /**
+     * Add a BSP server from a pre-loaded config. extensionId defaults to config.serverId.
+     */
+    public void addBspServer(BspServerConfig config) {
+        addBspServer(config, config.getServerId());
+    }
+
+    /**
+     * Add a BSP server from a pre-loaded config into the given extension.
+     */
+    public void addBspServer(BspServerConfig config, String extensionId) {
+        checkServerIdUnique(config.getServerId(), extensionId);
+        Extension extension = getOrCreateExtension(extensionId, ServerConfigSource.USER, config.getApplication());
+        extension.addBspServerConfig(config);
+        fireOnAdded(extension);
+    }
+
     // ========== Remove ==========
 
     /**
@@ -496,6 +558,30 @@ public class ExtensionRegistry {
         }
     }
 
+    /**
+     * Remove an individual BSP server from its extension.
+     */
+    public void removeBspServer(String serverId) {
+        Extension extension = findExtensionForBspServer(serverId);
+        if (extension == null) {
+            throw new IllegalArgumentException("BSP server '" + serverId + "' not found");
+        }
+        if (extension.getSource() == ServerConfigSource.BUNDLED) {
+            throw new IllegalStateException("Cannot remove bundled server '" + serverId + "', use disable instead");
+        }
+
+        extension.removeBspServerConfig(serverId);
+
+        Path serverDir = pathManager.getExtensionServerHome(extension.getId(), "bsp", serverId);
+        deleteRecursively(serverDir);
+
+        if (extension.isEmpty()) {
+            extensions.remove(extension.getId());
+            fireOnRemoved(extension);
+            deleteRecursively(pathManager.getExtensionDir(extension.getId()));
+        }
+    }
+
     // ========== Enable / Disable ==========
 
     public void enableExtension(String extensionId) {
@@ -537,6 +623,16 @@ public class ExtensionRegistry {
     }
 
     public void disableDapServer(String serverId) {
+        disabledServers.add(serverId);
+        persistDisabledServers();
+    }
+
+    public void enableBspServer(String serverId) {
+        disabledServers.remove(serverId);
+        persistDisabledServers();
+    }
+
+    public void disableBspServer(String serverId) {
         disabledServers.add(serverId);
         persistDisabledServers();
     }
@@ -635,6 +731,36 @@ public class ExtensionRegistry {
         return null;
     }
 
+    /**
+     * All BSP server configs (enabled + disabled) — for admin, listing.
+     */
+    public Collection<BspServerConfig> getAllBspServerConfigs() {
+        return extensions.values().stream()
+                .flatMap(ext -> ext.getBspServerConfigs().stream())
+                .toList();
+    }
+
+    /**
+     * Only enabled BSP server configs — for workspace matching.
+     */
+    public Collection<BspServerConfig> getEnabledBspServerConfigs() {
+        return extensions.entrySet().stream()
+                .filter(e -> isExtensionEnabled(e.getKey()))
+                .flatMap(e -> e.getValue().getBspServerConfigs().stream())
+                .filter(c -> isServerEnabled(c.getServerId()))
+                .toList();
+    }
+
+    public BspServerConfig getBspServerConfig(String serverId) {
+        for (Extension ext : extensions.values()) {
+            BspServerConfig config = ext.getBspServerConfig(serverId);
+            if (config != null) {
+                return config;
+            }
+        }
+        return null;
+    }
+
     // ========== Internal helpers ==========
 
     private Extension getOrCreateExtension(String extensionId, ServerConfigSource source, Application application) {
@@ -659,6 +785,15 @@ public class ExtensionRegistry {
         return null;
     }
 
+    private Extension findExtensionForBspServer(String serverId) {
+        for (Extension ext : extensions.values()) {
+            if (ext.getBspServerConfig(serverId) != null) {
+                return ext;
+            }
+        }
+        return null;
+    }
+
     private void checkServerIdUnique(String serverId, String extensionId) {
         for (Extension ext : extensions.values()) {
             LspServerConfig lsp = ext.getLspServerConfig(serverId);
@@ -668,6 +803,11 @@ public class ExtensionRegistry {
             }
             DapServerConfig dap = ext.getDapServerConfig(serverId);
             if (dap != null) {
+                throw new IllegalStateException(
+                        "Server '" + serverId + "' is already deployed in extension '" + ext.getId() + "'");
+            }
+            BspServerConfig bsp = ext.getBspServerConfig(serverId);
+            if (bsp != null) {
                 throw new IllegalStateException(
                         "Server '" + serverId + "' is already deployed in extension '" + ext.getId() + "'");
             }

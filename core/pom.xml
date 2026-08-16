@@ -49,6 +49,13 @@
             <version>${lsp4j.version}</version>
         </dependency>
 
+        <!-- BSP4J for Build Server Protocol support -->
+        <dependency>
+            <groupId>ch.epfl.scala</groupId>
+            <artifactId>bsp4j</artifactId>
+            <version>${bsp4j.version}</version>
+        </dependency>
+
         <!-- Quarkus MCP Server (HTTP/SSE + Stdio) -->
         <dependency>
             <groupId>io.quarkiverse.mcp</groupId>

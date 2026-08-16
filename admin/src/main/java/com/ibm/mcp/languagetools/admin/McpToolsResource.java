@@ -80,6 +80,9 @@ public class McpToolsResource {
         }
 
         // Determine group from package
+        if (packageName.contains(".bsp.tools") || packageName.contains(".bsp.")) {
+            return new String[]{"Build", toReadable(className.replaceFirst("^Bsp", ""))};
+        }
         if (packageName.contains(".dap.tools") || packageName.contains(".dap.")) {
             return new String[]{"DAP", toReadable(className.replaceFirst("^Dap", ""))};
         }
