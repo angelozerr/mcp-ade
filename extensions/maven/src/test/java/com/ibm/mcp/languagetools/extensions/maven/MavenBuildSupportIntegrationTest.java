@@ -11,8 +11,9 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.maven;
 
+import com.ibm.mcp.languagetools.extensions.jdtls.build.ClasspathInfo;
 import com.ibm.mcp.languagetools.progress.NoOpProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,7 +31,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration tests for {@link MavenClasspathExtractor} that execute real Maven commands
+ * Integration tests for {@link MavenBuildSupport} that execute real Maven commands
  * using the project's Maven wrapper ({@code mvnw}/{@code mvnw.cmd}).
  *
  * <p>Each test creates a temporary Maven project, copies the project's Maven wrapper
@@ -41,21 +42,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * or not executable.</p>
  */
 @EnabledIf("isMavenWrapperAvailable")
-class MavenClasspathExtractorIntegrationTest {
+class MavenBuildSupportIntegrationTest {
 
-    private final MavenClasspathExtractor extractor = new MavenClasspathExtractor();
+    private final MavenBuildSupport extractor = new MavenBuildSupport();
 
-    /**
-     * The project root where mvnw/mvnw.cmd lives.
-     * Resolved by walking up from the test class location.
-     */
     private static Path projectRoot;
 
     private static final ProgressMonitor NO_OP_PROGRESS = NoOpProgressMonitor.INSTANCE;
 
     @BeforeAll
     static void findProjectRoot() {
-        // Walk up from the current working directory to find mvnw
         Path dir = Path.of("").toAbsolutePath();
         while (dir != null) {
             if (Files.exists(dir.resolve("mvnw")) || Files.exists(dir.resolve("mvnw.cmd"))) {
@@ -89,20 +85,13 @@ class MavenClasspathExtractorIntegrationTest {
         }
     }
 
-    /**
-     * Copies the project's Maven wrapper ({@code mvnw}, {@code mvnw.cmd}, {@code .mvn/})
-     * into the target workspace so that {@link MavenClasspathExtractor#findMavenExecutable}
-     * picks it up automatically.
-     */
     private void installMavenWrapper(Path workspace) throws IOException {
-        // Copy mvnw / mvnw.cmd
         for (String name : new String[]{"mvnw", "mvnw.cmd"}) {
             Path src = projectRoot.resolve(name);
             if (Files.exists(src)) {
                 Files.copy(src, workspace.resolve(name), StandardCopyOption.COPY_ATTRIBUTES);
             }
         }
-        // Copy .mvn directory (contains wrapper descriptor and wrapper JAR)
         Path mvnDir = projectRoot.resolve(".mvn");
         if (Files.isDirectory(mvnDir)) {
             Files.walk(mvnDir).forEach(source -> {
@@ -162,7 +151,6 @@ class MavenClasspathExtractorIntegrationTest {
     void extractMultiModuleWithReactorDeps(@TempDir Path workspace) throws Exception {
         installMavenWrapper(workspace);
 
-        // Root POM (reactor)
         Files.writeString(workspace.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -180,7 +168,6 @@ class MavenClasspathExtractorIntegrationTest {
                 </project>
                 """);
 
-        // Core module
         Path coreDir = Files.createDirectory(workspace.resolve("core"));
         Files.writeString(coreDir.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -198,7 +185,6 @@ class MavenClasspathExtractorIntegrationTest {
                 """);
         Files.createDirectories(coreDir.resolve("src/main/java"));
 
-        // App module depends on core (reactor module)
         Path appDir = Files.createDirectory(workspace.resolve("app"));
         Files.writeString(appDir.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -223,7 +209,6 @@ class MavenClasspathExtractorIntegrationTest {
                 """);
         Files.createDirectories(appDir.resolve("src/main/java"));
 
-        // Extract for the app module — core is a reactor dep, should skip Maven
         ClasspathInfo info = extractor.extract(workspace, appDir, NO_OP_PROGRESS);
 
         assertNotNull(info);
@@ -326,7 +311,6 @@ class MavenClasspathExtractorIntegrationTest {
                         .anyMatch(jar -> jar.contains("commons-lang3-3.14.0.jar")),
                 "Should resolve version from parent property: " + info.classpathJars());
 
-        // Both child and parent POM should be tracked in buildFiles
         assertTrue(info.buildFiles().size() >= 2,
                 "Should track at least child + parent POMs: " + info.buildFiles());
     }
@@ -335,7 +319,6 @@ class MavenClasspathExtractorIntegrationTest {
     void extractWithSiblingParentPom(@TempDir Path workspace) throws Exception {
         installMavenWrapper(workspace);
 
-        // Root POM
         Files.writeString(workspace.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -353,7 +336,6 @@ class MavenClasspathExtractorIntegrationTest {
                 </project>
                 """);
 
-        // BOM (sibling parent with properties)
         Path bomDir = Files.createDirectory(workspace.resolve("bom"));
         Files.writeString(bomDir.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -374,7 +356,6 @@ class MavenClasspathExtractorIntegrationTest {
                 </project>
                 """);
 
-        // App depends on BOM as parent (sibling relativePath)
         Path appDir = Files.createDirectory(workspace.resolve("app"));
         Files.writeString(appDir.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -403,7 +384,6 @@ class MavenClasspathExtractorIntegrationTest {
         ClasspathInfo info = extractor.extract(workspace, appDir, NO_OP_PROGRESS);
 
         assertNotNull(info);
-        // buildFiles should include app/pom.xml, bom/pom.xml, and root/pom.xml
         assertTrue(info.buildFiles().size() >= 3,
                 "Should track app, bom, and root POMs: " + info.buildFiles());
         assertTrue(info.buildFiles().stream().anyMatch(f -> f.contains("bom")),
@@ -449,14 +429,12 @@ class MavenClasspathExtractorIntegrationTest {
         ClasspathInfo info = extractor.extract(workspace, workspace, NO_OP_PROGRESS);
 
         assertNotNull(info);
-        // Should include compile deps and test-scoped deps (test scope is included)
         assertTrue(info.classpathJars().stream()
                         .anyMatch(jar -> jar.contains("commons-lang3")),
                 "Should contain commons-lang3");
         assertTrue(info.classpathJars().stream()
                         .anyMatch(jar -> jar.contains("gson")),
                 "Should contain gson");
-        // Source roots
         assertTrue(info.sourceRoots().contains("src/main/java"));
         assertTrue(info.sourceRoots().contains("src/test/java"));
     }
@@ -482,17 +460,14 @@ class MavenClasspathExtractorIntegrationTest {
 
         assertNotNull(info);
         assertEquals("no-deps", info.moduleName());
-        assertTrue(info.classpathJars().isEmpty(), "No dependencies → no JARs");
+        assertTrue(info.classpathJars().isEmpty(), "No dependencies -> no JARs");
         assertTrue(info.sourceRoots().contains("src/main/java"));
     }
-
-    // ---- dependencyManagement with BOM import ----
 
     @Test
     void extractWithDependencyManagementVersion(@TempDir Path workspace) throws Exception {
         installMavenWrapper(workspace);
 
-        // Parent defines dependencyManagement
         Files.writeString(workspace.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -518,7 +493,6 @@ class MavenClasspathExtractorIntegrationTest {
                 </project>
                 """);
 
-        // Child declares dep WITHOUT version — inherited from parent dependencyManagement
         Path childDir = Files.createDirectory(workspace.resolve("child"));
         Files.writeString(childDir.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -555,7 +529,6 @@ class MavenClasspathExtractorIntegrationTest {
     void extractWithMavenProfile(@TempDir Path workspace) throws Exception {
         installMavenWrapper(workspace);
 
-        // Project with a profile that adds a dependency
         Files.writeString(workspace.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -576,7 +549,6 @@ class MavenClasspathExtractorIntegrationTest {
                 """);
         Files.createDirectories(workspace.resolve("src/main/java"));
 
-        // Strategy 1 or 2 should resolve this via Maven (not SAX)
         ClasspathInfo info = extractor.extract(workspace, workspace, NO_OP_PROGRESS);
 
         assertNotNull(info);
@@ -585,13 +557,10 @@ class MavenClasspathExtractorIntegrationTest {
                 "Should contain commons-lang3: " + info.classpathJars());
     }
 
-    // ---- Strategy tracking (verify strategy selection) ----
-
     @Test
     void extractTracksStrategyUsed(@TempDir Path workspace) throws Exception {
         installMavenWrapper(workspace);
 
-        // Simple project — strategy 1 should succeed on a machine with ~/.m2 populated
         Files.writeString(workspace.resolve("pom.xml"), """
                 <project xmlns="http://maven.apache.org/POM/4.0.0"
                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -612,7 +581,6 @@ class MavenClasspathExtractorIntegrationTest {
                 """);
         Files.createDirectories(workspace.resolve("src/main/java"));
 
-        // Track which progress messages were reported
         List<String> progressMessages = new ArrayList<>();
         ProgressMonitor trackingMonitor = new NoOpProgressMonitor() {
             @Override public void reportProgress(String message) { progressMessages.add(message); }
@@ -623,12 +591,9 @@ class MavenClasspathExtractorIntegrationTest {
         assertNotNull(info);
         assertTrue(info.classpathJars().stream().anyMatch(jar -> jar.contains("gson")),
                 "Should contain gson");
-        // At least one strategy should have reported completion
         assertTrue(progressMessages.stream().anyMatch(m -> m.contains("Classpath resolved")),
                 "Should report classpath resolution: " + progressMessages);
     }
-
-    // ---- findMavenExecutable ----
 
     @Test
     void findMavenExecutablePrefersWrapper(@TempDir Path workspace) throws IOException {
@@ -643,14 +608,11 @@ class MavenClasspathExtractorIntegrationTest {
 
     @Test
     void findMavenExecutableFallsBackToSystem(@TempDir Path workspace) {
-        // No wrapper installed → falls back to system
         Path found = extractor.findMavenExecutable(workspace);
 
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
         assertEquals(Path.of(isWindows ? "mvn.cmd" : "mvn"), found);
     }
-
-    // ---- canHandle ----
 
     @Test
     void canHandleDetectsMavenProject(@TempDir Path workspace) throws IOException {

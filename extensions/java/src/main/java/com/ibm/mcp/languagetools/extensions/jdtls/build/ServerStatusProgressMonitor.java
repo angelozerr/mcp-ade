@@ -11,7 +11,7 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.jdtls.build;
 
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.progress.AbstractProgressMonitor;
@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
  * Progress monitor that bridges to {@link LspServer#setStatusMessage(String)}
  * and optionally traces messages via {@link TraceCollector}.
  *
- * <p>Used during fast mode classpath extraction to make Maven progress
+ * <p>Used during build support classpath extraction to make progress
  * visible in the admin UI and in server traces.</p>
  */
 public class ServerStatusProgressMonitor extends AbstractProgressMonitor {

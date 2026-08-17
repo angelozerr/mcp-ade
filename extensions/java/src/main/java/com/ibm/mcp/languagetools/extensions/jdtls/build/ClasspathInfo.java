@@ -11,7 +11,7 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.jdtls.build;
 
 import java.util.List;
 

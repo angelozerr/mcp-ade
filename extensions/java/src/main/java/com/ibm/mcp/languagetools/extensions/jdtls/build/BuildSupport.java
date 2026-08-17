@@ -11,22 +11,23 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.jdtls.build;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 
 /**
- * Extracts classpath information from a build tool (Maven, Gradle, etc.)
- * without running a full project import.
+ * Provides build support for a specific build tool (Maven, Gradle, etc.),
+ * extracting classpath information without running a full project import.
  */
-public interface ClasspathExtractor {
+public interface BuildSupport {
 
     /**
-     * Returns whether this extractor can handle the given workspace root
-     * (e.g., Maven extractor checks for pom.xml, Gradle checks for build.gradle).
+     * Returns whether this build support can handle the given workspace root
+     * (e.g., Maven checks for pom.xml, Gradle checks for build.gradle).
      */
     boolean canHandle(Path workspaceRoot);
 
@@ -37,10 +38,24 @@ public interface ClasspathExtractor {
      * @param moduleDir     the directory of the specific module to extract classpath for
      * @param progress      progress monitor for reporting download/resolution progress
      * @return the extracted classpath information
-     * @throws ClasspathExtractionException if extraction fails
+     * @throws BuildSupportException if extraction fails
      */
     ClasspathInfo extract(Path workspaceRoot, Path moduleDir, ProgressMonitor progress)
-            throws ClasspathExtractionException;
+            throws BuildSupportException;
+
+    /**
+     * Discovers sub-module names declared in the build file of the given directory.
+     *
+     * <p>For Maven, reads {@code <modules>} from pom.xml.
+     * For Gradle, may read {@code include} from settings.gradle.</p>
+     *
+     * @param parentDir the directory containing the parent build file
+     * @return the list of declared sub-module names (relative directory names),
+     *         or an empty list if none are declared or the build file cannot be parsed
+     */
+    default List<String> discoverSubModules(Path parentDir) {
+        return List.of();
+    }
 
     /**
      * Removes debug-related JVM options from the process environment to prevent

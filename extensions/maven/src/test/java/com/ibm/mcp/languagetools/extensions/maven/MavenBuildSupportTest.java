@@ -11,10 +11,10 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.maven;
 
-import com.ibm.mcp.languagetools.extensions.jdtls.classpath.MavenClasspathExtractor.MavenDependency;
-import com.ibm.mcp.languagetools.extensions.jdtls.classpath.MavenClasspathExtractor.PomInfo;
+import com.ibm.mcp.languagetools.extensions.maven.PomParser.MavenDependency;
+import com.ibm.mcp.languagetools.extensions.maven.PomParser.PomInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -29,9 +29,9 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MavenClasspathExtractorTest {
+class MavenBuildSupportTest {
 
-    private final MavenClasspathExtractor extractor = new MavenClasspathExtractor();
+    private final MavenBuildSupport extractor = new MavenBuildSupport();
 
     // ---- parsePomSax ----
 
@@ -264,7 +264,6 @@ class MavenClasspathExtractorTest {
 
     @Test
     void collectPropertiesFromParentChain(@TempDir Path workspace) throws IOException {
-        // workspace/pom.xml (root)
         Files.writeString(workspace.resolve("pom.xml"), """
                 <project>
                     <groupId>com.example</groupId>
@@ -280,7 +279,6 @@ class MavenClasspathExtractorTest {
                 </project>
                 """);
 
-        // workspace/parent/pom.xml (intermediate parent)
         Path parentDir = Files.createDirectory(workspace.resolve("parent"));
         Files.writeString(parentDir.resolve("pom.xml"), """
                 <project>
@@ -300,7 +298,6 @@ class MavenClasspathExtractorTest {
                 </project>
                 """);
 
-        // workspace/parent/child/pom.xml
         Path childDir = Files.createDirectory(parentDir.resolve("child"));
         Files.writeString(childDir.resolve("pom.xml"), """
                 <project>
@@ -375,7 +372,6 @@ class MavenClasspathExtractorTest {
                 </project>
                 """);
 
-        // bom/pom.xml is a sibling, not an ancestor directory
         Path bomDir = Files.createDirectory(workspace.resolve("bom"));
         Files.writeString(bomDir.resolve("pom.xml"), """
                 <project>
@@ -441,7 +437,6 @@ class MavenClasspathExtractorTest {
 
         Set<String> buildFiles = new LinkedHashSet<>();
         Map<String, String> props = new HashMap<>();
-        // Call twice to verify dedup
         extractor.collectPropertiesFromHierarchy(childDir.resolve("pom.xml"), workspace, props, buildFiles);
         extractor.collectPropertiesFromHierarchy(childDir.resolve("pom.xml"), workspace, props, buildFiles);
 
@@ -586,37 +581,6 @@ class MavenClasspathExtractorTest {
         assertTrue(modules.containsKey("deep"));
     }
 
-    // ---- detectSourceRoots ----
-
-    @Test
-    void detectSourceRootsStandardLayout(@TempDir Path moduleDir) throws IOException {
-        Files.createDirectories(moduleDir.resolve("src/main/java"));
-        Files.createDirectories(moduleDir.resolve("src/main/resources"));
-        Files.createDirectories(moduleDir.resolve("src/test/java"));
-
-        List<String> roots = extractor.detectSourceRoots(moduleDir);
-
-        assertTrue(roots.contains("src/main/java"));
-        assertTrue(roots.contains("src/main/resources"));
-        assertTrue(roots.contains("src/test/java"));
-    }
-
-    @Test
-    void detectSourceRootsFallbackToSrc(@TempDir Path moduleDir) throws IOException {
-        Files.createDirectories(moduleDir.resolve("src"));
-
-        List<String> roots = extractor.detectSourceRoots(moduleDir);
-
-        assertEquals(List.of("src"), roots);
-    }
-
-    @Test
-    void detectSourceRootsEmptyModule(@TempDir Path moduleDir) {
-        List<String> roots = extractor.detectSourceRoots(moduleDir);
-
-        assertTrue(roots.isEmpty());
-    }
-
     // ---- resolveJarInLocalRepo ----
 
     @Test
@@ -663,7 +627,6 @@ class MavenClasspathExtractorTest {
 
     @Test
     void collectPropertiesCycleDetection(@TempDir Path workspace) throws IOException {
-        // POM points to itself via relativePath
         Path pomFile = workspace.resolve("pom.xml");
         Files.writeString(pomFile, """
                 <project>
@@ -682,7 +645,6 @@ class MavenClasspathExtractorTest {
 
         Map<String, String> properties = new HashMap<>();
         Set<String> buildFiles = new LinkedHashSet<>();
-        // Should not stack overflow
         extractor.collectPropertiesFromHierarchy(pomFile, workspace, properties, buildFiles);
 
         assertEquals("value", properties.get("my.prop"));
@@ -691,7 +653,6 @@ class MavenClasspathExtractorTest {
 
     @Test
     void collectPropertiesMutualCycleDetection(@TempDir Path workspace) throws IOException {
-        // A points to B, B points to A
         Path dirA = Files.createDirectory(workspace.resolve("a"));
         Path dirB = Files.createDirectory(workspace.resolve("b"));
         Files.writeString(dirA.resolve("pom.xml"), """
@@ -719,7 +680,6 @@ class MavenClasspathExtractorTest {
 
         Map<String, String> properties = new HashMap<>();
         Set<String> buildFiles = new LinkedHashSet<>();
-        // Should not stack overflow
         extractor.collectPropertiesFromHierarchy(
                 dirA.resolve("pom.xml"), workspace, properties, buildFiles);
 
@@ -762,7 +722,6 @@ class MavenClasspathExtractorTest {
 
     @Test
     void parseDependenciesFallsBackToManagedVersion(@TempDir Path workspace) throws IOException {
-        // Parent declares dependencyManagement
         Files.writeString(workspace.resolve("pom.xml"), """
                 <project>
                     <groupId>com.example</groupId>
@@ -781,7 +740,6 @@ class MavenClasspathExtractorTest {
                 </project>
                 """);
 
-        // Child declares dep WITHOUT version
         Path childDir = Files.createDirectory(workspace.resolve("child"));
         Files.writeString(childDir.resolve("pom.xml"), """
                 <project>

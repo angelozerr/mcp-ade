@@ -14,8 +14,8 @@
 package com.ibm.mcp.languagetools.extensions.jdtls.lsp;
 
 import com.ibm.mcp.languagetools.ContributionManager;
-import com.ibm.mcp.languagetools.extensions.jdtls.classpath.FastModeProjectManager;
-import com.ibm.mcp.languagetools.extensions.jdtls.classpath.ServerStatusProgressMonitor;
+import com.ibm.mcp.languagetools.extensions.jdtls.build.BuildSupportManager;
+import com.ibm.mcp.languagetools.extensions.jdtls.build.ServerStatusProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.extensions.jdtls.tools.JdtlsCommands;
 import com.ibm.mcp.languagetools.installer.InstallerEvent;
@@ -62,11 +62,12 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         UriUtils.registerSchemeCompactor("jdt", JdtLsServer::compactJdtUri);
     }
 
-    public static final String IMPORT_MODE_FAST = "fast";
-    public static final String IMPORT_MODE_FAST_CACHE = "fast+cache";
-    public static final String IMPORT_MODE_FULL = "full";
+    public static final String BUILD_SUPPORT_NATIVE = "native";
+    public static final String BUILD_SUPPORT_FAST = "fast";
+    public static final String BUILD_SUPPORT_BSP = "bsp";
 
-    private volatile String importMode;
+    private volatile String mavenBuildSupport;
+    private volatile String gradleBuildSupport;
 
     public JdtLsServer(LspServerConfig config, Workspace workspace) {
         super(config, workspace);
@@ -104,15 +105,23 @@ public class JdtLsServer extends LspServer implements InstallerListener {
     }
 
     /**
-     * Returns whether this server is running in fast import mode
-     * (M2E/Gradle import disabled, classpath extracted directly from build tool).
+     * Returns whether this server is running in a non-native build support mode
+     * for at least one build tool (classpath extracted directly or via BSP, bypassing native importers).
      */
     public boolean isFastMode() {
-        return IMPORT_MODE_FAST.equals(importMode) || IMPORT_MODE_FAST_CACHE.equals(importMode);
+        return isMavenFastMode() || isGradleFastMode() || isGradleBspMode();
     }
 
-    public boolean isCacheEnabled() {
-        return IMPORT_MODE_FAST_CACHE.equals(importMode);
+    public boolean isMavenFastMode() {
+        return BUILD_SUPPORT_FAST.equals(mavenBuildSupport);
+    }
+
+    public boolean isGradleFastMode() {
+        return BUILD_SUPPORT_FAST.equals(gradleBuildSupport);
+    }
+
+    public boolean isGradleBspMode() {
+        return BUILD_SUPPORT_BSP.equals(gradleBuildSupport);
     }
 
     @Override
@@ -176,8 +185,8 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             options.putAll(config.getInitializationOptions());
         }
 
-        // Determine import mode from application settings (configured via admin UI)
-        resolveImportMode();
+        // Resolve per-build-tool settings (configured via admin UI)
+        resolveBuildSupport();
 
         // Add required JDT.LS settings if not already present
         if (!options.containsKey("settings")) {
@@ -187,7 +196,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             options.put("settings", settings);
         }
 
-        // In fast mode, disable M2E/Gradle import and auto-build
+        // In fast mode, selectively disable native importers and auto-build
         if (isFastMode()) {
             @SuppressWarnings("unchecked")
             Map<String, Object> settings = (Map<String, Object>) options.get("settings");
@@ -198,15 +207,11 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                 settings.put("java", javaSettings);
             }
             javaSettings.put("import", Map.of(
-                    "maven", Map.of("enabled", false),
-                    "gradle", Map.of("enabled", false)
+                    "maven", Map.of("enabled", !isMavenFastMode()),
+                    "gradle", Map.of("enabled", !isGradleFastMode() && !isGradleBspMode())
             ));
-            // Always disable autobuild in fast mode to prevent JDT.LS from building
-            // ALL projects at startup (causes diagnostic flood + hang on large projects
-            // like Quarkus). Building is deferred to on-demand diagnostic tools like
-            // diagnoseAndFix; search/navigation tools only need the JDT index.
             javaSettings.put("autobuild", Map.of("enabled", false));
-            LOG.info("Fast import mode enabled: M2E/Gradle import disabled, autobuild=false");
+            LOG.infof("Build support: maven=%s, gradle=%s", mavenBuildSupport, gradleBuildSupport);
         }
 
         // Add extended client capabilities
@@ -287,13 +292,13 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             return CompletableFuture.completedFuture(null);
         }
         try {
-            FastModeProjectManager fmpm = CDI.current().select(FastModeProjectManager.class).get();
+            BuildSupportManager fmpm = CDI.current().select(BuildSupportManager.class).get();
             Path workspaceRoot = getWorkspace().getRootPath();
             ServerStatusProgressMonitor progressMonitor = new ServerStatusProgressMonitor(this);
             return fmpm.ensureModuleSetup(workspaceRoot, fileUri, this, progressMonitor)
                     .whenComplete((v, ex) -> progressMonitor.setComplete());
         } catch (Exception e) {
-            LOG.debugf(e, "CDI not available for FastModeProjectManager lookup");
+            LOG.debugf(e, "CDI not available for BuildSupportManager lookup");
             return CompletableFuture.completedFuture(null);
         }
     }
@@ -401,7 +406,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
 
     @Override
     public CompletableFuture<Void> initialize() {
-        resolveImportMode();
+        resolveBuildSupport();
         return super.initialize()
                 .thenRun(() -> {
                     setReady(false);
@@ -410,18 +415,15 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                 });
     }
 
-    private void resolveImportMode() {
-        if (importMode != null) {
+    private void resolveBuildSupport() {
+        if (mavenBuildSupport != null) {
             return;
         }
-        var resolved = getWorkspace().getWorkspaceConfiguration()
-                .resolveString("lsp.jdtls.settings.java.import.mode", IMPORT_MODE_FULL);
-        String mode = resolved.value();
-        if (IMPORT_MODE_FAST.equals(mode) || IMPORT_MODE_FAST_CACHE.equals(mode)) {
-            importMode = mode;
-        } else {
-            importMode = IMPORT_MODE_FULL;
-        }
+        var config = getWorkspace().getWorkspaceConfiguration();
+        mavenBuildSupport = config.resolveString(
+                "lsp.jdtls.settings.maven.buildSupport", BUILD_SUPPORT_NATIVE).value();
+        gradleBuildSupport = config.resolveString(
+                "lsp.jdtls.settings.gradle.buildSupport", BUILD_SUPPORT_NATIVE).value();
     }
 
     /**

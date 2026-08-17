@@ -11,7 +11,7 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.gradle;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -22,9 +22,9 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class GradleClasspathExtractorTest {
+class GradleBuildSupportTest {
 
-    private final GradleClasspathExtractor extractor = new GradleClasspathExtractor();
+    private final GradleBuildSupport extractor = new GradleBuildSupport();
 
     // ---- canHandle ----
 

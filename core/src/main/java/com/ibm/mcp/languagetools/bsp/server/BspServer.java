@@ -18,6 +18,7 @@ import ch.epfl.scala.bsp4j.BuildClientCapabilities;
 import ch.epfl.scala.bsp4j.BuildServer;
 import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
+import ch.epfl.scala.bsp4j.JvmBuildServer;
 import ch.epfl.scala.bsp4j.LogMessageParams;
 import ch.epfl.scala.bsp4j.PrintParams;
 import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
@@ -55,7 +56,9 @@ public class BspServer extends ServerBase<BspServerConfig> {
 
     private static final Logger LOG = Logger.getLogger(BspServer.class);
 
-    private BuildServer buildServer;
+    private interface FullBuildServer extends BuildServer, JvmBuildServer {}
+
+    private FullBuildServer buildServer;
     private Future<?> listeningFuture;
 
     public BspServer(BspServerConfig config, Workspace workspace) {
@@ -104,9 +107,9 @@ public class BspServer extends ServerBase<BspServerConfig> {
                             try {
                                 Process process = startProcess();
 
-                                Launcher<BuildServer> launcher = new Launcher.Builder<BuildServer>()
+                                Launcher<FullBuildServer> launcher = new Launcher.Builder<FullBuildServer>()
                                         .setLocalService(new BspClientImpl())
-                                        .setRemoteInterface(BuildServer.class)
+                                        .setRemoteInterface(FullBuildServer.class)
                                         .setInput(process.getInputStream())
                                         .setOutput(process.getOutputStream())
                                         .setExecutorService(getExecutorService())
@@ -220,6 +223,15 @@ public class BspServer extends ServerBase<BspServerConfig> {
      * @return the remote BuildServer proxy, or null if not connected
      */
     public BuildServer getBuildServer() {
+        return buildServer;
+    }
+
+    /**
+     * Returns the JVM-specific BSP server proxy for JVM build target queries.
+     *
+     * @return the remote JvmBuildServer proxy, or null if not connected
+     */
+    public JvmBuildServer getJvmBuildServer() {
         return buildServer;
     }
 

@@ -375,11 +375,15 @@ function handleServerStatusChanged(event) {
     console.log('Server status changed:', event);
 
     const workspace = state.workspaces.find(w => w.rootUri === event.workspaceUri);
-    if (!workspace) return;
+    if (!workspace) {
+        console.warn('Badge: workspace not found. event.workspaceUri=', event.workspaceUri, 'state.workspaces rootUris=', state.workspaces.map(w => w.rootUri));
+        return;
+    }
 
     const serverType = event.serverType || 'LSP';
     const servers = serverType === 'BSP' ? workspace.bspServers : workspace.lspServers;
     if (!servers) {
+        console.warn('Badge: servers array is null for type', serverType);
         if (state.selectedWorkspace === event.workspaceUri) {
             loadServers(state.selectedWorkspace);
         }
@@ -388,6 +392,7 @@ function handleServerStatusChanged(event) {
 
     const changedServer = servers.find(s => s.id === event.serverId);
     if (!changedServer) {
+        console.warn('Badge: server not found:', event.serverId, 'in', servers.map(s => s.id));
         if (state.selectedWorkspace === event.workspaceUri) {
             loadServers(state.selectedWorkspace);
         }
@@ -418,11 +423,14 @@ function handleServerStatusChanged(event) {
     }
 
     if (state.selectedWorkspace === event.workspaceUri) {
+        console.log('Badge: updating badge for', event.serverId, 'status=', changedServer.status);
         updateServerStatusBadge(event.serverId, changedServer);
 
         if (state.selectedServer && state.selectedServer.id === event.serverId) {
             updateDetailPanelStatusBadge(changedServer);
         }
+    } else {
+        console.warn('Badge: workspace mismatch. selectedWorkspace=', state.selectedWorkspace, 'event.workspaceUri=', event.workspaceUri);
     }
 }
 
@@ -447,9 +455,10 @@ function handleServerEnabledChanged(event) {
         }
     }
 
-    const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`) ||
-                          document.querySelector(`.server-item[data-dap-server="${serverId}"]`);
-    if (serverElement) {
+    const serverElements = document.querySelectorAll(
+        `.server-item[data-server-id="${serverId}"], .server-item[data-dap-server="${serverId}"]`
+    );
+    for (const serverElement of serverElements) {
         if (enabled) {
             serverElement.classList.remove('server-disabled');
         } else {
@@ -464,9 +473,18 @@ function handleServerEnabledChanged(event) {
 
 // ========== Status badge updates ==========
 
+function findWorkspaceServerElement(serverId) {
+    const container = document.getElementById('servers-list');
+    if (!container) return null;
+    return container.querySelector(`.server-item[data-server-id="${serverId}"]`);
+}
+
 function updateServerStatusBadge(serverId, server) {
-    const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`);
-    if (!serverElement) return;
+    const serverElement = findWorkspaceServerElement(serverId);
+    if (!serverElement) {
+        console.warn('Badge: serverElement not found for', serverId);
+        return;
+    }
 
     const statusBadgeContainer = serverElement.querySelector('.server-status-badge-container');
     if (statusBadgeContainer) {

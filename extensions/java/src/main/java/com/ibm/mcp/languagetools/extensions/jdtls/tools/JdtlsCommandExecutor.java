@@ -15,8 +15,8 @@ package com.ibm.mcp.languagetools.extensions.jdtls.tools;
 
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.utils.UriUtils;
-import com.ibm.mcp.languagetools.extensions.jdtls.classpath.FastModeProjectManager;
-import com.ibm.mcp.languagetools.extensions.jdtls.classpath.ServerStatusProgressMonitor;
+import com.ibm.mcp.languagetools.extensions.jdtls.build.BuildSupportManager;
+import com.ibm.mcp.languagetools.extensions.jdtls.build.ServerStatusProgressMonitor;
 import com.ibm.mcp.languagetools.extensions.jdtls.lsp.JdtLsServer;
 import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
@@ -58,7 +58,7 @@ public class JdtlsCommandExecutor {
     Application application;
 
     @Inject
-    FastModeProjectManager fastModeProjectManager;
+    BuildSupportManager buildSupportManager;
 
     @Inject
     OperationTracker operationTracker;
@@ -118,15 +118,16 @@ public class JdtlsCommandExecutor {
                 .thenCompose(jdtls -> {
                     OperationEntry commandChild = serverEntry.addChild(commandId);
 
-                    boolean fastMode = jdtls instanceof JdtLsServer j && j.isFastMode();
-                    ServerStatusProgressMonitor progressMonitor = fastMode
+                    boolean nonNativeMode = jdtls instanceof JdtLsServer j && j.isFastMode();
+                    boolean bspMode = jdtls instanceof JdtLsServer j2 && j2.isGradleBspMode();
+                    ServerStatusProgressMonitor progressMonitor = nonNativeMode
                             ? new ServerStatusProgressMonitor(jdtls) : null;
 
                     CompletableFuture<Void> setupFuture;
-                    if (fastMode) {
+                    if (nonNativeMode) {
                         String targetFile = extractFileUri(arguments, fileUri);
                         Path workspaceRoot = workspace.getRootPath();
-                        setupFuture = fastModeProjectManager.ensureModuleSetup(
+                        setupFuture = buildSupportManager.ensureModuleSetup(
                                 workspaceRoot, targetFile, jdtls, progressMonitor);
                     } else {
                         setupFuture = CompletableFuture.completedFuture(null);
@@ -144,18 +145,18 @@ public class JdtlsCommandExecutor {
                                         : List.of(arguments);
                                 CompletableFuture<Object> commandFuture =
                                         jdtls.executeCommand(commandId, args);
-                                if (!fastMode) {
+                                if (!nonNativeMode) {
                                     return commandFuture.thenApply(r -> {
                                         commandChild.complete();
                                         return r;
                                     });
                                 }
                                 CompletableFuture<Boolean> indexingFuture =
-                                        fastModeProjectManager.isIndexing(jdtls);
+                                        buildSupportManager.isIndexing(jdtls);
                                 return commandFuture.thenCombine(indexingFuture,
                                         (r, idx) -> {
                                             commandChild.complete();
-                                            return enrichResultWithMetadata(r, idx);
+                                            return enrichResultWithMetadata(r, idx, bspMode);
                                         });
                             });
                 });
@@ -184,12 +185,12 @@ public class JdtlsCommandExecutor {
         return null;
     }
 
-    private Object enrichResultWithMetadata(Object result, boolean indexing) {
+    private Object enrichResultWithMetadata(Object result, boolean indexing, boolean bspMode) {
         if (!indexing) {
             return result;
         }
         Map<String, Object> enriched = new LinkedHashMap<>();
-        enriched.put("importMode", "fast");
+        enriched.put("buildSupportMode", bspMode ? "bsp" : "fast");
         enriched.put("indexingStatus", "in_progress");
         enriched.put("indexingNote",
                 "Indexing is still in progress. Search-based results (find references, "
@@ -217,14 +218,14 @@ public class JdtlsCommandExecutor {
                 .thenCompose(jdtls -> {
                     OperationEntry commandChild = serverEntry.addChild(commandId + " (batch)");
 
-                    boolean fastMode = jdtls instanceof JdtLsServer j && j.isFastMode();
-                    ServerStatusProgressMonitor progressMonitor = fastMode
+                    boolean nonNativeMode = jdtls instanceof JdtLsServer j && j.isFastMode();
+                    ServerStatusProgressMonitor progressMonitor = nonNativeMode
                             ? new ServerStatusProgressMonitor(jdtls) : null;
 
                     CompletableFuture<Void> setupFuture;
-                    if (fastMode && !fileUris.isEmpty()) {
+                    if (nonNativeMode && !fileUris.isEmpty()) {
                         Path workspaceRoot = workspace.getRootPath();
-                        setupFuture = fastModeProjectManager.ensureModuleSetup(
+                        setupFuture = buildSupportManager.ensureModuleSetup(
                                 workspaceRoot, fileUris.get(0), jdtls, progressMonitor);
                     } else {
                         setupFuture = CompletableFuture.completedFuture(null);

@@ -11,7 +11,7 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.gradle;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -25,9 +25,10 @@ import java.util.Arrays;
 import java.util.List;
 import org.jboss.logging.Logger;
 
+import com.ibm.mcp.languagetools.extensions.jdtls.build.AbstractBuildSupport;
+import com.ibm.mcp.languagetools.extensions.jdtls.build.BuildSupportException;
+import com.ibm.mcp.languagetools.extensions.jdtls.build.ClasspathInfo;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
-
-import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * Extracts classpath from Gradle projects using a lightweight init script.
@@ -35,10 +36,9 @@ import jakarta.enterprise.context.ApplicationScoped;
  * <p>Prioritizes the Gradle wrapper ({@code gradlew}/{@code gradlew.bat}) if present
  * in the project root, falling back to system {@code gradle} on PATH.</p>
  */
-@ApplicationScoped
-public class GradleClasspathExtractor extends AbstractClasspathExtractor {
+public class GradleBuildSupport extends AbstractBuildSupport {
 
-    private static final Logger LOG = Logger.getLogger(GradleClasspathExtractor.class);
+    private static final Logger LOG = Logger.getLogger(GradleBuildSupport.class);
 
     private static final String CLASSPATH_PREFIX = "MCP_CLASSPATH:";
     private static final String SOURCES_PREFIX = "MCP_SOURCES:";
@@ -85,11 +85,11 @@ public class GradleClasspathExtractor extends AbstractClasspathExtractor {
      * @param moduleDir     the directory of the specific subproject to extract classpath for
      * @param progress      progress monitor for reporting download progress
      * @return the extracted classpath information
-     * @throws ClasspathExtractionException if the Gradle task fails or an I/O error occurs
+     * @throws BuildSupportException if the Gradle task fails or an I/O error occurs
      */
     @Override
     public ClasspathInfo extract(Path workspaceRoot, Path moduleDir, ProgressMonitor progress)
-            throws ClasspathExtractionException {
+            throws BuildSupportException {
         String moduleName = moduleDir.getFileName().toString();
         Path gradleExecutable = findBuildToolExecutable(workspaceRoot);
         LOG.infof("Using Gradle executable: %s", gradleExecutable);
@@ -103,7 +103,7 @@ public class GradleClasspathExtractor extends AbstractClasspathExtractor {
                 Files.deleteIfExists(initScript);
             }
         } catch (IOException e) {
-            throw new ClasspathExtractionException(
+            throw new BuildSupportException(
                     "Failed to extract Gradle classpath for " + moduleName, e);
         }
     }
@@ -155,9 +155,6 @@ public class GradleClasspathExtractor extends AbstractClasspathExtractor {
                 """;
     }
 
-    /**
-     * Alias for {@link #findBuildToolExecutable(Path)} — kept for test readability.
-     */
     Path findGradleExecutable(Path projectRoot) {
         return findBuildToolExecutable(projectRoot);
     }
@@ -165,7 +162,7 @@ public class GradleClasspathExtractor extends AbstractClasspathExtractor {
     private ClasspathInfo runGradleTask(Path gradleExecutable, Path workspaceRoot,
                                          Path moduleDir, String moduleName,
                                          Path initScript, ProgressMonitor progress)
-            throws ClasspathExtractionException, IOException {
+            throws BuildSupportException, IOException {
         boolean isSubProject = !workspaceRoot.equals(moduleDir);
 
         List<String> args = new ArrayList<>();
@@ -219,7 +216,7 @@ public class GradleClasspathExtractor extends AbstractClasspathExtractor {
         int exitCode = waitForProcess(process);
 
         if (exitCode != 0) {
-            throw new ClasspathExtractionException(
+            throw new BuildSupportException(
                     "Gradle mcpClasspath task failed with exit code " + exitCode);
         }
 

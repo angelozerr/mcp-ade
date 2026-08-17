@@ -23,17 +23,29 @@
   "applicableSettings": ["java.*"],
   "settings": [
     {
-      "key": "java.import.mode",
-      "label": "Import mode",
-      "description": "Fast: bypass M2E/Gradle, extract classpath directly. Full: standard IDE import with M2E/Gradle.",
+      "key": "maven.buildSupport",
+      "label": "Maven build support",
+      "description": "How Maven projects are handled. Native: M2E import (full IDE support). Fast: direct classpath extraction with cache (faster startup).",
       "type": "enum",
-      "values": ["fast", "fast+cache", "full"],
+      "values": ["native", "fast"],
       "valueLabels": {
-        "fast": "Fast (direct classpath extraction)",
-        "fast+cache": "Fast + Cache (cached classpath, skip Maven on restart)",
-        "full": "Full (M2E/Gradle import)"
+        "native": "Native (M2E import)",
+        "fast": "Fast (direct classpath extraction with cache)"
       },
-      "default": "full"
+      "default": "native"
+    },
+    {
+      "key": "gradle.buildSupport",
+      "label": "Gradle build support",
+      "description": "How Gradle projects are handled. Native: Buildship import (full IDE support). Fast: direct classpath extraction with cache (faster startup). BSP: Build Server Protocol via build-server-for-gradle.",
+      "type": "enum",
+      "values": ["native", "fast", "bsp"],
+      "valueLabels": {
+        "native": "Native (Buildship import)",
+        "fast": "Fast (direct classpath extraction with cache)",
+        "bsp": "BSP (Build Server Protocol)"
+      },
+      "default": "native"
     }
   ]
 }

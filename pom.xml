@@ -63,6 +63,7 @@
         <module>extensions/ansible</module>
         <module>extensions/bazel</module>
         <module>extensions/pascal</module>
+        <module>extensions/maven</module>
         <module>extensions/gradle</module>
         <module>dev</module>
         <module>integration-tests</module>

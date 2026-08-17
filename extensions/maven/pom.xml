@@ -11,11 +11,11 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>gradle-extension</artifactId>
+    <artifactId>maven-extension</artifactId>
     <packaging>jar</packaging>
 
-    <name>Gradle Extension</name>
-    <description>Gradle build support (CLI and BSP) for MCP Language Tools</description>
+    <name>Maven Extension</name>
+    <description>Maven build support for MCP Language Tools</description>
 
     <dependencies>
         <dependency>

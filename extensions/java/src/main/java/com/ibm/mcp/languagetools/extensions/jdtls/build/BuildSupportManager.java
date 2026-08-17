@@ -11,7 +11,7 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.extensions.jdtls.classpath;
+package com.ibm.mcp.languagetools.extensions.jdtls.build;
 
 import java.net.URI;
 import java.nio.file.Files;
@@ -21,15 +21,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.jboss.logging.Logger;
 
-import com.ibm.mcp.languagetools.extensions.jdtls.classpath.ClasspathInfo.ReactorModule;
 import com.ibm.mcp.languagetools.extensions.jdtls.lsp.JdtLsServer;
 import com.ibm.mcp.languagetools.extensions.jdtls.tools.JdtlsCommands;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
@@ -41,7 +43,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 /**
- * Manages lazy project setup in fast mode.
+ * Manages lazy project setup with build support.
  *
  * <p>Tracks which modules have been set up with their extracted classpath.
  * On first tool call targeting a module, extracts the classpath from the
@@ -50,20 +52,21 @@ import jakarta.inject.Inject;
  * JDT source projects.</p>
  */
 @ApplicationScoped
-public class FastModeProjectManager {
+public class BuildSupportManager {
 
-    private static final Logger LOG = Logger.getLogger(FastModeProjectManager.class);
+    private static final Logger LOG = Logger.getLogger(BuildSupportManager.class);
 
     private final ConcurrentHashMap<Path, CompletableFuture<ClasspathInfo>> setupModules =
             new ConcurrentHashMap<>();
 
     private final ExecutorService executor = Executors.newCachedThreadPool(r -> {
-        Thread t = new Thread(r, "fast-mode-classpath");
+        Thread t = new Thread(r, "build-support-classpath");
         t.setDaemon(true);
         return t;
     });
 
     private volatile LspServer currentServer;
+    private final Set<Path> preloadedParents = ConcurrentHashMap.newKeySet();
 
     @PreDestroy
     void shutdown() {
@@ -71,10 +74,19 @@ public class FastModeProjectManager {
     }
 
     @Inject
-    ClasspathExtractorRegistry extractorRegistry;
+    BuildSupportRegistry buildSupportRegistry;
 
     @Inject
     ClasspathCacheManager cacheManager;
+
+    private final List<BspBuildSupport> bspBuildSupports = new ArrayList<>();
+
+    {
+        ServiceLoader<BspBuildSupport> loader = ServiceLoader.load(BspBuildSupport.class);
+        for (BspBuildSupport support : loader) {
+            bspBuildSupports.add(support);
+        }
+    }
 
     /**
      * Ensures the module containing the given file is set up in JDT.LS.
@@ -100,6 +112,7 @@ public class FastModeProjectManager {
                                                       LspServer jdtls, ProgressMonitor progress) {
         if (currentServer != jdtls) {
             setupModules.clear();
+            preloadedParents.clear();
             currentServer = jdtls;
             LOG.info("JDT.LS instance changed, cleared setup modules");
         }
@@ -109,7 +122,18 @@ public class FastModeProjectManager {
             moduleDir = workspaceRoot;
         }
 
-        return setupModule(workspaceRoot, moduleDir, jdtls, progress);
+        CompletableFuture<Void> result = setupModule(workspaceRoot, moduleDir, jdtls, progress);
+
+        Path parentDir = moduleDir.getParent();
+        Path rootNorm = workspaceRoot.toAbsolutePath().normalize();
+        if (parentDir != null && parentDir.toAbsolutePath().normalize().startsWith(rootNorm)
+                && preloadedParents.add(parentDir.toAbsolutePath().normalize())) {
+            final Path wsRoot = workspaceRoot;
+            final Path finalParentDir = parentDir;
+            result.thenRunAsync(() -> preloadSiblingModules(wsRoot, finalParentDir, jdtls), executor);
+        }
+
+        return result;
     }
 
     private CompletableFuture<Void> setupModule(Path workspaceRoot, Path moduleDir,
@@ -126,58 +150,21 @@ public class FastModeProjectManager {
             return prev.thenApply(v -> null);
         }
 
-        boolean cacheEnabled = jdtls instanceof JdtLsServer j && j.isCacheEnabled();
+        boolean cacheEnabled = jdtls instanceof JdtLsServer j && j.isFastMode();
+        boolean bspMode = jdtls instanceof JdtLsServer j2 && j2.isGradleBspMode();
         final Path finalModuleDir = moduleDir;
 
         final long setupStartTime = System.currentTimeMillis();
         final AtomicBoolean loadedFromCache = new AtomicBoolean(false);
-        return CompletableFuture.supplyAsync(() -> {
-            Thread.currentThread().setName("fast-mode-classpath-" + finalModuleDir.getFileName());
-            try {
-                if (cacheEnabled) {
-                    Optional<ClasspathInfo> cached = cacheManager.loadIfValid(workspaceRoot, finalModuleDir);
-                    if (cached.isPresent()) {
-                        loadedFromCache.set(true);
-                        LOG.infof("Using cached classpath for module: %s", cached.get().moduleName());
-                        progress.reportProgress("Using cached classpath for " + cached.get().moduleName());
-                        traceClasspath(jdtls, cached.get());
-                        return cached.get();
-                    }
-                }
 
-                ClasspathExtractor extractor = extractorRegistry.getExtractor(workspaceRoot);
-                if (extractor == null) {
-                    throw new ClasspathExtractionException(
-                            "No build tool found (Maven or Gradle) in " + workspaceRoot);
-                }
+        CompletableFuture<ClasspathInfo> extractionFuture = extractClasspath(
+                workspaceRoot, finalModuleDir, jdtls, progress,
+                cacheEnabled, bspMode, loadedFromCache);
 
-                String moduleLabel = workspaceRoot.relativize(finalModuleDir).toString();
-                LOG.infof("Extracting classpath for module: %s", moduleLabel);
-                progress.reportProgress("Extracting classpath for " + moduleLabel);
-
-                ClasspathInfo info = extractor.extract(workspaceRoot, finalModuleDir, progress);
-                LOG.infof("Classpath extracted: %d source roots, %d libraries, %d reactor deps",
-                        info.sourceRoots().size(), info.classpathJars().size(),
-                        info.reactorModuleDeps().size());
-
-                traceClasspath(jdtls, info);
-
-                if (cacheEnabled) {
-                    cacheManager.save(workspaceRoot, finalModuleDir, info);
-                }
-
-                return info;
-            } catch (ClasspathExtractionException e) {
-                throw new RuntimeException(e);
-            }
-        }, executor).thenCompose(info -> {
-            // Skip project creation for reactor POMs with no source code —
-            // creating a project at the workspace root would "claim" nested
-            // sub-module directories and prevent them from being resolved
-            // to their own projects.
+        return extractionFuture.thenCompose(info -> {
             if (info.sourceRoots().isEmpty() && info.classpathJars().isEmpty()
                     && info.reactorModuleDeps().isEmpty()) {
-                LOG.infof("Skipping project creation for empty reactor POM: %s", info.moduleName());
+                LOG.infof("Skipping project creation for empty module: %s", info.moduleName());
                 setup.complete(info);
                 return CompletableFuture.completedFuture((Void) null);
             }
@@ -186,9 +173,8 @@ public class FastModeProjectManager {
                 progress.reportProgress("Classpath loaded from cache for " + info.moduleName() + ", setting up project...");
             }
 
-            // Set up reactor module dependencies as source projects
             List<CompletableFuture<Void>> reactorSetups = new ArrayList<>();
-            for (ReactorModule reactorDep : info.reactorModuleDeps()) {
+            for (ClasspathInfo.ReactorModule reactorDep : info.reactorModuleDeps()) {
                 Path reactorDir = Path.of(reactorDep.modulePath());
                 reactorSetups.add(setupReactorModule(reactorDir, jdtls, progress));
             }
@@ -201,7 +187,7 @@ public class FastModeProjectManager {
                         params.put("sourceRoots", info.sourceRoots());
                         params.put("classpathJars", info.classpathJars());
                         List<String> projectRefs = info.reactorModuleDeps().stream()
-                                .map(ReactorModule::artifactId)
+                                .map(ClasspathInfo.ReactorModule::artifactId)
                                 .toList();
                         if (!projectRefs.isEmpty()) {
                             params.put("projectReferences", projectRefs);
@@ -220,18 +206,93 @@ public class FastModeProjectManager {
                                 })
                                 .thenApply(buildResult -> {
                                     long totalElapsed = System.currentTimeMillis() - setupStartTime;
-                                    LOG.infof("Module %s ready (total: %d ms)", info.moduleName(), totalElapsed);
-                                    progress.reportProgress(String.format(
-                                            "Module %s ready (%d ms)", info.moduleName(), totalElapsed));
+                                    String readyMsg = String.format(
+                                            "Module %s ready (%d ms)", info.moduleName(), totalElapsed);
+                                    LOG.infof(readyMsg);
+                                    progress.reportProgress(readyMsg);
+                                    traceInfo(jdtls, readyMsg);
                                     setup.complete(info);
                                     return (Void) null;
                                 });
                     });
         }).exceptionally(ex -> {
-            LOG.errorf(ex, "Failed to set up module: %s", moduleDir);
+            String failMsg = String.format("Failed to set up module: %s (%s)",
+                    moduleDir.getFileName(), ex.getMessage());
+            LOG.error(failMsg, ex);
+            traceInfo(jdtls, failMsg);
             setup.completeExceptionally(ex);
             setupModules.remove(key);
             return null;
+        });
+    }
+
+    private CompletableFuture<ClasspathInfo> extractClasspath(Path workspaceRoot, Path moduleDir,
+                                                               LspServer jdtls, ProgressMonitor progress,
+                                                               boolean cacheEnabled, boolean bspMode,
+                                                               AtomicBoolean loadedFromCache) {
+        return CompletableFuture.supplyAsync(() -> {
+            Thread.currentThread().setName("build-support-classpath-" + moduleDir.getFileName());
+            if (cacheEnabled) {
+                Optional<ClasspathInfo> cached = cacheManager.loadIfValid(workspaceRoot, moduleDir);
+                if (cached.isPresent()) {
+                    loadedFromCache.set(true);
+                    LOG.infof("Using cached classpath for module: %s", cached.get().moduleName());
+                    progress.reportProgress("Using cached classpath for " + cached.get().moduleName());
+                    traceClasspath(jdtls, cached.get());
+                    return cached.get();
+                }
+            }
+            return (ClasspathInfo) null;
+        }, executor).thenCompose(cachedInfo -> {
+            if (cachedInfo != null) {
+                return CompletableFuture.completedFuture(cachedInfo);
+            }
+
+            if (bspMode) {
+                BspBuildSupport bspSupport = bspBuildSupports.isEmpty() ? null : bspBuildSupports.get(0);
+                if (bspSupport != null) {
+                    return jdtls.getWorkspace()
+                            .ensureBspServerReady(bspSupport.getBspServerId(), progress)
+                            .thenCompose(bspServer -> bspSupport.extractAsync(
+                                    bspServer, workspaceRoot, moduleDir, progress))
+                            .thenApply(info -> {
+                                traceClasspath(jdtls, info);
+                                if (cacheEnabled) {
+                                    cacheManager.save(workspaceRoot, moduleDir, info);
+                                }
+                                return info;
+                            });
+                }
+            }
+
+            return CompletableFuture.supplyAsync(() -> {
+                try {
+                    BuildSupport buildSupport = buildSupportRegistry.getBuildSupport(workspaceRoot);
+                    if (buildSupport == null) {
+                        throw new BuildSupportException(
+                                "No build tool found (Maven or Gradle) in " + workspaceRoot);
+                    }
+
+                    String moduleLabel = workspaceRoot.relativize(moduleDir).toString();
+                    LOG.infof("Extracting classpath for module: %s", moduleLabel);
+                    progress.reportProgress("Extracting classpath for " + moduleLabel);
+
+                    ClasspathInfo info = buildSupport.extract(workspaceRoot, moduleDir, progress);
+                    LOG.infof("Classpath extracted: %d source roots, %d libraries, %d reactor deps",
+                            info.sourceRoots().size(), info.classpathJars().size(),
+                            info.reactorModuleDeps().size());
+
+                    traceClasspath(jdtls, info);
+
+                    if (cacheEnabled) {
+                        cacheManager.save(workspaceRoot, moduleDir, info);
+                    }
+
+                    return info;
+                } catch (BuildSupportException e) {
+                    throw new RuntimeException(e);
+                }
+            }, executor);
         });
     }
 
@@ -321,9 +382,7 @@ public class FastModeProjectManager {
         Path rootNorm = workspaceRoot.toAbsolutePath().normalize();
 
         while (current != null && current.startsWith(rootNorm)) {
-            if (Files.exists(current.resolve("pom.xml"))
-                    || Files.exists(current.resolve("build.gradle"))
-                    || Files.exists(current.resolve("build.gradle.kts"))) {
+            if (buildSupportRegistry.hasBuildFile(current)) {
                 return current;
             }
             current = current.getParent();
@@ -341,6 +400,53 @@ public class FastModeProjectManager {
         return roots;
     }
 
+    private void preloadSiblingModules(Path workspaceRoot, Path parentDir, LspServer jdtls) {
+        List<Path> siblings = buildSupportRegistry.discoverSiblingModules(parentDir);
+        int total = siblings.size();
+        String parentName = parentDir.getFileName().toString();
+        LOG.infof("Sibling pre-loading: %d modules discovered under %s", total, parentName);
+        traceInfo(jdtls, String.format("Sibling pre-loading: %d modules under %s", total, parentName));
+
+        if (total == 0) {
+            return;
+        }
+
+        AtomicBoolean anyFailed = new AtomicBoolean(false);
+        long startTime = System.currentTimeMillis();
+        AtomicInteger loaded = new AtomicInteger(0);
+
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+        for (Path moduleDir : siblings) {
+            chain = chain.thenCompose(v ->
+                    setupModule(workspaceRoot, moduleDir, jdtls, ProgressMonitor.none())
+                            .thenRun(() -> {
+                                int count = loaded.incrementAndGet();
+                                Path mKey = moduleDir.toAbsolutePath().normalize();
+                                if (setupModules.containsKey(mKey)) {
+                                    String msg = String.format("Sibling pre-loading: %d/%d (%s)",
+                                            count, total, moduleDir.getFileName());
+                                    LOG.infof(msg);
+                                    traceInfo(jdtls, msg);
+                                } else {
+                                    anyFailed.set(true);
+                                    String msg = String.format("Sibling pre-load failed: %d/%d (%s)",
+                                            count, total, moduleDir.getFileName());
+                                    LOG.warnf(msg);
+                                    traceInfo(jdtls, msg);
+                                }
+                            }));
+        }
+
+        chain.thenRun(() -> {
+            long elapsed = System.currentTimeMillis() - startTime;
+            String msg = String.format("Sibling pre-loading complete (%s): %d modules in %d ms%s",
+                    parentName, total, elapsed, anyFailed.get() ? " (some failures)" : "");
+            LOG.infof(msg);
+            traceInfo(jdtls, msg);
+        });
+    }
+
+
     private void traceClasspath(LspServer jdtls, ClasspathInfo info) {
         TraceCollector tc = jdtls.getTraceCollector();
         if (tc == null || !tc.isEnabled()) {
@@ -353,12 +459,22 @@ public class FastModeProjectManager {
         }
         if (info.reactorModuleDeps() != null && !info.reactorModuleDeps().isEmpty()) {
             sb.append("Reactor modules:\n");
-            for (ReactorModule rd : info.reactorModuleDeps()) {
+            for (ClasspathInfo.ReactorModule rd : info.reactorModuleDeps()) {
                 sb.append("  ").append(rd.artifactId()).append(" -> ").append(rd.modulePath()).append("\n");
             }
         }
         String workspaceUri = jdtls.getWorkspace() != null
                 ? jdtls.getWorkspace().getNormalizedUri() : null;
         tc.addTrace(workspaceUri, jdtls.getId(), sb.toString(), TraceCollector.MessageType.INFO);
+    }
+
+    private void traceInfo(LspServer jdtls, String message) {
+        TraceCollector tc = jdtls.getTraceCollector();
+        if (tc == null || !tc.isEnabled()) {
+            return;
+        }
+        String workspaceUri = jdtls.getWorkspace() != null
+                ? jdtls.getWorkspace().getNormalizedUri() : null;
+        tc.addTrace(workspaceUri, jdtls.getId(), message, TraceCollector.MessageType.INFO);
     }
 }
