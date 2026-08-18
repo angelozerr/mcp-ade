@@ -124,13 +124,26 @@ public class BuildSupportManager {
 
         CompletableFuture<Void> result = setupModule(workspaceRoot, moduleDir, jdtls, progress);
 
-        Path parentDir = moduleDir.getParent();
-        Path rootNorm = workspaceRoot.toAbsolutePath().normalize();
-        if (parentDir != null && parentDir.toAbsolutePath().normalize().startsWith(rootNorm)
-                && preloadedParents.add(parentDir.toAbsolutePath().normalize())) {
-            final Path wsRoot = workspaceRoot;
-            final Path finalParentDir = parentDir;
-            result.thenRunAsync(() -> preloadSiblingModules(wsRoot, finalParentDir, jdtls), executor);
+        if (filePath != null) {
+            Path rootNorm = workspaceRoot.toAbsolutePath().normalize();
+            Path moduleDirNorm = moduleDir.toAbsolutePath().normalize();
+
+            if (moduleDirNorm.equals(rootNorm)) {
+                // Root module: preload child modules of the workspace root
+                if (preloadedParents.add(rootNorm)) {
+                    final Path wsRoot = workspaceRoot;
+                    result.thenRunAsync(() -> preloadSiblingModules(wsRoot, wsRoot, jdtls), executor);
+                }
+            } else {
+                // Submodule: preload sibling modules under the same parent
+                Path parentDir = moduleDir.getParent();
+                if (parentDir != null && parentDir.toAbsolutePath().normalize().startsWith(rootNorm)
+                        && preloadedParents.add(parentDir.toAbsolutePath().normalize())) {
+                    final Path wsRoot = workspaceRoot;
+                    final Path finalParentDir = parentDir;
+                    result.thenRunAsync(() -> preloadSiblingModules(wsRoot, finalParentDir, jdtls), executor);
+                }
+            }
         }
 
         return result;

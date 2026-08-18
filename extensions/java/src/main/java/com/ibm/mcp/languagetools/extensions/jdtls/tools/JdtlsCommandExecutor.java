@@ -113,6 +113,7 @@ public class JdtlsCommandExecutor {
                                                                    Object arguments, String fileUri,
                                                                    OperationEntry serverEntry) {
         var workspace = application.getWorkspaceForPath(cwd);
+        workspace.flushFileWatcher();
 
         return workspace.ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none(), serverEntry)
                 .thenCompose(jdtls -> {

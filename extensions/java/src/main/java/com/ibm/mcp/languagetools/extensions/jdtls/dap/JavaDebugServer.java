@@ -17,6 +17,8 @@ import com.ibm.mcp.languagetools.dap.client.DapClient;
 import com.ibm.mcp.languagetools.dap.server.DapServer;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
+import com.ibm.mcp.languagetools.extensions.jdtls.lsp.JdtLsServer;
+import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.jboss.logging.Logger;
@@ -40,6 +42,8 @@ import java.util.concurrent.CompletableFuture;
 public class JavaDebugServer extends DapServer {
 
     private static final Logger LOG = Logger.getLogger(JavaDebugServer.class);
+
+    private static final String JDTLS_SERVER_ID = "jdtls";
 
     // JDTLS commands
     private static final String CMD_VALIDATE_LAUNCH_CONFIG = "vscode.java.validateLaunchConfig";
@@ -87,18 +91,36 @@ public class JavaDebugServer extends DapServer {
             String sessionId) {
 
         String request = (String) launchConfig.get("request");
-        LOG.infof("Enriching configuration for Java, request type: %s", request);
+        String cwd = (String) launchConfig.get("cwd");
+        LOG.infof("Enriching configuration for Java, request type: %s, cwd: %s", request, cwd);
+        getWorkspace().flushFileWatcher();
 
-        // Resolve classpath, java executable, etc. via JDTLS commands
-        return resolveLaunchConfiguration(launchConfig, sessionId)
+        return ensureModuleSetupForDebug(cwd)
+                .thenCompose(v -> resolveLaunchConfiguration(launchConfig, sessionId))
                 .thenCompose(enrichedConfig -> {
-                    // For "attach" request, connect directly to the target application
-                    // For "launch" request, start debug session in JDTLS first
                     if ("attach".equals(request)) {
                         return handleAttachRequest(enrichedConfig, sessionId);
                     } else {
                         return handleLaunchRequest(enrichedConfig, sessionId);
                     }
+                });
+    }
+
+    private CompletableFuture<Void> ensureModuleSetupForDebug(String cwd) {
+        if (cwd == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return getWorkspace().ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none())
+                .thenCompose(jdtls -> {
+                    if (jdtls instanceof JdtLsServer j) {
+                        LOG.infof("Triggering module setup for debug CWD: %s", cwd);
+                        return j.ensureModuleSetupIfFastMode(cwd);
+                    }
+                    return CompletableFuture.completedFuture(null);
+                })
+                .exceptionally(ex -> {
+                    LOG.warnf(ex, "Module setup for debug CWD failed, proceeding anyway");
+                    return null;
                 });
     }
 

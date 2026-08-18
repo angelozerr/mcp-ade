@@ -894,6 +894,17 @@ public class Workspace {
     }
 
     /**
+     * Flush pending file watcher events immediately, bypassing the batch delay.
+     * Called before language server commands to ensure the server has the latest
+     * file state (equivalent to VS Code sending notifications when the editor writes).
+     */
+    public void flushFileWatcher() {
+        if (fileWatcher != null && fileWatcher.isRunning()) {
+            fileWatcher.flushNow();
+        }
+    }
+
+    /**
      * Notify this workspace of external file changes (from agent or admin).
      * Sends didChangeWatchedFiles to all matching running servers.
      */

@@ -87,18 +87,30 @@ public class WorkspaceFileWatcher {
         if (running) {
             return;
         }
-        try {
-            watcher = DirectoryWatcher.builder()
-                    .path(root)
-                    .listener(this::onEvent)
-                    .fileTreeVisitor(new FilteringFileTreeVisitor(excludedDirs))
-                    .build();
-            running = true;
-            watchFuture = watcher.watchAsync();
-            LOG.infof("Started file watcher for workspace: %s", root);
-        } catch (IOException e) {
-            LOG.errorf(e, "Failed to start file watcher for: %s", root);
-        }
+        running = true;
+        batchScheduler.submit(() -> {
+            try {
+                LOG.infof("Initializing file watcher for workspace: %s", root);
+                long startTime = System.currentTimeMillis();
+                DirectoryWatcher built = DirectoryWatcher.builder()
+                        .path(root)
+                        .listener(this::onEvent)
+                        .fileTreeVisitor(new FilteringFileTreeVisitor(excludedDirs))
+                        .build();
+                long elapsed = System.currentTimeMillis() - startTime;
+                synchronized (this) {
+                    if (!running) {
+                        try { built.close(); } catch (IOException ignored) {}
+                        return;
+                    }
+                    watcher = built;
+                }
+                watchFuture = watcher.watchAsync();
+                LOG.infof("Started file watcher for workspace: %s (%d ms)", root, elapsed);
+            } catch (IOException e) {
+                LOG.errorf(e, "Failed to start file watcher for: %s", root);
+            }
+        });
     }
 
     public void stop() {
@@ -170,6 +182,16 @@ public class WorkspaceFileWatcher {
         } catch (RejectedExecutionException e) {
             // Scheduler shut down
         }
+    }
+
+    public void flushNow() {
+        if (watcher == null) {
+            return;
+        }
+        if (batchFuture != null && !batchFuture.isDone()) {
+            batchFuture.cancel(false);
+        }
+        flushBatch();
     }
 
     private void flushBatch() {

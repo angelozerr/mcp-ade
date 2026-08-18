@@ -249,7 +249,17 @@ public class JdtLsServer extends LspServer implements InstallerListener {
 
     void onServiceReady() {
         setStatus(ServerStatus.RUNNING);
-        setReady(true);
+        if (isFastMode()) {
+            ensureModuleSetupIfFastMode(null)
+                    .whenComplete((v, ex) -> {
+                        if (ex != null) {
+                            LOG.warnf(ex, "Initial module setup failed, marking ready anyway");
+                        }
+                        setReady(true);
+                    });
+        } else {
+            setReady(true);
+        }
     }
 
     private static final String DIAGNOSTICS_COMMAND = JdtlsCommands.DIAGNOSTICS;
@@ -287,15 +297,15 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                 });
     }
 
-    private CompletableFuture<Void> ensureModuleSetupIfFastMode(String fileUri) {
+    public CompletableFuture<Void> ensureModuleSetupIfFastMode(String fileUri) {
         if (!isFastMode()) {
             return CompletableFuture.completedFuture(null);
         }
         try {
-            BuildSupportManager fmpm = CDI.current().select(BuildSupportManager.class).get();
+            BuildSupportManager bsm = CDI.current().select(BuildSupportManager.class).get();
             Path workspaceRoot = getWorkspace().getRootPath();
             ServerStatusProgressMonitor progressMonitor = new ServerStatusProgressMonitor(this);
-            return fmpm.ensureModuleSetup(workspaceRoot, fileUri, this, progressMonitor)
+            return bsm.ensureModuleSetup(workspaceRoot, fileUri, this, progressMonitor)
                     .whenComplete((v, ex) -> progressMonitor.setComplete());
         } catch (Exception e) {
             LOG.debugf(e, "CDI not available for BuildSupportManager lookup");

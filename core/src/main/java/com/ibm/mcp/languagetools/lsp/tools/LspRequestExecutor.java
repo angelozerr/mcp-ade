@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.tools;
 
+import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
@@ -38,6 +39,9 @@ import java.util.concurrent.CompletableFuture;
 public class LspRequestExecutor {
 
     private static final Logger LOG = Logger.getLogger(LspRequestExecutor.class);
+
+    @Inject
+    Application application;
 
     @Inject
     LspServerResolver serverResolver;
@@ -129,6 +133,11 @@ public class LspRequestExecutor {
             Cancellation cancellation,
             Progress progress,
             OperationContext operationContext) {
+
+        var workspace = application.getWorkspaceForPath(params.getCwd());
+        if (workspace != null) {
+            workspace.flushFileWatcher();
+        }
 
         ProgressMonitor progressMonitor = progressMonitorManager.createProgressMonitor(
                 progress, cancellation, ProgressContext.forOperation(strategy.getCapability().name(), strategy.getTitle()));
