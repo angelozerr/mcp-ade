@@ -169,6 +169,13 @@ export function highlightText(text, query) {
     return escaped.replace(regex, match => `<span class="highlight">${match}</span>`);
 }
 
+export function getWorkspaceDisplayName(uri) {
+    if (!uri) return '';
+    const parts = uri.replace(/\\/g, '/').split('/').filter(p => p);
+    if (parts.length <= 1) return parts[0] || uri;
+    return parts.slice(-2).join('/');
+}
+
 export function escapeHtml(text) {
     if (!text) return '';
     return String(text)

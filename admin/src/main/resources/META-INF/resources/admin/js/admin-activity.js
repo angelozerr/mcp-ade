@@ -1,4 +1,4 @@
-import { escapeHtml } from './trace-renderer.js';
+import { escapeHtml, getWorkspaceDisplayName } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
 
 let operations = [];
@@ -244,7 +244,7 @@ function getOrCreateWorkspaceBody(container, wsKey, esc) {
             return h.closest('.activity-workspace-group').querySelector('.activity-workspace-body');
         }
     }
-    const label = wsKey === 'global' ? 'Global' : wsKey.split('/').pop().split('\\').pop();
+    const label = wsKey === 'global' ? 'Global' : getWorkspaceDisplayName(wsKey);
     const expanded = !allFolded && !collapsedWorkspaces.has(wsKey);
     const html = `<div class="activity-workspace-group">` +
         `<div class="activity-workspace-header" data-action="toggleWorkspace" data-ws-key="${esc(wsKey)}">` +
@@ -324,7 +324,7 @@ export function renderActivity() {
     const esc = escapeHtml;
     let html = '';
     for (const [ws, ops] of Object.entries(grouped)) {
-        const wsLabel = ws === 'global' ? 'Global' : ws.split('/').pop().split('\\').pop();
+        const wsLabel = ws === 'global' ? 'Global' : getWorkspaceDisplayName(ws);
         const wsExpanded = allFolded ? false : !collapsedWorkspaces.has(ws);
         html += `<div class="activity-workspace-group">`;
         html += `<div class="activity-workspace-header" data-action="toggleWorkspace" data-ws-key="${esc(ws)}">`;

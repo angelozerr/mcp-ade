@@ -3,6 +3,7 @@ import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDoc
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
+import { getWorkspaceDisplayName } from './trace-renderer.js';
 import {
     renderTraceControls, updateTraceControls, renderTracesInContainer,
     getCurrentSearchQuery, toggleAllTraces, highlightText, escapeHtml,
@@ -149,7 +150,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
             container.innerHTML = state.workspaces.map(ws => {
                 // Extract folder name from URI
-                const folderName = ws.rootUri.split('/').filter(p => p).pop() || ws.rootUri;
+                const folderName = getWorkspaceDisplayName(ws.rootUri);
 
                 return `
                 <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
@@ -216,7 +217,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         async function closeWorkspace(uri) {
-            const folderName = uri.split('/').filter(p => p).pop() || uri;
+            const folderName = getWorkspaceDisplayName(uri);
 
             showConfirmModal(
                 'Close Workspace',
@@ -302,7 +303,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
 
             // Build workspace header (compact, same level as left sidebar)
-            const workspaceName = workspace ? (workspace.rootUri.split('/').filter(p => p).pop() || workspace.rootUri) : '';
+            const workspaceName = workspace ? getWorkspaceDisplayName(workspace.rootUri) : '';
             const headerHTML = `
                 <div class="d-flex align-center detail-section-header">
                     <span class="text-primary font-bold tab-label-sm">📂 ${workspaceName}</span>
