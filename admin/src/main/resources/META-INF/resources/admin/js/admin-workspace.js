@@ -236,6 +236,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     </div>
                 `,
                 async () => {
+                    const wsItem = [...document.querySelectorAll('.workspace-item[data-uri]')]
+                        .find(el => el.dataset.uri === uri);
+                    if (wsItem) {
+                        wsItem.classList.add('closing');
+                    }
+
                     try {
                         const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}`, {
                             method: 'DELETE'
@@ -245,7 +251,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             throw new Error('Failed to close workspace');
                         }
 
-                        // Remove workspace from local list and re-render
                         const idx = state.workspaces.findIndex(w => w.rootUri === uri);
                         if (idx !== -1) {
                             state.workspaces.splice(idx, 1);
@@ -256,6 +261,9 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         renderWorkspaces();
 
                     } catch (error) {
+                        if (wsItem) {
+                            wsItem.classList.remove('closing');
+                        }
                         console.error('Failed to close workspace:', error);
                         alert('Failed to close workspace: ' + error.message);
                     }

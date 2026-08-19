@@ -530,6 +530,27 @@ body {
     50% { opacity: 0.2; }
 }
 
+.workspace-item.closing {
+    opacity: 0.5;
+    pointer-events: none;
+    position: relative;
+    overflow: hidden;
+}
+.workspace-item.closing::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 30%;
+    background: var(--accent-primary);
+    animation: ws-closing-progress 1.2s ease-in-out infinite;
+}
+@keyframes ws-closing-progress {
+    0% { left: -30%; }
+    100% { left: 100%; }
+}
+
 
 .workspace-meta {
     font-size: 0.75rem;
