@@ -17,57 +17,94 @@ import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Watches a single file for changes (create, modify, delete).
- * Handles the case where the file's parent directory does not exist yet
+ * Watches one or more files for changes (create, modify, delete)
+ * using a single WatchService and a single daemon thread.
+ * Files can be registered before or after {@link #start()}.
+ * Handles the case where a file's parent directory does not exist yet
  * by watching the grandparent directory for the parent's creation.
  */
 public class FileWatcher {
 
     private static final Logger LOG = Logger.getLogger(FileWatcher.class);
 
-    private final Path fileToWatch;
-    private final Path parentDir;
-    private final Path grandParentDir;
-    private final String targetFileName;
-    private final String targetDirName;
-    private final Runnable onChange;
+    private record WatchedFile(Path file, Path parentDir, Path grandParentDir,
+                               String targetFileName, String targetDirName, Runnable onChange) {
+    }
 
+    private final CopyOnWriteArrayList<WatchedFile> watchedFiles = new CopyOnWriteArrayList<>();
     private WatchService watchService;
     private ExecutorService executorService;
     private volatile boolean running = false;
-    private volatile boolean watchingParent = false;
-    private WatchKey currentKey;
 
     public FileWatcher(Path fileToWatch, Runnable onChange) {
-        this.fileToWatch = fileToWatch;
-        this.parentDir = fileToWatch.getParent();
-        this.grandParentDir = parentDir != null ? parentDir.getParent() : null;
-        this.targetFileName = fileToWatch.getFileName().toString();
-        this.targetDirName = parentDir != null ? parentDir.getFileName().toString() : null;
-        this.onChange = onChange;
+        this();
+        watchFile(fileToWatch, onChange);
+    }
+
+    public FileWatcher() {
+    }
+
+    /**
+     * Register a file to watch. Can be called before or after {@link #start()}.
+     */
+    public FileWatcher watchFile(Path fileToWatch, Runnable onChange) {
+        Path parentDir = fileToWatch.getParent();
+        Path grandParentDir = parentDir != null ? parentDir.getParent() : null;
+        String targetFileName = fileToWatch.getFileName().toString();
+        String targetDirName = parentDir != null ? parentDir.getFileName().toString() : null;
+        WatchedFile wf = new WatchedFile(fileToWatch, parentDir, grandParentDir,
+                targetFileName, targetDirName, onChange);
+        watchedFiles.add(wf);
+        if (running && watchService != null) {
+            try {
+                registerWatch(wf);
+                LOG.infof("Dynamically watching: %s", fileToWatch);
+            } catch (ClosedWatchServiceException e) {
+                LOG.debugf("Watch service closed, skipping registration for: %s", fileToWatch);
+            } catch (IOException e) {
+                LOG.warnf("Failed to register dynamic watch for: %s: %s", fileToWatch, e.getMessage());
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Unregister a file from watching.
+     */
+    public void unwatchFile(Path fileToWatch) {
+        watchedFiles.removeIf(wf -> wf.file.equals(fileToWatch));
+        LOG.infof("Unwatched: %s", fileToWatch);
     }
 
     public void start() {
-        if (running) {
+        if (running || watchedFiles.isEmpty()) {
             return;
         }
 
         try {
             running = true;
             watchService = FileSystems.getDefault().newWatchService();
-            executorService = Executors.newSingleThreadExecutor();
+            String threadName = "file-watcher-" + watchedFiles.getFirst().targetFileName;
+            executorService = Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, threadName);
+                t.setDaemon(true);
+                return t;
+            });
 
-            registerWatch();
+            registerAllWatches();
 
             executorService.submit(this::watchLoop);
-            LOG.infof("Started watching: %s", fileToWatch);
+            for (WatchedFile wf : watchedFiles) {
+                LOG.infof("Started watching: %s", wf.file);
+            }
         } catch (IOException e) {
             running = false;
-            LOG.warnf(e, "Failed to start file watcher for: %s", fileToWatch);
+            LOG.warnf(e, "Failed to start file watcher");
         }
     }
 
@@ -86,31 +123,36 @@ public class FileWatcher {
             executorService.shutdownNow();
         }
 
-        LOG.infof("Stopped watching: %s", fileToWatch);
+        for (WatchedFile wf : watchedFiles) {
+            LOG.infof("Stopped watching: %s", wf.file);
+        }
     }
 
-    private void registerWatch() throws IOException {
-        if (currentKey != null) {
-            currentKey.cancel();
-            currentKey = null;
-        }
-
-        if (Files.exists(parentDir)) {
-            currentKey = parentDir.register(watchService,
+    private void registerWatch(WatchedFile wf) throws IOException {
+        if (wf.parentDir != null && Files.exists(wf.parentDir)) {
+            wf.parentDir.register(watchService,
                     StandardWatchEventKinds.ENTRY_CREATE,
                     StandardWatchEventKinds.ENTRY_MODIFY,
                     StandardWatchEventKinds.ENTRY_DELETE);
-            watchingParent = true;
-            LOG.debugf("Watching parent directory: %s", parentDir);
-        } else if (grandParentDir != null && Files.exists(grandParentDir)) {
-            currentKey = grandParentDir.register(watchService,
+            LOG.debugf("Watching parent directory: %s", wf.parentDir);
+        } else if (wf.grandParentDir != null && Files.exists(wf.grandParentDir)) {
+            wf.grandParentDir.register(watchService,
                     StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_MODIFY,
                     StandardWatchEventKinds.ENTRY_DELETE);
-            watchingParent = false;
-            LOG.debugf("Watching grandparent directory: %s (waiting for %s)", grandParentDir, targetDirName);
+            LOG.debugf("Watching grandparent directory: %s (waiting for %s)", wf.grandParentDir, wf.targetDirName);
         } else {
-            watchingParent = false;
-            LOG.debugf("Neither parent nor grandparent directory exists for: %s", fileToWatch);
+            LOG.debugf("Neither parent nor grandparent directory exists for: %s", wf.file);
+        }
+    }
+
+    private void registerAllWatches() throws IOException {
+        for (WatchedFile wf : watchedFiles) {
+            try {
+                registerWatch(wf);
+            } catch (IOException e) {
+                LOG.warnf("Failed to register watch for: %s: %s", wf.file, e.getMessage());
+            }
         }
     }
 
@@ -124,6 +166,7 @@ public class FileWatcher {
                     break;
                 }
 
+                Path watchedDir = (Path) key.watchable();
                 boolean needsReRegister = false;
 
                 for (WatchEvent<?> event : key.pollEvents()) {
@@ -137,25 +180,20 @@ public class FileWatcher {
                     WatchEvent<Path> ev = (WatchEvent<Path>) event;
                     String eventFileName = ev.context().toString();
 
-                    if (!watchingParent) {
-                        // Watching grandparent — waiting for parent dir to appear
-                        if (eventFileName.equals(targetDirName)
-                                && kind == StandardWatchEventKinds.ENTRY_CREATE) {
-                            LOG.debugf("Target directory created: %s", targetDirName);
-                            needsReRegister = true;
-                            if (Files.exists(fileToWatch)) {
-                                fireOnChange();
+                    for (WatchedFile wf : watchedFiles) {
+                        if (watchedDir.equals(wf.parentDir)) {
+                            if (eventFileName.equals(wf.targetFileName)) {
+                                fireOnChange(wf);
                             }
-                        }
-                    } else {
-                        // Watching parent — looking for file events
-                        if (eventFileName.equals(targetFileName)) {
-                            fireOnChange();
-                        } else if (kind == StandardWatchEventKinds.ENTRY_DELETE
-                                && eventFileName.equals(targetDirName)) {
-                            // Parent directory itself was deleted
-                            needsReRegister = true;
-                            fireOnChange();
+                        } else if (watchedDir.equals(wf.grandParentDir)) {
+                            if (eventFileName.equals(wf.targetDirName)
+                                    && kind == StandardWatchEventKinds.ENTRY_CREATE) {
+                                LOG.debugf("Target directory created: %s", wf.targetDirName);
+                                needsReRegister = true;
+                                if (Files.exists(wf.file)) {
+                                    fireOnChange(wf);
+                                }
+                            }
                         }
                     }
                 }
@@ -165,9 +203,9 @@ public class FileWatcher {
                 if (needsReRegister || !valid) {
                     try {
                         Thread.sleep(100);
-                        registerWatch();
+                        registerAllWatches();
                     } catch (IOException e) {
-                        LOG.debugf("Failed to re-register watch: %s", e.getMessage());
+                        LOG.debugf("Failed to re-register watches: %s", e.getMessage());
                         if (!valid) {
                             break;
                         }
@@ -180,17 +218,17 @@ public class FileWatcher {
             // Normal shutdown
         } catch (Exception e) {
             if (running) {
-                LOG.errorf(e, "Error in file watch loop for: %s", fileToWatch);
+                LOG.errorf(e, "Error in file watch loop");
             }
         }
     }
 
-    private void fireOnChange() {
-        LOG.infof("File change detected: %s", fileToWatch);
+    private void fireOnChange(WatchedFile wf) {
+        LOG.infof("File change detected: %s", wf.file);
         try {
-            onChange.run();
+            wf.onChange.run();
         } catch (Exception e) {
-            LOG.errorf(e, "Error in file change callback for: %s", fileToWatch);
+            LOG.errorf(e, "Error in file change callback for: %s", wf.file);
         }
     }
 }

@@ -33,7 +33,7 @@ public class IdeConfiguration extends AbstractConfiguration {
     private final Path workspaceRoot;
     private final List<IdeConfigurationProvider> providers;
     private final IdeConfigurationStrategy strategy;
-    private final List<FileWatcher> fileWatchers = new ArrayList<>();
+    private FileWatcher ideFileWatcher;
 
     /**
      * Creates an IDE configuration with explicit providers and strategy.
@@ -104,18 +104,26 @@ public class IdeConfiguration extends AbstractConfiguration {
 
     @Override
     public void watch() {
+        FileWatcher watcher = new FileWatcher();
         for (IdeConfigurationProvider provider : providers) {
-            Path file = provider.getSettingsFile(workspaceRoot);
-            FileWatcher watcher = new FileWatcher(file, this::reload);
-            watcher.start();
-            fileWatchers.add(watcher);
+            watcher.watchFile(provider.getSettingsFile(workspaceRoot), this::reload);
+        }
+        watcher.start();
+        ideFileWatcher = watcher;
+    }
+
+    @Override
+    public void watchWith(FileWatcher sharedWatcher) {
+        for (IdeConfigurationProvider provider : providers) {
+            sharedWatcher.watchFile(provider.getSettingsFile(workspaceRoot), this::reload);
         }
     }
 
     @Override
     public void unwatch() {
-        List<FileWatcher> watchers = new ArrayList<>(fileWatchers);
-        fileWatchers.clear();
-        watchers.forEach(FileWatcher::stop);
+        if (ideFileWatcher != null) {
+            ideFileWatcher.stop();
+            ideFileWatcher = null;
+        }
     }
 }

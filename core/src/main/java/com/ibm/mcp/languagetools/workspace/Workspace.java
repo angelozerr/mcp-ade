@@ -20,6 +20,7 @@ import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.configuration.Configuration;
 import com.ibm.mcp.languagetools.configuration.WorkspaceConfiguration;
 import com.ibm.mcp.languagetools.installer.InstallationException;
+import com.ibm.mcp.languagetools.configuration.FileWatcher;
 import com.ibm.mcp.languagetools.lsp.LspInstanceRegistry;
 import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
@@ -50,7 +51,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Collections;
 import java.util.function.Consumer;
 
 /**
@@ -84,8 +85,12 @@ public class Workspace {
     private final Map<String, Boolean> activationCache = new ConcurrentHashMap<>();
 
     // File watcher
+    private static final int MAX_PENDING_EVENTS_PER_SERVER = 10_000;
     private WorkspaceFileWatcher fileWatcher;
     private final Map<String, List<FileEvent>> pendingServerEvents = new ConcurrentHashMap<>();
+
+    // Shared file watcher for config files and IDE instance detection
+    private final FileWatcher sharedFileWatcher;
 
     // Build state
     private volatile boolean needsFullBuild = true;
@@ -109,9 +114,11 @@ public class Workspace {
         this.ideConfiguration = new IdeConfiguration(rootPath,
                 application.getIdeConfigurationProviders(),
                 application.getIdeConfigurationStrategy());
-        this.ideConfiguration.watch();
         this.configuration = new WorkspaceConfiguration(rootPath, application.getConfiguration());
-        this.configuration.watch();
+        this.sharedFileWatcher = new FileWatcher();
+        this.ideConfiguration.watchWith(sharedFileWatcher);
+        this.configuration.watchWith(sharedFileWatcher);
+        this.sharedFileWatcher.start();
     }
 
     /**
@@ -414,10 +421,9 @@ public class Workspace {
                 .allOf(futures.toArray(new CompletableFuture[0]))
                 .thenRun(() -> {
                     stopFileWatcher();
+                    sharedFileWatcher.stop();
                     lspServers.clear();
                     bspServers.clear();
-                    ideConfiguration.unwatch();
-                    configuration.unwatch();
                     LOG.infof("Workspace shut down: %s", rootUri);
                 });
     }
@@ -659,6 +665,14 @@ public class Workspace {
         return Collections.unmodifiableMap(mcpClientConnections);
     }
 
+    /**
+     * Get the shared file watcher for this workspace.
+     * Used by config files, IDE instance detection, and any file-level watching.
+     */
+    public FileWatcher getSharedFileWatcher() {
+        return sharedFileWatcher;
+    }
+
     public Application getApplication() {
         return application;
     }
@@ -826,8 +840,16 @@ public class Workspace {
             } else {
                 LOG.infof("Server %s not ready (status=%s, ready=%s), queuing %d events",
                         server.getId(), server.getStatus(), server.isReady(), matchingEvents.size());
-                pendingServerEvents.computeIfAbsent(server.getId(), k -> new CopyOnWriteArrayList<>())
-                        .addAll(matchingEvents);
+                List<FileEvent> pending = pendingServerEvents.computeIfAbsent(server.getId(), k -> Collections.synchronizedList(new ArrayList<>()));
+                synchronized (pending) {
+                    if (pending.size() + matchingEvents.size() > MAX_PENDING_EVENTS_PER_SERVER) {
+                        LOG.warnf("Pending events for server %s exceed limit (%d), dropping oldest events",
+                                server.getId(), MAX_PENDING_EVENTS_PER_SERVER);
+                        int toRemove = pending.size() + matchingEvents.size() - MAX_PENDING_EVENTS_PER_SERVER;
+                        pending.subList(0, Math.min(toRemove, pending.size())).clear();
+                    }
+                    pending.addAll(matchingEvents);
+                }
             }
         }
     }

@@ -15,7 +15,6 @@ package com.ibm.mcp.languagetools.lsp.server;
 
 import com.ibm.mcp.languagetools.PathManager;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
-import com.ibm.mcp.languagetools.lsp.InstanceFileWatcher;
 import com.ibm.mcp.languagetools.lsp.LspInstanceRegistry;
 import com.ibm.mcp.languagetools.lsp.client.GenericLanguageClient;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
@@ -69,7 +68,6 @@ public class LspServer extends ServerBase<LspServerConfig> {
     private final Set<String> openedFiles = ConcurrentHashMap.newKeySet();
     private final Set<String> explicitlyOpenedFiles = ConcurrentHashMap.newKeySet();
     private boolean isSocketConnection = false;
-    private InstanceFileWatcher fileWatcher;
     private LspInstanceRegistry.InstanceInfo currentInstance;
     private final LspClientFeatures clientFeatures;
     private Future<?> listeningFuture;
@@ -536,11 +534,10 @@ public class LspServer extends ServerBase<LspServerConfig> {
             setStatus(ServerStatus.STOPPING);
         }
 
-        // Stop file watcher first
-        if (fileWatcher != null) {
-            fileWatcher.stop();
-            fileWatcher = null;
-        }
+        // Unregister from shared file watcher
+        String workspacePath = Paths.get(workspaceRoot).toString();
+        Path instanceFile = LspInstanceRegistry.getInstanceFilePath(workspacePath, config.getServerId());
+        getWorkspace().getSharedFileWatcher().unwatchFile(instanceFile);
 
         // Clear diagnostics cache
         diagnosticsCache.clear();
@@ -773,21 +770,28 @@ public class LspServer extends ServerBase<LspServerConfig> {
     }
 
     /**
-     * Start watching instance files for changes (IDE start/stop detection).
+     * Register with the workspace's shared file watcher for IDE start/stop detection.
      */
     private void startFileWatcher(String workspacePath) {
-        if (fileWatcher != null) {
-            fileWatcher.stop();
-        }
         var config = super.getConfig();
-        fileWatcher = new InstanceFileWatcher(
-                workspacePath,
-                config.getServerId(),
-                this::handleInstanceChanged,
-                this::handleInstanceRemoved
-        );
-        fileWatcher.start();
-        LOG.infof("Started instance file watcher for %s", config.getServerId());
+        Path instanceFile = LspInstanceRegistry.getInstanceFilePath(workspacePath, config.getServerId());
+        getWorkspace().getSharedFileWatcher().watchFile(instanceFile, () -> handleInstanceFileChanged(workspacePath));
+        LOG.infof("Registered instance file watcher for %s", config.getServerId());
+    }
+
+    private void handleInstanceFileChanged(String workspacePath) {
+        var config = super.getConfig();
+        Path instanceFile = LspInstanceRegistry.getInstanceFilePath(workspacePath, config.getServerId());
+        if (java.nio.file.Files.exists(instanceFile)) {
+            LspInstanceRegistry.InstanceInfo instance = LspInstanceRegistry.findInstance(workspacePath, config.getServerId());
+            if (instance != null) {
+                handleInstanceChanged(instance);
+            } else {
+                handleInstanceRemoved();
+            }
+        } else {
+            handleInstanceRemoved();
+        }
     }
 
     /**

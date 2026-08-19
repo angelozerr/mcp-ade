@@ -26,6 +26,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Watches a workspace directory recursively for file changes.
@@ -64,8 +65,9 @@ public class WorkspaceFileWatcher {
                 return t;
             });
 
-    private final List<FileEvent> pendingBatch = new CopyOnWriteArrayList<>();
+    private final ConcurrentLinkedQueue<FileEvent> pendingBatch = new ConcurrentLinkedQueue<>();
     private volatile ScheduledFuture<?> batchFuture;
+    private final ReentrantLock flushLock = new ReentrantLock();
 
     public WorkspaceFileWatcher(Path root, Consumer<List<FileEvent>> eventHandler) {
         this(root, eventHandler, null);
@@ -198,16 +200,26 @@ public class WorkspaceFileWatcher {
         if (pendingBatch.isEmpty()) {
             return;
         }
-        List<FileEvent> events = new ArrayList<>(pendingBatch);
-        pendingBatch.clear();
-        if (!events.isEmpty()) {
-            LOG.infof("Dispatching %d file events: %s", events.size(),
-                    events.stream().map(e -> e.getType() + " " + e.getUri()).toList());
-            try {
-                eventHandler.accept(events);
-            } catch (Exception e) {
-                LOG.warnf(e, "Error dispatching file events");
+        if (!flushLock.tryLock()) {
+            return;
+        }
+        try {
+            List<FileEvent> events = new ArrayList<>();
+            FileEvent event;
+            while ((event = pendingBatch.poll()) != null) {
+                events.add(event);
             }
+            if (!events.isEmpty()) {
+                LOG.infof("Dispatching %d file events: %s", events.size(),
+                        events.stream().map(e -> e.getType() + " " + e.getUri()).toList());
+                try {
+                    eventHandler.accept(events);
+                } catch (Exception e) {
+                    LOG.warnf(e, "Error dispatching file events");
+                }
+            }
+        } finally {
+            flushLock.unlock();
         }
     }
 

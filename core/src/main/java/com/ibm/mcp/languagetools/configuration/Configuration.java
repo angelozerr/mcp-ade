@@ -55,5 +55,12 @@ public interface Configuration {
 
     void watch();
 
+    /**
+     * Register this configuration's files on a shared file watcher.
+     * Use this instead of {@link #watch()} when multiple configurations
+     * share a single watcher (one thread, one WatchService).
+     */
+    void watchWith(FileWatcher sharedWatcher);
+
     void unwatch();
 }
