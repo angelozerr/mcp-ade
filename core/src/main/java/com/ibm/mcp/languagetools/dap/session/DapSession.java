@@ -436,7 +436,7 @@ public class DapSession implements DapEventListener {
             }
 
             // Enrich launch configuration (subclasses like JavaDebugServer can override)
-            return dapServer.enrichLaunchConfiguration(resolvedConfig, sessionId)
+            return dapServer.enrichLaunchConfiguration(resolvedConfig, sessionId, progressMonitor)
                     .thenCompose(enrichedConfig -> {
                         LOG.infof("Connecting and initializing with enriched config");
 

@@ -15,6 +15,7 @@ package com.ibm.mcp.languagetools.server;
 
 import com.ibm.mcp.languagetools.dap.session.DapSession;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
+import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.trace.TracingMessageConsumer;
@@ -528,14 +529,42 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
      * (e.g., after indexing for LSP servers).
      */
     public CompletableFuture<Void> waitForReady() {
+        return waitForReady(null);
+    }
+
+    /**
+     * Returns a future that completes when the server is fully ready,
+     * forwarding status messages (e.g. indexing progress) to the given monitor.
+     */
+    public CompletableFuture<Void> waitForReady(ProgressMonitor progressMonitor) {
         if (isReady) {
             return CompletableFuture.completedFuture(null);
         }
         OperationEntry entry = this.operationEntry;
         OperationEntry indexingChild = entry != null ? entry.addChild("indexing") : null;
-        return readyFuture.thenRun(() -> {
+
+        StatusChangeListener forwarder = null;
+        if (progressMonitor != null && progressMonitor.isSupported()) {
+            forwarder = (oldStatus, newStatus) -> {
+                String msg = getStatusMessage();
+                if (msg != null) {
+                    progressMonitor.reportProgress(msg);
+                }
+            };
+            addStatusChangeListener(forwarder);
+            String currentMsg = getStatusMessage();
+            if (currentMsg != null) {
+                progressMonitor.reportProgress(currentMsg);
+            }
+        }
+
+        final StatusChangeListener finalForwarder = forwarder;
+        return readyFuture.whenComplete((v, ex) -> {
             if (indexingChild != null) {
                 indexingChild.complete();
+            }
+            if (finalForwarder != null) {
+                removeStatusChangeListener(finalForwarder);
             }
         });
     }

@@ -88,16 +88,26 @@ public class JavaDebugServer extends DapServer {
     @Override
     public CompletableFuture<Map<String, Object>> enrichLaunchConfiguration(
             Map<String, Object> launchConfig,
-            String sessionId) {
+            String sessionId,
+            ProgressMonitor progressMonitor) {
 
         String request = (String) launchConfig.get("request");
         String cwd = (String) launchConfig.get("cwd");
         LOG.infof("Enriching configuration for Java, request type: %s, cwd: %s", request, cwd);
         getWorkspace().flushFileWatcher();
 
-        return ensureModuleSetupForDebug(cwd)
-                .thenCompose(v -> resolveLaunchConfiguration(launchConfig, sessionId))
+        progressMonitor.reportProgress("Ensuring Java language server (JDT.LS) is ready...");
+        addTrace("Waiting for JDT.LS to be ready...");
+
+        return ensureModuleSetupForDebug(cwd, progressMonitor, sessionId)
+                .thenCompose(v -> {
+                    progressMonitor.reportProgress("Resolving launch configuration...");
+                    addTrace("Resolving launch configuration...");
+                    return resolveLaunchConfiguration(launchConfig, sessionId);
+                })
                 .thenCompose(enrichedConfig -> {
+                    progressMonitor.reportProgress("Connecting to debug adapter...");
+                    addTrace("Connecting to debug adapter...");
                     if ("attach".equals(request)) {
                         return handleAttachRequest(enrichedConfig, sessionId);
                     } else {
@@ -106,13 +116,33 @@ public class JavaDebugServer extends DapServer {
                 });
     }
 
-    private CompletableFuture<Void> ensureModuleSetupForDebug(String cwd) {
+    private CompletableFuture<Void> ensureModuleSetupForDebug(String cwd,
+                                                               ProgressMonitor progressMonitor,
+                                                               String sessionId) {
         if (cwd == null) {
             return CompletableFuture.completedFuture(null);
         }
-        return getWorkspace().ensureLspServerReady(JDTLS_SERVER_ID, ProgressMonitor.none())
+        // Start JDTLS first (install + initialize), then wait for indexing with trace forwarding
+        return getWorkspace().ensureLspServerStarted(JDTLS_SERVER_ID, ProgressMonitor.messageOnly(progressMonitor))
+                .thenCompose(jdtls -> {
+                    // Register trace forwarder AFTER server is started (so it exists)
+                    StatusChangeListener traceForwarder = (oldStatus, newStatus) -> {
+                        String msg = jdtls.getStatusMessage();
+                        if (msg != null) {
+                            progressMonitor.reportProgress(msg);
+                            addTrace("[JDT.LS] " + msg);
+                        }
+                    };
+                    jdtls.addStatusChangeListener(traceForwarder);
+
+                    return jdtls.waitForReady()
+                            .whenComplete((v, ex) -> jdtls.removeStatusChangeListener(traceForwarder))
+                            .thenApply(v -> jdtls);
+                })
                 .thenCompose(jdtls -> {
                     if (jdtls instanceof JdtLsServer j) {
+                        progressMonitor.reportProgress("JDT.LS ready, setting up module...");
+                        addTrace("JDT.LS ready, setting up module...");
                         LOG.infof("Triggering module setup for debug CWD: %s", cwd);
                         return j.ensureModuleSetupIfFastMode(cwd);
                     }
@@ -134,22 +164,12 @@ public class JavaDebugServer extends DapServer {
         // Start debug session (loads java-debug bundle in JDTLS and returns port)
         return startDebugSession(sessionId)
                 .thenCompose(port -> {
-                    String workspaceRootUri = getWorkspace().getNormalizedUri();
-
-                    getTraceCollector().addTrace(
-                            workspaceRootUri,
-                            sessionId,
-                            String.format("Connecting to DAP server on port %d...", port)
-                    );
+                    addTrace(String.format("Connecting to DAP server on port %d...", port));
 
                     // Use DapServer's connectToSocket() - much simpler!
                     return connectToSocket("localhost", port)
                             .thenApply(v -> {
-                                getTraceCollector().addTrace(
-                                        workspaceRootUri,
-                                        sessionId,
-                                        String.format("Connected to DAP server on port %d", port)
-                                );
+                                addTrace(String.format("Connected to DAP server on port %d", port));
                                 return enrichedConfig;
                             });
                 });
@@ -163,31 +183,21 @@ public class JavaDebugServer extends DapServer {
             Map<String, Object> enrichedConfig,
             String sessionId) {
 
-        String workspaceRootUri = getWorkspace().getNormalizedUri();
-
         // For attach, we still need to start the debug session in JDTLS
         // to load the java-debug bundle, but we won't use its port.
         // Instead, the DAP protocol will use hostName/port from enrichedConfig
         // to attach to the target application.
         return startDebugSession(sessionId)
                 .thenCompose(jdtlsPort -> {
-                    getTraceCollector().addTrace(
-                            workspaceRootUri,
-                            sessionId,
-                            String.format("Connecting to DAP server on port %d (JDTLS debug adapter)...", jdtlsPort)
-                    );
+                    addTrace(String.format("Connecting to DAP server on port %d (JDTLS debug adapter)...", jdtlsPort));
 
                     // Connect to JDTLS debug adapter
                     return connectToSocket("localhost", jdtlsPort)
                             .thenApply(v -> {
-                                getTraceCollector().addTrace(
-                                        workspaceRootUri,
-                                        sessionId,
-                                        String.format("Connected to DAP server on port %d. Will attach to target at %s:%s",
-                                                jdtlsPort,
-                                                enrichedConfig.get("hostName"),
-                                                enrichedConfig.get("port"))
-                                );
+                                addTrace(String.format("Connected to DAP server on port %d. Will attach to target at %s:%s",
+                                        jdtlsPort,
+                                        enrichedConfig.get("hostName"),
+                                        enrichedConfig.get("port")));
                                 return enrichedConfig;
                             });
                 });
@@ -261,11 +271,7 @@ public class JavaDebugServer extends DapServer {
                 .exceptionally(ex -> {
                     String error = String.format("Failed to resolve launch configuration: %s", ex.getMessage());
                     LOG.error(error, ex);
-                    getTraceCollector().addTrace(
-                            workspaceRootUri,
-                            sessionId,
-                            String.format("ERROR resolving launch config: %s", ex.getMessage())
-                    );
+                    addTrace(String.format("ERROR resolving launch config: %s", ex.getMessage()));
                     throw new RuntimeException(error, ex);
                 });
     }
@@ -282,7 +288,6 @@ public class JavaDebugServer extends DapServer {
             Map<String, Object> launchConfig,
             String sessionId) {
 
-        String workspaceRootUri = getWorkspace().getNormalizedUri();
         String hostName = (String) launchConfig.get("hostName");
         Object portObj = launchConfig.get("port");
         Object processIdObj = launchConfig.get("processId");
@@ -314,37 +319,23 @@ public class JavaDebugServer extends DapServer {
             launchConfig.remove("processId"); // Ensure processId is not set
             LOG.infof("Attach configuration validated: hostName=%s, port=%d", hostName, port);
 
-            getTraceCollector().addTrace(
-                    workspaceRootUri,
-                    sessionId,
-                    String.format("Attach config validated: hostName=%s, port=%d", hostName, port)
-            );
+            addTrace(String.format("Attach config validated: hostName=%s, port=%d", hostName, port));
 
             return CompletableFuture.completedFuture(launchConfig);
         }
 
         // Check if processId is configured (not supported in this implementation)
         if (processIdObj != null) {
-            // Note: processId resolution would require additional JDTLS support
-            // For now, we return an error
             String error = "Attach by processId is not yet supported. Please use hostName and port.";
             LOG.error(error);
-            getTraceCollector().addTrace(
-                    workspaceRootUri,
-                    sessionId,
-                    String.format("ERROR: %s", error)
-            );
+            addTrace("ERROR: " + error);
             return CompletableFuture.failedFuture(new UnsupportedOperationException(error));
         }
 
         // Neither hostName/port nor processId is configured
         String error = "Please specify the hostName/port directly, or provide the processId of the remote debuggee in the launch configuration.";
         LOG.error(error);
-        getTraceCollector().addTrace(
-                workspaceRootUri,
-                sessionId,
-                String.format("ERROR: %s", error)
-        );
+        addTrace("ERROR: " + error);
         return CompletableFuture.failedFuture(new IllegalArgumentException(error));
     }
 
@@ -356,8 +347,6 @@ public class JavaDebugServer extends DapServer {
      * @return The port where the debug adapter is listening
      */
     public CompletableFuture<Integer> startDebugSession(String sessionId) {
-        String workspaceRootUri = getWorkspace().getNormalizedUri();
-
         // Call vscode.java.startDebugSession via bindRequest mechanism
         return routeRequest(CMD_START_DEBUG_SESSION, List.of())
                 .thenApply(result -> {
@@ -370,11 +359,7 @@ public class JavaDebugServer extends DapServer {
                     int port = ((Number) result).intValue();
                     LOG.infof("Debug adapter listening on port: %d", port);
 
-                    getTraceCollector().addTrace(
-                            workspaceRootUri,
-                            sessionId,
-                            String.format("Debug adapter listening on port: %d", port)
-                    );
+                    addTrace(String.format("Debug adapter listening on port: %d", port));
 
                     return port;
                 });

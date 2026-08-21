@@ -16,8 +16,10 @@ package com.ibm.mcp.languagetools.extensions.jdtls.build;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -186,6 +188,67 @@ public class ClasspathCacheManager {
             }
         }
         return timestamps;
+    }
+
+    /**
+     * Loads all valid cached {@link ClasspathInfo} entries for a workspace.
+     *
+     * @param workspaceRoot the workspace root directory
+     * @return list of valid cached classpath info entries
+     */
+    public List<ClasspathInfo> loadAllValid(Path workspaceRoot) {
+        Path cacheDir = getCacheDir(workspaceRoot);
+        List<ClasspathInfo> results = new ArrayList<>();
+        if (!Files.isDirectory(cacheDir)) {
+            return results;
+        }
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(cacheDir, "*.json")) {
+            for (Path cacheFile : stream) {
+                try (Reader reader = Files.newBufferedReader(cacheFile)) {
+                    CacheEntry entry = GSON.fromJson(reader, CacheEntry.class);
+                    if (entry == null || entry.classpathInfo == null || entry.pomTimestamps == null) {
+                        continue;
+                    }
+                    boolean valid = true;
+                    for (Map.Entry<String, Long> pomEntry : entry.pomTimestamps.entrySet()) {
+                        Path pomPath = Path.of(pomEntry.getKey());
+                        if (!Files.exists(pomPath)) {
+                            valid = false;
+                            break;
+                        }
+                        long currentTimestamp = Files.getLastModifiedTime(pomPath).toMillis();
+                        if (currentTimestamp != pomEntry.getValue()) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (!valid) {
+                        continue;
+                    }
+                    ClasspathInfo info = entry.classpathInfo;
+                    List<String> filteredJars = info.classpathJars().stream()
+                            .filter(jar -> jar.endsWith(".jar"))
+                            .toList();
+                    if (filteredJars.size() != info.classpathJars().size()) {
+                        info = new ClasspathInfo(info.moduleName(), info.projectPath(),
+                                info.sourceRoots(), filteredJars, info.reactorModuleDeps(),
+                                info.buildFiles() != null ? info.buildFiles() : List.of());
+                    }
+                    List<String> missingJars = info.classpathJars().stream()
+                            .filter(jar -> !Files.exists(Path.of(jar)))
+                            .toList();
+                    if (!missingJars.isEmpty()) {
+                        continue;
+                    }
+                    results.add(info);
+                } catch (Exception e) {
+                    LOG.debugf(e, "Failed to read cache file: %s", cacheFile);
+                }
+            }
+        } catch (IOException e) {
+            LOG.debugf(e, "Failed to scan cache dir: %s", cacheDir);
+        }
+        return results;
     }
 
     private Path getCacheFile(Path workspaceRoot, Path moduleDir) {

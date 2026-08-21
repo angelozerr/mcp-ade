@@ -400,7 +400,7 @@ public class Workspace {
                                                              ProgressMonitor progressMonitor,
                                                              OperationEntry serverEntry) {
         return ensureLspServerStarted(serverId, progressMonitor, serverEntry)
-                .thenCompose(server -> server.waitForReady().thenApply(v -> server));
+                .thenCompose(server -> server.waitForReady(progressMonitor).thenApply(v -> server));
     }
 
     /**

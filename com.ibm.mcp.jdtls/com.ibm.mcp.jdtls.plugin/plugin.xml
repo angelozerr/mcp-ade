@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.4"?>
 <plugin>
+    <extension point="org.eclipse.jdt.ls.core.importers">
+        <importer
+            id="mcpProjectImporter"
+            order="10"
+            class="com.ibm.mcp.jdtls.build.McpProjectImporter" />
+    </extension>
+    <extension point="org.eclipse.jdt.ls.core.buildSupport">
+        <buildSupport
+            id="mcpBuildSupport"
+            order="50"
+            class="com.ibm.mcp.jdtls.build.McpBuildSupport" />
+    </extension>
     <extension point="org.eclipse.jdt.ls.core.delegateCommandHandler">
         <delegateCommandHandler class="com.ibm.mcp.jdtls.McpDelegateCommandHandler">
             <!-- Existing -->
@@ -94,7 +106,6 @@
             <!-- Project -->
             <command id="mcp.jdtls.getProjectStructure"/>
             <command id="mcp.jdtls.getClasspathInfo"/>
-            <command id="mcp.jdtls.setupProject"/>
             <command id="mcp.jdtls.getIndexingStatus"/>
             <command id="mcp.jdtls.refreshProject"/>
         </delegateCommandHandler>

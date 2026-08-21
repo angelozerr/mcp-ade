@@ -13,10 +13,13 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.extensions.jdtls.build;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,10 +33,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import org.jboss.logging.Logger;
 
 import com.ibm.mcp.languagetools.extensions.jdtls.lsp.JdtLsServer;
-import com.ibm.mcp.languagetools.extensions.jdtls.tools.JdtlsCommands;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
@@ -47,14 +52,18 @@ import jakarta.inject.Inject;
  *
  * <p>Tracks which modules have been set up with their extracted classpath.
  * On first tool call targeting a module, extracts the classpath from the
- * build tool and creates the JDT project via the {@code mcp.jdtls.setupProject}
- * delegate command. Reactor module dependencies are set up recursively as
- * JDT source projects.</p>
+ * build tool, writes classpath descriptors, and triggers {@code java.project.import}
+ * so that McpProjectImporter creates the JDT projects. Reactor module dependencies
+ * are set up as source projects with disabled builders.</p>
  */
 @ApplicationScoped
 public class BuildSupportManager {
 
     private static final Logger LOG = Logger.getLogger(BuildSupportManager.class);
+
+    private static final String MCP_CLASSPATH_DIR = "mcp-classpath";
+
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private final ConcurrentHashMap<Path, CompletableFuture<ClasspathInfo>> setupModules =
             new ConcurrentHashMap<>();
@@ -93,8 +102,8 @@ public class BuildSupportManager {
      *
      * <p>If the module has already been configured during this session, returns
      * immediately. Otherwise, performs classpath extraction (from cache or build tool),
-     * creates the JDT project via the {@code mcp.jdtls.setupProject} delegate command,
-     * and recursively sets up any reactor module dependencies as source projects.</p>
+     * writes classpath descriptors and triggers {@code java.project.import}
+     * so McpProjectImporter configures the JDT projects.</p>
      *
      * <p>Detects JDT.LS restarts by comparing the server instance reference:
      * when the instance changes, all setup state is cleared so modules are
@@ -186,47 +195,58 @@ public class BuildSupportManager {
                 progress.reportProgress("Classpath loaded from cache for " + info.moduleName() + ", setting up project...");
             }
 
-            List<CompletableFuture<Void>> reactorSetups = new ArrayList<>();
-            for (ClasspathInfo.ReactorModule reactorDep : info.reactorModuleDeps()) {
-                Path reactorDir = Path.of(reactorDep.modulePath());
-                reactorSetups.add(setupReactorModule(reactorDir, jdtls, progress));
+            List<String> projectRefs = info.reactorModuleDeps().stream()
+                    .map(ClasspathInfo.ReactorModule::artifactId)
+                    .toList();
+
+            boolean descriptorExisted = hasClasspathDescriptor(jdtls, info.moduleName());
+
+            if (loadedFromCache.get() && descriptorExisted) {
+                // Cached fast path: McpProjectImporter already handled during initialize
+                writeClasspathDescriptor(jdtls, info, projectRefs);
+                registerReactorModules(info);
+                long totalElapsed = System.currentTimeMillis() - setupStartTime;
+                String readyMsg = String.format(
+                        "Module %s ready (cached, %d ms)", info.moduleName(), totalElapsed);
+                LOG.infof("Skipping import for %s (classpath unchanged, project exists)",
+                        info.moduleName());
+                progress.reportProgress(readyMsg);
+                setup.complete(info);
+                return CompletableFuture.completedFuture((Void) null);
             }
 
-            return CompletableFuture.allOf(reactorSetups.toArray(new CompletableFuture[0]))
-                    .thenCompose(v -> {
-                        Map<String, Object> params = new LinkedHashMap<>();
-                        params.put("projectName", info.moduleName());
-                        params.put("projectPath", info.projectPath());
-                        params.put("sourceRoots", info.sourceRoots());
-                        params.put("classpathJars", info.classpathJars());
-                        List<String> projectRefs = info.reactorModuleDeps().stream()
-                                .map(ClasspathInfo.ReactorModule::artifactId)
-                                .toList();
-                        if (!projectRefs.isEmpty()) {
-                            params.put("projectReferences", projectRefs);
-                        }
+            // Write reactor module descriptors (with disableBuilders=true)
+            for (ClasspathInfo.ReactorModule reactorDep : info.reactorModuleDeps()) {
+                List<String> sourceRoots = detectSourceRoots(Path.of(reactorDep.modulePath()));
+                ClasspathInfo reactorInfo = new ClasspathInfo(
+                        reactorDep.artifactId(), reactorDep.modulePath(),
+                        sourceRoots, List.of(), List.of(), List.of());
+                writeClasspathDescriptor(jdtls, reactorInfo, List.of(), true);
+            }
+            registerReactorModules(info);
 
-                        LOG.infof("Setting up JDT project: %s", info.moduleName());
-                        progress.reportProgress("Setting up project " + info.moduleName());
+            // Write main module descriptor
+            writeClasspathDescriptor(jdtls, info, projectRefs);
 
-                        long setupCommandStart = System.currentTimeMillis();
-                        return jdtls.executeCommand(JdtlsCommands.SETUP_PROJECT, List.of(params))
-                                .thenApply(result -> {
-                                    long setupCommandElapsed = System.currentTimeMillis() - setupCommandStart;
-                                    LOG.infof("Project setup result: %s (setupProject: %d ms)",
-                                            result, setupCommandElapsed);
-                                    return (Void) null;
-                                })
-                                .thenApply(buildResult -> {
-                                    long totalElapsed = System.currentTimeMillis() - setupStartTime;
-                                    String readyMsg = String.format(
-                                            "Module %s ready (%d ms)", info.moduleName(), totalElapsed);
-                                    LOG.infof(readyMsg);
-                                    progress.reportProgress(readyMsg);
-                                    traceInfo(jdtls, readyMsg);
-                                    setup.complete(info);
-                                    return (Void) null;
-                                });
+            // Trigger McpProjectImporter via java.project.import
+            LOG.infof("Importing project: %s", info.moduleName());
+            progress.reportProgress("Setting up project " + info.moduleName());
+
+            long importStart = System.currentTimeMillis();
+            return jdtls.executeCommand("java.project.import", List.of())
+                    .thenApply(result -> {
+                        long importElapsed = System.currentTimeMillis() - importStart;
+                        LOG.infof("Project import completed (import: %d ms)", importElapsed);
+                        return (Void) null;
+                    })
+                    .thenApply(v -> {
+                        long totalElapsed = System.currentTimeMillis() - setupStartTime;
+                        String readyMsg = String.format(
+                                "Module %s ready (%d ms)", info.moduleName(), totalElapsed);
+                        LOG.infof(readyMsg);
+                        progress.reportProgress(readyMsg);
+                        setup.complete(info);
+                        return (Void) null;
                     });
         }).exceptionally(ex -> {
             String failMsg = String.format("Failed to set up module: %s (%s)",
@@ -309,49 +329,18 @@ public class BuildSupportManager {
         });
     }
 
-    /**
-     * Sets up a reactor module as a minimal source project (no external classpath resolution).
-     */
-    private CompletableFuture<Void> setupReactorModule(Path moduleDir, LspServer jdtls,
-                                                         ProgressMonitor progress) {
-        Path key = moduleDir.toAbsolutePath().normalize();
-        CompletableFuture<ClasspathInfo> existing = setupModules.get(key);
-        if (existing != null) {
-            return existing.thenApply(v -> null);
+    private void registerReactorModules(ClasspathInfo info) {
+        for (ClasspathInfo.ReactorModule reactorDep : info.reactorModuleDeps()) {
+            Path key = Path.of(reactorDep.modulePath()).toAbsolutePath().normalize();
+            List<String> sourceRoots = detectSourceRoots(Path.of(reactorDep.modulePath()));
+            ClasspathInfo reactorInfo = new ClasspathInfo(
+                    reactorDep.artifactId(), reactorDep.modulePath(),
+                    sourceRoots, List.of(), List.of(), List.of());
+            CompletableFuture<ClasspathInfo> reactorSetup = new CompletableFuture<>();
+            if (setupModules.putIfAbsent(key, reactorSetup) == null) {
+                reactorSetup.complete(reactorInfo);
+            }
         }
-
-        CompletableFuture<ClasspathInfo> setup = new CompletableFuture<>();
-        CompletableFuture<ClasspathInfo> prev = setupModules.putIfAbsent(key, setup);
-        if (prev != null) {
-            return prev.thenApply(v -> null);
-        }
-
-        String moduleName = moduleDir.getFileName().toString();
-        List<String> sourceRoots = detectSourceRoots(moduleDir);
-
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("projectName", moduleName);
-        params.put("projectPath", moduleDir.toAbsolutePath().toString());
-        params.put("sourceRoots", sourceRoots);
-        params.put("classpathJars", List.of());
-        params.put("disableBuilders", true);
-
-        LOG.infof("Setting up reactor module: %s (source only, no builders)", moduleName);
-
-        return jdtls.executeCommand(JdtlsCommands.SETUP_PROJECT, List.of(params))
-                .thenApply(result -> {
-                    ClasspathInfo info = new ClasspathInfo(
-                            moduleName, moduleDir.toAbsolutePath().toString(),
-                            sourceRoots, List.of(), List.of(), List.of());
-                    setup.complete(info);
-                    return (Void) null;
-                })
-                .exceptionally(ex -> {
-                    LOG.warnf(ex, "Failed to set up reactor module: %s", moduleName);
-                    setup.completeExceptionally(ex);
-                    setupModules.remove(key);
-                    return null;
-                });
     }
 
     /**
@@ -366,7 +355,7 @@ public class BuildSupportManager {
      */
     @SuppressWarnings("unchecked")
     public CompletableFuture<Boolean> isIndexing(LspServer jdtls) {
-        return jdtls.executeCommand(JdtlsCommands.GET_INDEXING_STATUS, List.of())
+        return jdtls.executeCommand("mcp.jdtls.getIndexingStatus", List.of())
                 .thenApply(result -> {
                     if (result instanceof Map) {
                         Map<String, Object> map = (Map<String, Object>) result;
@@ -459,6 +448,97 @@ public class BuildSupportManager {
         });
     }
 
+
+    /**
+     * Writes classpath descriptors from the cache for all cached modules
+     * and their reactor module dependencies.
+     * Called before JDTLS initialize so that McpProjectImporter and McpBuildSupport
+     * can set up projects during initialization.
+     *
+     * @return the number of descriptors written
+     */
+    public int writeDescriptorsFromCache(Path workspaceRoot, LspServer jdtls) {
+        List<ClasspathInfo> cachedModules = cacheManager.loadAllValid(workspaceRoot);
+        int count = 0;
+        Set<String> written = new HashSet<>();
+
+        for (ClasspathInfo info : cachedModules) {
+            List<String> projectRefs = info.reactorModuleDeps() != null
+                    ? info.reactorModuleDeps().stream()
+                    .map(ClasspathInfo.ReactorModule::artifactId)
+                    .toList()
+                    : List.of();
+            writeClasspathDescriptor(jdtls, info, projectRefs);
+            written.add(info.moduleName());
+            count++;
+
+            // Write descriptors for reactor module dependencies (source-only projects)
+            if (info.reactorModuleDeps() != null) {
+                for (ClasspathInfo.ReactorModule reactorDep : info.reactorModuleDeps()) {
+                    if (written.contains(reactorDep.artifactId())) {
+                        continue;
+                    }
+                    List<String> sourceRoots = detectSourceRoots(Path.of(reactorDep.modulePath()));
+                    ClasspathInfo reactorInfo = new ClasspathInfo(
+                            reactorDep.artifactId(), reactorDep.modulePath(),
+                            sourceRoots, List.of(), List.of(), List.of());
+                    writeClasspathDescriptor(jdtls, reactorInfo, List.of(), true);
+                    written.add(reactorDep.artifactId());
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Writes a classpath descriptor JSON file to the JDTLS data dir for the
+     * McpBuildSupport to read during the JDTLS lifecycle.
+     */
+    private void writeClasspathDescriptor(LspServer jdtls, ClasspathInfo info, List<String> projectRefs) {
+        writeClasspathDescriptor(jdtls, info, projectRefs, false);
+    }
+
+    private void writeClasspathDescriptor(LspServer jdtls, ClasspathInfo info, List<String> projectRefs,
+                                          boolean disableBuilders) {
+        Path cpFile = getDescriptorFile(jdtls, info.moduleName());
+        if (cpFile == null) {
+            return;
+        }
+        Path cpDir = cpFile.getParent();
+        try {
+            Files.createDirectories(cpDir);
+            Map<String, Object> descriptor = new LinkedHashMap<>();
+            descriptor.put("projectName", info.moduleName());
+            descriptor.put("projectPath", info.projectPath());
+            descriptor.put("sourceRoots", info.sourceRoots());
+            descriptor.put("classpathJars", info.classpathJars());
+            if (projectRefs != null && !projectRefs.isEmpty()) {
+                descriptor.put("projectReferences", projectRefs);
+            }
+            if (disableBuilders) {
+                descriptor.put("disableBuilders", true);
+            }
+            try (Writer writer = Files.newBufferedWriter(cpFile)) {
+                GSON.toJson(descriptor, writer);
+            }
+            LOG.debugf("Wrote classpath descriptor: %s", cpFile);
+        } catch (IOException e) {
+            LOG.warnf(e, "Failed to write classpath descriptor: %s", cpFile);
+        }
+    }
+
+    private Path getDescriptorFile(LspServer jdtls, String projectName) {
+        if (!(jdtls instanceof JdtLsServer j)) {
+            return null;
+        }
+        return j.getJdtlsDataDir().resolve(MCP_CLASSPATH_DIR).resolve(projectName + ".json");
+    }
+
+    private boolean hasClasspathDescriptor(LspServer jdtls, String projectName) {
+        Path cpFile = getDescriptorFile(jdtls, projectName);
+        return cpFile != null && Files.exists(cpFile);
+    }
 
     private void traceClasspath(LspServer jdtls, ClasspathInfo info) {
         TraceCollector tc = jdtls.getTraceCollector();

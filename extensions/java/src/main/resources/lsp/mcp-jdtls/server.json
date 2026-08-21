@@ -92,7 +92,6 @@
         "mcp.jdtls.generateDelegateMethods",
         "mcp.jdtls.getProjectStructure",
         "mcp.jdtls.getClasspathInfo",
-        "mcp.jdtls.setupProject",
         "mcp.jdtls.getIndexingStatus"
       ]
     }

@@ -175,4 +175,17 @@ public interface ProgressMonitor {
         return NoOpProgressMonitor.INSTANCE;
     }
 
+    /**
+     * Create a progress monitor that forwards only status messages
+     * to the given delegate, absorbing step transitions and completion.
+     * Use when an inner operation has its own step system that would
+     * conflict with the outer operation's steps.
+     */
+    static ProgressMonitor messageOnly(ProgressMonitor delegate) {
+        if (delegate == null || !delegate.isSupported()) {
+            return none();
+        }
+        return new MessageOnlyProgressMonitor(delegate);
+    }
+
 }

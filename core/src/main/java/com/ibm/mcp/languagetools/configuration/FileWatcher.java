@@ -89,7 +89,7 @@ public class FileWatcher {
         try {
             running = true;
             watchService = FileSystems.getDefault().newWatchService();
-            String threadName = "file-watcher-" + watchedFiles.getFirst().targetFileName;
+            String threadName = "file-watcher-" + watchedFiles.get(0).targetFileName;
             executorService = Executors.newSingleThreadExecutor(r -> {
                 Thread t = new Thread(r, threadName);
                 t.setDaemon(true);

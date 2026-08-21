@@ -143,11 +143,13 @@ public class DapServer extends ServerBase<DapServerConfig> {
      *
      * @param launchConfig The initial launch configuration
      * @param sessionId The session ID for tracing
+     * @param progressMonitor Progress monitor for reporting status
      * @return CompletableFuture with enriched configuration
      */
     public CompletableFuture<Map<String, Object>> enrichLaunchConfiguration(
             Map<String, Object> launchConfig,
-            String sessionId) {
+            String sessionId,
+            ProgressMonitor progressMonitor) {
         // For attach mode with a server.json "attach" block, resolve address/port and connect
         if (session.isAttach()) {
             Map<String, Object> attachConfig = getConfig().getAttach();

@@ -219,9 +219,8 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             Map<String, Object> extendedCaps = new HashMap<>();
             extendedCaps.put("classFileContentsSupport", true);
             extendedCaps.put("shouldLanguageServerExitOnShutdown", true);
-            if (isFastMode()) {
-                extendedCaps.put("skipProjectConfiguration", true);
-            }
+            // No skipProjectConfiguration — McpProjectImporter handles project import
+            // during initialize, blocking M2E/Gradle importers via isResolved()
             options.put("extendedClientCapabilities", extendedCaps);
         }
 
@@ -417,12 +416,41 @@ public class JdtLsServer extends LspServer implements InstallerListener {
     @Override
     public CompletableFuture<Void> initialize() {
         resolveBuildSupport();
+        if (isFastMode()) {
+            writeClasspathDescriptorsFromCache();
+        }
         return super.initialize()
                 .thenRun(() -> {
                     setReady(false);
                     setStatus(ServerStatus.INDEXING);
                     LOG.infof("JDT.LS initialized for workspace: %s (waiting for ServiceReady notification)", getWorkspaceRoot());
                 });
+    }
+
+    /**
+     * Write classpath descriptors from cache before sending LSP initialize.
+     * This allows McpProjectImporter + McpBuildSupport to set up projects
+     * during JDTLS initialization, starting indexing immediately.
+     *
+     * <p>Always creates the {@code mcp-classpath/} directory in the JDTLS data dir,
+     * even when no cache entries exist. This directory acts as a marker for
+     * {@code McpProjectImporter} to activate and block M2E/Gradle importers.</p>
+     */
+    private void writeClasspathDescriptorsFromCache() {
+        try {
+            // Always create the mcp-classpath marker directory so McpProjectImporter activates
+            Path mcpClasspathDir = getJdtlsDataDir().resolve("mcp-classpath");
+            Files.createDirectories(mcpClasspathDir);
+
+            BuildSupportManager bsm = CDI.current().select(BuildSupportManager.class).get();
+            Path workspaceRoot = getWorkspace().getRootPath();
+            int count = bsm.writeDescriptorsFromCache(workspaceRoot, this);
+            if (count > 0) {
+                LOG.infof("Wrote %d classpath descriptors from cache before initialize", count);
+            }
+        } catch (Exception e) {
+            LOG.debugf(e, "Failed to write classpath descriptors from cache");
+        }
     }
 
     private void resolveBuildSupport() {
@@ -612,7 +640,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         return getServerHome().resolve(configDir);
     }
 
-    private Path getJdtlsDataDir() {
+    public Path getJdtlsDataDir() {
         URI rootUri = getWorkspace().getRootUri();
         String workspaceName = Path.of(rootUri).getFileName().toString();
         Path baseDir = getWorkspace().getApplication().getPathManager().getMcpLangToolsRoot().resolve("jdtls-workspaces");
