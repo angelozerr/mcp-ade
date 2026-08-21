@@ -40,7 +40,6 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 | Tool | Description |
 |------|-------------|
 | `get_diagnostics` | Get errors and warnings for a file |
-| `get_all_diagnostics` | Get diagnostics for all files in a workspace |
 | `go_to_definition` | Jump to where a symbol is defined *(supports `symbolName`)* |
 | `go_to_declaration` | Jump to where a symbol is declared *(supports `symbolName`)* |
 | `go_to_type_definition` | Jump to where the type of a symbol is defined *(supports `symbolName`)* |
