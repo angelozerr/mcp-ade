@@ -5,13 +5,16 @@
  */
 
 import { state, getServerApiBase, buildGlobalContributedByMap } from './shared-state.js';
-import { showAlert, renderDocumentSelector, runServerInstaller } from './shared-ui.js';
+import {
+    showAlert, renderDocumentSelector, runServerInstaller,
+    loadInstallerJsonEditor, saveInstallerJsonEditor,
+    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
+} from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { LanguageFilter } from './language-filter.js';
 import { escapeHtml } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
-import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 
 let selectedAllServer = null; // Track selected server in global Servers tab
 let currentServerTab = 'overview'; // Track current tab: overview, contributions, install
@@ -283,28 +286,7 @@ function buildServerDetailsHTML(details, allServers) {
 }
 
 function buildSettingsHTML(details) {
-    const lspTraceLevel = (state.traceLevels && state.traceLevels['lsp.' + details.id]) || 'off';
-    const traceSetting = {
-        key: 'trace',
-        label: 'Trace Level',
-        description: 'Controls protocol message tracing',
-        type: 'enum',
-        values: ['off', 'messages', 'verbose'],
-        currentValue: lspTraceLevel,
-        source: null
-    };
-
-    const traceItems = [renderServerSetting(traceSetting, 'updateServerSetting', null, { 'server-id': details.id })];
-
-    const regularItems = (details.settings || []).map(setting =>
-        renderServerSetting({ ...setting, source: null }, 'updateServerSetting', null,
-            { 'server-id': details.id })
-    );
-
-    return renderSettingsPanel({
-        title: 'Settings',
-        itemsHtml: [...traceItems, ...regularItems]
-    });
+    return buildServerSettingsHTML('lsp', details, 'updateServerSetting', details.settings);
 }
 
 /**
@@ -343,74 +325,17 @@ function updateServerSetting(serverId, settingKey, value) {
  */
 export function switchServerTab(tabName) {
     currentServerTab = tabName;
-    // Toggle tab buttons
-    document.querySelectorAll('#console-area .tab-button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabName);
-    });
-    // Toggle tab panels
-    document.querySelectorAll('#console-area .tab-panel').forEach(panel => {
-        panel.classList.toggle('active', panel.id === `server-${tabName}-tab`);
-    });
-    // Render diagram when switching to contributions tab
-    if (tabName === 'contributions' && state.currentDiagramServers && state.currentDiagramServerId) {
-        setTimeout(() => renderServerDiagram(state.currentDiagramServers, state.currentDiagramServerId), 100);
-    }
+    switchServerTabs('server', tabName);
 }
 
-/**
- * Load installer.json for an LSP or DAP server.
- */
 export async function loadInstallerJson(serverId) {
-    try {
-        const response = await fetch(`${getServerApiBase(serverId)}/${serverId}/installer`);
-        if (!response.ok) {
-            throw new Error('Failed to load installer.json');
-        }
-
-        const installerJson = await response.json();
-        const editor = document.getElementById('installer-json-editor');
-        if (editor) {
-            editor.value = JSON.stringify(installerJson, null, 2);
-        }
-    } catch (error) {
-        console.error('Failed to load installer.json:', error);
-        const editor = document.getElementById('installer-json-editor');
-        if (editor) {
-            editor.value = '// No installer.json found for this server';
-        }
-    }
+    loadInstallerJsonEditor(serverId, 'installer-json-editor');
 }
 
-/**
- * Save installer.json for an LSP or DAP server.
- */
 export async function saveInstallerJson(serverId) {
-    const editor = document.getElementById('installer-json-editor');
-    if (!editor) return;
-
-    try {
-        const installerJson = JSON.parse(editor.value);
-
-        const response = await fetch(`${getServerApiBase(serverId)}/${serverId}/installer`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(installerJson)
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to save installer.json');
-        }
-
-        showAlert('Success', 'Installer configuration saved successfully.');
-    } catch (error) {
-        console.error('Failed to save installer.json:', error);
-        showAlert('Error', 'Failed to save installer.json: ' + error.message);
-    }
+    saveInstallerJsonEditor(serverId, 'installer-json-editor');
 }
 
-/**
- * Reset installer.json to original.
- */
 export function resetInstallerJson(serverId) {
     loadInstallerJson(serverId);
 }
@@ -439,38 +364,11 @@ function formatGlobalContributeInfo(server, contributedByMap) {
 }
 
 async function changeLspServerTraceLevel(serverId, level) {
-    if (state.traceLevels) {
-        state.traceLevels['lsp.' + serverId] = level;
-    }
-    try {
-        await fetch(`/api/admin/traces/lsp/${serverId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ traceLevel: level })
-        });
-    } catch (e) {
-        console.error('Failed to save LSP trace level:', e);
-    }
+    changeServerTraceLevel('lsp', serverId, level);
 }
 
-/**
- * Toggle enable/disable for an LSP server.
- */
 async function toggleLspServerEnabled(serverId, enabled) {
-    const action = enabled ? 'enable' : 'disable';
-    try {
-        const response = await fetch(`/api/admin/extensions/lsp/servers/${serverId}/${action}`, { method: 'POST' });
-        if (response.ok) {
-            // Update cached config
-            if (state.lspConfigs[serverId]) {
-                state.lspConfigs[serverId].enabled = enabled;
-            }
-            // Re-render the list
-            loadAllLspServers(selectedAllServer);
-        }
-    } catch (error) {
-        console.error(`Failed to ${action} LSP server:`, error);
-    }
+    toggleServerEnabled('lsp', serverId, enabled, state.lspConfigs, () => loadAllLspServers(selectedAllServer));
 }
 
 // Register event delegation actions

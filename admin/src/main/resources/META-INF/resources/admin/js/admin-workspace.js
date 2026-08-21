@@ -39,52 +39,22 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         let renderMcpConsoleWithHighlightsFn = null;
         export function setRenderMcpConsoleWithHighlightsFn(fn) { renderMcpConsoleWithHighlightsFn = fn; }
 
-        async function toggleWorkspaceLspServerEnabled(serverId, enabled) {
+        async function toggleWorkspaceServerEnabled(serverType, serverId, enabled, configs, afterToggle) {
             const action = enabled ? 'enable' : 'disable';
             try {
-                const response = await fetch(`/api/admin/extensions/lsp/servers/${serverId}/${action}`, { method: 'POST' });
+                const response = await fetch(`/api/admin/extensions/${serverType}/servers/${serverId}/${action}`, { method: 'POST' });
                 if (response.ok) {
-                    if (state.lspConfigs[serverId]) {
-                        state.lspConfigs[serverId].enabled = enabled;
+                    if (configs && configs[serverId]) {
+                        configs[serverId].enabled = enabled;
                     }
-                    const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
-                    if (workspace && workspace.lspServers) {
-                        const srv = workspace.lspServers.find(s => s.id === serverId);
-                        if (srv) srv.enabled = enabled;
-                    }
+                    if (afterToggle) afterToggle();
                     const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`);
                     if (serverElement) {
-                        if (enabled) {
-                            serverElement.classList.remove('server-disabled');
-                        } else {
-                            serverElement.classList.add('server-disabled');
-                        }
+                        serverElement.classList.toggle('server-disabled', !enabled);
                     }
                 }
             } catch (error) {
-                console.error(`Failed to ${action} LSP server:`, error);
-            }
-        }
-
-        async function toggleWorkspaceDapServerEnabled(serverId, enabled) {
-            const action = enabled ? 'enable' : 'disable';
-            try {
-                const response = await fetch(`/api/admin/extensions/dap/servers/${serverId}/${action}`, { method: 'POST' });
-                if (response.ok) {
-                    if (state.dapConfigs && state.dapConfigs[serverId]) {
-                        state.dapConfigs[serverId].enabled = enabled;
-                    }
-                    const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`);
-                    if (serverElement) {
-                        if (enabled) {
-                            serverElement.classList.remove('server-disabled');
-                        } else {
-                            serverElement.classList.add('server-disabled');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error(`Failed to ${action} DAP server:`, error);
+                console.error(`Failed to ${action} ${serverType.toUpperCase()} server:`, error);
             }
         }
 
@@ -767,27 +737,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             loadConsole(state.selectedServer);
         }
 
-        async function toggleWorkspaceBspServerEnabled(serverId, enabled) {
-            const action = enabled ? 'enable' : 'disable';
-            try {
-                const response = await fetch(`/api/admin/extensions/bsp/servers/${serverId}/${action}`, { method: 'POST' });
-                if (response.ok) {
-                    if (state.bspConfigs && state.bspConfigs[serverId]) {
-                        state.bspConfigs[serverId].enabled = enabled;
-                    }
-                    const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`);
-                    if (serverElement) {
-                        if (enabled) {
-                            serverElement.classList.remove('server-disabled');
-                        } else {
-                            serverElement.classList.add('server-disabled');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error(`Failed to ${action} BSP server:`, error);
-            }
-        }
 
         async function startBspServerAction(serverId) {
             if (!state.selectedWorkspace) return;
@@ -915,53 +864,28 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             updateTracesButtonsState(level);
             renderConsole();
 
-            // Update in-memory server DTO so re-selecting this server keeps the correct level
             if (state.selectedServer) {
                 state.selectedServer.traceLevel = level;
             }
 
             const uri = state.selectedWorkspace;
-            if (state.selectedServer && state.selectedServer.isBsp) {
-                if (uri) {
-                    try {
-                        await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/bsp/${encodeURIComponent(state.selectedServer.id)}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ traceLevel: level })
-                        });
-                        reloadServerSettingsTab(state.selectedServer.id);
-                    } catch (error) {
-                        console.error('Failed to change BSP trace level:', error);
-                    }
+            const server = state.selectedServer;
+            const serverType = server?.isBsp ? 'bsp' : server?.isDap ? 'dap' : 'lsp';
+            const serverId = server?.isBsp || server?.isDap ? server.id : state.currentServerId;
+
+            if (uri && serverId) {
+                try {
+                    await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${serverType}/${encodeURIComponent(serverId)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ traceLevel: level })
+                    });
+                    reloadServerSettingsTab(serverId);
+                } catch (error) {
+                    console.error(`Failed to change ${serverType.toUpperCase()} trace level:`, error);
                 }
-            } else if (state.selectedServer && state.selectedServer.isDap) {
-                if (uri) {
-                    try {
-                        await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/dap/${encodeURIComponent(state.selectedServer.id)}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ traceLevel: level })
-                        });
-                        reloadServerSettingsTab(state.selectedServer.id);
-                    } catch (error) {
-                        console.error('Failed to change DAP trace level:', error);
-                    }
-                } else if (changeDapServerTraceLevelFn) {
-                    changeDapServerTraceLevelFn(state.selectedServer.id, level);
-                }
-            } else if (state.currentServerId) {
-                if (uri) {
-                    try {
-                        await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/lsp/${encodeURIComponent(state.currentServerId)}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ traceLevel: level })
-                        });
-                        reloadServerSettingsTab(state.currentServerId);
-                    } catch (error) {
-                        console.error('Failed to change trace level:', error);
-                    }
-                }
+            } else if (server?.isDap && changeDapServerTraceLevelFn) {
+                changeDapServerTraceLevelFn(server.id, level);
             }
         }
 
@@ -1978,13 +1902,19 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             toggleFileWatcherFromList: (el) => toggleFileWatcherFromListAction(el.dataset.uri),
             toggleFileWatcherFromSettings: (el) => toggleFileWatcherFromListAction(el.dataset.uri),
             toggleWorkspaceLspServerEnabled: (el) => {
-                toggleWorkspaceLspServerEnabled(el.dataset.serverId, el.checked);
+                toggleWorkspaceServerEnabled('lsp', el.dataset.serverId, el.checked, state.lspConfigs, () => {
+                    const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+                    if (workspace && workspace.lspServers) {
+                        const srv = workspace.lspServers.find(s => s.id === el.dataset.serverId);
+                        if (srv) srv.enabled = el.checked;
+                    }
+                });
             },
             toggleWorkspaceDapServerEnabled: (el) => {
-                toggleWorkspaceDapServerEnabled(el.dataset.serverId, el.checked);
+                toggleWorkspaceServerEnabled('dap', el.dataset.serverId, el.checked, state.dapConfigs);
             },
             toggleWorkspaceBspServerEnabled: (el) => {
-                toggleWorkspaceBspServerEnabled(el.dataset.serverId, el.checked);
+                toggleWorkspaceServerEnabled('bsp', el.dataset.serverId, el.checked, state.bspConfigs);
             },
             changeTraceLevel: (el) => changeTraceLevel(el.value),
             updateWorkspaceServerSetting: (el) => updateWorkspaceServerSettingAction(

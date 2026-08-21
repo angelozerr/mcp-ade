@@ -4,10 +4,13 @@
  * Handles DAP session creation, launching, and management
  */
 
-import { state, getServerApiBase, updateSearchBoxVisibility, buildGlobalContributedByMap } from './shared-state.js';
-import { confirmAction, showAlert, renderDocumentSelector, runServerInstaller } from './shared-ui.js';
+import { state, updateSearchBoxVisibility, buildGlobalContributedByMap } from './shared-state.js';
+import {
+    confirmAction, showAlert, renderDocumentSelector, runServerInstaller,
+    loadInstallerJsonEditor, saveInstallerJsonEditor,
+    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
+} from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
-import { renderServerDiagram } from './diagram.js';
 import { formatErrorWithFolding } from './error-formatter.js';
 import { LanguageFilter } from './language-filter.js';
 import {
@@ -15,7 +18,6 @@ import {
     getCurrentSearchQuery, toggleAllTraces, clearHighlights, initTraceContainer
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
-import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 
 let selectDapSessionByServerIdCallback = null;
 export function setSelectDapSessionByServerIdCallback(cb) { selectDapSessionByServerIdCallback = cb; }
@@ -818,70 +820,17 @@ export async function showDapServerDetails(serverId) {
  */
 export function switchDapServerTab(tab) {
     currentDapServerTab = tab;
-    // Toggle tab buttons
-    document.querySelectorAll('#console-area .tab-button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tab);
-    });
-    // Toggle tab panels
-    document.querySelectorAll('#console-area .tab-panel').forEach(panel => {
-        panel.classList.toggle('active', panel.id === `dap-server-${tab}-tab`);
-    });
-    // Render diagram when switching to contributions tab
-    if (tab === 'contributions' && state.currentDiagramServers && state.currentDiagramServerId) {
-        setTimeout(() => renderServerDiagram(state.currentDiagramServers, state.currentDiagramServerId), 100);
-    }
+    switchServerTabs('dap-server', tab);
 }
 
-/**
- * Load installer.json for a DAP server.
- */
 async function loadDapInstallerJson(serverId) {
-    try {
-        const response = await fetch(`/api/admin/dap/configs/${serverId}/installer`);
-        if (!response.ok) throw new Error('Failed to load installer.json');
-
-        const installerJson = await response.json();
-        const editor = document.getElementById('dap-installer-json-editor');
-        if (editor) {
-            editor.value = JSON.stringify(installerJson, null, 2);
-        }
-    } catch (error) {
-        console.error('Failed to load DAP installer.json:', error);
-        const editor = document.getElementById('dap-installer-json-editor');
-        if (editor) {
-            editor.value = '// No installer.json found for this debugger';
-        }
-    }
+    loadInstallerJsonEditor(serverId, 'dap-installer-json-editor');
 }
 
-/**
- * Save installer.json for a DAP server.
- */
 async function saveDapInstallerJson(serverId) {
-    const editor = document.getElementById('dap-installer-json-editor');
-    if (!editor) return;
-
-    try {
-        const installerJson = JSON.parse(editor.value);
-
-        const response = await fetch(`/api/admin/dap/configs/${serverId}/installer`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(installerJson)
-        });
-
-        if (!response.ok) throw new Error('Failed to save installer.json');
-
-        showAlert('Success', 'Installer configuration saved successfully.');
-    } catch (error) {
-        console.error('Failed to save DAP installer.json:', error);
-        showAlert('Error', 'Failed to save installer.json: ' + error.message);
-    }
+    saveInstallerJsonEditor(serverId, 'dap-installer-json-editor');
 }
 
-/**
- * Reset installer.json to original.
- */
 async function resetDapInstallerJson(serverId) {
     loadDapInstallerJson(serverId);
 }
@@ -938,41 +887,17 @@ export async function clearDapConsole(sessionId) {
 }
 
 function buildDapSettingsHTML(server) {
-    const dapTraceLevel = (state.traceLevels && state.traceLevels['dap.' + server.id]) || 'off';
-    const traceSetting = {
-        key: 'trace',
-        label: 'Trace Level',
-        description: 'Controls protocol message tracing',
-        type: 'enum',
-        values: ['off', 'messages', 'verbose'],
-        currentValue: dapTraceLevel,
-        source: null
-    };
-    return renderSettingsPanel({
-        title: 'Settings',
-        itemsHtml: [renderServerSetting(traceSetting, 'updateDapServerSetting', null, { 'server-id': server.id })]
-    });
+    return buildServerSettingsHTML('dap', server, 'updateDapServerSetting');
 }
 
 function updateDapServerSetting(serverId, settingKey, value) {
     if (settingKey === 'trace') {
-        changeDapServerTraceLevel(serverId, value);
+        changeServerTraceLevel('dap', serverId, value);
     }
 }
 
 export async function changeDapServerTraceLevel(serverId, level) {
-    if (state.traceLevels) {
-        state.traceLevels['dap.' + serverId] = level;
-    }
-    try {
-        await fetch(`/api/admin/traces/dap/${serverId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ traceLevel: level })
-        });
-    } catch (e) {
-        console.error('Failed to save DAP trace level:', e);
-    }
+    changeServerTraceLevel('dap', serverId, level);
 }
 
 export async function changeDapTraceLevel(sessionId, level) {
@@ -991,7 +916,7 @@ export async function changeDapTraceLevel(sessionId, level) {
             console.error('Failed to save DAP trace level:', e);
         }
     } else if (serverId) {
-        changeDapServerTraceLevel(serverId, level);
+        changeServerTraceLevel('dap', serverId, level);
     }
     updateTraceControls('dap-trace', level);
     renderDapTracesForSession(sessionId);
@@ -1473,22 +1398,8 @@ export function applyLaunchTemplate(sessionId, templateIndex) {
     }
 }
 
-/**
- * Toggle enable/disable for a DAP server.
- */
 export async function toggleDapServerEnabled(serverId, enabled) {
-    const action = enabled ? 'enable' : 'disable';
-    try {
-        const response = await fetch(`/api/admin/extensions/dap/servers/${serverId}/${action}`, { method: 'POST' });
-        if (response.ok) {
-            if (dapServerConfigs[serverId]) {
-                dapServerConfigs[serverId].enabled = enabled;
-            }
-            loadAllDapServers(selectedDapServer);
-        }
-    } catch (error) {
-        console.error(`Failed to ${action} DAP server:`, error);
-    }
+    toggleServerEnabled('dap', serverId, enabled, dapServerConfigs, () => loadAllDapServers(selectedDapServer));
 }
 
 // Register event delegation actions

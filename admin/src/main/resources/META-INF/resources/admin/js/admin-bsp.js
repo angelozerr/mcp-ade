@@ -5,10 +5,13 @@
  */
 
 import { state, updateSearchBoxVisibility } from './shared-state.js';
-import { showAlert, runServerInstaller } from './shared-ui.js';
+import {
+    runServerInstaller,
+    loadInstallerJsonEditor, saveInstallerJsonEditor,
+    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
+} from './shared-ui.js';
 import { LanguageFilter } from './language-filter.js';
 import { registerActions } from './event-delegation.js';
-import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 
 let selectedBspServer = null;
 let currentBspServerTab = 'overview';
@@ -203,94 +206,27 @@ export async function showBspServerDetails(serverId) {
 
 export function switchBspServerTab(tab) {
     currentBspServerTab = tab;
-    document.querySelectorAll('#console-area .tab-button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tab);
+    switchServerTabs('bsp-server', tab, (t) => {
+        if (t === 'install' && selectedBspServer) loadBspInstallerJson(selectedBspServer);
     });
-    document.querySelectorAll('#console-area .tab-panel').forEach(panel => {
-        panel.classList.toggle('active', panel.id === `bsp-server-${tab}-tab`);
-    });
-    if (tab === 'install' && selectedBspServer) {
-        loadBspInstallerJson(selectedBspServer);
-    }
 }
 
 function buildBspSettingsHTML(server) {
-    const bspTraceLevel = (state.traceLevels && state.traceLevels['bsp.' + server.id]) || 'off';
-    const traceSetting = {
-        key: 'trace',
-        label: 'Trace Level',
-        description: 'Controls protocol message tracing',
-        type: 'enum',
-        values: ['off', 'messages', 'verbose'],
-        currentValue: bspTraceLevel,
-        source: null
-    };
-    return renderSettingsPanel({
-        title: 'Settings',
-        itemsHtml: [renderServerSetting(traceSetting, 'updateBspServerSetting', null, { 'server-id': server.id })]
-    });
+    return buildServerSettingsHTML('bsp', server, 'updateBspServerSetting');
 }
 
 function updateBspServerSetting(serverId, settingKey, value) {
     if (settingKey === 'trace') {
-        changeBspServerTraceLevel(serverId, value);
-    }
-}
-
-export async function changeBspServerTraceLevel(serverId, level) {
-    if (state.traceLevels) {
-        state.traceLevels['bsp.' + serverId] = level;
-    }
-    try {
-        await fetch(`/api/admin/traces/bsp/${serverId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ traceLevel: level })
-        });
-    } catch (e) {
-        console.error('Failed to save BSP trace level:', e);
+        changeServerTraceLevel('bsp', serverId, value);
     }
 }
 
 async function loadBspInstallerJson(serverId) {
-    try {
-        const response = await fetch(`/api/admin/bsp/configs/${serverId}/installer`);
-        if (!response.ok) throw new Error('Failed to load installer.json');
-
-        const installerJson = await response.json();
-        const editor = document.getElementById('bsp-installer-json-editor');
-        if (editor) {
-            editor.value = JSON.stringify(installerJson, null, 2);
-        }
-    } catch (error) {
-        console.error('Failed to load BSP installer.json:', error);
-        const editor = document.getElementById('bsp-installer-json-editor');
-        if (editor) {
-            editor.value = '// No installer.json found for this build server';
-        }
-    }
+    loadInstallerJsonEditor(serverId, 'bsp-installer-json-editor');
 }
 
 async function saveBspInstallerJson(serverId) {
-    const editor = document.getElementById('bsp-installer-json-editor');
-    if (!editor) return;
-
-    try {
-        const installerJson = JSON.parse(editor.value);
-
-        const response = await fetch(`/api/admin/bsp/configs/${serverId}/installer`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(installerJson)
-        });
-
-        if (!response.ok) throw new Error('Failed to save installer.json');
-
-        showAlert('Success', 'Installer configuration saved successfully.');
-    } catch (error) {
-        console.error('Failed to save BSP installer.json:', error);
-        showAlert('Error', 'Failed to save installer.json: ' + error.message);
-    }
+    saveInstallerJsonEditor(serverId, 'bsp-installer-json-editor');
 }
 
 async function resetBspInstallerJson(serverId) {
@@ -303,18 +239,7 @@ async function runBspInstaller(serverId, force) {
 }
 
 async function toggleBspServerEnabled(serverId, enabled) {
-    const action = enabled ? 'enable' : 'disable';
-    try {
-        const response = await fetch(`/api/admin/extensions/bsp/servers/${serverId}/${action}`, { method: 'POST' });
-        if (response.ok) {
-            if (bspServerConfigs[serverId]) {
-                bspServerConfigs[serverId].enabled = enabled;
-            }
-            loadAllBspServers(selectedBspServer);
-        }
-    } catch (error) {
-        console.error(`Failed to ${action} BSP server:`, error);
-    }
+    toggleServerEnabled('bsp', serverId, enabled, bspServerConfigs, () => loadAllBspServers(selectedBspServer));
 }
 
 // Register event delegation actions

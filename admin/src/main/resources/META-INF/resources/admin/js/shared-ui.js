@@ -1,4 +1,6 @@
-import { state } from './shared-state.js';
+import { state, getServerApiBase } from './shared-state.js';
+import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
+import { renderServerDiagram } from './diagram.js';
 
 export function renderDocumentSelector(selectors) {
     if (!selectors || selectors.length === 0) {
@@ -185,6 +187,102 @@ export function initModalOverlay() {
             }
         });
     }
+}
+
+// ========== Shared Server Management Functions ==========
+
+export async function loadInstallerJsonEditor(serverId, editorId) {
+    try {
+        const response = await fetch(`${getServerApiBase(serverId)}/${serverId}/installer`);
+        if (!response.ok) throw new Error('Failed to load installer.json');
+        const installerJson = await response.json();
+        const editor = document.getElementById(editorId);
+        if (editor) editor.value = JSON.stringify(installerJson, null, 2);
+    } catch (error) {
+        console.error('Failed to load installer.json:', error);
+        const editor = document.getElementById(editorId);
+        if (editor) editor.value = '// No installer.json found';
+    }
+}
+
+export async function saveInstallerJsonEditor(serverId, editorId) {
+    const editor = document.getElementById(editorId);
+    if (!editor) return;
+    try {
+        const installerJson = JSON.parse(editor.value);
+        const response = await fetch(`${getServerApiBase(serverId)}/${serverId}/installer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(installerJson)
+        });
+        if (!response.ok) throw new Error('Failed to save installer.json');
+        showAlert('Success', 'Installer configuration saved successfully.');
+    } catch (error) {
+        console.error('Failed to save installer.json:', error);
+        showAlert('Error', 'Failed to save installer.json: ' + error.message);
+    }
+}
+
+export function switchServerTabs(panelPrefix, tab, onSwitch) {
+    document.querySelectorAll('#console-area .tab-button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('#console-area .tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `${panelPrefix}-${tab}-tab`);
+    });
+    if (tab === 'contributions' && state.currentDiagramServers && state.currentDiagramServerId) {
+        setTimeout(() => renderServerDiagram(state.currentDiagramServers, state.currentDiagramServerId), 100);
+    }
+    if (onSwitch) onSwitch(tab);
+}
+
+export async function toggleServerEnabled(serverType, serverId, enabled, configs, reloadFn) {
+    const action = enabled ? 'enable' : 'disable';
+    try {
+        const response = await fetch(`/api/admin/extensions/${serverType}/servers/${serverId}/${action}`, { method: 'POST' });
+        if (response.ok) {
+            if (configs[serverId]) configs[serverId].enabled = enabled;
+            reloadFn();
+        }
+    } catch (error) {
+        console.error(`Failed to ${action} ${serverType.toUpperCase()} server:`, error);
+    }
+}
+
+export async function changeServerTraceLevel(protocol, serverId, level) {
+    if (state.traceLevels) {
+        state.traceLevels[`${protocol}.${serverId}`] = level;
+    }
+    try {
+        await fetch(`/api/admin/traces/${protocol}/${serverId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ traceLevel: level })
+        });
+    } catch (e) {
+        console.error(`Failed to save ${protocol.toUpperCase()} trace level:`, e);
+    }
+}
+
+export function buildServerSettingsHTML(protocol, server, changeAction, extraSettings) {
+    const traceLevel = (state.traceLevels && state.traceLevels[`${protocol}.${server.id}`]) || 'off';
+    const traceSetting = {
+        key: 'trace',
+        label: 'Trace Level',
+        description: 'Controls protocol message tracing',
+        type: 'enum',
+        values: ['off', 'messages', 'verbose'],
+        currentValue: traceLevel,
+        source: null
+    };
+    const traceItems = [renderServerSetting(traceSetting, changeAction, null, { 'server-id': server.id })];
+    const regularItems = (extraSettings || []).map(setting =>
+        renderServerSetting({ ...setting, source: null }, changeAction, null, { 'server-id': server.id })
+    );
+    return renderSettingsPanel({
+        title: 'Settings',
+        itemsHtml: [...traceItems, ...regularItems]
+    });
 }
 
 export function renderServerActions(serverId, server) {
