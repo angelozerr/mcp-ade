@@ -286,12 +286,6 @@
         </dependency>
         <dependency>
             <groupId>com.ibm.mcp</groupId>
-            <artifactId>crystal-extension</artifactId>
-            <version>${project.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.mcp</groupId>
             <artifactId>ada-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>

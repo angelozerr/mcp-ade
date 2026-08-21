@@ -57,7 +57,6 @@
         <module>extensions/nix</module>
         <module>extensions/r</module>
         <module>extensions/perl</module>
-        <module>extensions/crystal</module>
         <module>extensions/ada</module>
         <module>extensions/julia</module>
         <module>extensions/ansible</module>
