@@ -14,7 +14,8 @@
 package com.ibm.mcp.languagetools.mcp.trace;
 
 import com.google.gson.JsonParser;
-import com.ibm.mcp.languagetools.trace.AbstractTraceCollector;
+import com.ibm.mcp.languagetools.trace.DefaultTraceCollector;
+import com.ibm.mcp.languagetools.trace.PendingRequestTracker;
 import com.ibm.mcp.languagetools.trace.TraceKind;
 import io.quarkiverse.mcp.server.McpConnection;
 import io.quarkiverse.mcp.server.RawMessage;
@@ -22,8 +23,6 @@ import io.quarkus.logging.Log;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.ibm.mcp.languagetools.utils.JsonUtils.getPrettyPrintGson;
 
@@ -32,21 +31,15 @@ import static com.ibm.mcp.languagetools.utils.JsonUtils.getPrettyPrintGson;
  * <p>
  * Uses connectionId as the contextId for trace messages.
  */
-public class McpTraceCollector extends AbstractTraceCollector {
+public class McpTraceCollector extends DefaultTraceCollector {
 
-    /**
-     * Timeout in milliseconds for orphaned pending requests (5 minutes).
-     */
-    private static final long PENDING_REQUEST_TIMEOUT_MS = 300_000;
-
-    private final Map<String, PendingRequest> pendingRequests = new ConcurrentHashMap<>();
+    private final PendingRequestTracker<PendingRequest> pendingRequests = new PendingRequestTracker<>(PendingRequest::timestamp);
 
     private record PendingRequest(String method, Instant timestamp, String connectionId) {
     }
 
-    @Override
-    protected TraceKind getTraceKind() {
-        return TraceKind.MCP;
+    public McpTraceCollector() {
+        super(TraceKind.MCP);
     }
 
     /**
@@ -80,10 +73,9 @@ public class McpTraceCollector extends AbstractTraceCollector {
             if (isRequest) {
                 header = String.format("[Trace - %s] Sending request '%s - (%s)'",
                         formatTime(now), method, id);
-                cleanupOrphanedRequests(now);
-                pendingRequests.put(key, new PendingRequest(method, now, connectionId));
+                pendingRequests.track(key, new PendingRequest(method, now, connectionId), now);
             } else if (isResponse) {
-                PendingRequest pending = pendingRequests.remove(key);
+                PendingRequest pending = pendingRequests.resolve(key);
                 if (pending != null) {
                     long durationMs = Duration.between(pending.timestamp, now).toMillis();
                     header = String.format("[Trace - %s] Received response '%s - (%s)' in %dms",
@@ -128,15 +120,6 @@ public class McpTraceCollector extends AbstractTraceCollector {
                 return jsonText;
             }
         }
-    }
-
-    /**
-     * Remove pending requests older than {@link #PENDING_REQUEST_TIMEOUT_MS}.
-     */
-    private void cleanupOrphanedRequests(Instant now) {
-        long nowMs = now.toEpochMilli();
-        pendingRequests.entrySet().removeIf(entry ->
-                nowMs - entry.getValue().timestamp.toEpochMilli() > PENDING_REQUEST_TIMEOUT_MS);
     }
 
     private String formatTime(Instant instant) {

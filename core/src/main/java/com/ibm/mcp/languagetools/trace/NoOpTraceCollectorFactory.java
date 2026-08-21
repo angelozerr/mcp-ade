@@ -23,17 +23,7 @@ import com.ibm.mcp.languagetools.mcp.trace.NoOpMcpTraceCollector;
 public class NoOpTraceCollectorFactory implements TraceCollectorFactory {
 
     @Override
-    public TraceCollector createLspTraceCollector() {
-        return NoOpTraceCollector.INSTANCE;
-    }
-
-    @Override
-    public TraceCollector createDapTraceCollector() {
-        return NoOpTraceCollector.INSTANCE;
-    }
-
-    @Override
-    public TraceCollector createBspTraceCollector() {
+    public TraceCollector createTraceCollector(TraceKind kind) {
         return NoOpTraceCollector.INSTANCE;
     }
 

@@ -43,6 +43,7 @@ import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.NoOpTraceCollectorFactory;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.trace.TraceCollectorFactory;
+import com.ibm.mcp.languagetools.trace.TraceKind;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import com.ibm.mcp.languagetools.workspace.WorkspaceChangeEvent;
 import com.ibm.mcp.languagetools.workspace.IdeConfigurationProvider;
@@ -128,9 +129,9 @@ public class Application {
         TraceCollectorFactory factory = ServiceLoader.load(TraceCollectorFactory.class)
                 .findFirst()
                 .orElse(new NoOpTraceCollectorFactory());
-        this.lspTraceCollector = factory.createLspTraceCollector();
-        this.dapTraceCollector = factory.createDapTraceCollector();
-        this.bspTraceCollector = factory.createBspTraceCollector();
+        this.lspTraceCollector = factory.createTraceCollector(TraceKind.LSP);
+        this.dapTraceCollector = factory.createTraceCollector(TraceKind.DAP);
+        this.bspTraceCollector = factory.createTraceCollector(TraceKind.BSP);
         this.mcpTraceCollector = factory.createMcpTraceCollector();
         LOG.infof("TraceCollectorFactory: %s (enabled=%s)", factory.getClass().getSimpleName(), lspTraceCollector.isEnabled());
     }

@@ -173,7 +173,8 @@ public class AdminWebSocketEndpoint {
                     var traces = application.getLspTraceCollector().getTraces(workspace.getNormalizedUri(), server.getId(), 200);
 
                     for (var trace : traces) {
-                        LspTraceWsMessage msg = new LspTraceWsMessage(
+                        ServerTraceWsMessage msg = new ServerTraceWsMessage(
+                                WsMessageType.LSP_TRACE,
                                 trace.workspaceUri(),
                                 trace.contextId(),
                                 trace.content(),
@@ -248,7 +249,8 @@ public class AdminWebSocketEndpoint {
                 for (var server : workspace.getBspServers()) {
                     var traces = application.getBspTraceCollector().getTraces(workspace.getNormalizedUri(), server.getId(), 200);
                     for (var trace : traces) {
-                        BspTraceWsMessage msg = new BspTraceWsMessage(
+                        ServerTraceWsMessage msg = new ServerTraceWsMessage(
+                                WsMessageType.BSP_TRACE,
                                 trace.workspaceUri(),
                                 trace.contextId(),
                                 trace.content(),
@@ -335,13 +337,15 @@ public class AdminWebSocketEndpoint {
      */
     private void onTrace(TraceMessage trace) {
         switch (trace.kind()) {
-            case LSP -> broadcast(new LspTraceWsMessage(
+            case LSP -> broadcast(new ServerTraceWsMessage(
+                    WsMessageType.LSP_TRACE,
                     trace.workspaceUri(), trace.contextId(),
                     trace.content(), trace.messageType()));
             case DAP -> broadcast(toDapTraceWsMessage(trace));
             case MCP -> broadcast(new McpTraceWsMessage(
                     trace.contextId(), trace.content()));
-            case BSP -> broadcast(new BspTraceWsMessage(
+            case BSP -> broadcast(new ServerTraceWsMessage(
+                    WsMessageType.BSP_TRACE,
                     trace.workspaceUri(), trace.contextId(),
                     trace.content(), trace.messageType()));
         }
@@ -548,7 +552,7 @@ public class AdminWebSocketEndpoint {
         return McpClientDTO.fromConnections(connectionManager);
     }
 
-    private static DapTraceWsMessage toDapTraceWsMessage(TraceMessage trace) {
+    private static ServerTraceWsMessage toDapTraceWsMessage(TraceMessage trace) {
         String contextId = trace.contextId();
         String serverId;
         String sessionId;
@@ -560,7 +564,8 @@ public class AdminWebSocketEndpoint {
             serverId = contextId;
             sessionId = null;
         }
-        return new DapTraceWsMessage(
+        return new ServerTraceWsMessage(
+                WsMessageType.DAP_TRACE,
                 trace.workspaceUri(), serverId, sessionId,
                 trace.content(), trace.messageType());
     }

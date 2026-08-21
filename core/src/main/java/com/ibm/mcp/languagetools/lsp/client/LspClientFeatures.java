@@ -15,18 +15,20 @@ package com.ibm.mcp.languagetools.lsp.client;
 
 import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
-import com.ibm.mcp.languagetools.lsp.client.capabilities.*;
+import com.ibm.mcp.languagetools.lsp.client.capabilities.TextDocumentServerCapabilityRegistry;
+import com.ibm.mcp.languagetools.lsp.client.capabilities.WorkspaceSymbolCapabilityRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
-import org.eclipse.lsp4j.DidChangeWatchedFilesRegistrationOptions;
-import org.eclipse.lsp4j.FileSystemWatcher;
-import org.eclipse.lsp4j.RegistrationParams;
-import org.eclipse.lsp4j.ServerCapabilities;
-import org.eclipse.lsp4j.UnregistrationParams;
+import org.eclipse.lsp4j.*;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Predicate;
+
+import static com.ibm.mcp.languagetools.lsp.client.capabilities.TextDocumentServerCapabilityRegistry.hasCapability;
 
 /**
  * LSP client features - manages server capabilities (static and dynamic).
@@ -35,132 +37,80 @@ public class LspClientFeatures {
 
     private final LspServerConfig config;
 
-    // Capability registries
-    private final ReferencesCapabilityRegistry referencesRegistry;
-    private final DefinitionCapabilityRegistry definitionRegistry;
-    private final DeclarationCapabilityRegistry declarationRegistry;
-    private final ImplementationCapabilityRegistry implementationRegistry;
-    private final HoverCapabilityRegistry hoverRegistry;
-    private final CompletionCapabilityRegistry completionRegistry;
-    private final DiagnosticCapabilityRegistry diagnosticRegistry;
-    private final DocumentSymbolCapabilityRegistry documentSymbolRegistry;
-    private final CodeActionCapabilityRegistry codeActionRegistry;
-    private final RenameCapabilityRegistry renameRegistry;
-    private final TypeDefinitionCapabilityRegistry typeDefinitionRegistry;
-    private final FormattingCapabilityRegistry formattingRegistry;
-    private final RangeFormattingCapabilityRegistry rangeFormattingRegistry;
-    private final SignatureHelpCapabilityRegistry signatureHelpRegistry;
-    private final CodeLensCapabilityRegistry codeLensRegistry;
-    private final InlayHintCapabilityRegistry inlayHintRegistry;
-    private final CallHierarchyCapabilityRegistry callHierarchyRegistry;
-    private final TypeHierarchyCapabilityRegistry typeHierarchyRegistry;
+    private final Map<LspCapability, TextDocumentServerCapabilityRegistry<?>> capabilityRegistries = new EnumMap<>(LspCapability.class);
+    private final Map<String, TextDocumentServerCapabilityRegistry<?>> registriesByMethod = new ConcurrentHashMap<>();
     private final WorkspaceSymbolCapabilityRegistry workspaceSymbolRegistry;
 
-    // Dynamic capabilities registered via client/registerCapability
     private final Map<String, Runnable> dynamicRegistrations = new ConcurrentHashMap<>();
-
-    // File watcher patterns registered via workspace/didChangeWatchedFiles
     private final List<FileSystemWatcher> fileWatchers = new CopyOnWriteArrayList<>();
 
     public LspClientFeatures(LspServerConfig config) {
         this.config = config;
-        this.referencesRegistry = new ReferencesCapabilityRegistry(this);
-        this.definitionRegistry = new DefinitionCapabilityRegistry(this);
-        this.declarationRegistry = new DeclarationCapabilityRegistry(this);
-        this.implementationRegistry = new ImplementationCapabilityRegistry(this);
-        this.hoverRegistry = new HoverCapabilityRegistry(this);
-        this.completionRegistry = new CompletionCapabilityRegistry(this);
-        this.diagnosticRegistry = new DiagnosticCapabilityRegistry(this);
-        this.documentSymbolRegistry = new DocumentSymbolCapabilityRegistry(this);
-        this.codeActionRegistry = new CodeActionCapabilityRegistry(this);
-        this.renameRegistry = new RenameCapabilityRegistry(this);
-        this.typeDefinitionRegistry = new TypeDefinitionCapabilityRegistry(this);
-        this.formattingRegistry = new FormattingCapabilityRegistry(this);
-        this.rangeFormattingRegistry = new RangeFormattingCapabilityRegistry(this);
-        this.signatureHelpRegistry = new SignatureHelpCapabilityRegistry(this);
-        this.codeLensRegistry = new CodeLensCapabilityRegistry(this);
-        this.inlayHintRegistry = new InlayHintCapabilityRegistry(this);
-        this.callHierarchyRegistry = new CallHierarchyCapabilityRegistry(this);
-        this.typeHierarchyRegistry = new TypeHierarchyCapabilityRegistry(this);
+        register(LspCapability.REFERENCES, sc -> hasCapability(sc.getReferencesProvider()), ReferenceRegistrationOptions.class);
+        register(LspCapability.DEFINITION, sc -> hasCapability(sc.getDefinitionProvider()), DefinitionRegistrationOptions.class);
+        register(LspCapability.DECLARATION, sc -> hasCapability(sc.getDeclarationProvider()), DeclarationRegistrationOptions.class);
+        register(LspCapability.IMPLEMENTATION, sc -> hasCapability(sc.getImplementationProvider()), ImplementationRegistrationOptions.class);
+        register(LspCapability.HOVER, sc -> hasCapability(sc.getHoverProvider()), HoverRegistrationOptions.class);
+        register(LspCapability.COMPLETION, sc -> sc.getCompletionProvider() != null, CompletionRegistrationOptions.class);
+        register(LspCapability.DIAGNOSTIC, sc -> sc.getDiagnosticProvider() != null, DiagnosticRegistrationOptions.class);
+        register(LspCapability.DOCUMENT_SYMBOL, sc -> hasCapability(sc.getDocumentSymbolProvider()), DocumentSymbolRegistrationOptions.class);
+        register(LspCapability.CODE_ACTION, sc -> hasCapability(sc.getCodeActionProvider()), CodeActionRegistrationOptions.class);
+        register(LspCapability.RENAME, sc -> hasCapability(sc.getRenameProvider()), RenameOptions.class);
+        register(LspCapability.TYPE_DEFINITION, sc -> hasCapability(sc.getTypeDefinitionProvider()), TypeDefinitionRegistrationOptions.class);
+        register(LspCapability.FORMATTING, sc -> hasCapability(sc.getDocumentFormattingProvider()), DocumentFormattingRegistrationOptions.class);
+        register(LspCapability.RANGE_FORMATTING, sc -> hasCapability(sc.getDocumentRangeFormattingProvider()), DocumentRangeFormattingRegistrationOptions.class);
+        register(LspCapability.SIGNATURE_HELP, sc -> sc.getSignatureHelpProvider() != null, SignatureHelpRegistrationOptions.class);
+        register(LspCapability.CODE_LENS, sc -> sc.getCodeLensProvider() != null, CodeLensRegistrationOptions.class);
+        register(LspCapability.INLAY_HINT, sc -> hasCapability(sc.getInlayHintProvider()), InlayHintRegistrationOptions.class);
+        register(LspCapability.CALL_HIERARCHY, sc -> hasCapability(sc.getCallHierarchyProvider()), CallHierarchyRegistrationOptions.class);
+        register(LspCapability.TYPE_HIERARCHY, sc -> hasCapability(sc.getTypeHierarchyProvider()), TypeHierarchyRegistrationOptions.class);
         this.workspaceSymbolRegistry = new WorkspaceSymbolCapabilityRegistry();
+    }
+
+    private <T extends TextDocumentRegistrationOptions> void register(
+            LspCapability capability,
+            Predicate<ServerCapabilities> predicate,
+            Class<T> optionsClass) {
+        var registry = new TextDocumentServerCapabilityRegistry<>(this, predicate, optionsClass);
+        capabilityRegistries.put(capability, registry);
+        registriesByMethod.put(capability.getMethod(), registry);
     }
 
     /**
      * Set server capabilities from initialize response.
      */
     public void setServerCapabilities(ServerCapabilities serverCapabilities) {
-        referencesRegistry.setServerCapabilities(serverCapabilities);
-        definitionRegistry.setServerCapabilities(serverCapabilities);
-        declarationRegistry.setServerCapabilities(serverCapabilities);
-        implementationRegistry.setServerCapabilities(serverCapabilities);
-        hoverRegistry.setServerCapabilities(serverCapabilities);
-        completionRegistry.setServerCapabilities(serverCapabilities);
-        diagnosticRegistry.setServerCapabilities(serverCapabilities);
-        documentSymbolRegistry.setServerCapabilities(serverCapabilities);
-        codeActionRegistry.setServerCapabilities(serverCapabilities);
-        renameRegistry.setServerCapabilities(serverCapabilities);
-        typeDefinitionRegistry.setServerCapabilities(serverCapabilities);
-        formattingRegistry.setServerCapabilities(serverCapabilities);
-        rangeFormattingRegistry.setServerCapabilities(serverCapabilities);
-        signatureHelpRegistry.setServerCapabilities(serverCapabilities);
-        codeLensRegistry.setServerCapabilities(serverCapabilities);
-        inlayHintRegistry.setServerCapabilities(serverCapabilities);
-        callHierarchyRegistry.setServerCapabilities(serverCapabilities);
-        typeHierarchyRegistry.setServerCapabilities(serverCapabilities);
+        capabilityRegistries.values().forEach(r -> r.setServerCapabilities(serverCapabilities));
         workspaceSymbolRegistry.setServerCapabilities(serverCapabilities);
     }
 
     /**
      * Check if the language server is enabled.
-     * This can be controlled by user configuration.
      */
     public boolean isEnabled() {
-        // TODO: Check user configuration to see if server is disabled
-        // For now, always enabled
         return true;
     }
 
     /**
      * Check if the server supports a given capability for a file.
-     *
-     * @param capability the LSP capability to check
-     * @param document   the language document
-     * @return true if the capability is supported
      */
     public boolean supportsCapability(LspCapability capability, LanguageDocument document) {
-        return switch (capability) {
-            case REFERENCES -> referencesRegistry.isReferencesSupported(document);
-            case DEFINITION -> definitionRegistry.isDefinitionSupported(document);
-            case DECLARATION -> declarationRegistry.isDeclarationSupported(document);
-            case IMPLEMENTATION -> implementationRegistry.isImplementationSupported(document);
-            case HOVER -> hoverRegistry.isHoverSupported(document);
-            case COMPLETION -> completionRegistry.isCompletionSupported(document);
-            case DIAGNOSTIC -> diagnosticRegistry.isDiagnosticSupported(document);
-            case DOCUMENT_SYMBOL -> documentSymbolRegistry.isDocumentSymbolSupported(document);
-            case CODE_ACTION -> codeActionRegistry.isCodeActionSupported(document);
-            case RENAME -> renameRegistry.isRenameSupported(document);
-            case TYPE_DEFINITION -> typeDefinitionRegistry.isTypeDefinitionSupported(document);
-            case FORMATTING -> formattingRegistry.isFormattingSupported(document);
-            case RANGE_FORMATTING -> rangeFormattingRegistry.isRangeFormattingSupported(document);
-            case SIGNATURE_HELP -> signatureHelpRegistry.isSignatureHelpSupported(document);
-            case CODE_LENS -> codeLensRegistry.isCodeLensSupported(document);
-            case INLAY_HINT -> inlayHintRegistry.isInlayHintSupported(document);
-            case CALL_HIERARCHY -> callHierarchyRegistry.isCallHierarchySupported(document);
-            case TYPE_HIERARCHY -> typeHierarchyRegistry.isTypeHierarchySupported(document);
-            case WORKSPACE_SYMBOL -> workspaceSymbolRegistry.isWorkspaceSymbolSupported();
-        };
+        if (capability == LspCapability.WORKSPACE_SYMBOL) {
+            return workspaceSymbolRegistry.isWorkspaceSymbolSupported();
+        }
+        var registry = capabilityRegistries.get(capability);
+        return registry != null && registry.isSupported(document);
     }
 
     public boolean supportsCapability(LspCapability capability) {
-        return switch (capability) {
-            case WORKSPACE_SYMBOL -> workspaceSymbolRegistry.isWorkspaceSymbolSupported();
-            default -> false;
-        };
+        if (capability == LspCapability.WORKSPACE_SYMBOL) {
+            return workspaceSymbolRegistry.isWorkspaceSymbolSupported();
+        }
+        return false;
     }
 
     /**
      * Register a dynamic capability.
-     * Called when the server sends a client/registerCapability notification.
      */
     public void registerCapability(RegistrationParams params) {
         params.getRegistrations().forEach(reg -> {
@@ -168,102 +118,31 @@ public class LspClientFeatures {
             String method = reg.getMethod();
             Object registerOptions = reg.getRegisterOptions();
 
-            if (!(registerOptions instanceof JsonObject)) {
+            if (!(registerOptions instanceof JsonObject jsonOptions)) {
                 return;
             }
 
-            JsonObject jsonOptions = (JsonObject) registerOptions;
+            if (LspRequestConstants.WORKSPACE_DID_CHANGE_WATCHED_FILES.equals(method)) {
+                DidChangeWatchedFilesRegistrationOptions options =
+                        com.ibm.mcp.languagetools.utils.JsonUtils.toModel(jsonOptions, DidChangeWatchedFilesRegistrationOptions.class);
+                if (options != null && options.getWatchers() != null) {
+                    List<FileSystemWatcher> watchers = options.getWatchers();
+                    fileWatchers.addAll(watchers);
+                    dynamicRegistrations.put(id, () -> fileWatchers.removeAll(watchers));
+                }
+                return;
+            }
 
-            // Delegate to appropriate registry based on method
-            switch (method) {
-                case LspRequestConstants.TEXT_DOCUMENT_REFERENCES -> {
-                    var options = referencesRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> referencesRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_DEFINITION -> {
-                    var options = definitionRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> definitionRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_DECLARATION -> {
-                    var options = declarationRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> declarationRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_IMPLEMENTATION -> {
-                    var options = implementationRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> implementationRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_HOVER -> {
-                    var options = hoverRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> hoverRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_COMPLETION -> {
-                    var options = completionRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> completionRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_DIAGNOSTIC -> {
-                    var options = diagnosticRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> diagnosticRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_DOCUMENT_SYMBOL -> {
-                    var options = documentSymbolRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> documentSymbolRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_CODE_ACTION -> {
-                    var options = codeActionRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> codeActionRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_RENAME -> {
-                    var options = renameRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> renameRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_TYPE_DEFINITION -> {
-                    var options = typeDefinitionRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> typeDefinitionRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_FORMATTING -> {
-                    var options = formattingRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> formattingRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_RANGE_FORMATTING -> {
-                    var options = rangeFormattingRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> rangeFormattingRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_SIGNATURE_HELP -> {
-                    var options = signatureHelpRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> signatureHelpRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_CODE_LENS -> {
-                    var options = codeLensRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> codeLensRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_INLAY_HINT -> {
-                    var options = inlayHintRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> inlayHintRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_PREPARE_CALL_HIERARCHY -> {
-                    var options = callHierarchyRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> callHierarchyRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.TEXT_DOCUMENT_PREPARE_TYPE_HIERARCHY -> {
-                    var options = typeHierarchyRegistry.registerCapability(jsonOptions);
-                    dynamicRegistrations.put(id, () -> typeHierarchyRegistry.unregisterCapability(options));
-                }
-                case LspRequestConstants.WORKSPACE_DID_CHANGE_WATCHED_FILES -> {
-                    DidChangeWatchedFilesRegistrationOptions options =
-                            com.ibm.mcp.languagetools.utils.JsonUtils.toModel(jsonOptions, DidChangeWatchedFilesRegistrationOptions.class);
-                    if (options != null && options.getWatchers() != null) {
-                        List<FileSystemWatcher> watchers = options.getWatchers();
-                        fileWatchers.addAll(watchers);
-                        dynamicRegistrations.put(id, () -> fileWatchers.removeAll(watchers));
-                    }
-                }
+            var registry = registriesByMethod.get(method);
+            if (registry != null) {
+                var options = registry.registerCapability(jsonOptions);
+                dynamicRegistrations.put(id, () -> registry.unregisterCapability(options));
             }
         });
     }
 
     /**
      * Unregister a dynamic capability.
-     * Called when the server sends a client/unregisterCapability notification.
      */
     public void unregisterCapability(UnregistrationParams params) {
         params.getUnregisterations().forEach(unreg -> {
@@ -279,8 +158,9 @@ public class LspClientFeatures {
         return config;
     }
 
-    public ReferencesCapabilityRegistry getReferencesRegistry() {
-        return referencesRegistry;
+    @SuppressWarnings("unchecked")
+    public <T extends TextDocumentRegistrationOptions> TextDocumentServerCapabilityRegistry<T> getRegistry(LspCapability capability) {
+        return (TextDocumentServerCapabilityRegistry<T>) capabilityRegistries.get(capability);
     }
 
     public List<FileSystemWatcher> getFileWatchers() {

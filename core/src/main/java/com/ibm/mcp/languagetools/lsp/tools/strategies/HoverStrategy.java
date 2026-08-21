@@ -31,15 +31,7 @@ import java.util.stream.Collectors;
 public class HoverStrategy extends FilePositionBasedStrategy<HoverParams, Hover> {
 
     public HoverStrategy(LanguageRegistry languageRegistry) {
-        super(languageRegistry, LspCapability.HOVER, "Hover");
-    }
-
-    @Override
-    public HoverParams buildLspParams(FilePositionRequestParams params) {
-        HoverParams lspParams = new HoverParams();
-        lspParams.setTextDocument(new TextDocumentIdentifier(params.getFileUri()));
-        lspParams.setPosition(new Position(params.getLine(), params.getCharacter()));
-        return lspParams;
+        super(languageRegistry, LspCapability.HOVER, "Hover", HoverParams::new);
     }
 
     @Override

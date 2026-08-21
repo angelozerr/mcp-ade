@@ -13,12 +13,11 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin.trace;
 
-import com.ibm.mcp.languagetools.bsp.trace.BspTraceCollector;
-import com.ibm.mcp.languagetools.dap.trace.DapTraceCollector;
-import com.ibm.mcp.languagetools.lsp.trace.LspTraceCollector;
 import com.ibm.mcp.languagetools.mcp.trace.McpTraceCollector;
+import com.ibm.mcp.languagetools.trace.DefaultTraceCollector;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.trace.TraceCollectorFactory;
+import com.ibm.mcp.languagetools.trace.TraceKind;
 
 /**
  * Factory that creates real trace collectors when the admin module is present.
@@ -27,18 +26,8 @@ import com.ibm.mcp.languagetools.trace.TraceCollectorFactory;
 public class AdminTraceCollectorFactory implements TraceCollectorFactory {
 
     @Override
-    public TraceCollector createLspTraceCollector() {
-        return new LspTraceCollector();
-    }
-
-    @Override
-    public TraceCollector createDapTraceCollector() {
-        return new DapTraceCollector();
-    }
-
-    @Override
-    public TraceCollector createBspTraceCollector() {
-        return new BspTraceCollector();
+    public TraceCollector createTraceCollector(TraceKind kind) {
+        return new DefaultTraceCollector(kind);
     }
 
     @Override

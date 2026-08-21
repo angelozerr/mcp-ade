@@ -33,7 +33,7 @@ import java.util.function.Predicate;
  *
  * @param <T> the LSP {@link TextDocumentRegistrationOptions}.
  */
-public abstract class TextDocumentServerCapabilityRegistry<T extends TextDocumentRegistrationOptions> {
+public class TextDocumentServerCapabilityRegistry<T extends TextDocumentRegistrationOptions> {
 
     private final LspClientFeatures clientFeatures;
     private final Predicate<ServerCapabilities> serverCapabilitiesPredicate;

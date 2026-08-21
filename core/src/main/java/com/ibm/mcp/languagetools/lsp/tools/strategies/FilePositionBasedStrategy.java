@@ -22,11 +22,14 @@ import com.ibm.mcp.languagetools.lsp.tools.LspRequestExecutor;
 import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
 import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentPositionParams;
 
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * Base class for file position-based LSP request strategies.
@@ -41,11 +44,30 @@ public abstract class FilePositionBasedStrategy<TLspParams, TResult>
     protected final LanguageRegistry languageRegistry;
     private final LspCapability capability;
     private final String title;
+    private final Supplier<TLspParams> paramsFactory;
 
     protected FilePositionBasedStrategy(LanguageRegistry languageRegistry, LspCapability capability, String title) {
+        this(languageRegistry, capability, title, null);
+    }
+
+    protected FilePositionBasedStrategy(LanguageRegistry languageRegistry, LspCapability capability, String title, Supplier<TLspParams> paramsFactory) {
         this.languageRegistry = languageRegistry;
         this.capability = capability;
         this.title = title;
+        this.paramsFactory = paramsFactory;
+    }
+
+    @Override
+    public TLspParams buildLspParams(FilePositionRequestParams params) {
+        if (paramsFactory == null) {
+            throw new UnsupportedOperationException("Override buildLspParams or provide a paramsFactory");
+        }
+        TLspParams lspParams = paramsFactory.get();
+        if (lspParams instanceof TextDocumentPositionParams p) {
+            p.setTextDocument(new TextDocumentIdentifier(params.getFileUri()));
+            p.setPosition(new Position(params.getLine(), params.getCharacter()));
+        }
+        return lspParams;
     }
 
     @Override

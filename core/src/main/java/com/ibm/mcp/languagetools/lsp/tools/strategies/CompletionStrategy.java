@@ -35,16 +35,8 @@ public class CompletionStrategy extends FilePositionBasedStrategy<CompletionPara
     private final int maxItems;
 
     public CompletionStrategy(LanguageRegistry languageRegistry, Integer maxResults) {
-        super(languageRegistry, LspCapability.COMPLETION, "Completion");
+        super(languageRegistry, LspCapability.COMPLETION, "Completion", CompletionParams::new);
         this.maxItems = maxResults != null && maxResults > 0 ? maxResults : DEFAULT_MAX_ITEMS;
-    }
-
-    @Override
-    public CompletionParams buildLspParams(FilePositionRequestParams params) {
-        CompletionParams lspParams = new CompletionParams();
-        lspParams.setTextDocument(new TextDocumentIdentifier(params.getFileUri()));
-        lspParams.setPosition(new Position(params.getLine(), params.getCharacter()));
-        return lspParams;
     }
 
     @Override

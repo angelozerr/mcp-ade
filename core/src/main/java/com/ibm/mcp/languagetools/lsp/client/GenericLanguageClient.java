@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,7 +44,19 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
 
     protected final LspServer lspServer;
 
-    private final Map<String, CompletableFuture<List<Diagnostic>>> diagnosticsFutures = new ConcurrentHashMap<>();
+    private static final long DIAGNOSTICS_DEBOUNCE_MS = 300;
+
+    private final Map<String, DiagnosticsWait> diagnosticsWaiters = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService diagnosticsScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "diagnostics-debounce");
+        t.setDaemon(true);
+        return t;
+    });
+
+    private static class DiagnosticsWait {
+        final CompletableFuture<List<Diagnostic>> future = new CompletableFuture<>();
+        volatile ScheduledFuture<?> timeoutHandle;
+    }
 
     public GenericLanguageClient(LspServer lspServer) {
         super(lspServer.getConfig(), lspServer.getWorkspace());
@@ -55,23 +70,42 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
 
     @Override
     public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
-        LOG.debugf("Diagnostics published for: %s", diagnostics.getUri());
-        lspServer.getDiagnosticsCache().put(diagnostics.getUri(), diagnostics.getDiagnostics());
-        CompletableFuture<List<Diagnostic>> future = diagnosticsFutures.remove(diagnostics.getUri());
-        if (future != null) {
-            future.complete(diagnostics.getDiagnostics());
+        String uri = diagnostics.getUri();
+        List<Diagnostic> diags = diagnostics.getDiagnostics();
+        LOG.debugf("Diagnostics published for: %s (%d items)", uri, diags.size());
+
+        // Don't clear cache when file is not opened
+        // (server sends empty diagnostics after didClose)
+        if (!diags.isEmpty() || lspServer.isFileOpened(uri)) {
+            lspServer.getDiagnosticsCache().put(uri, diags);
+        }
+
+        DiagnosticsWait wait = diagnosticsWaiters.get(uri);
+        if (wait != null && !wait.future.isDone()) {
+            // Cancel previous timeout, reschedule with debounce delay
+            ScheduledFuture<?> prev = wait.timeoutHandle;
+            if (prev != null) {
+                prev.cancel(false);
+            }
+            wait.timeoutHandle = diagnosticsScheduler.schedule(
+                    () -> completeDiagnosticsWait(uri), DIAGNOSTICS_DEBOUNCE_MS, TimeUnit.MILLISECONDS);
         }
     }
 
-    public CompletableFuture<List<Diagnostic>> waitForDiagnostics(String uri, long timeoutMs) {
-        CompletableFuture<List<Diagnostic>> future = new CompletableFuture<>();
-        diagnosticsFutures.put(uri, future);
-        return future.orTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-                .exceptionally(ex -> {
-                    diagnosticsFutures.remove(uri);
-                    List<Diagnostic> cached = lspServer.getDiagnosticsCache().get(uri);
-                    return cached != null ? cached : Collections.emptyList();
-                });
+    public CompletableFuture<List<Diagnostic>> waitForDiagnostics(String uri, long initialTimeoutMs) {
+        DiagnosticsWait wait = new DiagnosticsWait();
+        diagnosticsWaiters.put(uri, wait);
+        wait.timeoutHandle = diagnosticsScheduler.schedule(
+                () -> completeDiagnosticsWait(uri), initialTimeoutMs, TimeUnit.MILLISECONDS);
+        return wait.future;
+    }
+
+    private void completeDiagnosticsWait(String uri) {
+        DiagnosticsWait wait = diagnosticsWaiters.remove(uri);
+        if (wait != null && !wait.future.isDone()) {
+            List<Diagnostic> cached = lspServer.getDiagnosticsCache().get(uri);
+            wait.future.complete(cached != null ? cached : Collections.emptyList());
+        }
     }
 
     @Override

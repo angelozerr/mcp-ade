@@ -13,21 +13,23 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.installer.download;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+
 /**
- * Singleton cache for {@link OpenVsxAssetFetcher} instances, keyed by namespace and extension name.
+ * Generic singleton cache for asset fetchers.
+ * <p>
+ * Ensures that a unique fetcher is created per (key1, key2) pair and reused thereafter.
+ *
+ * @param <T> the fetcher type
  */
-public class OpenVsxAssetFetcherManager extends AssetFetcherCache<OpenVsxAssetFetcher> {
+public class AssetFetcherCache<T> {
 
-    private static final OpenVsxAssetFetcherManager INSTANCE = new OpenVsxAssetFetcherManager();
+    private final Map<String, T> fetchers = new ConcurrentHashMap<>();
 
-    private OpenVsxAssetFetcherManager() {
-    }
-
-    public static OpenVsxAssetFetcherManager getInstance() {
-        return INSTANCE;
-    }
-
-    public OpenVsxAssetFetcher getAssetFetcher(String namespace, String extensionName) {
-        return get(namespace, extensionName, OpenVsxAssetFetcher::new);
+    protected T get(String key1, String key2, BiFunction<String, String, T> factory) {
+        String key = key1 + "#" + key2;
+        return fetchers.computeIfAbsent(key, k -> factory.apply(key1, key2));
     }
 }

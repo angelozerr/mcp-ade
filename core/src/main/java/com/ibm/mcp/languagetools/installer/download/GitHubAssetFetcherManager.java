@@ -13,20 +13,12 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.installer.download;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
- * Singleton manager responsible for providing and caching {@link GitHubAssetFetcher} instances.
- *
- * <p>This class ensures that a unique {@link GitHubAssetFetcher} is created per GitHub repository
- * (identified by owner and repository name) and reused thereafter.</p>
+ * Singleton cache for {@link GitHubAssetFetcher} instances, keyed by owner and repository.
  */
-public class GitHubAssetFetcherManager {
+public class GitHubAssetFetcherManager extends AssetFetcherCache<GitHubAssetFetcher> {
 
     private static final GitHubAssetFetcherManager INSTANCE = new GitHubAssetFetcherManager();
-
-    private final Map<String, GitHubAssetFetcher> assetFetchers = new ConcurrentHashMap<>();
 
     private GitHubAssetFetcherManager() {
     }
@@ -35,18 +27,7 @@ public class GitHubAssetFetcherManager {
         return INSTANCE;
     }
 
-    /**
-     * Returns a {@link GitHubAssetFetcher} for the specified GitHub repository.
-     *
-     * <p>If a fetcher for the given owner and repository already exists, it is returned.
-     * Otherwise, a new fetcher is created, cached, and returned.</p>
-     *
-     * @param owner the GitHub repository owner (username or organization)
-     * @param repository the GitHub repository name
-     * @return a cached or newly created {@link GitHubAssetFetcher} for the specified repository
-     */
     public GitHubAssetFetcher getAssetFetcher(String owner, String repository) {
-        String key = owner + "#" + repository;
-        return assetFetchers.computeIfAbsent(key, k -> new GitHubAssetFetcher(owner, repository));
+        return get(owner, repository, GitHubAssetFetcher::new);
     }
 }

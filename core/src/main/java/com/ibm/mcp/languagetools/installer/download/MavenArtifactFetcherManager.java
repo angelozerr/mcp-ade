@@ -13,17 +13,12 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.installer.download;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
- * Singleton manager for providing and caching {@link MavenArtifactFetcher} instances.
+ * Singleton cache for {@link MavenArtifactFetcher} instances, keyed by groupId and artifactId.
  */
-public class MavenArtifactFetcherManager {
+public class MavenArtifactFetcherManager extends AssetFetcherCache<MavenArtifactFetcher> {
 
     private static final MavenArtifactFetcherManager INSTANCE = new MavenArtifactFetcherManager();
-
-    private final Map<String, MavenArtifactFetcher> artifactFetchers = new ConcurrentHashMap<>();
 
     private MavenArtifactFetcherManager() {
     }
@@ -32,18 +27,7 @@ public class MavenArtifactFetcherManager {
         return INSTANCE;
     }
 
-    /**
-     * Returns a {@link MavenArtifactFetcher} for the specified Maven artifact.
-     *
-     * <p>If a fetcher for the given groupId and artifactId already exists, it is returned.
-     * Otherwise, a new fetcher is created, cached, and returned.</p>
-     *
-     * @param groupId the Maven group ID
-     * @param artifactId the Maven artifact ID
-     * @return a cached or newly created {@link MavenArtifactFetcher} for the specified artifact
-     */
     public MavenArtifactFetcher getArtifactFetcher(String groupId, String artifactId) {
-        String key = groupId + "#" + artifactId;
-        return artifactFetchers.computeIfAbsent(key, k -> new MavenArtifactFetcher(groupId, artifactId));
+        return get(groupId, artifactId, MavenArtifactFetcher::new);
     }
 }

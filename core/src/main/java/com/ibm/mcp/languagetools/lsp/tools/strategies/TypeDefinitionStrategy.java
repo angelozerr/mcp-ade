@@ -16,7 +16,6 @@ package com.ibm.mcp.languagetools.lsp.tools.strategies;
 import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
-import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
@@ -29,15 +28,7 @@ import java.util.concurrent.CompletableFuture;
 public class TypeDefinitionStrategy extends LocationBasedStrategy<TypeDefinitionParams> {
 
     public TypeDefinitionStrategy(LanguageRegistry languageRegistry) {
-        super(languageRegistry, LspCapability.TYPE_DEFINITION, "Go to type definition");
-    }
-
-    @Override
-    public TypeDefinitionParams buildLspParams(FilePositionRequestParams params) {
-        TypeDefinitionParams lspParams = new TypeDefinitionParams();
-        lspParams.setTextDocument(new TextDocumentIdentifier(params.getFileUri()));
-        lspParams.setPosition(new Position(params.getLine(), params.getCharacter()));
-        return lspParams;
+        super(languageRegistry, LspCapability.TYPE_DEFINITION, "Go to type definition", TypeDefinitionParams::new);
     }
 
     @Override

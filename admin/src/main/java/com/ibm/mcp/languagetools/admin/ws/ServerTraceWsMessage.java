@@ -13,17 +13,24 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin.ws;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 
-public class BspTraceWsMessage extends TraceWsMessage {
+public class ServerTraceWsMessage extends TraceWsMessage {
 
     private final String workspaceUri;
     private final String serverId;
+    private final String sessionId;
 
-    public BspTraceWsMessage(String workspaceUri, String serverId, String content, TraceCollector.MessageType messageType) {
-        super(WsMessageType.BSP_TRACE, content, messageType);
+    public ServerTraceWsMessage(WsMessageType type, String workspaceUri, String serverId, String content, TraceCollector.MessageType messageType) {
+        this(type, workspaceUri, serverId, null, content, messageType);
+    }
+
+    public ServerTraceWsMessage(WsMessageType type, String workspaceUri, String serverId, String sessionId, String content, TraceCollector.MessageType messageType) {
+        super(type, content, messageType);
         this.workspaceUri = workspaceUri;
         this.serverId = serverId;
+        this.sessionId = sessionId;
     }
 
     public String getWorkspaceUri() {
@@ -32,5 +39,10 @@ public class BspTraceWsMessage extends TraceWsMessage {
 
     public String getServerId() {
         return serverId;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getSessionId() {
+        return sessionId;
     }
 }

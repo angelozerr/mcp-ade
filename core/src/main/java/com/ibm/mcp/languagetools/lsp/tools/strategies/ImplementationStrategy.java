@@ -16,7 +16,6 @@ package com.ibm.mcp.languagetools.lsp.tools.strategies;
 import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
-import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
@@ -29,15 +28,7 @@ import java.util.concurrent.CompletableFuture;
 public class ImplementationStrategy extends LocationBasedStrategy<ImplementationParams> {
 
     public ImplementationStrategy(LanguageRegistry languageRegistry) {
-        super(languageRegistry, LspCapability.IMPLEMENTATION, "Find implementations");
-    }
-
-    @Override
-    public ImplementationParams buildLspParams(FilePositionRequestParams params) {
-        ImplementationParams lspParams = new ImplementationParams();
-        lspParams.setTextDocument(new TextDocumentIdentifier(params.getFileUri()));
-        lspParams.setPosition(new Position(params.getLine(), params.getCharacter()));
-        return lspParams;
+        super(languageRegistry, LspCapability.IMPLEMENTATION, "Find implementations", ImplementationParams::new);
     }
 
     @Override

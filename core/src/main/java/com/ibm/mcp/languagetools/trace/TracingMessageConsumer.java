@@ -27,8 +27,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Traces LSP messages in a format similar to lsp4ij.
@@ -37,11 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TracingMessageConsumer {
 
     private static volatile MessageJsonHandler toStringInstance;
-
-    /**
-     * Timeout in milliseconds for orphaned pending requests (5 minutes).
-     */
-    private static final long PENDING_REQUEST_TIMEOUT_MS = 300_000;
 
     private final TraceCollector collector;
     private final String workspaceUri;
@@ -54,8 +47,8 @@ public class TracingMessageConsumer {
      * </ul>
      */
     private final String contextId;
-    private final Map<String, RequestMetadata> sentRequests;
-    private final Map<String, RequestMetadata> receivedRequests;
+    private final PendingRequestTracker<RequestMetadata> sentRequests;
+    private final PendingRequestTracker<RequestMetadata> receivedRequests;
     private final Clock clock;
     private final DateTimeFormatter dateTimeFormatter;
 
@@ -63,8 +56,8 @@ public class TracingMessageConsumer {
         this.collector = collector;
         this.workspaceUri = workspaceUri;
         this.contextId = contextId;
-        this.sentRequests = new ConcurrentHashMap<>();
-        this.receivedRequests = new ConcurrentHashMap<>();
+        this.sentRequests = new PendingRequestTracker<>(m -> m.start);
+        this.receivedRequests = new PendingRequestTracker<>(m -> m.start);
         this.clock = Clock.systemDefaultZone();
         this.dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(clock.getZone());
     }
@@ -98,15 +91,14 @@ public class TracingMessageConsumer {
             String id = requestMessage.getId();
             String method = requestMessage.getMethod();
             RequestMetadata requestMetadata = new RequestMetadata(method, now);
-            cleanupOrphanedRequests(sentRequests, now);
-            sentRequests.put(id, requestMetadata);
+            sentRequests.track(id, requestMetadata, now);
             Object params = requestMessage.getParams();
             String paramsJson = toJsonString(params);
             return String.format("[Trace - %s] Sending request '%s - (%s)'.\nParams: %s\n\n", date, method, id, paramsJson);
         } else if (message instanceof ResponseMessage) {
             ResponseMessage responseMessage = (ResponseMessage) message;
             String id = responseMessage.getId();
-            RequestMetadata requestMetadata = receivedRequests.remove(id);
+            RequestMetadata requestMetadata = receivedRequests.resolve(id);
             String method = getMethod(requestMetadata);
             String latencyMillis = getLatencyMillis(requestMetadata, now);
             Object result = responseMessage.getResult();
@@ -130,15 +122,14 @@ public class TracingMessageConsumer {
             String method = requestMessage.getMethod();
             String id = requestMessage.getId();
             RequestMetadata requestMetadata = new RequestMetadata(method, now);
-            cleanupOrphanedRequests(receivedRequests, now);
-            receivedRequests.put(id, requestMetadata);
+            receivedRequests.track(id, requestMetadata, now);
             Object params = requestMessage.getParams();
             String paramsJson = toJsonString(params);
             return String.format("[Trace - %s] Received request '%s - (%s)'\nParams: %s\n\n", date, method, id, paramsJson);
         } else if (message instanceof ResponseMessage) {
             ResponseMessage responseMessage = (ResponseMessage) message;
             String id = responseMessage.getId();
-            RequestMetadata requestMetadata = sentRequests.remove(id);
+            RequestMetadata requestMetadata = sentRequests.resolve(id);
             String method = getMethod(requestMetadata);
             String latencyMillis = getLatencyMillis(requestMetadata, now);
             Object result = responseMessage.getResult();
@@ -235,15 +226,6 @@ public class TracingMessageConsumer {
 
     private static String getLatencyMillis(RequestMetadata requestMetadata, Instant now) {
         return requestMetadata != null ? String.valueOf(now.toEpochMilli() - requestMetadata.start.toEpochMilli()) : "?";
-    }
-
-    /**
-     * Remove pending requests older than {@link #PENDING_REQUEST_TIMEOUT_MS}.
-     */
-    private static void cleanupOrphanedRequests(Map<String, RequestMetadata> requests, Instant now) {
-        long nowMs = now.toEpochMilli();
-        requests.entrySet().removeIf(entry ->
-                nowMs - entry.getValue().start.toEpochMilli() > PENDING_REQUEST_TIMEOUT_MS);
     }
 
     private static class RequestMetadata {

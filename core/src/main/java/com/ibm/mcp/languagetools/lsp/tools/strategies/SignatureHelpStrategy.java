@@ -30,15 +30,7 @@ import java.util.concurrent.CompletableFuture;
 public class SignatureHelpStrategy extends FilePositionBasedStrategy<SignatureHelpParams, SignatureHelp> {
 
     public SignatureHelpStrategy(LanguageRegistry languageRegistry) {
-        super(languageRegistry, LspCapability.SIGNATURE_HELP, "Signature help");
-    }
-
-    @Override
-    public SignatureHelpParams buildLspParams(FilePositionRequestParams params) {
-        SignatureHelpParams lspParams = new SignatureHelpParams();
-        lspParams.setTextDocument(new TextDocumentIdentifier(params.getFileUri()));
-        lspParams.setPosition(new Position(params.getLine(), params.getCharacter()));
-        return lspParams;
+        super(languageRegistry, LspCapability.SIGNATURE_HELP, "Signature help", SignatureHelpParams::new);
     }
 
     @Override

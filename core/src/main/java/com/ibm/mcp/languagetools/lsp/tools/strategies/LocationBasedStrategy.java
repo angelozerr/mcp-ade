@@ -22,6 +22,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Base class for location-based LSP request strategies that return
@@ -38,6 +39,10 @@ public abstract class LocationBasedStrategy<TLspParams>
 
     protected LocationBasedStrategy(LanguageRegistry languageRegistry, LspCapability capability, String title) {
         super(languageRegistry, capability, title);
+    }
+
+    protected LocationBasedStrategy(LanguageRegistry languageRegistry, LspCapability capability, String title, Supplier<TLspParams> paramsFactory) {
+        super(languageRegistry, capability, title, paramsFactory);
     }
 
     @Override

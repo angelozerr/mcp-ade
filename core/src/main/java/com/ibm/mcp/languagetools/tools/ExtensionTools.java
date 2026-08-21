@@ -26,11 +26,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
+import com.ibm.mcp.languagetools.server.ServerConfigBase;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * MCP tools for extension management: list, add, remove, enable, disable.
@@ -58,38 +61,9 @@ public class ExtensionTools {
                 entry.put("source", ext.getSource().name());
                 entry.put("enabled", registry.isExtensionEnabled(ext.getId()));
 
-                List<Map<String, Object>> lspServers = ext.getLspServerConfigs().stream()
-                        .map(c -> {
-                            Map<String, Object> s = new LinkedHashMap<>();
-                            s.put("id", c.getServerId());
-                            s.put("name", c.getName());
-                            s.put("enabled", registry.isServerEnabled(c.getServerId()));
-                            return s;
-                        })
-                        .toList();
-                entry.put("lspServers", lspServers);
-
-                List<Map<String, Object>> dapServers = ext.getDapServerConfigs().stream()
-                        .map(c -> {
-                            Map<String, Object> s = new LinkedHashMap<>();
-                            s.put("id", c.getServerId());
-                            s.put("name", c.getName());
-                            s.put("enabled", registry.isServerEnabled(c.getServerId()));
-                            return s;
-                        })
-                        .toList();
-                entry.put("dapServers", dapServers);
-
-                List<Map<String, Object>> bspServers = ext.getBspServerConfigs().stream()
-                        .map(c -> {
-                            Map<String, Object> s = new LinkedHashMap<>();
-                            s.put("id", c.getServerId());
-                            s.put("name", c.getName());
-                            s.put("enabled", registry.isServerEnabled(c.getServerId()));
-                            return s;
-                        })
-                        .toList();
-                entry.put("bspServers", bspServers);
+                entry.put("lspServers", toServerList(ext.getLspServerConfigs(), registry));
+                entry.put("dapServers", toServerList(ext.getDapServerConfigs(), registry));
+                entry.put("bspServers", toServerList(ext.getBspServerConfigs(), registry));
 
                 result.add(entry);
             }
@@ -312,77 +286,66 @@ public class ExtensionTools {
           description = "Enable a previously disabled LSP server.")
     public Map<String, Object> enableLspServer(
             @ToolArg(description = "Server ID to enable") String serverId) {
-        try {
-            application.enableLspServer(serverId);
-            return Map.of("success", true, "message", "LSP server '" + serverId + "' enabled");
-        } catch (Exception e) {
-            LOG.error("Failed to enable LSP server", e);
-            throw new ToolException("Failed to enable LSP server: " + e.getMessage(), e);
-        }
+        return toggleServer("LSP", serverId, true, () -> application.enableLspServer(serverId));
     }
 
     @Tool(name = "disable_lsp_server",
           description = "Disable an LSP server. It becomes unavailable for new requests.")
     public Map<String, Object> disableLspServer(
             @ToolArg(description = "Server ID to disable") String serverId) {
-        try {
-            application.disableLspServer(serverId);
-            return Map.of("success", true, "message", "LSP server '" + serverId + "' disabled");
-        } catch (Exception e) {
-            LOG.error("Failed to disable LSP server", e);
-            throw new ToolException("Failed to disable LSP server: " + e.getMessage(), e);
-        }
+        return toggleServer("LSP", serverId, false, () -> application.disableLspServer(serverId));
     }
 
     @Tool(name = "enable_dap_server",
           description = "Enable a previously disabled DAP server.")
     public Map<String, Object> enableDapServer(
             @ToolArg(description = "Server ID to enable") String serverId) {
-        try {
-            application.enableDapServer(serverId);
-            return Map.of("success", true, "message", "DAP server '" + serverId + "' enabled");
-        } catch (Exception e) {
-            LOG.error("Failed to enable DAP server", e);
-            throw new ToolException("Failed to enable DAP server: " + e.getMessage(), e);
-        }
+        return toggleServer("DAP", serverId, true, () -> application.enableDapServer(serverId));
     }
 
     @Tool(name = "disable_dap_server",
           description = "Disable a DAP server. It becomes unavailable for new debug sessions.")
     public Map<String, Object> disableDapServer(
             @ToolArg(description = "Server ID to disable") String serverId) {
-        try {
-            application.disableDapServer(serverId);
-            return Map.of("success", true, "message", "DAP server '" + serverId + "' disabled");
-        } catch (Exception e) {
-            LOG.error("Failed to disable DAP server", e);
-            throw new ToolException("Failed to disable DAP server: " + e.getMessage(), e);
-        }
+        return toggleServer("DAP", serverId, false, () -> application.disableDapServer(serverId));
     }
 
     @Tool(name = "enable_bsp_server",
           description = "Enable a previously disabled BSP build server.")
     public Map<String, Object> enableBspServer(
             @ToolArg(description = "Server ID to enable") String serverId) {
-        try {
-            application.enableBspServer(serverId);
-            return Map.of("success", true, "message", "BSP server '" + serverId + "' enabled");
-        } catch (Exception e) {
-            LOG.error("Failed to enable BSP server", e);
-            throw new ToolException("Failed to enable BSP server: " + e.getMessage(), e);
-        }
+        return toggleServer("BSP", serverId, true, () -> application.enableBspServer(serverId));
     }
 
     @Tool(name = "disable_bsp_server",
           description = "Disable a BSP build server. It becomes unavailable for new requests.")
     public Map<String, Object> disableBspServer(
             @ToolArg(description = "Server ID to disable") String serverId) {
+        return toggleServer("BSP", serverId, false, () -> application.disableBspServer(serverId));
+    }
+
+    private Map<String, Object> toggleServer(String type, String serverId, boolean enable, Runnable action) {
+        String verb = enable ? "enable" : "disable";
+        String verbed = enable ? "enabled" : "disabled";
         try {
-            application.disableBspServer(serverId);
-            return Map.of("success", true, "message", "BSP server '" + serverId + "' disabled");
+            action.run();
+            return Map.of("success", true, "message", type + " server '" + serverId + "' " + verbed);
         } catch (Exception e) {
-            LOG.error("Failed to disable BSP server", e);
-            throw new ToolException("Failed to disable BSP server: " + e.getMessage(), e);
+            LOG.errorf(e, "Failed to %s %s server '%s'", verb, type, serverId);
+            throw new ToolException("Failed to " + verb + " " + type + " server: " + e.getMessage(), e);
         }
+    }
+
+    private static List<Map<String, Object>> toServerList(
+            Collection<? extends ServerConfigBase> configs, ExtensionRegistry registry) {
+        return configs.stream()
+                .map(c -> {
+                    Map<String, Object> s = new LinkedHashMap<>();
+                    s.put("id", c.getServerId());
+                    s.put("name", c.getName());
+                    s.put("enabled", registry.isServerEnabled(c.getServerId()));
+                    return s;
+                })
+                .toList();
     }
 }

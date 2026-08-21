@@ -370,12 +370,12 @@ public class LspServer extends ServerBase<LspServerConfig> {
         );
     }
 
-    private static final long DIAGNOSTICS_TIMEOUT_MS = 10_000;
+    private static final long DIAGNOSTICS_TIMEOUT_MS = 3_000;
 
     /**
      * Get diagnostics for a file URI.
-     * Checks cache first, then falls back to didOpen + waitForDiagnostics.
-     * Subclasses (e.g., MicroProfileLspServer) override to use custom requests.
+     * Uses pull diagnostics (textDocument/diagnostic) when supported,
+     * otherwise falls back to didOpen + waitForDiagnostics.
      *
      * @param uri        file URI
      * @param languageId language identifier for didOpen
@@ -385,7 +385,6 @@ public class LspServer extends ServerBase<LspServerConfig> {
         List<Diagnostic> cached = diagnosticsCache.get(uri);
         if (cached != null && !cached.isEmpty()) {
             if (!autoClose && !isFileOpened(uri)) {
-                // Cache has diagnostics but file must be opened for subsequent operations (e.g. codeAction)
                 ensureFileOpened(uri, languageId);
             }
             return CompletableFuture.completedFuture(cached);
@@ -393,7 +392,34 @@ public class LspServer extends ServerBase<LspServerConfig> {
         if (isFileOpened(uri)) {
             return CompletableFuture.completedFuture(cached != null ? cached : Collections.emptyList());
         }
+
+        LanguageDocument document = new LanguageDocument(URI.create(uri), languageId);
+        if (supportsCapability(LspCapability.DIAGNOSTIC, document)) {
+            return getDiagnosticsWithPull(uri, languageId, autoClose);
+        }
         return getDiagnosticsWithDidOpen(uri, languageId, autoClose);
+    }
+
+    private CompletableFuture<List<Diagnostic>> getDiagnosticsWithPull(String uri, String languageId, boolean autoClose) {
+        if (languageServer == null) {
+            return CompletableFuture.completedFuture(Collections.emptyList());
+        }
+        if (!autoClose) {
+            ensureFileOpened(uri, languageId);
+        }
+        DocumentDiagnosticParams params = new DocumentDiagnosticParams(new TextDocumentIdentifier(uri));
+        return languageServer.getTextDocumentService().diagnostic(params)
+                .thenApply(report -> {
+                    List<Diagnostic> diagnostics = Collections.emptyList();
+                    if (report != null && report.isLeft()) {
+                        RelatedFullDocumentDiagnosticReport full = report.getLeft();
+                        if (full.getItems() != null) {
+                            diagnostics = full.getItems();
+                        }
+                    }
+                    diagnosticsCache.put(uri, diagnostics);
+                    return diagnostics;
+                });
     }
 
     private void ensureFileOpened(String uri, String languageId) {

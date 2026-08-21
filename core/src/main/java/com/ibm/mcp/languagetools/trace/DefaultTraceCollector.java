@@ -21,15 +21,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public abstract class AbstractTraceCollector implements TraceCollector {
+public class DefaultTraceCollector implements TraceCollector {
 
     private static final int MAX_TRACE_MESSAGES = 1000;
 
+    private final TraceKind traceKind;
     private final ConcurrentLinkedDeque<TraceMessage> traces = new ConcurrentLinkedDeque<>();
     private final AtomicInteger traceCount = new AtomicInteger();
     private final List<Consumer<TraceMessage>> listeners = new CopyOnWriteArrayList<>();
 
-    protected abstract TraceKind getTraceKind();
+    public DefaultTraceCollector(TraceKind traceKind) {
+        this.traceKind = traceKind;
+    }
+
+    protected TraceKind getTraceKind() {
+        return traceKind;
+    }
 
     @Override
     public boolean isEnabled() {
