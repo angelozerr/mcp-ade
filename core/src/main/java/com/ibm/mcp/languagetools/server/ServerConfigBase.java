@@ -529,9 +529,7 @@ public class ServerConfigBase {
      * Subclasses can override to update their command field.
      */
     protected void onCommandInstalled(String command) {
-        if (this.command == null) {
-            this.command = command;
-        }
+        this.command = command;
     }
 
     /**
