@@ -10,5 +10,14 @@
       },
       "timeout": 5000
     }
+  },
+  "run": {
+    "configureServer": {
+      "name": "Configure Docker Buildx DAP command",
+      "command": {
+        "windows": "docker.exe buildx dap build",
+        "default": "docker buildx dap build"
+      }
+    }
   }
 }

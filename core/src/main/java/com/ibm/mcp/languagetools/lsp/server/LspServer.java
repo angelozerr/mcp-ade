@@ -382,14 +382,9 @@ public class LspServer extends ServerBase<LspServerConfig> {
      * @param autoClose  if true, sends didClose after diagnostics are received
      */
     public CompletableFuture<List<Diagnostic>> getDiagnostics(String uri, String languageId, boolean autoClose) {
-        List<Diagnostic> cached = diagnosticsCache.get(uri);
-        if (cached != null && !cached.isEmpty()) {
-            if (!autoClose && !isFileOpened(uri)) {
-                ensureFileOpened(uri, languageId);
-            }
-            return CompletableFuture.completedFuture(cached);
-        }
         if (isFileOpened(uri)) {
+            // File is actively tracked by the server, cache is up-to-date
+            List<Diagnostic> cached = diagnosticsCache.get(uri);
             return CompletableFuture.completedFuture(cached != null ? cached : Collections.emptyList());
         }
 
