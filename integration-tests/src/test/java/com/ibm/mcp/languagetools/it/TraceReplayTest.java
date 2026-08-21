@@ -127,7 +127,7 @@ class TraceReplayTest {
         for (LspServerConfig config : extensionRegistry.getAllLspServerConfigs()) {
             String serverId = config.getServerId();
             if (!"mock-lsp".equals(serverId) && extensionRegistry.isServerEnabled(serverId)) {
-                extensionRegistry.disableLspServer(serverId);
+                extensionRegistry.disableServer(serverId);
                 disabledServerIds.add(serverId);
             }
         }
@@ -223,7 +223,7 @@ class TraceReplayTest {
             }
             // Re-enable servers that were disabled for this trace test
             for (String serverId : disabledServerIds) {
-                extensionRegistry.enableLspServer(serverId);
+                extensionRegistry.enableServer(serverId);
             }
         }
     }

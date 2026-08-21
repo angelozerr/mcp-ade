@@ -185,7 +185,7 @@ public class ExtensionAdminResource {
     @POST
     @Path("/lsp/servers/{serverId}/enable")
     public Response enableLspServer(@PathParam("serverId") String serverId) {
-        application.enableLspServer(serverId);
+        application.enableServer(serverId);
         return Response.ok(Map.of("success", true, "message", "LSP server '" + serverId + "' enabled")).build();
     }
 
@@ -199,7 +199,7 @@ public class ExtensionAdminResource {
     @POST
     @Path("/dap/servers/{serverId}/enable")
     public Response enableDapServer(@PathParam("serverId") String serverId) {
-        application.enableDapServer(serverId);
+        application.enableServer(serverId);
         return Response.ok(Map.of("success", true, "message", "DAP server '" + serverId + "' enabled")).build();
     }
 

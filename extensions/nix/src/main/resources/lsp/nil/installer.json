@@ -7,5 +7,17 @@
       "command": "nil --version",
       "timeout": 5000
     }
+  },
+  "run": {
+    "exec": {
+      "name": "Install nil via nix",
+      "command": "nix profile install nixpkgs#nil",
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure nil server command",
+          "command": "nil"
+        }
+      }
+    }
   }
 }

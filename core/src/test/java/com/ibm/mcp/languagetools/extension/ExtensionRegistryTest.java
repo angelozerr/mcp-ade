@@ -96,29 +96,16 @@ class ExtensionRegistryTest {
     }
 
     @Test
-    void disableLspServer_becomesDisabled() {
-        registry.disableLspServer("pyright");
+    void disableServer_becomesDisabled() {
+        registry.disableServer("pyright");
         assertFalse(registry.isServerEnabled("pyright"));
     }
 
     @Test
-    void enableLspServer_afterDisable() {
-        registry.disableLspServer("pyright");
-        registry.enableLspServer("pyright");
+    void enableServer_afterDisable() {
+        registry.disableServer("pyright");
+        registry.enableServer("pyright");
         assertTrue(registry.isServerEnabled("pyright"));
-    }
-
-    @Test
-    void disableDapServer_becomesDisabled() {
-        registry.disableDapServer("debugpy");
-        assertFalse(registry.isServerEnabled("debugpy"));
-    }
-
-    @Test
-    void enableDapServer_afterDisable() {
-        registry.disableDapServer("debugpy");
-        registry.enableDapServer("debugpy");
-        assertTrue(registry.isServerEnabled("debugpy"));
     }
 
     // ========== Disabled state persistence ==========
@@ -163,7 +150,7 @@ class ExtensionRegistryTest {
         Extension ext = createExtensionWithLsp("jdtls", ServerConfigSource.BUNDLED, "jdtls");
         extensions.put("jdtls", ext);
 
-        registry.disableLspServer("jdtls");
+        registry.disableServer("jdtls");
 
         assertEquals(1, registry.getAllLspServerConfigs().size());
     }
@@ -175,7 +162,7 @@ class ExtensionRegistryTest {
 
         assertEquals(1, registry.getEnabledLspServerConfigs().size());
 
-        registry.disableLspServer("jdtls");
+        registry.disableServer("jdtls");
         assertEquals(0, registry.getEnabledLspServerConfigs().size());
     }
 
@@ -197,7 +184,7 @@ class ExtensionRegistryTest {
 
         assertEquals(1, registry.getEnabledDapServerConfigs().size());
 
-        registry.disableDapServer("java-debug");
+        registry.disableServer("java-debug");
         assertEquals(0, registry.getEnabledDapServerConfigs().size());
     }
 
@@ -215,7 +202,7 @@ class ExtensionRegistryTest {
         Extension ext = createExtensionWithDap("java-debug", ServerConfigSource.BUNDLED, "java-debug");
         extensions.put("java-debug", ext);
 
-        registry.disableDapServer("java-debug");
+        registry.disableServer("java-debug");
         assertEquals(1, registry.getAllDapServerConfigs().size());
     }
 

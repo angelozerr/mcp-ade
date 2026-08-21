@@ -18,7 +18,6 @@ import com.ibm.mcp.languagetools.admin.dto.StatusResponse;
 import com.ibm.mcp.languagetools.bsp.server.BspServer;
 import com.ibm.mcp.languagetools.bsp.server.BspServerConfig;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
-import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -118,12 +117,8 @@ public class BspAdminResource extends AbstractServerAdminResource {
             TraceCollector traceCollector = oldServer != null ? oldServer.getTraceCollector() : application.getBspTraceCollector();
             String taskId = "restart-bsp-" + serverId;
             String title = "Restart BSP " + serverId;
-            TraceProgressMonitor progressMonitor = new TraceProgressMonitor(
-                    traceCollector, 100.0, progressBroadcaster, taskId, serverId, title);
-            progressMonitor.addStep(ProgressStep.INSTALLING, 0.50);
-            progressMonitor.addStep(ProgressStep.STARTING, 0.10);
-            progressMonitor.addStep(ProgressStep.INITIALIZING, 0.40);
-            progressMonitor.initializeSteps();
+            TraceProgressMonitor progressMonitor = createServerStartMonitor(
+                    traceCollector, taskId, serverId, title);
 
             CompletableFuture<Void> shutdownFuture = (oldServer != null) ? oldServer.shutdown() : CompletableFuture.completedFuture(null);
             shutdownFuture.thenCompose(v -> workspace.ensureBspServerStarted(serverId, progressMonitor))
@@ -155,12 +150,8 @@ public class BspAdminResource extends AbstractServerAdminResource {
             TraceCollector traceCollector = application.getBspTraceCollector();
             String taskId = "start-bsp-" + serverId;
             String title = "Start BSP " + serverId;
-            TraceProgressMonitor progressMonitor = new TraceProgressMonitor(
-                    traceCollector, 100.0, progressBroadcaster, taskId, serverId, title);
-            progressMonitor.addStep(ProgressStep.INSTALLING, 0.50);
-            progressMonitor.addStep(ProgressStep.STARTING, 0.10);
-            progressMonitor.addStep(ProgressStep.INITIALIZING, 0.40);
-            progressMonitor.initializeSteps();
+            TraceProgressMonitor progressMonitor = createServerStartMonitor(
+                    traceCollector, taskId, serverId, title);
 
             workspace.ensureBspServerStarted(serverId, progressMonitor)
                     .whenComplete((result, ex) -> {

@@ -20,9 +20,7 @@ import com.ibm.mcp.languagetools.admin.dto.StatusResponse;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
-import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
-import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -292,19 +290,4 @@ public class LspAdminResource extends AbstractServerAdminResource {
         return Response.ok().entity(new StatusResponse("cancelled")).build();
     }
 
-    /**
-     * Create a TraceProgressMonitor with standard server startup steps
-     * (Installing -> Starting -> Initializing).
-     */
-    private TraceProgressMonitor createServerStartMonitor(
-            TraceCollector traceCollector,
-            String taskId, String serverId, String title) {
-        TraceProgressMonitor monitor = new TraceProgressMonitor(
-                traceCollector, 100.0, progressBroadcaster, taskId, serverId, title);
-        monitor.addStep(ProgressStep.INSTALLING, 0.50);
-        monitor.addStep(ProgressStep.STARTING, 0.10);
-        monitor.addStep(ProgressStep.INITIALIZING, 0.40);
-        monitor.initializeSteps();
-        return monitor;
-    }
 }

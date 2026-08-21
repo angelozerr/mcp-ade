@@ -135,18 +135,10 @@ function handleWebSocketMessage(message) {
 
 // ========== WebSocket message handlers ==========
 
-function handleLspTrace(trace) {
-    if (state.installOutputServerId === trace.serverId) {
-        appendInstallTrace(trace);
-    }
-
-    const tk = traceKey(trace.workspaceUri, trace.serverId);
-    if (!state.tracesByServer[tk]) {
-        state.tracesByServer[tk] = [];
-    }
-
+function pushTrace(container, key, trace, maxSize = 200) {
+    if (!container[key]) container[key] = [];
     if (trace.messageType === 'UPDATE') {
-        const traces = state.tracesByServer[tk];
+        const traces = container[key];
         const lastTrace = traces[traces.length - 1];
         if (lastTrace && lastTrace.messageType === 'UPDATE') {
             traces[traces.length - 1] = trace;
@@ -154,12 +146,20 @@ function handleLspTrace(trace) {
             traces.push(trace);
         }
     } else {
-        state.tracesByServer[tk].push(trace);
+        container[key].push(trace);
+    }
+    if (container[key].length > maxSize) {
+        container[key] = container[key].slice(-maxSize);
+    }
+}
+
+function handleLspTrace(trace) {
+    if (state.installOutputServerId === trace.serverId) {
+        appendInstallTrace(trace);
     }
 
-    if (state.tracesByServer[tk].length > 200) {
-        state.tracesByServer[tk] = state.tracesByServer[tk].slice(-200);
-    }
+    const tk = traceKey(trace.workspaceUri, trace.serverId);
+    pushTrace(state.tracesByServer, tk, trace);
 
     if ((trace.messageType === 'INFO' || trace.messageType === 'UPDATE' || trace.messageType === 'ERROR') &&
         !state.currentServerId && state.currentTab === 'workspaces') {
@@ -190,49 +190,13 @@ function handleDapTrace(trace) {
     }
 
     if (trace.sessionId) {
-        if (!state.dapTracesBySession[trace.sessionId]) {
-            state.dapTracesBySession[trace.sessionId] = [];
-        }
-
-        if (trace.messageType === 'UPDATE') {
-            const traces = state.dapTracesBySession[trace.sessionId];
-            const lastTrace = traces[traces.length - 1];
-            if (lastTrace && lastTrace.messageType === 'UPDATE') {
-                traces[traces.length - 1] = trace;
-            } else {
-                traces.push(trace);
-            }
-        } else {
-            state.dapTracesBySession[trace.sessionId].push(trace);
-        }
-
-        if (state.dapTracesBySession[trace.sessionId].length > 200) {
-            state.dapTracesBySession[trace.sessionId] = state.dapTracesBySession[trace.sessionId].slice(-200);
-        }
+        pushTrace(state.dapTracesBySession, trace.sessionId, trace);
 
         if (state.currentDapSessionId === trace.sessionId) {
             renderDapTracesForSession(trace.sessionId);
         }
     } else if (trace.serverId) {
-        if (!state.dapTracesByServer[trace.serverId]) {
-            state.dapTracesByServer[trace.serverId] = [];
-        }
-
-        if (trace.messageType === 'UPDATE') {
-            const traces = state.dapTracesByServer[trace.serverId];
-            const lastTrace = traces[traces.length - 1];
-            if (lastTrace && lastTrace.messageType === 'UPDATE') {
-                traces[traces.length - 1] = trace;
-            } else {
-                traces.push(trace);
-            }
-        } else {
-            state.dapTracesByServer[trace.serverId].push(trace);
-        }
-
-        if (state.dapTracesByServer[trace.serverId].length > 200) {
-            state.dapTracesByServer[trace.serverId] = state.dapTracesByServer[trace.serverId].slice(-200);
-        }
+        pushTrace(state.dapTracesByServer, trace.serverId, trace);
 
         if (state.currentDapSessionId && state.currentDapServerId === trace.serverId) {
             renderDapTracesForSession(state.currentDapSessionId);
@@ -248,25 +212,7 @@ function handleBspTrace(trace) {
     }
 
     const tk = traceKey(trace.workspaceUri, trace.serverId);
-    if (!state.tracesByServer[tk]) {
-        state.tracesByServer[tk] = [];
-    }
-
-    if (trace.messageType === 'UPDATE') {
-        const traces = state.tracesByServer[tk];
-        const lastTrace = traces[traces.length - 1];
-        if (lastTrace && lastTrace.messageType === 'UPDATE') {
-            traces[traces.length - 1] = trace;
-        } else {
-            traces.push(trace);
-        }
-    } else {
-        state.tracesByServer[tk].push(trace);
-    }
-
-    if (state.tracesByServer[tk].length > 200) {
-        state.tracesByServer[tk] = state.tracesByServer[tk].slice(-200);
-    }
+    pushTrace(state.tracesByServer, tk, trace);
 
     if (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
         (trace.workspaceUri == null && trace.serverId === state.currentServerId)) {

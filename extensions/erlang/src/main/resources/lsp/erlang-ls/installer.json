@@ -2,10 +2,37 @@
   "id": "erlang-ls-installer",
   "name": "erlang-ls",
   "check": {
-    "exec": {
-      "name": "Check if erlang_ls is available",
-      "command": "erlang_ls --version",
-      "timeout": 5000
+    "fileExists": {
+      "name": "Check if erlang_ls is installed",
+      "file": "$SERVER_HOME$/erlang_ls"
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download erlang-ls",
+      "github": {
+        "owner": "erlang-ls",
+        "repository": "erlang_ls",
+        "prerelease": false,
+        "asset": {
+          "windows": "erlang_ls-windows-*",
+          "unix": "erlang_ls-linux-27*",
+          "mac": "erlang_ls-macos-27*"
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": "erlang_ls",
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Erlang Language Server command",
+          "command": "escript ${output.dir}/${output.file.name}"
+        }
+      }
     }
   }
 }

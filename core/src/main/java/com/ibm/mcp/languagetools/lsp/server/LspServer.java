@@ -410,15 +410,15 @@ public class LspServer extends ServerBase<LspServerConfig> {
         DocumentDiagnosticParams params = new DocumentDiagnosticParams(new TextDocumentIdentifier(uri));
         return languageServer.getTextDocumentService().diagnostic(params)
                 .thenApply(report -> {
-                    List<Diagnostic> diagnostics = Collections.emptyList();
                     if (report != null && report.isLeft()) {
                         RelatedFullDocumentDiagnosticReport full = report.getLeft();
-                        if (full.getItems() != null) {
-                            diagnostics = full.getItems();
-                        }
+                        List<Diagnostic> diagnostics = full.getItems() != null ? full.getItems() : Collections.emptyList();
+                        diagnosticsCache.put(uri, diagnostics);
+                        return diagnostics;
                     }
-                    diagnosticsCache.put(uri, diagnostics);
-                    return diagnostics;
+                    // Unchanged report: return cached diagnostics
+                    List<Diagnostic> cached = diagnosticsCache.get(uri);
+                    return cached != null ? cached : Collections.emptyList();
                 });
     }
 
@@ -567,6 +567,10 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
         // Clear diagnostics cache
         diagnosticsCache.clear();
+
+        if (languageClient != null) {
+            languageClient.shutdown();
+        }
 
         if (languageServer == null && getServerProcess() == null && socket == null) {
             setStatus(ServerStatus.STOPPED);

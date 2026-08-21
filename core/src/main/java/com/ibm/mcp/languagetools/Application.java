@@ -450,8 +450,13 @@ public class Application {
         return workspaces.values();
     }
 
+    public void enableServer(String serverId) {
+        extensionRegistry.enableServer(serverId);
+        serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, true));
+    }
+
     public void disableLspServer(String serverId) {
-        extensionRegistry.disableLspServer(serverId);
+        extensionRegistry.disableServer(serverId);
         for (Workspace ws : getWorkspaces()) {
             LspServer server = ws.getLspServer(serverId);
             if (server != null && server.getStatus() != ServerStatus.STOPPED) {
@@ -461,23 +466,13 @@ public class Application {
         serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, false));
     }
 
-    public void enableLspServer(String serverId) {
-        extensionRegistry.enableLspServer(serverId);
-        serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, true));
-    }
-
     public void disableDapServer(String serverId) {
-        extensionRegistry.disableDapServer(serverId);
+        extensionRegistry.disableServer(serverId);
         serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, false));
     }
 
-    public void enableDapServer(String serverId) {
-        extensionRegistry.enableDapServer(serverId);
-        serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, true));
-    }
-
     public void disableBspServer(String serverId) {
-        extensionRegistry.disableBspServer(serverId);
+        extensionRegistry.disableServer(serverId);
         for (Workspace ws : getWorkspaces()) {
             BspServer server = ws.getBspServer(serverId);
             if (server != null && server.getStatus() != ServerStatus.STOPPED) {
@@ -485,11 +480,6 @@ public class Application {
             }
         }
         serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, false));
-    }
-
-    public void enableBspServer(String serverId) {
-        extensionRegistry.enableBspServer(serverId);
-        serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, true));
     }
 
     /**

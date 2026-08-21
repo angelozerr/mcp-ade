@@ -607,32 +607,12 @@ public class ExtensionRegistry {
         return !disabledExtensions.contains(extensionId);
     }
 
-    public void enableLspServer(String serverId) {
+    public void enableServer(String serverId) {
         disabledServers.remove(serverId);
         persistDisabledServers();
     }
 
-    public void disableLspServer(String serverId) {
-        disabledServers.add(serverId);
-        persistDisabledServers();
-    }
-
-    public void enableDapServer(String serverId) {
-        disabledServers.remove(serverId);
-        persistDisabledServers();
-    }
-
-    public void disableDapServer(String serverId) {
-        disabledServers.add(serverId);
-        persistDisabledServers();
-    }
-
-    public void enableBspServer(String serverId) {
-        disabledServers.remove(serverId);
-        persistDisabledServers();
-    }
-
-    public void disableBspServer(String serverId) {
+    public void disableServer(String serverId) {
         disabledServers.add(serverId);
         persistDisabledServers();
     }

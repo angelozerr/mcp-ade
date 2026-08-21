@@ -1419,53 +1419,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             });
         }
 
-        function searchTraces(query) {
-            const consoleOutput = document.getElementById('console-output');
-            if (!consoleOutput) return;
-
-            const traceElements = consoleOutput.querySelectorAll('.trace-entry');
-
-            if (!query || query.trim() === '') {
-                // Reset: show all traces, remove highlights
-                traceElements.forEach(el => {
-                    el.style.display = '';
-                    el.querySelectorAll('.search-highlight').forEach(mark => {
-                        const parent = mark.parentNode;
-                        parent.replaceChild(document.createTextNode(mark.textContent), mark);
-                        parent.normalize();
-                    });
-                });
-                return;
-            }
-
-            const lowerQuery = query.toLowerCase();
-            let matchCount = 0;
-
-            traceElements.forEach(el => {
-                const text = el.textContent.toLowerCase();
-                const matches = text.includes(lowerQuery);
-
-                if (matches) {
-                    el.style.display = '';
-                    matchCount++;
-
-                    // Open details if match is in JSON content
-                    const details = el.querySelector('details');
-                    if (details) {
-                        const detailsText = details.textContent.toLowerCase();
-                        if (detailsText.includes(lowerQuery)) {
-                            details.open = true;
-                        }
-                    }
-
-                    // TODO: Highlight matching text (optional enhancement)
-                } else {
-                    el.style.display = 'none';
-                }
-            });
-
-        }
-
         async function clearConsole() {
             try {
                 await fetch('/api/admin/traces/lsp', { method: 'DELETE' });

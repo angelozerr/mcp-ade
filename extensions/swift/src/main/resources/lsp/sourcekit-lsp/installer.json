@@ -7,5 +7,11 @@
       "command": "sourcekit-lsp --help",
       "timeout": 5000
     }
+  },
+  "run": {
+    "configureServer": {
+      "name": "Configure SourceKit-LSP command",
+      "command": "sourcekit-lsp"
+    }
   }
 }

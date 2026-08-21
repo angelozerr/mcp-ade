@@ -2,10 +2,49 @@
   "id": "terraform-ls-installer",
   "name": "terraform-ls",
   "check": {
-    "exec": {
-      "name": "Check if terraform-ls is available",
-      "command": "terraform-ls --version",
-      "timeout": 5000
+    "fileExists": {
+      "name": "Check if Terraform Language Server is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/terraform-ls.exe",
+        "default": "$SERVER_HOME$/terraform-ls"
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download Terraform Language Server",
+      "url": {
+        "windows": {
+          "x86": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_windows_386.zip",
+          "x86_64": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_windows_amd64.zip",
+          "arm64": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_windows_arm64.zip"
+        },
+        "unix": {
+          "x86": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_linux_386.zip",
+          "x86_64": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_linux_amd64.zip",
+          "arm64": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_linux_arm64.zip"
+        },
+        "mac": {
+          "x86_64": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_darwin_amd64.zip",
+          "arm64": "https://releases.hashicorp.com/terraform-ls/0.39.0/terraform-ls_0.39.0_darwin_arm64.zip"
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "terraform-ls.exe",
+            "default": "terraform-ls"
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Terraform Language Server command",
+          "command": "${output.dir}/${output.file.name} serve"
+        }
+      }
     }
   }
 }

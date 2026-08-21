@@ -286,7 +286,7 @@ public class ExtensionTools {
           description = "Enable a previously disabled LSP server.")
     public Map<String, Object> enableLspServer(
             @ToolArg(description = "Server ID to enable") String serverId) {
-        return toggleServer("LSP", serverId, true, () -> application.enableLspServer(serverId));
+        return toggleServer("LSP", serverId, true, () -> application.enableServer(serverId));
     }
 
     @Tool(name = "disable_lsp_server",
@@ -300,7 +300,7 @@ public class ExtensionTools {
           description = "Enable a previously disabled DAP server.")
     public Map<String, Object> enableDapServer(
             @ToolArg(description = "Server ID to enable") String serverId) {
-        return toggleServer("DAP", serverId, true, () -> application.enableDapServer(serverId));
+        return toggleServer("DAP", serverId, true, () -> application.enableServer(serverId));
     }
 
     @Tool(name = "disable_dap_server",
@@ -314,7 +314,7 @@ public class ExtensionTools {
           description = "Enable a previously disabled BSP build server.")
     public Map<String, Object> enableBspServer(
             @ToolArg(description = "Server ID to enable") String serverId) {
-        return toggleServer("BSP", serverId, true, () -> application.enableBspServer(serverId));
+        return toggleServer("BSP", serverId, true, () -> application.enableServer(serverId));
     }
 
     @Tool(name = "disable_bsp_server",

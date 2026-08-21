@@ -143,6 +143,10 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
         return CompletableFuture.completedFuture(workspaceConfig.find(configurationParams.getItems()));
     }
 
+    public void shutdown() {
+        diagnosticsScheduler.shutdownNow();
+    }
+
     // -- Endpoint implementation (delegates to ServerRequestRouter) --
 
     @Override

@@ -2,10 +2,63 @@
   "id": "ada-language-server-installer",
   "name": "ada_language_server",
   "check": {
-    "exec": {
-      "name": "Check if ada_language_server is available",
-      "command": "ada_language_server --version",
-      "timeout": 5000
+    "fileExists": {
+      "name": "Check if Ada Language Server is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/vscode/ada/x64/win32/ada_language_server.exe",
+        "unix": {
+          "x86_64": "$SERVER_HOME$/vscode/ada/x64/linux/ada_language_server",
+          "arm64": "$SERVER_HOME$/vscode/ada/arm64/linux/ada_language_server"
+        },
+        "mac": {
+          "x86_64": "$SERVER_HOME$/vscode/ada/x64/darwin/ada_language_server",
+          "arm64": "$SERVER_HOME$/vscode/ada/arm64/darwin/ada_language_server"
+        }
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download Ada Language Server",
+      "github": {
+        "owner": "AdaCore",
+        "repository": "ada_language_server",
+        "prerelease": false,
+        "asset": {
+          "windows": "als-*-win32-x64.tar.gz",
+          "unix": {
+            "x86_64": "als-*-linux-x64.tar.gz",
+            "arm64": "als-*-linux-arm64.tar.gz"
+          },
+          "mac": {
+            "x86_64": "als-*-darwin-x64.tar.gz",
+            "arm64": "als-*-darwin-arm64.tar.gz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "vscode/ada/x64/win32/ada_language_server.exe",
+            "unix": {
+              "x86_64": "vscode/ada/x64/linux/ada_language_server",
+              "arm64": "vscode/ada/arm64/linux/ada_language_server"
+            },
+            "mac": {
+              "x86_64": "vscode/ada/x64/darwin/ada_language_server",
+              "arm64": "vscode/ada/arm64/darwin/ada_language_server"
+            }
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Ada Language Server command",
+          "command": "${output.dir}/${output.file.name}"
+        }
+      }
     }
   }
 }
