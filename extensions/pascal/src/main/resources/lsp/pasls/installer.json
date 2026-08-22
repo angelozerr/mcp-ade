@@ -33,6 +33,7 @@
       },
       "output": {
         "dir": "$SERVER_HOME$",
+        "stripRootDir": true,
         "file": {
           "name": {
             "windows": "pasls.exe",
@@ -44,10 +45,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure pasls command",
-          "command": {
-            "windows": "$SERVER_HOME$/pasls.exe",
-            "default": "$SERVER_HOME$/pasls"
-          }
+          "command": "${output.dir}/${output.file.name}"
         }
       }
     }

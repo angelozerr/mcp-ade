@@ -706,6 +706,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         StringBuilder stackTrace = new StringBuilder();
         stackTrace.append("[Error starting ").append(config.getName()).append("]\n");
         Throwable current = e;
+        while (current instanceof java.util.concurrent.CompletionException && current.getCause() != null) {
+            current = current.getCause();
+        }
         while (current != null) {
             stackTrace.append(current.getClass().getName()).append(": ").append(current.getMessage()).append("\n");
             for (StackTraceElement element : current.getStackTrace()) {

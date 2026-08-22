@@ -316,6 +316,15 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     setReady(true);
                     setStatusMessage("Ready");
                     return CompletableFuture.completedFuture(null);
+                })
+                .exceptionally(error -> {
+                    LOG.warnf(error, "%s initialize returned error for workspace: %s", config.getServerId(), workspaceRoot);
+                    languageServer.initialized(new InitializedParams());
+                    setStatus(ServerStatus.RUNNING);
+                    setStarted(true);
+                    setReady(true);
+                    setStatusMessage("Ready (initialize error)");
+                    return (Void) null;
                 });
     }
 

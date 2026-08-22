@@ -639,6 +639,7 @@ public class ServerConfigBase {
         Consumer<InstallationStatus> installStatusCallback = installStatus -> {
             ServerStatus serverStatus = switch (installStatus) {
                 case INSTALLING -> ServerStatus.INSTALLING;
+                case INSTALLED, ALREADY_INSTALLED -> ServerStatus.STARTING;
                 case FAILED -> ServerStatus.INSTALL_FAILED;
                 default -> null;
             };
