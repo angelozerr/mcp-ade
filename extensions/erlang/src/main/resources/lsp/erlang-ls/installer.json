@@ -1,36 +1,48 @@
 {
   "id": "erlang-ls-installer",
-  "name": "erlang-ls",
+  "name": "elp",
   "check": {
     "fileExists": {
-      "name": "Check if erlang_ls is installed",
-      "file": "$SERVER_HOME$/erlang_ls"
+      "name": "Check if ELP is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/elp.exe",
+        "default": "$SERVER_HOME$/elp"
+      }
     }
   },
   "run": {
     "download": {
-      "name": "Download erlang-ls",
+      "name": "Download ELP",
       "github": {
-        "owner": "erlang-ls",
-        "repository": "erlang_ls",
+        "owner": "WhatsApp",
+        "repository": "erlang-language-platform",
         "prerelease": false,
         "asset": {
-          "windows": "erlang_ls-windows-*",
-          "unix": "erlang_ls-linux-27*",
-          "mac": "erlang_ls-macos-27*"
+          "windows": "elp-windows-x86_64-pc-windows-msvc-otp-29*.tar.gz",
+          "unix": {
+            "x86_64": "elp-linux-x86_64-unknown-linux-gnu-otp-29*.tar.gz",
+            "arm64": "elp-linux-aarch64-unknown-linux-gnu-otp-29*.tar.gz"
+          },
+          "mac": {
+            "x86_64": "elp-macos-x86_64-apple-darwin-otp-29*.tar.gz",
+            "arm64": "elp-macos-aarch64-apple-darwin-otp-29*.tar.gz"
+          }
         }
       },
       "output": {
         "dir": "$SERVER_HOME$",
         "file": {
-          "name": "erlang_ls",
+          "name": {
+            "windows": "elp.exe",
+            "default": "elp"
+          },
           "executable": true
         }
       },
       "onSuccess": {
         "configureServer": {
-          "name": "Configure Erlang Language Server command",
-          "command": "escript ${output.dir}/${output.file.name}"
+          "name": "Configure ELP server command",
+          "command": "${output.dir}/${output.file.name} server"
         }
       }
     }

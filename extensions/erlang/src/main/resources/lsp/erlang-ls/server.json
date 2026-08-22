@@ -1,9 +1,8 @@
 {
   "id": "erlang-ls",
-  "name": "Erlang Language Server",
-  "description": "Language server for Erlang",
-  "url": "https://github.com/erlang-ls/erlang_ls",
-  "command": "erlang_ls",
+  "name": "Erlang Language Platform",
+  "description": "Language server for Erlang by WhatsApp",
+  "url": "https://github.com/WhatsApp/erlang-language-platform",
   "documentSelector": [
     {
       "language": "erlang"
