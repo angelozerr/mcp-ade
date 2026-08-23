@@ -3,7 +3,6 @@
   "name": "OCaml Language Server",
   "description": "OCaml language server based on ocaml-lsp-server",
   "url": "https://github.com/ocaml/ocaml-lsp",
-  "command": "ocamllsp",
   "documentSelector": [
     {
       "language": "ocaml"

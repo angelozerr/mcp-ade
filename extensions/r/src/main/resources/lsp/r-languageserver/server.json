@@ -3,7 +3,6 @@
   "name": "R Language Server",
   "description": "Language server for R based on languageserver package",
   "url": "https://github.com/REditorSupport/languageserver",
-  "command": "R --slave -e languageserver::run()",
   "documentSelector": [
     {
       "language": "r"

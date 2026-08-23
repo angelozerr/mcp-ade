@@ -3,7 +3,6 @@
   "name": "Terraform Language Server",
   "description": "Language server for Terraform by HashiCorp",
   "url": "https://github.com/hashicorp/terraform-ls",
-  "command": "terraform-ls serve",
   "documentSelector": [
     {
       "language": "terraform"

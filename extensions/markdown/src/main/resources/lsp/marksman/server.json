@@ -3,7 +3,6 @@
   "name": "Marksman (Markdown Language Server)",
   "description": "Language server for Markdown",
   "url": "https://github.com/artempyanykh/marksman",
-  "command": "marksman server",
   "documentSelector": [
     {
       "language": "markdown"

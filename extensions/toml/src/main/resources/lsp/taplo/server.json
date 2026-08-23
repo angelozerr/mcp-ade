@@ -3,7 +3,6 @@
   "name": "Taplo (TOML Language Server)",
   "description": "Language server for TOML",
   "url": "https://github.com/tamasfe/taplo",
-  "command": "taplo lsp stdio",
   "documentSelector": [
     {
       "language": "toml"

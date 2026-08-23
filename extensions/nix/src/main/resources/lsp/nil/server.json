@@ -3,7 +3,6 @@
   "name": "nil (Nix Language Server)",
   "description": "Language server for Nix",
   "url": "https://github.com/oxalica/nil",
-  "command": "nil",
   "documentSelector": [
     {
       "language": "nix"
