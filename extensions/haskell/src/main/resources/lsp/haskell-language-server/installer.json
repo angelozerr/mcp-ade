@@ -2,20 +2,52 @@
   "id": "haskell-language-server-installer",
   "name": "haskell-language-server",
   "check": {
-    "exec": {
-      "name": "Check if haskell-language-server-wrapper is available",
-      "command": "haskell-language-server-wrapper --version",
-      "timeout": 5000
+    "fileExists": {
+      "name": "Check if haskell-language-server-wrapper is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/haskell-language-server-wrapper.exe",
+        "default": "$SERVER_HOME$/haskell-language-server-wrapper"
+      }
     }
   },
   "run": {
-    "exec": {
-      "name": "Install Haskell Language Server via ghcup",
-      "command": "ghcup install hls",
+    "download": {
+      "name": "Download Haskell Language Server",
+      "github": {
+        "owner": "haskell",
+        "repository": "haskell-language-server",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "haskell-language-server-*-x86_64-mingw64.zip"
+          },
+          "unix": {
+            "x86_64": "haskell-language-server-*-x86_64-linux-unknown.tar.xz",
+            "arm64": "haskell-language-server-*-aarch64-linux-ubuntu2204.tar.xz"
+          },
+          "mac": {
+            "x86_64": "haskell-language-server-*-x86_64-apple-darwin.tar.xz",
+            "arm64": "haskell-language-server-*-aarch64-apple-darwin.tar.xz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "haskell-language-server-wrapper.exe",
+            "default": "haskell-language-server-wrapper"
+          },
+          "executable": true
+        }
+      },
       "onSuccess": {
         "configureServer": {
           "name": "Configure haskell-language-server command",
-          "command": "haskell-language-server-wrapper --lsp"
+          "command": {
+            "windows": "$SERVER_HOME$/haskell-language-server-wrapper.exe --lsp",
+            "default": "$SERVER_HOME$/haskell-language-server-wrapper --lsp"
+          }
         }
       }
     }
