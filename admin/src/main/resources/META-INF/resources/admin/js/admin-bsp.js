@@ -6,7 +6,7 @@
 
 import { state, updateSearchBoxVisibility } from './shared-state.js';
 import {
-    runServerInstaller,
+    renderExtensionSection, runServerInstaller,
     loadInstallerJsonEditor, saveInstallerJsonEditor,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
 } from './shared-ui.js';
@@ -104,7 +104,10 @@ export async function showBspServerDetails(serverId) {
             if (prev) prev.classList.remove('active');
         }
         const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
-        if (next) next.classList.add('active');
+        if (next) {
+            next.classList.add('active');
+            next.scrollIntoView({ block: 'nearest' });
+        }
     }
 
     const server = bspServerConfigs[serverId];
@@ -122,24 +125,26 @@ export async function showBspServerDetails(serverId) {
     const detailsHTML = `
         <h3 class="text-success mt-0">Build Server Information</h3>
 
-        <div class="mb-xl">
-            <strong class="text-label">Server ID:</strong>
-            <p class="text-value mt-xs mb-xs"><code>${server.id}</code></p>
+        <div class="detail-row">
+            <span class="detail-label">Server ID:</span>
+            <span class="detail-value"><code>${server.id}</code></span>
         </div>
 
         ${server.description ? `
-        <div class="mb-xl">
-            <strong class="text-label">Description:</strong>
-            <p class="text-value mt-xs mb-xs">${server.description}</p>
+        <div class="detail-row">
+            <span class="detail-label">Description:</span>
+            <span class="detail-value">${server.description}</span>
         </div>
         ` : ''}
 
         ${server.url ? `
-        <div class="mb-xl">
-            <strong class="text-label">URL:</strong>
-            <p class="mt-xs mb-xs"><a href="${server.url}" target="_blank" class="link-accent">${server.url}</a></p>
+        <div class="detail-row">
+            <span class="detail-label">URL:</span>
+            <span class="detail-value"><a href="${server.url}" target="_blank" class="link-accent">${server.url}</a></span>
         </div>
         ` : ''}
+
+        ${renderExtensionSection(server)}
 
         <div class="p-lg bg-panel rounded mt-2xl border-left-success">
             <strong>Note:</strong> Build servers are started on-demand when build tools are invoked. They are not automatically started with workspaces.

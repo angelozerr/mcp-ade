@@ -3,6 +3,7 @@
   "name": "Jakarta EE Language Server",
   "description": "Language server for Jakarta EE (CDI, Persistence, RESTful Web Services, Bean Validation, Servlet, WebSocket, etc.)",
   "url": "https://github.com/eclipse/lsp4jakarta",
+  "runtime": "jdk",
   "documentSelector": [
     {
       "language": "java"

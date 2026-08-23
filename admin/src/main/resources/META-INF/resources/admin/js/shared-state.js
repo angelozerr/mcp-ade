@@ -11,6 +11,7 @@ export const state = {
     lspConfigs: {},
     dapConfigs: {},
     bspConfigs: {},
+    runtimeConfigs: {},
     currentDapSessionId: null,
     currentDapServerId: null,
     dapTracesBySession: {},
@@ -79,6 +80,15 @@ export function formatStatusLabel(status, externalInstance) {
     }
 
     return labels[status] || status;
+}
+
+export function getServerName(serverId) {
+    const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId];
+    return config?.name || serverId;
+}
+
+export function getRuntimeName(runtimeId) {
+    return state.runtimeConfigs?.[runtimeId]?.name || runtimeId;
 }
 
 export function getServerApiBase(serverId) {
@@ -168,6 +178,19 @@ export async function loadBspConfigs() {
     } catch (error) {
         console.error('Failed to load BSP configs:', error);
         state.bspConfigs = {};
+    }
+}
+
+export async function loadRuntimeConfigs() {
+    try {
+        const response = await fetch('/api/admin/runtimes');
+        const runtimes = await response.json();
+        state.runtimeConfigs = {};
+        runtimes.forEach(rt => { state.runtimeConfigs[rt.id] = rt; });
+        console.log('Loaded', runtimes.length, 'runtime configs');
+    } catch (error) {
+        console.error('Failed to load runtime configs:', error);
+        state.runtimeConfigs = {};
     }
 }
 

@@ -3,6 +3,7 @@
   "name": "Kotlin Language Server",
   "description": "Kotlin language server by fwcd",
   "url": "https://github.com/fwcd/kotlin-language-server",
+  "runtime": "jdk",
   "documentSelector": [
     {
       "language": "kotlin"

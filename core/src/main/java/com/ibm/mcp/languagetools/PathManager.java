@@ -86,6 +86,24 @@ public class PathManager {
         return getDapServersDir().resolve(serverId);
     }
 
+    // ----------------------- Runtimes
+
+    private static final String DIR_RUNTIMES = "runtime";
+
+    /**
+     * Get the directory where runtimes are installed (~/.mcp-languagetools/runtime)
+     */
+    public Path getRuntimesDir() {
+        return getMcpLangToolsRoot().resolve(DIR_RUNTIMES);
+    }
+
+    /**
+     * Get the home directory for a specific runtime (~/.mcp-languagetools/runtime/{runtimeId})
+     */
+    public Path getRuntimeHome(String runtimeId) {
+        return getRuntimesDir().resolve(runtimeId);
+    }
+
     // ----------------------- Extensions
 
     private static final String DIR_EXTENSIONS = "extensions";

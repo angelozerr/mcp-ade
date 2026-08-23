@@ -1,0 +1,13 @@
+{
+  "id": "ocaml",
+  "name": "OCaml",
+  "description": "OCaml runtime (opam) required by OCaml-based language servers",
+  "url": "https://ocaml.org",
+  "check": {
+    "exec": {
+      "name": "Check if opam is available",
+      "command": "opam --version",
+      "timeout": 5000
+    }
+  }
+}

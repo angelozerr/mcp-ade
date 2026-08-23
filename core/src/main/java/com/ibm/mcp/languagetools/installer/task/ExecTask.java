@@ -90,8 +90,8 @@ public class ExecTask extends InstallerTask {
                 finished = process.waitFor(timeout, TimeUnit.MILLISECONDS);
                 if (!finished) {
                     process.destroyForcibly();
-                    context.traceInfo("Command timed out after " + timeout + "ms (treated as success)");
-                    return true;
+                    context.traceError("Command timed out after " + timeout + "ms");
+                    return false;
                 }
             } else {
                 process.waitFor();

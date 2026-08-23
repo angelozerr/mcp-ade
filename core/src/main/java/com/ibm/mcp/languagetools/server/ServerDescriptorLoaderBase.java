@@ -65,6 +65,7 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
     private static final String FIELD_FILE_EXISTS = "fileExists";
     private static final String FIELD_GLOB_PATTERN = "globPattern";
     private static final String FIELD_COMMAND = "command";
+    private static final String FIELD_RUNTIME = "runtime";
     private static final String FIELD_SETTINGS = "settings";
     private static final String FIELD_APPLICABLE_SETTINGS = "applicableSettings";
     protected static final Gson gson = new Gson();
@@ -143,6 +144,11 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
 
         if (jsonObject.has(FIELD_URL)) {
             config.setUrl(jsonObject.get(FIELD_URL).getAsString());
+        }
+
+        // Runtime dependency
+        if (jsonObject.has(FIELD_RUNTIME)) {
+            config.setRuntime(jsonObject.get(FIELD_RUNTIME).getAsString());
         }
 
         // Document selector

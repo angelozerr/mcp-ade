@@ -66,7 +66,10 @@ public class ServerDTOBuilder {
             contributionBuilder.buildContributions(config),
             isExtension,
             extensionRegistry.isServerEnabled(config.getServerId()),
-            buildSettings(config)
+            buildSettings(config),
+            config.getRuntime(),
+            config.getRuntimeStatusName(),
+            config.getExtensionId()
         );
     }
 

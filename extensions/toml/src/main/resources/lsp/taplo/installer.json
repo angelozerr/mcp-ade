@@ -2,20 +2,54 @@
   "id": "taplo-installer",
   "name": "taplo",
   "check": {
-    "exec": {
-      "name": "Check if taplo is available",
-      "command": "taplo --version",
-      "timeout": 5000
+    "fileExists": {
+      "name": "Check if taplo is installed",
+      "file": {
+        "windows": "$SERVER_HOME$/taplo.exe",
+        "default": "$SERVER_HOME$/taplo"
+      }
     }
   },
   "run": {
-    "exec": {
-      "name": "Install taplo via cargo",
-      "command": "cargo install taplo-cli --locked",
+    "download": {
+      "name": "Download taplo",
+      "github": {
+        "owner": "tamasfe",
+        "repository": "taplo",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "taplo-windows-x86_64.zip",
+            "x86": "taplo-windows-x86.zip",
+            "arm64": "taplo-windows-aarch64.zip"
+          },
+          "unix": {
+            "x86_64": "taplo-linux-x86_64.gz",
+            "arm64": "taplo-linux-aarch64.gz"
+          },
+          "mac": {
+            "x86_64": "taplo-darwin-x86_64.gz",
+            "arm64": "taplo-darwin-aarch64.gz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "taplo.exe",
+            "default": "taplo"
+          },
+          "executable": true
+        }
+      },
       "onSuccess": {
         "configureServer": {
           "name": "Configure taplo command",
-          "command": "taplo lsp stdio"
+          "command": {
+            "windows": "$SERVER_HOME$/taplo.exe lsp stdio",
+            "default": "$SERVER_HOME$/taplo lsp stdio"
+          }
         }
       }
     }

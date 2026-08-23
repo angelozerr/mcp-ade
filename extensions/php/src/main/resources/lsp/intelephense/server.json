@@ -3,6 +3,7 @@
   "name": "Intelephense",
   "description": "PHP language server based on Intelephense",
   "url": "https://github.com/bmewburn/vscode-intelephense",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "php"

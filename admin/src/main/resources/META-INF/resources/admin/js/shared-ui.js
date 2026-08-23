@@ -1,6 +1,27 @@
-import { state, getServerApiBase } from './shared-state.js';
+import { state, getServerApiBase, getServerName, getRuntimeName } from './shared-state.js';
 import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 import { renderServerDiagram } from './diagram.js';
+
+const SERVER_ICONS = { lsp: '🚀', dap: '🐛', bsp: '🔧' };
+const SERVER_ACTIONS = { lsp: 'switchToLspServer', dap: 'switchToDapServer', bsp: 'switchToBspServer' };
+
+export function renderServerLink(serverType, serverId, opts = {}) {
+    const icon = SERVER_ICONS[serverType] || '📦';
+    const action = SERVER_ACTIONS[serverType];
+    const name = opts.name || getServerName(serverId);
+    const extraClass = opts.cssClass || '';
+    const extraHTML = opts.extra || '';
+    return `<div class="extension-server-item cursor-pointer ${extraClass}" data-action="${action}" data-server-id="${serverId}"><span><span class="server-source-icon">${icon}</span> <span class="nav-link">${name}</span> <span class="text-dimmed font-sm">(${serverId})</span></span>${extraHTML}</div>`;
+}
+
+export function renderRuntimeLink(runtimeId) {
+    const name = getRuntimeName(runtimeId);
+    return `<span class="nav-link" data-action="navigateToRuntime" data-runtime-id="${runtimeId}">${name}</span>`;
+}
+
+export function renderExtensionLink(extensionId) {
+    return `<span class="nav-link" data-action="navigateToExtension" data-extension-id="${extensionId}">${extensionId}</span>`;
+}
 
 export function renderDocumentSelector(selectors) {
     if (!selectors || selectors.length === 0) {
@@ -13,6 +34,59 @@ export function renderDocumentSelector(selectors) {
             ${selector.pattern ? `<span class="selector-tag">pattern: ${selector.pattern}</span>` : ''}
         </div>
     `).join('');
+}
+
+/**
+ * Returns display info for a runtime status: icon, label, cssClass, badgeClass.
+ */
+export function getRuntimeStatusInfo(status, autoInstallable) {
+    status = status || 'NOT_INSTALLED';
+    if (status === 'INSTALLED' || status === 'ALREADY_INSTALLED') {
+        return { icon: '🟢', label: 'Installed', cssClass: 'success', badgeClass: 'badge-success', animate: false };
+    }
+    if (status === 'INSTALLING') {
+        return { icon: '🟡', label: 'Installing...', cssClass: 'warning', badgeClass: 'badge-checking', animate: true };
+    }
+    if (status === 'CHECKING') {
+        return { icon: '🟡', label: 'Checking...', cssClass: 'warning', badgeClass: 'badge-checking', animate: true };
+    }
+    if (status === 'FAILED' || status === 'ERROR') {
+        return { icon: '🔴', label: 'Error', cssClass: 'error', badgeClass: 'badge-error', animate: false };
+    }
+    if (autoInstallable) {
+        return { icon: '🔵', label: 'Auto-installable', cssClass: 'info', badgeClass: 'badge-info', animate: false };
+    }
+    return { icon: '⚪', label: 'Check-only', cssClass: 'dimmed', badgeClass: 'badge-dimmed', animate: false };
+}
+
+/**
+ * Renders the runtime section HTML for server overview pages (LSP/DAP).
+ */
+export function renderRuntimeSection(data) {
+    if (!data.runtime) return '';
+    const info = getRuntimeStatusInfo(data.runtimeStatus);
+    return `
+        <div class="detail-row">
+            <span class="detail-label">Runtime:</span>
+            <span class="detail-value">
+                ${renderRuntimeLink(data.runtime)}
+                ${data.runtimeStatus ? ` <span class="badge ${info.badgeClass}">${info.label}</span>` : ''}
+            </span>
+        </div>
+    `;
+}
+
+/**
+ * Renders the extension section HTML for server overview pages (LSP/DAP/BSP).
+ */
+export function renderExtensionSection(data) {
+    if (!data.extensionId) return '';
+    return `
+        <div class="detail-row">
+            <span class="detail-label">Extension:</span>
+            <span class="detail-value">${renderExtensionLink(data.extensionId)}</span>
+        </div>
+    `;
 }
 
 export function showModal(title, message, buttons) {
@@ -123,7 +197,10 @@ export async function runServerInstaller(serverId, force, outputDivId, installUr
 }
 
 export function appendInstallTrace(trace) {
-    const tracesDiv = document.getElementById('install-traces');
+    appendTraceLine(document.getElementById('install-traces'), trace);
+}
+
+export function appendTraceLine(tracesDiv, trace) {
     if (!tracesDiv) return;
 
     const color = trace.messageType === 'ERROR' ? 'var(--color-error-text)'

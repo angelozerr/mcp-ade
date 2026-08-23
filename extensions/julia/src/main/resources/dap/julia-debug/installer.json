@@ -1,0 +1,17 @@
+{
+  "id": "julia-debug-installer",
+  "name": "julia-debug",
+  "check": {
+    "exec": {
+      "name": "Check if DebugAdapter.jl is installed",
+      "command": "julia -e \"using DebugAdapter\"",
+      "timeout": 30000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install DebugAdapter.jl",
+      "command": "julia -e \"using Pkg; Pkg.add(\\\"DebugAdapter\\\")\""
+    }
+  }
+}

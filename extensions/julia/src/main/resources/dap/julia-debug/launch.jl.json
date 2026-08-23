@@ -1,0 +1,7 @@
+{
+  "type": "julia-debug",
+  "name": "Launch Julia file",
+  "request": "launch",
+  "program": "${workspaceFolder}/main.jl",
+  "cwd": "${workspaceFolder}"
+}

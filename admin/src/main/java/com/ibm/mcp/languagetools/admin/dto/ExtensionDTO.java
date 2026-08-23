@@ -25,7 +25,8 @@ public record ExtensionDTO(
         String source,
         boolean enabled,
         List<ServerInfo> lspServers,
-        List<ServerInfo> dapServers
+        List<ServerInfo> dapServers,
+        List<ServerInfo> bspServers
 ) {
 
     public record ServerInfo(String id, String name, boolean enabled) {}
@@ -39,12 +40,17 @@ public record ExtensionDTO(
                 .map(c -> new ServerInfo(c.getServerId(), c.getName(), registry.isServerEnabled(c.getServerId())))
                 .toList();
 
+        List<ServerInfo> bspServers = ext.getBspServerConfigs().stream()
+                .map(c -> new ServerInfo(c.getServerId(), c.getName(), registry.isServerEnabled(c.getServerId())))
+                .toList();
+
         return new ExtensionDTO(
                 ext.getId(),
                 ext.getSource().name(),
                 registry.isExtensionEnabled(ext.getId()),
                 lspServers,
-                dapServers
+                dapServers,
+                bspServers
         );
     }
 }

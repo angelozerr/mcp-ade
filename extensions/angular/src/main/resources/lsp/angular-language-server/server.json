@@ -3,6 +3,7 @@
   "name": "Angular Language Server",
   "description": "Angular Language Service for templates and TypeScript components",
   "url": "https://github.com/angular/angular",
+  "runtime": "nodejs",
   "documentSelector": [
     { "language": "html" },
     { "language": "typescript" }

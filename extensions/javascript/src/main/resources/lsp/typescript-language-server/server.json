@@ -3,6 +3,7 @@
   "name": "TypeScript Language Server",
   "description": "TypeScript/JavaScript language server",
   "url": "https://github.com/typescript-language-server/typescript-language-server",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "typescript"

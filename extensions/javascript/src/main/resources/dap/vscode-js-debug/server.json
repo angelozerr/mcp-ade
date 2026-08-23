@@ -3,6 +3,7 @@
   "name": "VSCode JS Debug",
   "description": "Debug adapter for JavaScript and TypeScript",
   "url": "https://github.com/microsoft/vscode-js-debug",
+  "runtime": "nodejs",
   "debugServerReadyPattern": "DAP server listening on port ${port}",
   "documentSelector": [
     {

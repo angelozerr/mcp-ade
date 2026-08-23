@@ -6,7 +6,7 @@
 
 import { state, updateSearchBoxVisibility, buildGlobalContributedByMap } from './shared-state.js';
 import {
-    confirmAction, showAlert, renderDocumentSelector, runServerInstaller,
+    confirmAction, showAlert, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     loadInstallerJsonEditor, saveInstallerJsonEditor,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
 } from './shared-ui.js';
@@ -680,7 +680,10 @@ export async function showDapServerDetails(serverId) {
             if (prev) prev.classList.remove('active');
         }
         const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
-        if (next) next.classList.add('active');
+        if (next) {
+            next.classList.add('active');
+            next.scrollIntoView({ block: 'nearest' });
+        }
     }
 
     const server = dapServerConfigs[serverId];
@@ -717,26 +720,30 @@ export async function showDapServerDetails(serverId) {
     const detailsHTML = `
         <h3 class="text-success mt-0">Debug Adapter Information</h3>
 
-        <div class="mb-xl">
-            <strong class="text-label">Server ID:</strong>
-            <p class="text-value mt-xs mb-xs"><code>${server.id}</code></p>
+        <div class="detail-row">
+            <span class="detail-label">Server ID:</span>
+            <span class="detail-value"><code>${server.id}</code></span>
         </div>
 
         ${server.description ? `
-        <div class="mb-xl">
-            <strong class="text-label">Description:</strong>
-            <p class="text-value mt-xs mb-xs">${server.description}</p>
+        <div class="detail-row">
+            <span class="detail-label">Description:</span>
+            <span class="detail-value">${server.description}</span>
         </div>
         ` : ''}
 
         ${server.url ? `
-        <div class="mb-xl">
-            <strong class="text-label">URL:</strong>
-            <p class="mt-xs mb-xs"><a href="${server.url}" target="_blank" class="link-accent">${server.url}</a></p>
+        <div class="detail-row">
+            <span class="detail-label">URL:</span>
+            <span class="detail-value"><a href="${server.url}" target="_blank" class="link-accent">${server.url}</a></span>
         </div>
         ` : ''}
 
-        <div class="mb-xl">
+        ${renderRuntimeSection(server)}
+
+        ${renderExtensionSection(server)}
+
+        <div class="mb-lg">
             <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
         </div>

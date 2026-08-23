@@ -3,6 +3,7 @@
   "name": "Dart LSP server",
   "description": "Dart language server from the Dart SDK",
   "url": "https://dart.dev/tools/dart-tool",
+  "runtime": "dart",
   "documentSelector": [
     {
       "language": "dart"

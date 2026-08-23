@@ -3,6 +3,7 @@
   "name": "LemMinX (XML Language Server)",
   "description": "XML language server based on Eclipse LemMinX",
   "url": "https://github.com/eclipse/lemminx",
+  "runtime": "jdk",
   "acceptContributions": ["classpath"],
   "documentSelector": [
     {

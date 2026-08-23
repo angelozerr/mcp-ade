@@ -157,6 +157,13 @@ public class DapDebugTools {
                             && extRegistry.isServerEnabled(id);
                     adapter.put("enabled", enabled);
 
+                    if (config.getRuntime() != null) {
+                        adapter.put("runtime", config.getRuntime());
+                        if (config.getRuntimeConfig() != null) {
+                            config.getRuntimeConfig().addRuntimeInfo(adapter);
+                        }
+                    }
+
                     if (cwd != null && !cwd.isEmpty()) {
                         config.addInstallationStatus(adapter);
                     }

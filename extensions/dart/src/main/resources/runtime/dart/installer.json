@@ -1,0 +1,13 @@
+{
+  "id": "dart",
+  "name": "Dart SDK",
+  "description": "Dart SDK required by Dart-based language servers",
+  "url": "https://dart.dev",
+  "check": {
+    "exec": {
+      "name": "Check if Dart is available",
+      "command": "dart --version",
+      "timeout": 5000
+    }
+  }
+}

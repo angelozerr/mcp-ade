@@ -10,7 +10,7 @@ and exposes all their capabilities as MCP tools to any AI assistant.
 
 *— OK but what can it actually do?*
 
-Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [40+ more languages](docs/why-mcp-lt.md). **47 bundled extensions**, **52 LSP servers**, **8 DAP servers**. Java alone has **60 dedicated tools** powered by Eclipse JDT.LS.
+Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [40+ more languages](docs/why-mcp-lt.md). **47 bundled extensions**, **52 LSP servers**, **9 DAP servers**. Java alone has **60 dedicated tools** powered by Eclipse JDT.LS.
 
 *— [Read the full conversation with our skeptic →](docs/why-mcp-lt.md)*
 
@@ -19,7 +19,8 @@ Diagnostics, code navigation, refactoring, code generation, debugging with break
 - **Multi-language support**: 47 extensions covering Java, JavaScript/TypeScript, Python, Go, Rust, C/C++, C#, Ruby, Scala, Kotlin, Dart, Swift, Zig, Haskell, Elixir, Erlang, OCaml, F#, Clojure, HTML/CSS/JSON, Vue, Svelte, Angular, PHP, Lua, Perl, R, Julia, Fortran, Ada, Crystal, Pascal, Bash, Terraform, LaTeX, Markdown, Nix, TOML, Elm, Ansible, XML, YAML, Dockerfile, and more
 - **Both LSP and DAP**: Full language server support (diagnostics, navigation, refactoring) and debug adapter support (breakpoints, stepping, variables)
 - **Server collaboration**: LSP and DAP servers can communicate with each other (e.g., MicroProfile LS leverages JDT.LS for Java type resolution). See [Bind Mechanism](docs/bind-mechanism.md)
-- **Auto-installation**: Language servers and debug adapters are automatically downloaded and installed on first use
+- **Auto-installation**: Language servers, debug adapters, and their runtimes are automatically downloaded and installed on first use. Runtimes (JDK, Node.js, Julia) are shared across all dependent servers — installed once, used by many
+- **Runtime management**: First-class runtime concept — servers declare their runtime dependency in `server.json` (`"runtime": "jdk"`). Auto-installable runtimes (JDK, Node.js, Julia) are downloaded from GitHub releases; check-only runtimes (Go, Python, Ruby, .NET, etc.) are detected on the system with clear messages guiding manual installation. The admin console has a dedicated **Runtimes** tab showing status and dependent servers
 - **Declarative extensions**: Each server is defined by two JSON files (`server.json` + `installer.json`) — no code required. For advanced cases (e.g., JDT.LS), Java code can be used via SPI
 - **Extensible via classpath or bundles**: Contribute extensions as Maven modules on the classpath, or add them at runtime via MCP tools and admin UI
 - **IDE settings support**: Loads `.vscode/settings.json` and `.bob/settings.json` to send as LSP `workspace/configuration`, so language servers receive the same settings as in your IDE
@@ -321,7 +322,7 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 
 ## Bundled Extensions
 
-**47 extensions** with **52 LSP servers** and **8 DAP servers**:
+**47 extensions** with **52 LSP servers** and **9 DAP servers**:
 
 | Extension | LSP Server | DAP Server |
 |-----------|-----------|------------|
@@ -345,7 +346,7 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 | **Jakarta EE** | jakarta-ls | — |
 | **Java** | JDT.LS | java-debug |
 | **JavaScript** | typescript-language-server | vscode-js-debug |
-| **Julia** | LanguageServer.jl | — |
+| **Julia** | LanguageServer.jl | julia-debug |
 | **Kotlin** | kotlin-language-server | — |
 | **LaTeX** | Texlab | — |
 | **Liberty** | lemminx-liberty, liberty-ls | — |
@@ -387,6 +388,7 @@ See the **[Extension Guide](docs/extensions.md)** for details.
 
 Access the admin UI at `http://localhost:7654/admin` to:
 
+- **Manage runtimes**: View installed runtimes (JDK, Node.js, Go, Python, etc.), their status, and dependent servers. Auto-install supported runtimes or get manual installation links
 - **Manage extensions**: Install, enable, disable, remove extensions and their servers
 - **Control servers**: Start, stop, restart LSP and DAP servers
 - **Monitor workspaces**: View active workspaces and connected MCP clients
@@ -462,7 +464,11 @@ Admin UI remains accessible at `http://localhost:7654/admin` in both modes.
 mcp-lsp/
 ├── core/                        # Core framework (LSP/DAP integration, MCP tools, admin UI)
 ├── extensions/                  # 47 language extensions
-│   ├── java/                    # Java (JDT.LS + java-debug)
+│   ├── java/                    # Java (JDT.LS + java-debug + JDK runtime)
+│   │   └── src/main/resources/
+│   │       ├── lsp/jdtls/       # LSP server descriptor + installer
+│   │       ├── dap/java-debug/  # DAP server descriptor + installer
+│   │       └── runtime/jdk/     # Runtime descriptor (auto-installable)
 │   ├── javascript/              # JavaScript/TypeScript (ts-language-server + vscode-js-debug)
 │   ├── python/                  # Python (Pyright + debugpy)
 │   ├── go/                      # Go (gopls + go-delve)
@@ -493,6 +499,45 @@ mcp-lsp/
 ├── admin/                       # Admin UI module
 └── dev/                         # Dev distribution (core + all extensions)
 ```
+
+## Runtime Management
+
+Language servers and debug adapters often depend on a **runtime** (JDK, Node.js, Go, Python, etc.). MCP LT manages runtimes as first-class entities alongside LSP/DAP/BSP servers.
+
+### How it works
+
+1. **Declaration**: Each server declares its runtime dependency in `server.json`:
+   ```json
+   { "id": "gopls", "runtime": "go", ... }
+   ```
+
+2. **Auto-installation**: Some runtimes can be downloaded automatically from GitHub releases:
+
+   | Runtime | Auto-install | Source |
+   |---------|-------------|--------|
+   | JDK (Temurin 21) | Yes | [Adoptium](https://github.com/adoptium/temurin21-binaries) |
+   | Node.js | Yes | [nodejs/node](https://github.com/nodejs/node) |
+   | Julia | Yes | [JuliaLang/julia](https://github.com/JuliaLang/julia) |
+
+3. **Check-only runtimes**: Complex runtimes are detected on the system. If missing, the AI agent and admin UI show a clear message with the installation link:
+
+   | Runtime | Install from |
+   |---------|-------------|
+   | Go | [go.dev](https://go.dev) |
+   | Python | [python.org](https://python.org) |
+   | Ruby | [ruby-lang.org](https://www.ruby-lang.org) |
+   | .NET | [dotnet.microsoft.com](https://dotnet.microsoft.com) |
+   | Dart | [dart.dev](https://dart.dev) |
+   | Swift | [swift.org](https://swift.org) |
+   | OCaml | [ocaml.org](https://ocaml.org) |
+   | R | [r-project.org](https://www.r-project.org) |
+   | Nix | [nixos.org](https://nixos.org) |
+
+4. **Shared installation**: A runtime is installed once and shared by all dependent servers. Thread-safe — concurrent server starts wait for the same installation to complete.
+
+5. **PATH management**: After installation, the runtime's `bin/` directory is automatically added to the server's PATH.
+
+6. **AI agent awareness**: `list_language_servers` and `list_debug_adapters` include runtime status, so the AI agent knows immediately whether a server can start or needs manual runtime installation — no waiting, no guessing.
 
 ## Technology Stack
 

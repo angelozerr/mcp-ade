@@ -1,0 +1,16 @@
+{
+  "id": "python",
+  "name": "Python",
+  "description": "Python runtime required by Python-based language servers",
+  "url": "https://www.python.org",
+  "check": {
+    "exec": {
+      "name": "Check if Python is available",
+      "command": {
+        "windows": "python --version",
+        "default": "python3 --version"
+      },
+      "timeout": 5000
+    }
+  }
+}

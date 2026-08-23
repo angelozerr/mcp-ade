@@ -1,0 +1,13 @@
+{
+  "id": "go",
+  "name": "Go",
+  "description": "Go runtime required by Go-based language servers",
+  "url": "https://go.dev",
+  "check": {
+    "exec": {
+      "name": "Check if Go is available",
+      "command": "go version",
+      "timeout": 5000
+    }
+  }
+}

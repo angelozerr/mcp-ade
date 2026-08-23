@@ -17,5 +17,6 @@ public enum TraceKind {
     LSP,
     DAP,
     MCP,
-    BSP
+    BSP,
+    RUNTIME
 }

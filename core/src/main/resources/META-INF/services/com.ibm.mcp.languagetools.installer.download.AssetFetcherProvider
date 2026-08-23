@@ -1,0 +1,3 @@
+com.ibm.mcp.languagetools.installer.download.GitHubAssetFetcherProvider
+com.ibm.mcp.languagetools.installer.download.MavenAssetFetcherProvider
+com.ibm.mcp.languagetools.installer.download.OpenVsxAssetFetcherProvider

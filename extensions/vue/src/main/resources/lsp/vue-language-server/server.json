@@ -3,6 +3,7 @@
   "name": "Vue Language Server",
   "description": "Language server for Vue single-file components",
   "url": "https://github.com/vuejs/language-tools",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "vue"

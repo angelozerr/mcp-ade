@@ -114,6 +114,9 @@ public class Application {
     @Inject
     jakarta.enterprise.inject.Instance<ProgressBroadcaster> progressBroadcasterInstance;
 
+    @Inject
+    com.ibm.mcp.languagetools.runtime.RuntimeRegistry runtimeRegistry;
+
     private final Map<URI, Workspace> workspaces = new ConcurrentHashMap<>();
 
     private final ContributionManager contributionManager;
@@ -122,6 +125,7 @@ public class Application {
     private final TraceCollector lspTraceCollector;
     private final TraceCollector dapTraceCollector;
     private final TraceCollector bspTraceCollector;
+    private final TraceCollector runtimeTraceCollector;
     private final McpTraceCollector mcpTraceCollector;
 
     public Application() {
@@ -132,6 +136,7 @@ public class Application {
         this.lspTraceCollector = factory.createTraceCollector(TraceKind.LSP);
         this.dapTraceCollector = factory.createTraceCollector(TraceKind.DAP);
         this.bspTraceCollector = factory.createTraceCollector(TraceKind.BSP);
+        this.runtimeTraceCollector = factory.createTraceCollector(TraceKind.RUNTIME);
         this.mcpTraceCollector = factory.createMcpTraceCollector();
         LOG.infof("TraceCollectorFactory: %s (enabled=%s)", factory.getClass().getSimpleName(), lspTraceCollector.isEnabled());
     }
@@ -153,6 +158,9 @@ public class Application {
 
         // Load disabled state from settings.json
         loadDisabledState();
+
+        // Wire runtime trace collector before extensions are loaded
+        runtimeRegistry.setTraceCollector(runtimeTraceCollector);
 
         // Initialize extension registry: deploy bundled configs + scan extensions/
         extensionRegistry.initialize(this);
@@ -633,6 +641,10 @@ public class Application {
 
     public TraceCollector getBspTraceCollector() {
         return bspTraceCollector;
+    }
+
+    public TraceCollector getRuntimeTraceCollector() {
+        return runtimeTraceCollector;
     }
 
     public ServerTrace getBspTraceLevel(String serverId) {

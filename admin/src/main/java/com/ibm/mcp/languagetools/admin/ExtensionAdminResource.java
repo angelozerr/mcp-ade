@@ -42,6 +42,7 @@ public class ExtensionAdminResource {
     @Inject
     Application application;
 
+
     @GET
     public List<ExtensionDTO> listExtensions() {
         ExtensionRegistry registry = application.getExtensionRegistry();

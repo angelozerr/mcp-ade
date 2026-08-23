@@ -3,6 +3,7 @@
   "name": "Elm Language Server",
   "description": "Language server for Elm",
   "url": "https://github.com/elm-tooling/elm-language-server",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "elm"

@@ -3,6 +3,7 @@
   "name": "Solargraph (Ruby Language Server)",
   "description": "Ruby language server based on Solargraph",
   "url": "https://github.com/castwide/solargraph",
+  "runtime": "ruby",
   "documentSelector": [
     {
       "language": "ruby"

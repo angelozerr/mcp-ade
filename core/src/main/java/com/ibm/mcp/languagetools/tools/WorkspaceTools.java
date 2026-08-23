@@ -145,6 +145,13 @@ public class WorkspaceTools {
                 }
                 server.put("languages", languages);
 
+                if (config.getRuntime() != null) {
+                    server.put("runtime", config.getRuntime());
+                    if (config.getRuntimeConfig() != null) {
+                        config.getRuntimeConfig().addRuntimeInfo(server);
+                    }
+                }
+
                 ExtensionRegistry extRegistry = application.getExtensionRegistry();
                 String extensionId = config.getExtensionId();
                 if (extensionId != null) {

@@ -14,7 +14,6 @@
 package com.ibm.mcp.languagetools.installer;
 
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
-import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.server.ServerVariables;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 
@@ -36,7 +35,7 @@ public class InstallerContext {
     private final ProgressMonitor progress;
     private final Map<String, String> variables;
     private final Path installDir;
-    private final ServerConfigBase config;
+    private final InstallableConfig config;
     private final Consumer<InstallationStatus> statusChangeCallback;
 
     private boolean forceInstall;
@@ -45,11 +44,11 @@ public class InstallerContext {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss")
             .withZone(ZoneId.systemDefault());
 
-    public InstallerContext(ServerConfigBase config, ProgressMonitor progress) {
+    public InstallerContext(InstallableConfig config, ProgressMonitor progress) {
         this(config, progress, null);
     }
 
-    public InstallerContext(ServerConfigBase config, ProgressMonitor progress, Consumer<InstallationStatus> statusChangeCallback) {
+    public InstallerContext(InstallableConfig config, ProgressMonitor progress, Consumer<InstallationStatus> statusChangeCallback) {
         this.config = config;
         this.installDir = config.getServerHome();
         this.progress = progress;
@@ -76,7 +75,7 @@ public class InstallerContext {
         return installDir;
     }
 
-    public ServerConfigBase getConfig() {
+    public InstallableConfig getConfig() {
         return config;
     }
 

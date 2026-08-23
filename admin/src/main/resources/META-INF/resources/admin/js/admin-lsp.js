@@ -6,7 +6,7 @@
 
 import { state, getServerApiBase, buildGlobalContributedByMap } from './shared-state.js';
 import {
-    showAlert, renderDocumentSelector, runServerInstaller,
+    showAlert, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     loadInstallerJsonEditor, saveInstallerJsonEditor,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
 } from './shared-ui.js';
@@ -105,7 +105,10 @@ export async function showServerDetails(serverId) {
             if (prev) prev.classList.remove('active');
         }
         const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
-        if (next) next.classList.add('active');
+        if (next) {
+            next.classList.add('active');
+            next.scrollIntoView({ block: 'nearest' });
+        }
     }
 
     const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -244,40 +247,42 @@ function buildServerDetailsHTML(details, allServers) {
     return `
         <h3 class="text-label mt-0">Server Information</h3>
 
-        <div class="mb-xl">
-            <strong class="text-label">Server ID:</strong>
-            <p class="text-value mt-xs mb-xs"><code>${details.id}</code></p>
+        <div class="detail-row">
+            <span class="detail-label">Server ID:</span>
+            <span class="detail-value"><code>${details.id}</code></span>
         </div>
 
         ${details.description ? `
-        <div class="mb-xl">
-            <strong class="text-label">Description:</strong>
-            <p class="text-value mt-xs mb-xs">${details.description}</p>
+        <div class="detail-row">
+            <span class="detail-label">Description:</span>
+            <span class="detail-value">${details.description}</span>
         </div>
         ` : ''}
 
         ${details.url ? `
-        <div class="mb-xl">
-            <strong class="text-label">URL:</strong>
-            <p class="mt-xs mb-xs"><a href="${details.url}" target="_blank" class="link-accent">${details.url}</a></p>
+        <div class="detail-row">
+            <span class="detail-label">URL:</span>
+            <span class="detail-value"><a href="${details.url}" target="_blank" class="link-accent">${details.url}</a></span>
         </div>
         ` : ''}
 
-        <div class="mb-xl">
-            <strong class="text-label">Command:</strong>
-            <p class="text-value mt-xs mb-xs">${commandHTML}</p>
+        <div class="detail-row">
+            <span class="detail-label">Command:</span>
+            <span class="detail-value">${commandHTML}</span>
         </div>
 
         ${details.args && details.args.length > 0 ? `
-        <div class="mb-xl">
-            <strong class="text-label">Arguments:</strong>
-            <ul class="text-value mt-sm mb-sm" style="padding-left: 1.5rem;">
-                ${details.args.map(arg => `<li><code>${arg}</code></li>`).join('')}
-            </ul>
+        <div class="detail-row">
+            <span class="detail-label">Arguments:</span>
+            <span class="detail-value">${details.args.map(arg => `<code>${arg}</code>`).join(' ')}</span>
         </div>
         ` : ''}
 
-        <div class="mb-xl">
+        ${renderRuntimeSection(details)}
+
+        ${renderExtensionSection(details)}
+
+        <div class="mb-lg">
             <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
         </div>

@@ -5,8 +5,8 @@
  * and their individual LSP/DAP servers.
  */
 
-import { confirmAction, showAlert } from './shared-ui.js';
-import { loadLspConfigs, loadDapConfigs } from './shared-state.js';
+import { confirmAction, showAlert, renderServerLink, renderRuntimeLink } from './shared-ui.js';
+import { state, loadLspConfigs, loadDapConfigs } from './shared-state.js';
 import { registerActions } from './event-delegation.js';
 
 let switchTabCallback = null;
@@ -34,7 +34,15 @@ function renderExtensionsList() {
         const isActive = selectedExtension === ext.id ? 'active' : '';
         const disabledClass = !ext.enabled ? 'extension-disabled' : '';
         const sourceBadge = `<span class="extension-source-badge ${ext.source.toLowerCase()}">${ext.source}</span>`;
-        const serverCount = (ext.lspServers?.length || 0) + (ext.dapServers?.length || 0);
+        const counts = [];
+        const lspCount = ext.lspServers?.length || 0;
+        const dapCount = ext.dapServers?.length || 0;
+        const bspCount = ext.bspServers?.length || 0;
+        const runtimeCount = Object.values(state.runtimeConfigs || {}).filter(rt => rt.extensionId === ext.id).length;
+        if (lspCount > 0) counts.push(`${lspCount} lsp`);
+        if (dapCount > 0) counts.push(`${dapCount} dap`);
+        if (bspCount > 0) counts.push(`${bspCount} bsp`);
+        if (runtimeCount > 0) counts.push(`${runtimeCount} runtime${runtimeCount !== 1 ? 's' : ''}`);
 
         return `
             <div class="extension-item ${isActive} ${disabledClass}" data-action="showExtensionDetails" data-extension-id="${ext.id}">
@@ -45,7 +53,7 @@ function renderExtensionsList() {
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
-                <div class="extension-id">${serverCount} server${serverCount !== 1 ? 's' : ''}</div>
+                <div class="extension-id">${counts.length > 0 ? counts.join(', ') : 'No servers'}</div>
             </div>
         `;
     }).join('');
@@ -95,7 +103,10 @@ export function showExtensionDetails(extensionId) {
             if (prev) prev.classList.remove('active');
         }
         const next = container.querySelector(`.extension-item[data-extension-id="${extensionId}"]`);
-        if (next) next.classList.add('active');
+        if (next) {
+            next.classList.add('active');
+            next.scrollIntoView({ block: 'nearest' });
+        }
     }
 
     const ext = extensionsData.find(e => e.id === extensionId);
@@ -114,37 +125,42 @@ export function showExtensionDetails(extensionId) {
     if (ext.lspServers && ext.lspServers.length > 0) {
         serversHTML += '<h4 class="text-label mt-xl">LSP Servers</h4>';
         serversHTML += ext.lspServers.map(server => {
-            const disabledClass = !server.enabled ? 'server-disabled' : '';
-            return `
-                <div class="extension-server-item ${disabledClass}">
-                    <span class="cursor-pointer" data-action="switchToLspServer" data-server-id="${server.id}"><span class="server-source-icon">🚀</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="lsp" data-server-id="${server.id}">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            `;
+            const toggle = `<label class="toggle-switch"><input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="lsp" data-server-id="${server.id}"><span class="toggle-slider"></span></label>`;
+            return renderServerLink('lsp', server.id, { name: server.name, cssClass: !server.enabled ? 'server-disabled' : '', extra: toggle });
         }).join('');
     }
 
     if (ext.dapServers && ext.dapServers.length > 0) {
-        serversHTML += '<h4 class="text-success mt-xl">DAP Servers</h4>';
+        serversHTML += '<h4 class="text-label mt-xl">DAP Servers</h4>';
         serversHTML += ext.dapServers.map(server => {
-            const disabledClass = !server.enabled ? 'server-disabled' : '';
-            return `
-                <div class="extension-server-item ${disabledClass}">
-                    <span class="cursor-pointer" data-action="switchToDapServer" data-server-id="${server.id}"><span class="server-source-icon">🐛</span> ${server.name} <span class="text-dimmed font-sm">(${server.id})</span></span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="dap" data-server-id="${server.id}">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            `;
+            const toggle = `<label class="toggle-switch"><input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="dap" data-server-id="${server.id}"><span class="toggle-slider"></span></label>`;
+            return renderServerLink('dap', server.id, { name: server.name, cssClass: !server.enabled ? 'server-disabled' : '', extra: toggle });
         }).join('');
     }
 
-    if (!serversHTML) {
-        serversHTML = '<p class="text-dimmed mt-lg">No servers in this extension.</p>';
+    if (ext.bspServers && ext.bspServers.length > 0) {
+        serversHTML += '<h4 class="text-label mt-xl">BSP Servers</h4>';
+        serversHTML += ext.bspServers.map(server => {
+            const toggle = `<label class="toggle-switch"><input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="bsp" data-server-id="${server.id}"><span class="toggle-slider"></span></label>`;
+            return renderServerLink('bsp', server.id, { name: server.name, cssClass: !server.enabled ? 'server-disabled' : '', extra: toggle });
+        }).join('');
+    }
+
+    // Build runtimes section from JS state
+    const extRuntimes = Object.values(state.runtimeConfigs || {}).filter(rt => rt.extensionId === ext.id);
+    let runtimesHTML = '';
+    if (extRuntimes.length > 0) {
+        runtimesHTML += '<h4 class="text-label mt-xl">Runtimes</h4>';
+        runtimesHTML += extRuntimes.map(rt => {
+            return `<div class="extension-server-item">
+                <span>${renderRuntimeLink(rt.id)}</span>
+            </div>`;
+        }).join('');
+    }
+
+    const hasContent = serversHTML || runtimesHTML;
+    if (!hasContent) {
+        serversHTML = '<p class="text-dimmed mt-lg">No servers or runtimes in this extension.</p>';
     }
 
     // Remove button (only for USER extensions)
@@ -167,22 +183,23 @@ export function showExtensionDetails(extensionId) {
         <div class="details-panel text-primary detail-content">
             <h3 class="text-label mt-0">Extension Information</h3>
 
-            <div class="mb-lg">
-                <strong class="text-label">ID:</strong>
-                <span class="text-value ml-sm">${ext.id}</span>
+            <div class="detail-row">
+                <span class="detail-label">ID:</span>
+                <span class="detail-value">${ext.id}</span>
             </div>
 
-            <div class="mb-lg">
-                <strong class="text-label">Source:</strong>
-                <span class="ml-sm">${sourceBadge}</span>
+            <div class="detail-row">
+                <span class="detail-label">Source:</span>
+                <span class="detail-value">${sourceBadge}</span>
             </div>
 
-            <div class="mb-lg">
-                <strong class="text-label">Status:</strong>
-                <span class="${ext.enabled ? 'text-success' : 'text-error'} ml-sm">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
+            <div class="detail-row">
+                <span class="detail-label">Status:</span>
+                <span class="detail-value ${ext.enabled ? 'text-success' : 'text-error'}">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
             </div>
 
             ${serversHTML}
+            ${runtimesHTML}
             ${removeButton}
         </div>
     `;
@@ -421,7 +438,7 @@ async function toggleExtensionServerEnabled(type, serverId, enabled) {
         if (response.ok) {
             // Update local data
             for (const ext of extensionsData) {
-                const serverList = type === 'lsp' ? ext.lspServers : ext.dapServers;
+                const serverList = type === 'lsp' ? ext.lspServers : type === 'dap' ? ext.dapServers : ext.bspServers;
                 const srv = serverList?.find(s => s.id === serverId);
                 if (srv) { srv.enabled = enabled; break; }
             }
@@ -437,6 +454,7 @@ registerActions('click', {
     removeExtension: (el) => removeExtension(el.dataset.extensionId),
     switchToLspServer: (el) => switchTabCallback?.('lsp-servers', null, {serverId: el.dataset.serverId}),
     switchToDapServer: (el) => switchTabCallback?.('dap-servers', null, {serverId: el.dataset.serverId}),
+    switchToBspServer: (el) => switchTabCallback?.('bsp-servers', null, {serverId: el.dataset.serverId}),
     clearSelectedFile: () => clearSelectedFile(),
     addExtension: () => addExtension(),
     handleFileSelect: (el) => handleFileSelect(el),

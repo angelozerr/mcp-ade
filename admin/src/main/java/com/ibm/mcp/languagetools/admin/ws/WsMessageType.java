@@ -29,7 +29,9 @@ public enum WsMessageType {
     TRACE_LEVEL_UPDATE("trace-level-update"),
     SERVER_ENABLED_CHANGED("server-enabled-changed"),
     OPERATION_UPDATE("operation-update"),
-    ACTIVITY_STATE("activity-state");
+    ACTIVITY_STATE("activity-state"),
+    RUNTIME_STATUS_CHANGED("runtime-status-changed"),
+    RUNTIME_TRACE("runtime-trace");
 
     private final String label;
 

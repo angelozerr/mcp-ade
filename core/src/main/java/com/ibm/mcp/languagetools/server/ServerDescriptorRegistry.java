@@ -14,12 +14,16 @@
 package com.ibm.mcp.languagetools.server;
 
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.PathManager;
 import com.ibm.mcp.languagetools.bsp.server.BspServerDescriptorLoader;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapServerDescriptorLoader;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.lsp.server.LspServerDescriptorLoader;
+import com.ibm.mcp.languagetools.runtime.RuntimeConfig;
+import com.ibm.mcp.languagetools.runtime.RuntimeDescriptorLoader;
+import com.ibm.mcp.languagetools.runtime.RuntimeRegistry;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -45,6 +49,7 @@ public class ServerDescriptorRegistry {
     private static final Logger LOG = Logger.getLogger(ServerDescriptorRegistry.class);
 
     private final Map<String, ServerDescriptorLoaderBase<?>> loaders = new HashMap<>();
+    private final RuntimeDescriptorLoader runtimeDescriptorLoader = new RuntimeDescriptorLoader();
 
     @Inject
     LspServerDescriptorLoader lspServerDescriptorLoader;
@@ -54,6 +59,12 @@ public class ServerDescriptorRegistry {
 
     @Inject
     BspServerDescriptorLoader bspServerDescriptorLoader;
+
+    @Inject
+    RuntimeRegistry runtimeRegistry;
+
+    @Inject
+    PathManager pathManager;
 
     void onStart(@Observes @Priority(1) StartupEvent ev) {
         LOG.info("ServerDescriptorRegistry starting...");
@@ -144,7 +155,7 @@ public class ServerDescriptorRegistry {
 
     /**
      * Load all servers from an extension directory on the filesystem.
-     * Scans lsp/ and dap/ subdirectories within the extension dir.
+     * Scans runtime/, lsp/, dap/, and bsp/ subdirectories within the extension dir.
      *
      * @param extensionDir the extension directory (e.g., extensions/jdtls/)
      * @param extension    the Extension object
@@ -153,6 +164,10 @@ public class ServerDescriptorRegistry {
     public Map<String, ServerConfigBase> loadFromExtensionDir(Path extensionDir, Extension extension) {
         Map<String, ServerConfigBase> configs = new HashMap<>();
 
+        // Load runtimes first
+        loadRuntimesFromExtensionDir(extensionDir, extension);
+
+        // Load servers (lsp, dap, bsp)
         for (Map.Entry<String, ServerDescriptorLoaderBase<?>> entry : loaders.entrySet()) {
             String root = entry.getKey();
             ServerDescriptorLoaderBase<?> loader = entry.getValue();
@@ -183,7 +198,42 @@ public class ServerDescriptorRegistry {
             }
         }
 
+        // Wire servers to runtimes
+        for (ServerConfigBase config : configs.values()) {
+            runtimeRegistry.wireServer(config);
+        }
+
         return configs;
+    }
+
+    /**
+     * Load runtimes from an extension directory.
+     */
+    private void loadRuntimesFromExtensionDir(Path extensionDir, Extension extension) {
+        Path runtimeDir = extensionDir.resolve(RuntimeDescriptorLoader.ROOT);
+        if (!java.nio.file.Files.isDirectory(runtimeDir)) {
+            return;
+        }
+
+        try (var entries = java.nio.file.Files.list(runtimeDir)) {
+            entries.filter(java.nio.file.Files::isDirectory)
+                   .forEach(dir -> {
+                       String runtimeId = dir.getFileName().toString();
+                       if (runtimeRegistry.get(runtimeId) != null) {
+                           LOG.debugf("Skipping duplicate runtime: %s", runtimeId);
+                           return;
+                       }
+                       try {
+                           Path runtimeHome = pathManager.getRuntimeHome(runtimeId);
+                           RuntimeConfig config = runtimeDescriptorLoader.load(dir, runtimeHome, extension);
+                           runtimeRegistry.register(config);
+                       } catch (Exception e) {
+                           LOG.errorf(e, "Failed to load runtime %s from extension %s", runtimeId, extension.getId());
+                       }
+                   });
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to scan runtime directory in extension %s", extension.getId());
+        }
     }
 
     /**

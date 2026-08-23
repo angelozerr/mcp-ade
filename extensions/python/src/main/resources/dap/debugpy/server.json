@@ -3,6 +3,7 @@
   "name": "Python - Debugpy",
   "description": "Debug adapter for Python via debugpy",
   "url": "https://github.com/microsoft/debugpy",
+  "runtime": "python",
   "launch": "python -m debugpy.adapter",
   "attach": {
     "address": "$connect.host",

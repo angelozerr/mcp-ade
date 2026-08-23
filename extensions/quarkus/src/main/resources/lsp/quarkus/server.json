@@ -3,6 +3,7 @@
 	"name": "Quarkus Extension",
 	"description": "Quarkus extensions for JDT.LS and MicroProfile LS",
 	"url": "https://github.com/redhat-developer/quarkus-ls",
+	"runtime": "jdk",
 	"documentSelector": [
 		{
 			"language": "quarkus-properties"

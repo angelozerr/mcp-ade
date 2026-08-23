@@ -1,0 +1,13 @@
+{
+  "id": "r",
+  "name": "R",
+  "description": "R runtime required by R-based language servers",
+  "url": "https://www.r-project.org",
+  "check": {
+    "exec": {
+      "name": "Check if R is available",
+      "command": "Rscript --version",
+      "timeout": 5000
+    }
+  }
+}

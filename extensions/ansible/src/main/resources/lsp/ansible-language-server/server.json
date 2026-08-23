@@ -3,6 +3,7 @@
   "name": "Ansible Language Server",
   "description": "Language server for Ansible playbooks and roles",
   "url": "https://github.com/ansible/vscode-ansible",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "ansible"

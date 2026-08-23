@@ -3,6 +3,7 @@
   "name": "Go Language Server",
   "description": "Go language server based on gopls",
   "url": "https://github.com/golang/tools/tree/master/gopls",
+  "runtime": "go",
   "initializationOptions": {
     "ui.semanticTokens": true
   },

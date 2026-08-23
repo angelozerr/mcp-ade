@@ -3,6 +3,7 @@
   "name": "Dockerfile Language Server",
   "description": "Language server for Dockerfiles",
   "url": "https://github.com/rcjsuen/dockerfile-language-server",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "dockerfile"

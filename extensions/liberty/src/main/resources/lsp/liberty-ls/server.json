@@ -3,6 +3,7 @@
   "name": "Liberty Config Language Server",
   "description": "Language server for Liberty bootstrap.properties and server.env files",
   "url": "https://github.com/OpenLiberty/liberty-language-server",
+  "runtime": "jdk",
   "documentSelector": [
     {
       "language": "properties",

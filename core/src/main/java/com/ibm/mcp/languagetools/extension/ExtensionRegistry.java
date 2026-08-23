@@ -23,6 +23,7 @@ import com.ibm.mcp.languagetools.installer.InstallerEvent;
 import com.ibm.mcp.languagetools.installer.InstallerListener;
 import com.ibm.mcp.languagetools.installer.InstallResult;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
+import com.ibm.mcp.languagetools.runtime.RuntimeDescriptorLoader;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.server.ServerDescriptorRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -147,7 +148,7 @@ public class ExtensionRegistry {
 
             Path basePath = resolveBasePath(descriptorUrl);
 
-            for (String root : List.of(PathConfig.getLspDirName(), PathConfig.getDapDirName(), PathConfig.getBspDirName())) {
+            for (String root : List.of(RuntimeDescriptorLoader.ROOT, PathConfig.getLspDirName(), PathConfig.getDapDirName(), PathConfig.getBspDirName())) {
                 Path rootPath = basePath.resolve(root);
                 if (!Files.isDirectory(rootPath)) {
                     continue;

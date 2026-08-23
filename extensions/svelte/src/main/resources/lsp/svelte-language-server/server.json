@@ -3,6 +3,7 @@
   "name": "Svelte Language Server",
   "description": "Language server for Svelte components",
   "url": "https://github.com/sveltejs/language-tools",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "svelte"

@@ -1,6 +1,6 @@
 import { state, getCurrentTheme, setTheme, updateThemeIcon, traceKey,
     formatStatusClass, formatStatusLabel, updateSearchBoxVisibility,
-    loadLspConfigs, loadDapConfigs, loadBspConfigs } from './shared-state.js';
+    loadLspConfigs, loadDapConfigs, loadBspConfigs, loadRuntimeConfigs } from './shared-state.js';
 import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, renderServerActions } from './shared-ui.js';
 import { escapeHtml, updateTraceControls, clearHighlights, closeSearch } from './trace-renderer.js';
 import { initEventDelegation, registerActions } from './event-delegation.js';
@@ -21,6 +21,7 @@ import { loadAllDapServers, onDapSessionUpdate, renderDapTracesForSession,
     createSessionHTML, changeDapServerTraceLevel,
     setSelectDapSessionByServerIdCallback } from './admin-dap.js';
 import { loadAllBspServers } from './admin-bsp.js';
+import { loadAllRuntimes, updateRuntimeStatus, appendRuntimeTrace, setSwitchTabCallback as setRuntimeSwitchTabCallback } from './admin-runtimes.js';
 import { loadAllExtensions, showAddExtensionForm, setSwitchTabCallback } from './admin-extensions.js';
 import { getMcpClients, getSelectedMcpClient, getMcpTracesByClient,
     setMcpTraceLevel, handleMcpTrace, handleMcpClientsUpdate,
@@ -127,6 +128,12 @@ function handleWebSocketMessage(message) {
             break;
         case 'activity-state':
             handleActivityState(message);
+            break;
+        case 'runtime-status-changed':
+            handleRuntimeStatusChanged(message);
+            break;
+        case 'runtime-trace':
+            appendRuntimeTrace(message);
             break;
         default:
             console.warn('Unknown WebSocket message type:', message.type);
@@ -417,6 +424,10 @@ function handleServerEnabledChanged(event) {
     }
 }
 
+function handleRuntimeStatusChanged(message) {
+    updateRuntimeStatus(message.runtimeId, message.status, message.error);
+}
+
 // ========== Status badge updates ==========
 
 function findWorkspaceServerElement(serverId) {
@@ -500,7 +511,7 @@ function switchTab(tab, element, options = {}) {
     const consoleColumn = document.querySelector('.console-container');
 
     function showSidebarPanel(activeId) {
-        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'bsp-servers-list', 'extensions-container', 'mcp-traces-list'];
+        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'bsp-servers-list', 'runtimes-list', 'extensions-container', 'mcp-traces-list'];
         panels.forEach(id => {
             document.getElementById(id).classList.toggle('d-none', id !== activeId);
         });
@@ -558,6 +569,15 @@ function switchTab(tab, element, options = {}) {
         consoleColumn.style.gridColumn = '2';
 
         loadAllBspServers(options.serverId);
+    } else if (tab === 'runtimes') {
+        showSidebarPanel('runtimes-list');
+        serversColumn.style.display = 'none';
+        consoleColumn.style.display = 'flex';
+        appContainer.style.gridTemplateColumns = '400px 1fr';
+        consoleColumn.style.gridColumn = '2';
+
+        loadAllRuntimes(options.runtimeId);
+        updateSearchBoxVisibility(false);
     } else if (tab === 'extensions') {
         showSidebarPanel('extensions-container');
         serversColumn.style.display = 'none';
@@ -565,7 +585,7 @@ function switchTab(tab, element, options = {}) {
         appContainer.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
-        loadAllExtensions();
+        loadAllExtensions(options.extensionId);
         updateSearchBoxVisibility(false);
     } else if (tab === 'mcp-traces') {
         showSidebarPanel('mcp-traces-list');
@@ -594,6 +614,7 @@ function switchTab(tab, element, options = {}) {
 // ========== Wire up cross-module callbacks ==========
 
 setSwitchTabCallback(switchTab);
+setRuntimeSwitchTabCallback(switchTab);
 setDiagramCallbacks({
     switchTab,
     switchWorkspaceTab,
@@ -625,6 +646,14 @@ registerActions('click', {
     hideConfirmModalOverlay: (el, e) => {
         if (e.target === el) hideConfirmModal();
     },
+    navigateToRuntime: (el) => {
+        const runtimeId = el.dataset.runtimeId;
+        switchTab('runtimes', null, { runtimeId });
+    },
+    navigateToExtension: (el) => {
+        const extensionId = el.dataset.extensionId;
+        switchTab('extensions', null, { extensionId });
+    },
 });
 
 // ========== Init ==========
@@ -633,6 +662,7 @@ registerActions('click', {
     await loadLspConfigs();
     await loadDapConfigs();
     await loadBspConfigs();
+    await loadRuntimeConfigs();
     connectAdminWebSocket();
 
     KeyboardShortcuts.register({

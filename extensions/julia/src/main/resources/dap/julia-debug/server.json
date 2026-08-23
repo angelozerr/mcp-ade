@@ -1,0 +1,14 @@
+{
+  "id": "julia-debug",
+  "name": "Julia Debug Adapter",
+  "description": "Debug adapter for Julia based on DebugAdapter.jl",
+  "url": "https://github.com/julia-vscode/DebugAdapter.jl",
+  "runtime": "julia",
+  "launch": "julia -e \"using DebugAdapter; DebugAdapter.run_debugger()\"",
+  "documentSelector": [
+    {
+      "language": "julia",
+      "pattern": "**/*.jl"
+    }
+  ]
+}

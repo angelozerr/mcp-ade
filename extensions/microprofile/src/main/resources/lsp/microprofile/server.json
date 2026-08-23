@@ -3,6 +3,7 @@
   "name": "MicroProfile Language Server",
   "description": "Language server for MicroProfile properties files",
   "url": "https://github.com/eclipse/lsp4mp",
+  "runtime": "jdk",
   "acceptContributions": ["classpath"],
   "documentSelector": [
     {

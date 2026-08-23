@@ -85,7 +85,10 @@ public class DapAdminResource extends AbstractServerAdminResource {
             config.getUrl(),
             config.getDocumentSelector(),
             contributionBuilder.buildContributions(config),
-            extensionRegistry.isServerEnabled(config.getServerId())
+            extensionRegistry.isServerEnabled(config.getServerId()),
+            config.getRuntime(),
+            config.getRuntimeStatusName(),
+            config.getExtensionId()
         );
     }
 

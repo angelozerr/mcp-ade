@@ -39,6 +39,15 @@ public interface ServerInstaller {
     CompletableFuture<InstallResult> ensureInstalled(InstallerContext context);
 
     /**
+     * Checks whether the server/runtime is already installed without attempting to install it.
+     * Runs only the check task from installer.json.
+     *
+     * @param context Installation context
+     * @return InstallResult with ALREADY_INSTALLED if check passes, NOT_INSTALLED if it fails
+     */
+    CompletableFuture<InstallResult> checkInstalled(InstallerContext context);
+
+    /**
      * Gets the current installation status.
      */
     InstallationStatus getStatus();

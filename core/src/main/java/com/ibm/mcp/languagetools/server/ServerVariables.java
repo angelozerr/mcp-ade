@@ -13,6 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.server;
 
+import com.ibm.mcp.languagetools.installer.InstallableConfig;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,21 +29,21 @@ public class ServerVariables {
     /**
      * Populate the given map with server variables resolved from the config.
      *
-     * @param config the server configuration.
+     * @param config the installable configuration (server or runtime).
      * @param variables the map to populate.
      */
-    public static void populate(ServerConfigBase config, Map<String, String> variables) {
+    public static void populate(InstallableConfig config, Map<String, String> variables) {
         variables.put(SERVER_HOME, config.getServerHome().toString());
     }
 
     /**
-     * Resolve all $VARIABLE$ placeholders in the given template using the server config.
+     * Resolve all $VARIABLE$ placeholders in the given template using the config.
      *
      * @param template the template string containing $VARIABLE$ placeholders.
-     * @param config the server configuration.
+     * @param config the installable configuration (server or runtime).
      * @return the resolved string, or null if template is null.
      */
-    public static String resolve(String template, ServerConfigBase config) {
+    public static String resolve(String template, InstallableConfig config) {
         if (template == null || template.indexOf('$') == -1) {
             return template;
         }

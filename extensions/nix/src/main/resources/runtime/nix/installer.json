@@ -1,0 +1,13 @@
+{
+  "id": "nix",
+  "name": "Nix",
+  "description": "Nix package manager required by Nix-based language servers",
+  "url": "https://nixos.org",
+  "check": {
+    "exec": {
+      "name": "Check if Nix is available",
+      "command": "nix --version",
+      "timeout": 5000
+    }
+  }
+}

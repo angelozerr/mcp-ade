@@ -145,6 +145,28 @@
 .border-top-subtle { border-top: 1px solid var(--border-subtle); }
 .border-left-accent { border-left: 3px solid var(--accent-primary); }
 .border-left-success { border-left: 3px solid var(--color-success); }
+.border-left-warning { border-left: 3px solid var(--color-warning); }
+
+/* Badge styles */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.badge-success { background: var(--color-success-bg); color: var(--color-success); }
+.badge-warning { background: var(--color-warning-bg, rgba(255, 165, 0, 0.15)); color: var(--color-warning); }
+.badge-checking { background: var(--color-warning-bg, rgba(255, 165, 0, 0.15)); color: var(--color-warning); animation: status-pulse 1.2s ease-in-out infinite; }
+.status-checking { animation: status-pulse 1.2s ease-in-out infinite; }
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+.badge-error { background: var(--color-error-bg); color: var(--color-error-text); }
+.badge-info { background: rgba(79, 193, 255, 0.15); color: var(--color-info); }
+.badge-dimmed { background: var(--bg-panel); color: var(--text-dimmed); }
 .rounded { border-radius: 4px; }
 
 /* ── Component classes (for JS-generated HTML) ── */
@@ -163,6 +185,8 @@
 .session-btn-sm { font-size: 0.7rem; padding: 0.15rem 0.3rem; }
 .template-selector { margin-left: 2rem; padding: 0.25rem 0.5rem; opacity: 0.9; transition: background-color 0.2s; }
 .link-accent { color: var(--accent-primary); text-decoration: none; }
+.nav-link { color: var(--accent-primary); text-decoration: none; cursor: pointer; }
+.nav-link:hover { text-decoration: underline; }
 .rounded-sm { border-radius: 3px; }
 
 /* ── Component patterns (used in JS templates) ── */
@@ -410,6 +434,8 @@ body {
 #workspaces-list,
 #lsp-servers-list,
 #dap-servers-list,
+#bsp-servers-list,
+#runtimes-list,
 #mcp-traces-list {
     flex: 1;
     overflow-y: auto;
@@ -1374,7 +1400,7 @@ body {
 .detail-label {
     font-weight: 600;
     min-width: 120px;
-    color: var(--text-secondary);
+    color: var(--color-label);
 }
 
 .detail-value {

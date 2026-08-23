@@ -17,6 +17,15 @@
     <name>Julia Extension</name>
     <description>Julia language support via LanguageServer.jl for MCP Language Tools</description>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.ibm.mcp</groupId>
+            <artifactId>mcp-language-tools-core</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

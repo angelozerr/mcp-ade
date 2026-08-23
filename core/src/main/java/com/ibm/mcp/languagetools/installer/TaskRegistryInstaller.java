@@ -21,7 +21,6 @@ import com.ibm.mcp.languagetools.installer.task.InstallerTask;
 import com.ibm.mcp.languagetools.installer.task.InstallerTaskRegistry;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
-import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.utils.OSUtils;
 import org.jboss.logging.Logger;
 
@@ -40,17 +39,17 @@ public class TaskRegistryInstaller implements ServerInstaller {
     private static final String FIELD_CHECK = "check";
     private static final String FIELD_RUN = "run";
 
-    private final ServerConfigBase config;
+    private final InstallableConfig config;
     private final JsonElement installerConfigJson;
     private final InstallerTaskRegistry registry;
     private final Gson gson;
     private final AtomicReference<InstallationStatus> status = new AtomicReference<>(InstallationStatus.NOT_INSTALLED);
 
-    public TaskRegistryInstaller(ServerConfigBase config) {
+    public TaskRegistryInstaller(InstallableConfig config) {
         this(config, config.getInstallerConfig());
     }
 
-    public TaskRegistryInstaller(ServerConfigBase config, JsonElement installerConfigJson) {
+    public TaskRegistryInstaller(InstallableConfig config, JsonElement installerConfigJson) {
         this.config = config;
         this.installerConfigJson = installerConfigJson;
         this.registry = new InstallerTaskRegistry();
@@ -63,6 +62,39 @@ public class TaskRegistryInstaller implements ServerInstaller {
     private void setStatus(InstallerContext context, InstallationStatus installStatus) {
         status.set(installStatus);
         context.notifyInstallationStatusChange(installStatus);
+    }
+
+    @Override
+    public CompletableFuture<InstallResult> checkInstalled(InstallerContext context) {
+        ClassLoader callerClassLoader = Thread.currentThread().getContextClassLoader();
+        return CompletableFuture.supplyAsync(() -> {
+            Thread.currentThread().setContextClassLoader(callerClassLoader);
+            try {
+                if (installerConfigJson == null || !installerConfigJson.isJsonObject()) {
+                    return new InstallResult(null, null, InstallationStatus.NOT_INSTALLED);
+                }
+
+                JsonObject installerConfig = installerConfigJson.getAsJsonObject();
+                loadProperties(installerConfig, context);
+
+                if (!installerConfig.has(FIELD_CHECK)) {
+                    return new InstallResult(null, null, InstallationStatus.NOT_INSTALLED);
+                }
+
+                context.getProgress().beginStep(ProgressStep.CHECKING);
+                InstallerTask checkTask = parseTaskNode(installerConfig.get(FIELD_CHECK));
+                if (checkTask != null && checkTask.execute(context)) {
+                    String command = extractCommand(context, installerConfig);
+                    setStatus(context, InstallationStatus.ALREADY_INSTALLED);
+                    return new InstallResult(context.getInstallDir(), command, InstallationStatus.ALREADY_INSTALLED);
+                }
+
+                return new InstallResult(null, null, InstallationStatus.NOT_INSTALLED);
+            } catch (Exception e) {
+                LOG.debugf(e, "Check failed for %s", config.getServerId());
+                return new InstallResult(null, null, InstallationStatus.NOT_INSTALLED);
+            }
+        });
     }
 
     @Override
@@ -101,7 +133,14 @@ public class TaskRegistryInstaller implements ServerInstaller {
                 context.traceInfo("Installing server...");
 
                 if (!installerConfig.has(FIELD_RUN)) {
-                    throw new IllegalStateException("No run task defined in installer.json");
+                    String runtimeName = installerConfig.has("name") ? installerConfig.get("name").getAsString() : config.getName();
+                    String runtimeUrl = installerConfig.has("url") ? installerConfig.get("url").getAsString() : null;
+                    StringBuilder message = new StringBuilder();
+                    message.append("'").append(runtimeName).append("' is not installed and cannot be auto-installed.");
+                    if (runtimeUrl != null) {
+                        message.append(" Please install it manually from: ").append(runtimeUrl);
+                    }
+                    throw new IllegalStateException(message.toString());
                 }
 
                 InstallerTask runTask = parseTaskNode(installerConfig.get(FIELD_RUN));

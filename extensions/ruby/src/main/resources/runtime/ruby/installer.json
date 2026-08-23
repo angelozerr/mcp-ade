@@ -1,0 +1,13 @@
+{
+  "id": "ruby",
+  "name": "Ruby",
+  "description": "Ruby runtime required by Ruby-based language servers",
+  "url": "https://www.ruby-lang.org",
+  "check": {
+    "exec": {
+      "name": "Check if Ruby is available",
+      "command": "ruby --version",
+      "timeout": 5000
+    }
+  }
+}

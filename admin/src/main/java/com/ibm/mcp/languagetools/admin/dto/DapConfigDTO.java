@@ -29,6 +29,9 @@ public record DapConfigDTO(
     String url,
     DocumentSelector documentSelector,
     Map<String, Map<String, List<?>>> contributions,
-    boolean enabled
+    boolean enabled,
+    String runtime,
+    String runtimeStatus,
+    String extensionId
 ) implements ServerConfigDTOBase {
 }

@@ -4,23 +4,47 @@
   "check": {
     "fileExists": {
       "name": "Check if PerlNavigator is installed",
-      "file": "$SERVER_HOME$/node_modules/.bin/perlnavigator*"
+      "file": {
+        "windows": "$SERVER_HOME$/perlnavigator.exe",
+        "default": "$SERVER_HOME$/perlnavigator"
+      }
     }
   },
   "run": {
-    "exec": {
-      "name": "Install perlnavigator-server",
-      "workingDir": "$SERVER_HOME$/node_modules",
-      "command": {
-        "windows": "npm.cmd install perlnavigator-server --force",
-        "default": "npm install perlnavigator-server --force"
+    "download": {
+      "name": "Download PerlNavigator",
+      "github": {
+        "owner": "bscan",
+        "repository": "PerlNavigator",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "perlnavigator-win-x86_64.zip"
+          },
+          "unix": {
+            "x86_64": "perlnavigator-linux-x86_64.zip"
+          },
+          "mac": {
+            "x86_64": "perlnavigator-macos-x86_64.zip"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "file": {
+          "name": {
+            "windows": "perlnavigator.exe",
+            "default": "perlnavigator"
+          },
+          "executable": true
+        }
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure PerlNavigator command",
           "command": {
-            "windows": "$SERVER_HOME$/node_modules/.bin/perlnavigator.cmd --stdio",
-            "default": "$SERVER_HOME$/node_modules/.bin/perlnavigator --stdio"
+            "windows": "$SERVER_HOME$/perlnavigator.exe --stdio",
+            "default": "$SERVER_HOME$/perlnavigator --stdio"
           }
         }
       }

@@ -59,6 +59,9 @@ public class BspAdminResource extends AbstractServerAdminResource {
             dto.put("description", config.getDescription());
             dto.put("url", config.getUrl());
             dto.put("enabled", application.getExtensionRegistry().isServerEnabled(config.getServerId()));
+            if (config.getExtensionId() != null) {
+                dto.put("extensionId", config.getExtensionId());
+            }
             result.add(dto);
         }
         return result;
@@ -77,6 +80,9 @@ public class BspAdminResource extends AbstractServerAdminResource {
         dto.put("description", config.getDescription());
         dto.put("url", config.getUrl());
         dto.put("enabled", application.getExtensionRegistry().isServerEnabled(config.getServerId()));
+        if (config.getExtensionId() != null) {
+            dto.put("extensionId", config.getExtensionId());
+        }
         return dto;
     }
 

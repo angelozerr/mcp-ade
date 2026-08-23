@@ -40,4 +40,10 @@ public interface ServerConfigDTOBase {
     Map<String, Map<String, List<?>>> contributions();
 
     boolean enabled();
+
+    String runtime();
+
+    String runtimeStatus();
+
+    String extensionId();
 }

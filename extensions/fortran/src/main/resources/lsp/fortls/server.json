@@ -3,6 +3,7 @@
   "name": "Fortran Language Server",
   "description": "Fortran language server based on fortls",
   "url": "https://github.com/fortran-lang/fortls",
+  "runtime": "python",
   "documentSelector": [
     {
       "language": "fortran"

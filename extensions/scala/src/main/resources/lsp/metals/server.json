@@ -3,6 +3,7 @@
   "name": "Metals (Scala Language Server)",
   "description": "Scala language server based on Metals",
   "url": "https://github.com/scalameta/metals",
+  "runtime": "jdk",
   "documentSelector": [
     {
       "language": "scala"

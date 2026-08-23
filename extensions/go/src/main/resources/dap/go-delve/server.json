@@ -3,6 +3,7 @@
   "name": "Go - Delve",
   "description": "Debug adapter for Go via Delve",
   "url": "https://github.com/go-delve/delve",
+  "runtime": "go",
   "launch": "dlv dap",
   "debugServerReadyPattern": "DAP server listening at: ${address}:${port}",
   "attach": {

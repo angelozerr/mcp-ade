@@ -35,6 +35,9 @@ public record LspConfigDTO(
     Map<String, Map<String, List<?>>> contributions,
     boolean isExtension,
     boolean enabled,
-    List<ServerSettingDTO> settings
+    List<ServerSettingDTO> settings,
+    String runtime,
+    String runtimeStatus,
+    String extensionId
 ) implements ServerConfigDTOBase {
 }

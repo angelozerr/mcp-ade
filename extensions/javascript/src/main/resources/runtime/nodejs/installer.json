@@ -1,0 +1,50 @@
+{
+  "id": "nodejs",
+  "name": "Node.js",
+  "description": "JavaScript runtime required by Node.js-based language servers",
+  "url": "https://nodejs.org",
+  "check": {
+    "exec": {
+      "name": "Check if Node.js is available",
+      "command": "node --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download Node.js",
+      "github": {
+        "owner": "nodejs",
+        "repository": "node",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "node-*-win-x64.zip",
+            "arm64": "node-*-win-arm64.zip"
+          },
+          "unix": {
+            "x86_64": "node-*-linux-x64.tar.gz",
+            "arm64": "node-*-linux-arm64.tar.gz"
+          },
+          "mac": {
+            "x86_64": "node-*-darwin-x64.tar.gz",
+            "arm64": "node-*-darwin-arm64.tar.gz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "stripRootDir": true
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Node.js",
+          "command": {
+            "windows": "$SERVER_HOME$/node.exe",
+            "default": "$SERVER_HOME$/bin/node"
+          }
+        }
+      }
+    }
+  }
+}

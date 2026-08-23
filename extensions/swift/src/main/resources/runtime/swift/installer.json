@@ -1,0 +1,13 @@
+{
+  "id": "swift",
+  "name": "Swift",
+  "description": "Swift toolchain required by Swift-based language servers",
+  "url": "https://swift.org",
+  "check": {
+    "exec": {
+      "name": "Check if Swift is available",
+      "command": "swift --version",
+      "timeout": 5000
+    }
+  }
+}

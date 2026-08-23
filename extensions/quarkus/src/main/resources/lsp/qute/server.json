@@ -3,6 +3,7 @@
   "name": "Qute Language Server",
   "description": "Qute template engine support",
   "url": "https://github.com/redhat-developer/quarkus-ls",
+  "runtime": "jdk",
   "documentSelector": [
     {
       "language": "qute-html"

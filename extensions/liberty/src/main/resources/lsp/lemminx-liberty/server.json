@@ -3,6 +3,7 @@
   "name": "LemMinX Liberty Extension",
   "description": "Liberty server.xml support for LemMinX: feature completion, hover, diagnostics, and XSD validation",
   "url": "https://github.com/OpenLiberty/liberty-language-server",
+  "runtime": "jdk",
   "contributes": {
     "lemminx": {
       "classpath": [

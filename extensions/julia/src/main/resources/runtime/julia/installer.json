@@ -1,0 +1,32 @@
+{
+  "id": "julia",
+  "name": "Julia",
+  "description": "Julia runtime required by Julia-based language servers",
+  "url": "https://julialang.org",
+  "check": {
+    "exec": {
+      "name": "Check if Julia is available",
+      "command": "julia --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download Julia",
+      "julia": {},
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "stripRootDir": true
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Julia",
+          "command": {
+            "windows": "$SERVER_HOME$/bin/julia.exe",
+            "default": "$SERVER_HOME$/bin/julia"
+          }
+        }
+      }
+    }
+  }
+}

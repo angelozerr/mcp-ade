@@ -19,6 +19,7 @@ import com.ibm.mcp.languagetools.PathManager;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ServerConfigSource;
+import com.ibm.mcp.languagetools.installer.InstallableConfig;
 import com.ibm.mcp.languagetools.installer.InstallResult;
 import com.ibm.mcp.languagetools.installer.InstallationStatus;
 import com.ibm.mcp.languagetools.installer.InstallerContext;
@@ -29,6 +30,7 @@ import com.ibm.mcp.languagetools.language.DocumentSelector;
 import com.ibm.mcp.languagetools.lsp.Contributes;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.SharedProgressMonitor;
+import com.ibm.mcp.languagetools.runtime.RuntimeConfig;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import org.jboss.logging.Logger;
 
@@ -56,7 +58,7 @@ import java.util.function.Consumer;
  *
  * @see ServerBase
  */
-public class ServerConfigBase {
+public class ServerConfigBase implements InstallableConfig {
 
     private static final Logger LOG = Logger.getLogger(ServerConfigBase.class);
 
@@ -71,6 +73,10 @@ public class ServerConfigBase {
     private String command;
     private Map<String, String> env = new HashMap<>();
     private String workingDirectory;
+
+    private String runtime;
+    private RuntimeConfig runtimeConfig;
+    private volatile boolean runtimePathAdded;
 
     private ActivationCondition activateWhen;
 
@@ -181,6 +187,75 @@ public class ServerConfigBase {
      */
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    /**
+     * Returns the runtime identifier that this server requires (e.g. "jdk", "nodejs").
+     */
+    public String getRuntime() {
+        return runtime;
+    }
+
+    /**
+     * Sets the runtime identifier that this server requires.
+     */
+    public void setRuntime(String runtime) {
+        this.runtime = runtime;
+    }
+
+    /**
+     * Returns the resolved runtime configuration, or null if no runtime dependency.
+     */
+    public RuntimeConfig getRuntimeConfig() {
+        return runtimeConfig;
+    }
+
+    /**
+     * Sets the resolved runtime configuration (called during wiring).
+     */
+    public void setRuntimeConfig(RuntimeConfig runtimeConfig) {
+        this.runtimeConfig = runtimeConfig;
+    }
+
+    /**
+     * Returns the runtime's display name, or null if no runtime dependency.
+     */
+    public String getRuntimeName() {
+        return runtimeConfig != null ? runtimeConfig.getName() : null;
+    }
+
+    /**
+     * Returns the runtime's installation status name, or null if no runtime dependency.
+     */
+    public String getRuntimeStatusName() {
+        return runtimeConfig != null ? runtimeConfig.getStatus().name() : null;
+    }
+
+    /**
+     * Adds the runtime's bin directory to this server's PATH environment variable.
+     * Called after runtime installation so the server can find runtime binaries.
+     */
+    private synchronized void addRuntimeToPath() {
+        if (runtimePathAdded || runtimeConfig == null) {
+            return;
+        }
+        java.nio.file.Path runtimeHome = runtimeConfig.getServerHome();
+        java.nio.file.Path binDir = runtimeHome.resolve("bin");
+        String runtimeBin;
+        if (java.nio.file.Files.isDirectory(binDir)) {
+            runtimeBin = binDir.toString();
+        } else {
+            runtimeBin = runtimeHome.toString();
+        }
+
+        String existingPath = env.get("PATH");
+        if (existingPath != null) {
+            env.put("PATH", runtimeBin + java.io.File.pathSeparator + existingPath);
+        } else {
+            String systemPath = System.getenv("PATH");
+            env.put("PATH", runtimeBin + java.io.File.pathSeparator + (systemPath != null ? systemPath : ""));
+        }
+        runtimePathAdded = true;
     }
 
     /**
@@ -555,6 +630,24 @@ public class ServerConfigBase {
         // progressMonitor must never be null - use ProgressMonitor.none() instead
         // If null, let it fail with NullPointerException to catch bugs early
 
+        // Install runtime first if needed, then add its bin dir to server's PATH
+        if (runtimeConfig != null) {
+            if (runtimeConfig.getTraceCollector() == null && traceCollector != null) {
+                runtimeConfig.setTraceCollector(traceCollector);
+            }
+            return runtimeConfig.ensureInstalled(progressMonitor, force)
+                    .thenCompose(runtimeResult -> {
+                        addRuntimeToPath();
+                        return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force);
+                    });
+        }
+        return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force);
+    }
+
+    private CompletableFuture<InstallResult> doEnsureInstalled(Workspace workspace,
+                                                                Consumer<ServerStatus> serverStatusCallback,
+                                                                ProgressMonitor progressMonitor,
+                                                                boolean force) {
         ServerInstaller installer = getInstaller();
         if (installer == null) {
             LOG.warnf("No installer for server '%s' (installerConfig=%s)", serverId, installerConfig != null ? "present" : "NULL");

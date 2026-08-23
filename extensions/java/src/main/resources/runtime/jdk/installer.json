@@ -1,0 +1,49 @@
+{
+  "id": "jdk",
+  "name": "Java Development Kit (JDK)",
+  "description": "Java runtime required by Java-based language servers",
+  "url": "https://adoptium.net",
+  "check": {
+    "exec": {
+      "name": "Check if Java is available",
+      "command": "java -version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download Eclipse Temurin JDK",
+      "github": {
+        "owner": "adoptium",
+        "repository": "temurin21-binaries",
+        "prerelease": false,
+        "asset": {
+          "windows": {
+            "x86_64": "OpenJDK21U-jdk_x64_windows_hotspot_*.zip"
+          },
+          "unix": {
+            "x86_64": "OpenJDK21U-jdk_x64_linux_hotspot_*.tar.gz",
+            "arm64": "OpenJDK21U-jdk_aarch64_linux_hotspot_*.tar.gz"
+          },
+          "mac": {
+            "x86_64": "OpenJDK21U-jdk_x64_mac_hotspot_*.tar.gz",
+            "arm64": "OpenJDK21U-jdk_aarch64_mac_hotspot_*.tar.gz"
+          }
+        }
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "stripRootDir": true
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure JDK",
+          "command": {
+            "windows": "$SERVER_HOME$/bin/java.exe",
+            "default": "$SERVER_HOME$/bin/java"
+          }
+        }
+      }
+    }
+  }
+}

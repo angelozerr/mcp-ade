@@ -3,6 +3,7 @@
   "name": "JSON Language Server",
   "description": "JSON language server extracted from Visual Studio Code",
   "url": "https://github.com/microsoft/vscode/tree/main/extensions/json-language-features",
+  "runtime": "nodejs",
   "documentSelector": [
     {
       "language": "json"

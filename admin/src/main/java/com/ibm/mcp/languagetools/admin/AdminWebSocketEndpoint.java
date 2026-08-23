@@ -20,6 +20,7 @@ import com.ibm.mcp.languagetools.admin.dto.WorkspaceDTO;
 import com.ibm.mcp.languagetools.admin.ws.*;
 import com.ibm.mcp.languagetools.dap.session.DapSessionEvent;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
+import com.ibm.mcp.languagetools.runtime.RuntimeStatusChangeEvent;
 import com.ibm.mcp.languagetools.event.ServerEnabledChangeEvent;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatusChangeEvent;
@@ -84,6 +85,7 @@ public class AdminWebSocketEndpoint {
         application.getDapTraceCollector().addTraceListener(this::onTrace);
         application.getMcpTraceCollector().addTraceListener(this::onTrace);
         application.getBspTraceCollector().addTraceListener(this::onTrace);
+        application.getRuntimeTraceCollector().addTraceListener(this::onTrace);
         operationTracker.addListener(event -> {
             OperationUpdateWsMessage msg = new OperationUpdateWsMessage(
                     event.type().name(), event.operation());
@@ -348,6 +350,9 @@ public class AdminWebSocketEndpoint {
                     WsMessageType.BSP_TRACE,
                     trace.workspaceUri(), trace.contextId(),
                     trace.content(), trace.messageType()));
+            case RUNTIME -> broadcast(new RuntimeTraceWsMessage(
+                    trace.contextId(),
+                    trace.content(), trace.messageType()));
         }
     }
 
@@ -465,6 +470,16 @@ public class AdminWebSocketEndpoint {
     }
 
     void onActivityStateChange(@Observes com.ibm.mcp.languagetools.admin.ws.ActivityStateWsMessage msg) {
+        broadcast(msg);
+    }
+
+    void onRuntimeStatusChange(@Observes RuntimeStatusChangeEvent event) {
+        LOG.infof("WebSocket: Runtime status changed: %s -> %s (broadcasting to %d clients)",
+                event.runtimeId(), event.status(), sessions.size());
+        RuntimeStatusChangedWsMessage msg = new RuntimeStatusChangedWsMessage(
+                event.runtimeId(),
+                event.status().name(),
+                event.error());
         broadcast(msg);
     }
 

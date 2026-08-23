@@ -25,7 +25,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
 
 /**
  * Task that downloads and extracts a file.
@@ -44,14 +46,6 @@ public class DownloadTask extends InstallerTask {
         this.url = url;
         this.assetFetcherInfo = assetFetcherInfo;
         this.outputInfo = outputInfo;
-    }
-
-    /**
-     * Info for GitHub or Maven asset fetcher.
-     */
-    public record AssetFetcherInfo(AssetFetcher assetFetcher,
-                                   Function<JsonObject, Boolean> releaseMatcher,
-                                   Function<JsonObject, Boolean> assetMatcher) {
     }
 
     /**
@@ -192,17 +186,6 @@ public class DownloadTask extends InstallerTask {
      */
     public static class Factory extends InstallerTaskFactoryBase {
         private static final String URL_JSON_PROPERTY = "url";
-        private static final String GITHUB_JSON_PROPERTY = "github";
-        private static final String GITHUB_OWNER_JSON_PROPERTY = "owner";
-        private static final String GITHUB_REPOSITORY_JSON_PROPERTY = "repository";
-        private static final String GITHUB_ASSET_JSON_PROPERTY = "asset";
-        private static final String GITHUB_PRERELEASE_JSON_PROPERTY = "prerelease";
-        private static final String MAVEN_JSON_PROPERTY = "maven";
-        private static final String MAVEN_GROUP_ID_JSON_PROPERTY = "groupId";
-        private static final String MAVEN_ARTIFACT_ID_JSON_PROPERTY = "artifactId";
-        private static final String OPENVSX_JSON_PROPERTY = "openvsx";
-        private static final String OPENVSX_NAMESPACE_JSON_PROPERTY = "namespace";
-        private static final String OPENVSX_EXTENSION_NAME_JSON_PROPERTY = "extensionName";
         private static final String OUTPUT_JSON_PROPERTY = "output";
         private static final String OUTPUT_DIR_JSON_PROPERTY = "dir";
         private static final String OUTPUT_FILE_JSON_PROPERTY = "file";
@@ -228,84 +211,25 @@ public class DownloadTask extends InstallerTask {
             return new DownloadTask(name, onSuccess, url, assetFetcherInfo, outputInfo);
         }
 
+        private static volatile List<AssetFetcherProvider> assetFetcherProviders;
+
+        private static List<AssetFetcherProvider> getAssetFetcherProviders() {
+            if (assetFetcherProviders == null) {
+                List<AssetFetcherProvider> providers = new ArrayList<>();
+                ServiceLoader.load(AssetFetcherProvider.class).forEach(providers::add);
+                assetFetcherProviders = providers;
+            }
+            return assetFetcherProviders;
+        }
+
         private AssetFetcherInfo getAssetFetcher(JsonObject json) {
-            AssetFetcherInfo assetFetcher = getGithubAssetFetcher(json);
-            if (assetFetcher != null) {
-                return assetFetcher;
+            for (AssetFetcherProvider provider : getAssetFetcherProviders()) {
+                AssetFetcherInfo info = provider.getAssetFetcher(json);
+                if (info != null) {
+                    return info;
+                }
             }
-            assetFetcher = getMavenArtifactFetcher(json);
-            if (assetFetcher != null) {
-                return assetFetcher;
-            }
-            return getOpenVsxAssetFetcher(json);
-        }
-
-        private AssetFetcherInfo getGithubAssetFetcher(JsonObject json) {
-            if (!json.has(GITHUB_JSON_PROPERTY)) {
-                return null;
-            }
-            JsonElement githubElement = json.get(GITHUB_JSON_PROPERTY);
-            if (!githubElement.isJsonObject()) {
-                return null;
-            }
-            JsonObject githubObj = githubElement.getAsJsonObject();
-            if (!githubObj.has(GITHUB_OWNER_JSON_PROPERTY) || !githubObj.has(GITHUB_REPOSITORY_JSON_PROPERTY)) {
-                return null;
-            }
-            String owner = githubObj.get(GITHUB_OWNER_JSON_PROPERTY).getAsString();
-            String repository = githubObj.get(GITHUB_REPOSITORY_JSON_PROPERTY).getAsString();
-            String assetPattern = OSUtils.getStringFromOs(githubObj, GITHUB_ASSET_JSON_PROPERTY);
-            if (assetPattern == null) {
-                return null;
-            }
-            boolean prerelease = githubObj.has(GITHUB_PRERELEASE_JSON_PROPERTY) && githubObj.get(GITHUB_PRERELEASE_JSON_PROPERTY).getAsBoolean();
-
-            var assetFetcher = InstallerTaskFactory.getGitHubAssetFetcherManager().getAssetFetcher(owner, repository);
-            return new AssetFetcherInfo(assetFetcher,
-                    new GitHubAssetFetcher.ReleaseMatcher(prerelease),
-                    new GitHubAssetFetcher.AssetMatcher(assetPattern));
-        }
-
-        private AssetFetcherInfo getMavenArtifactFetcher(JsonObject json) {
-            if (!json.has(MAVEN_JSON_PROPERTY)) {
-                return null;
-            }
-            JsonElement mavenElement = json.get(MAVEN_JSON_PROPERTY);
-            if (!mavenElement.isJsonObject()) {
-                return null;
-            }
-            JsonObject mavenObj = mavenElement.getAsJsonObject();
-            if (!mavenObj.has(MAVEN_GROUP_ID_JSON_PROPERTY) || !mavenObj.has(MAVEN_ARTIFACT_ID_JSON_PROPERTY)) {
-                return null;
-            }
-            String groupId = mavenObj.get(MAVEN_GROUP_ID_JSON_PROPERTY).getAsString();
-            String artifactId = mavenObj.get(MAVEN_ARTIFACT_ID_JSON_PROPERTY).getAsString();
-
-            var assetFetcher = InstallerTaskFactory.getMavenArtifactFetcherManager().getArtifactFetcher(groupId, artifactId);
-            return new AssetFetcherInfo(assetFetcher,
-                    obj -> true,
-                    obj -> true);
-        }
-
-        private AssetFetcherInfo getOpenVsxAssetFetcher(JsonObject json) {
-            if (!json.has(OPENVSX_JSON_PROPERTY)) {
-                return null;
-            }
-            JsonElement openvsxElement = json.get(OPENVSX_JSON_PROPERTY);
-            if (!openvsxElement.isJsonObject()) {
-                return null;
-            }
-            JsonObject openvsxObj = openvsxElement.getAsJsonObject();
-            if (!openvsxObj.has(OPENVSX_NAMESPACE_JSON_PROPERTY) || !openvsxObj.has(OPENVSX_EXTENSION_NAME_JSON_PROPERTY)) {
-                return null;
-            }
-            String namespace = openvsxObj.get(OPENVSX_NAMESPACE_JSON_PROPERTY).getAsString();
-            String extensionName = openvsxObj.get(OPENVSX_EXTENSION_NAME_JSON_PROPERTY).getAsString();
-
-            var assetFetcher = InstallerTaskFactory.getOpenVsxAssetFetcherManager().getAssetFetcher(namespace, extensionName);
-            return new AssetFetcherInfo(assetFetcher,
-                    obj -> true,
-                    obj -> true);
+            return null;
         }
 
         private OutputInfo getOutputInfo(JsonObject json) {

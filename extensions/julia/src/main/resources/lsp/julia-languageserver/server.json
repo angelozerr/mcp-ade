@@ -3,6 +3,7 @@
   "name": "Julia Language Server",
   "description": "Language server for Julia based on LanguageServer.jl",
   "url": "https://github.com/julia-vscode/LanguageServer.jl",
+  "runtime": "julia",
   "command": "julia --project=@languageserver -e \"using LanguageServer; runserver()\"",
   "documentSelector": [
     {
