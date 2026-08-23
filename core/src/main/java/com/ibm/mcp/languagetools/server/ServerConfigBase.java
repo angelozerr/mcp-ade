@@ -635,7 +635,7 @@ public class ServerConfigBase implements InstallableConfig {
             if (runtimeConfig.getTraceCollector() == null && traceCollector != null) {
                 runtimeConfig.setTraceCollector(traceCollector);
             }
-            return runtimeConfig.ensureInstalled(progressMonitor, force)
+            return runtimeConfig.ensureInstalled(progressMonitor, force, serverId, traceCollector)
                     .thenCompose(runtimeResult -> {
                         addRuntimeToPath();
                         return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force);
@@ -746,6 +746,9 @@ public class ServerConfigBase implements InstallableConfig {
         context.setVariable("USER_HOME", pathManager.getMcpLangToolsRoot().toString());
         context.setVariable("WORKSPACE_FOLDER", workspace.getRootPath().toString());
         context.setForceInstall(force);
+        if (env != null && !env.isEmpty()) {
+            context.setEnv(env);
+        }
         return context;
     }
 

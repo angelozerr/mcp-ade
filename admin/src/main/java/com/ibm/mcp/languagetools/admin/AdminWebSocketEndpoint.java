@@ -523,19 +523,17 @@ public class AdminWebSocketEndpoint {
                 // Use async send with callback for backpressure handling
                 session.getAsyncRemote().sendText(json, result -> {
                     if (!result.isOK()) {
-                        LOG.warnf("Failed to send to session %s: %s",
-                                session.getId(), result.getException().getMessage());
-
-                        // Close slow clients that can't keep up
-                        try {
-                            session.close(new CloseReason(
-                                    CloseReason.CloseCodes.TRY_AGAIN_LATER,
-                                    "Client too slow"
-                            ));
-                        } catch (IOException e) {
-                            // Session already closed
+                        if (sessions.remove(session)) {
+                            LOG.debugf("Removing unresponsive WebSocket session: %s", session.getId());
+                            try {
+                                session.close(new CloseReason(
+                                        CloseReason.CloseCodes.TRY_AGAIN_LATER,
+                                        "Client too slow"
+                                ));
+                            } catch (IOException e) {
+                                // Session already closed
+                            }
                         }
-                        sessions.remove(session);
                     }
                 });
             } else {

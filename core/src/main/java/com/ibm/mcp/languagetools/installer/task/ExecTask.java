@@ -50,6 +50,10 @@ public class ExecTask extends InstallerTask {
             }
             pb.redirectErrorStream(false);
 
+            if (context.getEnv() != null && !context.getEnv().isEmpty()) {
+                pb.environment().putAll(context.getEnv());
+            }
+
             if (workingDir != null) {
                 String resolvedDir = context.resolveVariables(workingDir);
                 Path dirPath = Paths.get(resolvedDir);

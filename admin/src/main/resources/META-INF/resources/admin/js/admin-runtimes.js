@@ -198,7 +198,7 @@ function buildRuntimeDetailsHTML(runtime) {
 
         <div class="detail-row">
             <span class="detail-label">Status:</span>
-            <span class="detail-value">${statusHTML}</span>
+            <span id="runtime-status-value" class="detail-value">${statusHTML}</span>
         </div>
 
         <div class="detail-row">
@@ -248,14 +248,18 @@ async function installRuntime(runtimeId) {
 function showInstallOutput(runtimeId) {
     const outputDiv = document.getElementById('runtime-install-output');
     if (!outputDiv) return;
+    const runtime = state.runtimeConfigs[runtimeId];
+    const isChecking = runtime && (runtime.status === 'CHECKING' || runtime.status === 'NOT_INSTALLED');
+    const label = isChecking ? 'Checking' : 'Installing';
     outputDiv.innerHTML = `
-        <div class="install-output-header text-success mb-sm">Installing ${runtimeId}...</div>
+        <div class="install-output-header text-success mb-sm">${label} ${runtimeId}...</div>
         <div id="runtime-install-traces" class="font-mono bg-card p-sm rounded-sm font-sm overflow-auto" style="max-height: 300px;"></div>
     `;
     outputDiv.style.display = 'block';
 }
 
 async function checkRuntime(runtimeId) {
+    showInstallOutput(runtimeId);
     try {
         const response = await fetch(`/api/admin/runtimes/${runtimeId}/check`, { method: 'POST' });
         const result = await response.json();
@@ -313,9 +317,26 @@ export function updateRuntimeStatus(runtimeId, status, error) {
             }
         } else {
             updateInstallOutputHeader(status, error);
-            showRuntimeDetails(runtimeId);
+            updateRuntimeDetailsStatus(runtime);
         }
     }
+}
+
+function updateRuntimeDetailsStatus(runtime) {
+    const statusEl = document.getElementById('runtime-status-value');
+    if (!statusEl) return;
+
+    const status = runtime.status || 'NOT_INSTALLED';
+    const info = getRuntimeStatusInfo(status, runtime.autoInstallable);
+    const statusLabel = (status === 'NOT_INSTALLED' || !status) ? 'Not checked' : info.label;
+    let html = `<span class="text-${info.cssClass}">${statusLabel}</span>`;
+    if ((status === 'FAILED' || status === 'ERROR') && runtime.error) {
+        html += `<p class="text-error mt-xs">${runtime.error}</p>`;
+    }
+    statusEl.innerHTML = html;
+
+    const headerIcon = document.querySelector('.console-title .server-source-icon');
+    if (headerIcon) headerIcon.outerHTML = getStatusIconHTML(runtime);
 }
 
 function updateInstallOutputHeader(status, error) {
@@ -324,10 +345,13 @@ function updateInstallOutputHeader(status, error) {
 
     if (status === 'INSTALLED' || status === 'ALREADY_INSTALLED') {
         header.style.color = 'var(--color-success)';
-        header.textContent = 'Installation completed';
+        header.textContent = header.textContent.startsWith('Checking') ? 'Check completed — installed' : 'Installation completed';
+    } else if (status === 'NOT_INSTALLED') {
+        header.style.color = 'var(--color-warning)';
+        header.textContent = 'Check completed — not installed';
     } else if (status === 'FAILED' || status === 'ERROR') {
         header.style.color = 'var(--color-error-text)';
-        header.textContent = 'Installation failed' + (error ? ': ' + error : '');
+        header.textContent = (header.textContent.startsWith('Checking') ? 'Check failed' : 'Installation failed') + (error ? ': ' + error : '');
     }
 }
 

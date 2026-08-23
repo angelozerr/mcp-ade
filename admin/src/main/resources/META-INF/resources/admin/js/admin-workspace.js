@@ -353,6 +353,14 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 '<div class="workspace-servers-header">' + headerHTML + tabsHTML + filterHTML + '</div>' +
                 '<div class="workspace-servers-content">' + contentHTML + '</div>';
 
+            // Scroll auto-selected server into view (after DOM is updated)
+            if (state.selectedServer) {
+                const selectedEl = container.querySelector(`.server-item[data-server-id="${state.selectedServer.id}"]`);
+                if (selectedEl) {
+                    selectedEl.scrollIntoView({ block: 'nearest' });
+                }
+            }
+
             // Auto-select first BSP server after rendering
             if (state.currentWorkspaceTab === 'build') {
                 const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);

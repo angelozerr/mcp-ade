@@ -24,8 +24,10 @@ import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.jboss.logging.Logger;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -155,6 +157,24 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
     protected Process startProcess() throws IOException {
         var config = getConfig();
         List<String> command = buildCommand();
+
+        // Resolve bare executable name to full path using env PATH.
+        // On Windows, ProcessBuilder.start() uses the PARENT process's PATH
+        // to find the executable, not the child's environment.
+        if (config.getEnv() != null && !command.isEmpty()) {
+            String exe = command.get(0);
+            if (!exe.contains(File.separator) && !exe.contains("/")) {
+                String envPath = config.getEnv().get("PATH");
+                if (envPath != null) {
+                    String resolved = resolveExecutable(exe, envPath);
+                    if (resolved != null) {
+                        command = new ArrayList<>(command);
+                        command.set(0, resolved);
+                    }
+                }
+            }
+        }
+
         String commandStr = String.join(" ", command);
 
         addTrace(String.format("Starting %s...", config.getName()));
@@ -235,6 +255,26 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         }
 
         return args;
+    }
+
+    /**
+     * Resolve a bare executable name (e.g. "julia") to its full path
+     * by searching the given PATH string.
+     */
+    private static String resolveExecutable(String name, String path) {
+        String[] extensions = OSUtils.isWindows() ? new String[]{".exe", ".cmd", ".bat", ""} : new String[]{""};
+        for (String dir : path.split(File.pathSeparator)) {
+            if (dir.isEmpty()) {
+                continue;
+            }
+            for (String ext : extensions) {
+                Path candidate = Path.of(dir, name + ext);
+                if (Files.isRegularFile(candidate)) {
+                    return candidate.toString();
+                }
+            }
+        }
+        return null;
     }
 
     /**

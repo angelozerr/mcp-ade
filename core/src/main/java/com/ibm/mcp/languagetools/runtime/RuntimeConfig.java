@@ -28,9 +28,12 @@ import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import org.jboss.logging.Logger;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -57,6 +60,8 @@ public class RuntimeConfig implements InstallableConfig {
     private volatile CompletableFuture<InstallResult> installationFuture;
     private volatile SharedProgressMonitor sharedInstallProgress;
     private volatile String lastInstallError;
+
+    private volatile InstallerContext activeInstallerContext;
 
     private final List<ServerConfigBase> dependentServers = Collections.synchronizedList(new ArrayList<>());
 
@@ -161,6 +166,26 @@ public class RuntimeConfig implements InstallableConfig {
     }
 
     // --- Installation ---
+
+    /**
+     * If the runtime's configured command directory already exists on disk (from a previous install),
+     * add it to the context's env PATH so check tasks can find the runtime binary.
+     * The directory is extracted from the configureServer command in installer.json.
+     */
+    private void addInstalledRuntimeToEnv(InstallerContext context) {
+        String commandDir = TaskRegistryInstaller.extractCommandDir(installerConfig, context);
+        if (commandDir == null) {
+            return;
+        }
+        Path commandDirPath = Path.of(commandDir);
+        if (!Files.isDirectory(commandDirPath)) {
+            return;
+        }
+        Map<String, String> env = new HashMap<>();
+        String systemPath = System.getenv("PATH");
+        env.put("PATH", commandDir + File.pathSeparator + (systemPath != null ? systemPath : ""));
+        context.setEnv(env);
+    }
 
     public ServerInstaller getInstaller() {
         ServerInstaller inst = installer;
@@ -278,6 +303,7 @@ public class RuntimeConfig implements InstallableConfig {
                     InstallerContext context = new InstallerContext(this,
                             progressMonitor != ProgressMonitor.none() ? progressMonitor : ProgressMonitor.none());
                     context.setVariable("USER_HOME", runtimeHome.getParent().getParent().toString());
+                    addInstalledRuntimeToEnv(context);
 
                     future = installer.checkInstalled(context)
                             .whenComplete((result, error) -> {
@@ -304,6 +330,16 @@ public class RuntimeConfig implements InstallableConfig {
     }
 
     public CompletableFuture<InstallResult> ensureInstalled(ProgressMonitor progressMonitor, boolean force) {
+        return ensureInstalled(progressMonitor, force, null, null);
+    }
+
+    /**
+     * Ensures the runtime is installed, optionally forwarding traces to a parent server.
+     * Thread-safe — only one installation runs even if called from multiple servers.
+     * All callers' parent trace targets are registered on the shared InstallerContext.
+     */
+    public CompletableFuture<InstallResult> ensureInstalled(ProgressMonitor progressMonitor, boolean force,
+                                                             String parentServerId, TraceCollector parentTraceCollector) {
         ServerInstaller installer = getInstaller();
         if (installer == null) {
             return CompletableFuture.completedFuture(null);
@@ -318,11 +354,13 @@ public class RuntimeConfig implements InstallableConfig {
             }
         }
 
+        boolean createdByThisCaller = false;
         CompletableFuture<InstallResult> future = installationFuture;
         if (future == null) {
             synchronized (this) {
                 future = installationFuture;
                 if (future == null) {
+                    createdByThisCaller = true;
                     sharedInstallProgress = new SharedProgressMonitor();
                     String taskId = "install-runtime-" + runtimeId;
                     sharedInstallProgress.startTask(taskId);
@@ -337,10 +375,14 @@ public class RuntimeConfig implements InstallableConfig {
 
                     InstallerContext context = new InstallerContext(this, sharedInstallProgress);
                     context.setVariable("USER_HOME", runtimeHome.getParent().getParent().toString());
+                    addInstalledRuntimeToEnv(context);
+                    context.addParentTraceTarget(parentServerId, parentTraceCollector);
+                    activeInstallerContext = context;
 
                     final SharedProgressMonitor installProgress = sharedInstallProgress;
                     future = installer.ensureInstalled(context)
                             .whenComplete((result, error) -> {
+                                activeInstallerContext = null;
                                 installProgress.endTask(taskId);
                                 synchronized (RuntimeConfig.this) {
                                     if (sharedInstallProgress == installProgress) {
@@ -361,12 +403,20 @@ public class RuntimeConfig implements InstallableConfig {
                     installationFuture = future;
                 }
             }
-        } else {
+        }
+
+        // Subsequent callers only: register trace target + progress listener on existing install
+        if (!createdByThisCaller) {
+            InstallerContext ctx = activeInstallerContext;
+            if (ctx != null) {
+                ctx.addParentTraceTarget(parentServerId, parentTraceCollector);
+            }
             SharedProgressMonitor progress = sharedInstallProgress;
             if (progress != null && progressMonitor != ProgressMonitor.none()) {
                 progress.addListener(progressMonitor);
             }
         }
+
         return future;
     }
 }

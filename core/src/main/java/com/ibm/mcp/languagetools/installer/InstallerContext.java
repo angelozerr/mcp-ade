@@ -22,7 +22,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,10 +41,14 @@ public class InstallerContext {
     private final Consumer<InstallationStatus> statusChangeCallback;
 
     private boolean forceInstall;
+    private Map<String, String> env;
+    private final List<ParentTraceTarget> parentTraceTargets = new CopyOnWriteArrayList<>();
 
     private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{([^}]+)}|\\$([A-Z_]+)\\$");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss")
             .withZone(ZoneId.systemDefault());
+
+    private record ParentTraceTarget(String contextId, TraceCollector traceCollector) {}
 
     public InstallerContext(InstallableConfig config, ProgressMonitor progress) {
         this(config, progress, null);
@@ -121,6 +127,25 @@ public class InstallerContext {
         return result.toString();
     }
 
+    public Map<String, String> getEnv() {
+        return env;
+    }
+
+    public void setEnv(Map<String, String> env) {
+        this.env = env;
+    }
+
+    /**
+     * Registers a parent server trace target so runtime installation traces
+     * are also forwarded to the parent server's trace panel.
+     * Thread-safe — can be called by subsequent callers while installation is in progress.
+     */
+    public void addParentTraceTarget(String contextId, TraceCollector traceCollector) {
+        if (contextId != null && traceCollector != null) {
+            parentTraceTargets.add(new ParentTraceTarget(contextId, traceCollector));
+        }
+    }
+
     public boolean isForceInstall() {
         return forceInstall;
     }
@@ -156,14 +181,26 @@ public class InstallerContext {
         if (tc != null && tc.isEnabled()) {
             tc.addTrace(config.getServerId(), message, TraceCollector.MessageType.UPDATE);
         }
+        traceToParents(message, TraceCollector.MessageType.UPDATE);
     }
 
     private void traceInstallation(String message, TraceCollector.MessageType type) {
         TraceCollector tc = config.getTraceCollector();
+        String formatted = String.format("[Installation - %s] %s",
+                TIME_FORMATTER.format(Instant.now()), message);
         if (tc != null && tc.isEnabled()) {
-            String formatted = String.format("[Installation - %s] %s",
-                    TIME_FORMATTER.format(Instant.now()), message);
             tc.addTrace(config.getServerId(), formatted, type);
+        }
+        String parentFormatted = String.format("[Runtime - %s] %s",
+                TIME_FORMATTER.format(Instant.now()), message);
+        traceToParents(parentFormatted, type);
+    }
+
+    private void traceToParents(String message, TraceCollector.MessageType type) {
+        for (ParentTraceTarget target : parentTraceTargets) {
+            if (target.traceCollector.isEnabled()) {
+                target.traceCollector.addTrace(target.contextId, message, type);
+            }
         }
     }
 }

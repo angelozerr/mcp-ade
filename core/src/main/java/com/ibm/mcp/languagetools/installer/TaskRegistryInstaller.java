@@ -253,11 +253,33 @@ public class TaskRegistryInstaller implements ServerInstaller {
     }
 
     /**
+     * Extracts the parent directory of the configured server command from installer config.
+     * Walks the run task tree to find a configureServer node, resolves its command,
+     * and returns its parent directory path. Returns null if not found.
+     */
+    public static String extractCommandDir(JsonElement installerConfig, InstallerContext context) {
+        if (installerConfig == null || !installerConfig.isJsonObject()) {
+            return null;
+        }
+        JsonObject config = installerConfig.getAsJsonObject();
+        if (!config.has(FIELD_RUN)) {
+            return null;
+        }
+        String command = findConfigureServerCommand(config.get(FIELD_RUN), context);
+        if (command == null) {
+            return null;
+        }
+        java.nio.file.Path commandPath = java.nio.file.Path.of(command);
+        java.nio.file.Path parentDir = commandPath.getParent();
+        return parentDir != null ? parentDir.toString() : null;
+    }
+
+    /**
      * Walk the task tree to find a configureServer node and resolve its command.
      * Also extracts variables from parent tasks (e.g. output.dir from download tasks)
      * so that ${output.dir} can be resolved in the configureServer command.
      */
-    private String findConfigureServerCommand(JsonElement taskNode, InstallerContext context) {
+    private static String findConfigureServerCommand(JsonElement taskNode, InstallerContext context) {
         if (taskNode == null || !taskNode.isJsonObject()) {
             return null;
         }

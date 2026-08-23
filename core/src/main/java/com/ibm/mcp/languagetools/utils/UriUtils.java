@@ -47,6 +47,27 @@ public final class UriUtils {
         return Map.of("file", compactUri(uri, cwdUri));
     }
 
+    /**
+     * Normalize a URI by decoding percent-encoded characters in the path.
+     * Some language servers encode the colon in Windows drive letters (C%3A instead of C:).
+     */
+    public static String normalizeUri(String uri) {
+        if (uri == null || uri.indexOf('%') < 0) {
+            return uri;
+        }
+        try {
+            URI parsed = URI.create(uri);
+            String rawPath = parsed.getRawPath();
+            String decodedPath = parsed.getPath();
+            if (rawPath == null || decodedPath == null || rawPath.equals(decodedPath)) {
+                return uri;
+            }
+            return uri.replace(rawPath, decodedPath);
+        } catch (Exception e) {
+            return uri;
+        }
+    }
+
     public static URI toUri(String path) {
         if (path == null) return null;
         if (path.startsWith("file:")) return URI.create(path);

@@ -15,6 +15,7 @@ package com.ibm.mcp.languagetools.lsp.client;
 
 import com.ibm.mcp.languagetools.server.ServerRequestRouter;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Endpoint;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -70,7 +71,7 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
 
     @Override
     public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
-        String uri = diagnostics.getUri();
+        String uri = UriUtils.normalizeUri(diagnostics.getUri());
         List<Diagnostic> diags = diagnostics.getDiagnostics();
         LOG.debugf("Diagnostics published for: %s (%d items)", uri, diags.size());
 
