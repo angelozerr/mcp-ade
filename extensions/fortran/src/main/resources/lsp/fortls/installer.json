@@ -4,7 +4,7 @@
   "check": {
     "exec": {
       "name": "Check if fortls is available",
-      "command": "fortls --version",
+      "command": "python -c \"import fortls\"",
       "timeout": 5000
     }
   },
@@ -15,7 +15,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure fortls command",
-          "command": "fortls"
+          "command": "python -m fortls"
         }
       }
     }

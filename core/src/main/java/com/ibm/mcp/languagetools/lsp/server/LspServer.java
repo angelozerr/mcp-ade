@@ -302,28 +302,18 @@ public class LspServer extends ServerBase<LspServerConfig> {
         }
 
         return languageServer.initialize(params)
-                .thenCompose(initResult -> {
-                    LOG.infof("%s initialized for workspace: %s", config.getServerId(), workspaceRoot);
-
-                    // Pass server capabilities to client features
-                    clientFeatures.setServerCapabilities(initResult.getCapabilities());
-
-                    languageServer.initialized(new InitializedParams());
-                    setStatus(ServerStatus.RUNNING);
-                    setStarted(true);
-                    // For generic servers, ready after initialization
-                    // Subclasses like JdtLsServer may override this behavior
-                    setReady(true);
-                    setStatusMessage("Ready");
-                    return CompletableFuture.completedFuture(null);
-                })
-                .exceptionally(error -> {
-                    LOG.warnf(error, "%s initialize returned error for workspace: %s", config.getServerId(), workspaceRoot);
+                .handle((initResult, error) -> {
+                    if (error != null) {
+                        LOG.warnf(error, "%s initialize returned error for workspace: %s", config.getServerId(), workspaceRoot);
+                    } else {
+                        LOG.infof("%s initialized for workspace: %s", config.getServerId(), workspaceRoot);
+                        clientFeatures.setServerCapabilities(initResult.getCapabilities());
+                    }
                     languageServer.initialized(new InitializedParams());
                     setStatus(ServerStatus.RUNNING);
                     setStarted(true);
                     setReady(true);
-                    setStatusMessage("Ready (initialize error)");
+                    setStatusMessage(error != null ? "Ready (initialize error)" : "Ready");
                     return (Void) null;
                 });
     }
