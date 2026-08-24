@@ -4,8 +4,8 @@
   "check": {
     "exec": {
       "name": "Check if debugpy is installed",
-      "command": "python -m debugpy --version",
-      "timeout": 2000
+      "command": "python -c \"import debugpy\"",
+      "timeout": 5000
     }
   },
   "run": {
