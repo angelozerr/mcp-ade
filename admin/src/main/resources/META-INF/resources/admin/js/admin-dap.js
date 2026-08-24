@@ -938,7 +938,7 @@ export async function changeDapTraceLevel(sessionId, level) {
 export async function onDapSessionUpdate(message) {
     console.log('[DAP] Session update:', message.eventType, message.sessionId, message.newStatus);
 
-    const onDebuggersTab = state.currentWorkspaceTab === 'debuggers';
+    const onDebuggersTab = state.currentTab === 'workspaces' && state.currentWorkspaceTab === 'debuggers';
 
     // Update only the affected session based on event type
     switch (message.eventType) {
