@@ -375,21 +375,34 @@ body {
 }
 
 .app-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 2rem);
+}
+
+.top-tabs-bar {
+    flex-shrink: 0;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.content-area {
+    flex: 1;
     display: grid;
     grid-template-columns: 400px 300px 1fr;
-    height: calc(100vh - 2rem);
+    min-height: 0;
 }
 
 /* ── Responsive breakpoints ── */
 
 @media (max-width: 1200px) {
-    .app-container {
+    .content-area {
         grid-template-columns: 300px 250px 1fr;
     }
 }
 
 @media (max-width: 900px) {
-    .app-container {
+    .content-area {
         grid-template-columns: 250px 1fr;
     }
 
@@ -399,7 +412,7 @@ body {
 }
 
 @media (max-width: 600px) {
-    .app-container {
+    .content-area {
         grid-template-columns: 1fr;
     }
 
@@ -429,6 +442,10 @@ body {
     background: var(--bg-header);
     border-bottom: 1px solid var(--border-primary);
     flex-shrink: 0;
+}
+
+.top-tabs-bar .tabs {
+    padding: 0 0.5rem;
 }
 
 #workspaces-list,
@@ -641,11 +658,11 @@ body {
 }
 
 /* Settings mode: servers-sidebar spans both columns */
-.app-container.settings-mode .servers-sidebar {
+.content-area.settings-mode .servers-sidebar {
     grid-column: 2 / -1;
     border-right: none;
 }
-.app-container.settings-mode .console-container {
+.content-area.settings-mode .console-container {
     display: none;
 }
 
@@ -870,6 +887,7 @@ body {
 .status-paused { background: var(--status-paused-bg); color: var(--status-paused-color); }
 .status-stopping { background: var(--status-stopping-bg); color: var(--text-on-accent); }
 .status-stopped { background: var(--status-stopped-bg); color: var(--text-on-accent); }
+.status-terminated { background: var(--status-terminated-bg); color: var(--text-on-accent); }
 .status-installing { background: var(--status-installing-bg); color: var(--status-installing-color); }
 .status-install_failed { background: var(--status-install-failed-bg); color: var(--text-on-accent); }
 .status-start_failed { background: var(--status-start-failed-bg); color: var(--text-on-accent); }

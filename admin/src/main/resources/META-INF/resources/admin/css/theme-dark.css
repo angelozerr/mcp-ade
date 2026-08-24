@@ -141,6 +141,7 @@
     --status-paused-color: #000000;
     --status-stopping-bg: #ff9800;
     --status-stopped-bg: #6c757d;
+    --status-terminated-bg: #5b9bd5;
     --status-installing-bg: #ffc107;
     --status-installing-color: #000000;
     --status-install-failed-bg: #dc3545;

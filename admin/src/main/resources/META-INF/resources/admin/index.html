@@ -36,57 +36,62 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Left: Workspaces or All Servers -->
-        <div class="workspaces-sidebar">
-            <div class="sidebar-header">
-                <div class="tabs">
-                    <div class="tab active" data-action="switchTab" data-tab="workspaces">Workspaces</div>
-                    <div class="tab" data-action="switchTab" data-tab="lsp-servers">LSP</div>
-                    <div class="tab" data-action="switchTab" data-tab="dap-servers">DAP</div>
-                    <div class="tab" data-action="switchTab" data-tab="bsp-servers">BSP</div>
-                    <div class="tab" data-action="switchTab" data-tab="runtimes">Runtimes</div>
-                    <div class="tab" data-action="switchTab" data-tab="extensions">Ext</div>
-                    <div class="tab" data-action="switchTab" data-tab="mcp-traces">MCP</div>
-                    <button class="theme-toggle-btn" data-action="toggleTheme" id="theme-toggle-btn" title="Toggle light/dark theme">🌙</button>
-                </div>
-            </div>
-            <div id="workspaces-list"></div>
-            <div id="lsp-servers-list" class="d-none"></div>
-            <div id="dap-servers-list" class="d-none"></div>
-            <div id="bsp-servers-list" class="d-none"></div>
-            <div id="runtimes-list" class="d-none"></div>
-            <div id="extensions-container" class="d-none">
-                <div class="add-extension-bar">
-                    <button data-action="showAddExtensionForm">+ Add Extension</button>
-                </div>
-                <div id="extensions-list"></div>
-            </div>
-            <div id="mcp-traces-list" class="d-none">
-                <div class="mcp-clients-header">
-                    <h3 class="text-primary mcp-clients-title">AI Agents</h3>
-                    <p class="text-dimmed mcp-clients-subtitle">Connected via MCP</p>
-                </div>
-                <div id="mcp-clients-list"></div>
+        <!-- Top: Full-width tab bar -->
+        <div class="top-tabs-bar">
+            <div class="tabs">
+                <div class="tab active" data-action="switchTab" data-tab="workspaces">Workspaces</div>
+                <div class="tab" data-action="switchTab" data-tab="lsp-servers">Servers</div>
+                <div class="tab" data-action="switchTab" data-tab="dap-servers">Debuggers</div>
+                <div class="tab" data-action="switchTab" data-tab="bsp-servers">Build</div>
+                <div class="tab" data-action="switchTab" data-tab="runtimes">Runtimes</div>
+                <div class="tab" data-action="switchTab" data-tab="extensions">Extensions</div>
+                <div class="tab" data-action="switchTab" data-tab="mcp-traces">MCP</div>
+                <button class="theme-toggle-btn" data-action="toggleTheme" id="theme-toggle-btn" title="Toggle light/dark theme">🌙</button>
             </div>
         </div>
 
-        <!-- Middle: LSP Servers -->
-        <div class="servers-sidebar">
-            <div id="servers-list"></div>
-        </div>
-
-        <!-- Right: Console -->
-        <div class="console-container" id="console-container">
-            <div class="search-box" id="search-box">
-                <input type="text" id="search-input" placeholder="Find in console..." />
-                <span class="search-count" id="search-count">0/0</span>
-                <button data-action="searchPrev">&#8593;</button>
-                <button data-action="searchNext">&#8595;</button>
-                <span class="search-close" data-action="closeSearch">&#215;</span>
+        <!-- Content area: columns depend on active tab -->
+        <div class="content-area">
+            <!-- Left: Workspaces or All Servers -->
+            <div class="workspaces-sidebar">
+                <div id="workspaces-list"></div>
+                <div id="lsp-servers-list" class="d-none"></div>
+                <div id="dap-servers-list" class="d-none"></div>
+                <div id="bsp-servers-list" class="d-none"></div>
+                <div id="runtimes-list" class="d-none"></div>
+                <div id="extensions-container" class="d-none">
+                    <div class="add-extension-bar">
+                        <button data-action="showAddExtensionForm">+ Add Extension</button>
+                    </div>
+                    <div id="extensions-list"></div>
+                </div>
+                <div id="mcp-traces-list" class="d-none">
+                    <div class="mcp-clients-header">
+                        <h3 class="text-primary mcp-clients-title">AI Agents</h3>
+                        <p class="text-dimmed mcp-clients-subtitle">Connected via MCP</p>
+                    </div>
+                    <div id="mcp-clients-list"></div>
+                </div>
             </div>
-            <div id="console-area">
-                <div class="placeholder">
-                    &#8592; Select a workspace and LSP server to view console
+
+            <!-- Middle: LSP Servers -->
+            <div class="servers-sidebar">
+                <div id="servers-list"></div>
+            </div>
+
+            <!-- Right: Console -->
+            <div class="console-container" id="console-container">
+                <div class="search-box" id="search-box">
+                    <input type="text" id="search-input" placeholder="Find in console..." />
+                    <span class="search-count" id="search-count">0/0</span>
+                    <button data-action="searchPrev">&#8593;</button>
+                    <button data-action="searchNext">&#8595;</button>
+                    <span class="search-close" data-action="closeSearch">&#215;</span>
+                </div>
+                <div id="console-area">
+                    <div class="placeholder">
+                        &#8592; Select a workspace and LSP server to view console
+                    </div>
                 </div>
             </div>
         </div>

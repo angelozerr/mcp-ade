@@ -2,10 +2,9 @@
   "id": "julia-languageserver-installer",
   "name": "julia-languageserver",
   "check": {
-    "exec": {
-      "name": "Check if Julia LanguageServer is available",
-      "command": "julia -e \"using LanguageServer\"",
-      "timeout": 30000
+    "fileExists": {
+      "name": "Check if LanguageServer.jl is installed",
+      "file": "$USER_HOME$/.julia/packages/LanguageServer/*"
     }
   },
   "run": {

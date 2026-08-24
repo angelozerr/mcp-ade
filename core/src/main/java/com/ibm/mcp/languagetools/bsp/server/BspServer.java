@@ -39,7 +39,6 @@ import org.jboss.logging.Logger;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 /**
  * Build Server Protocol (BSP) server wrapper.
@@ -51,6 +50,8 @@ import java.util.concurrent.Future;
  * <p>Similar to {@link com.ibm.mcp.languagetools.lsp.server.LspServer}
  * and {@link com.ibm.mcp.languagetools.dap.server.DapServer} but for build operations
  * instead of language features or debugging.</p>
+ *
+ * @see <a href="https://build-server-protocol.github.io/docs/specification">Build Server Protocol Specification</a>
  */
 public class BspServer extends ServerBase<BspServerConfig> {
 
@@ -59,7 +60,6 @@ public class BspServer extends ServerBase<BspServerConfig> {
     private interface FullBuildServer extends BuildServer, JvmBuildServer {}
 
     private FullBuildServer buildServer;
-    private Future<?> listeningFuture;
 
     public BspServer(BspServerConfig config, Workspace workspace) {
         super(config, workspace);
@@ -124,7 +124,7 @@ public class BspServer extends ServerBase<BspServerConfig> {
                                         .create();
 
                                 buildServer = launcher.getRemoteProxy();
-                                listeningFuture = launcher.startListening();
+                                startListening(launcher);
 
                                 setStatus(ServerStatus.RUNNING);
                                 setStarted(true);
@@ -205,10 +205,7 @@ public class BspServer extends ServerBase<BspServerConfig> {
         return shutdownFuture.thenRun(() -> {
             buildServer = null;
 
-            if (listeningFuture != null) {
-                listeningFuture.cancel(true);
-                listeningFuture = null;
-            }
+            cancelListeningFuture();
 
             destroyProcess(5000, 3000);
             setStatus(ServerStatus.STOPPED);

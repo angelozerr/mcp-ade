@@ -25,6 +25,8 @@ import com.ibm.mcp.languagetools.utils.OSUtils;
 import org.jboss.logging.Logger;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -38,6 +40,12 @@ public class TaskRegistryInstaller implements ServerInstaller {
     private static final String FIELD_PROPERTIES = "properties";
     private static final String FIELD_CHECK = "check";
     private static final String FIELD_RUN = "run";
+
+    private static final ExecutorService INSTALLER_EXECUTOR = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "installer-task");
+        t.setDaemon(true);
+        return t;
+    });
 
     private final InstallableConfig config;
     private final JsonElement installerConfigJson;
@@ -94,7 +102,7 @@ public class TaskRegistryInstaller implements ServerInstaller {
                 LOG.debugf(e, "Check failed for %s", config.getServerId());
                 return new InstallResult(null, null, InstallationStatus.NOT_INSTALLED);
             }
-        });
+        }, INSTALLER_EXECUTOR);
     }
 
     @Override
@@ -103,6 +111,7 @@ public class TaskRegistryInstaller implements ServerInstaller {
         return CompletableFuture.supplyAsync(() -> {
             Thread.currentThread().setContextClassLoader(callerClassLoader);
             long startTime = System.currentTimeMillis();
+
             try {
                 if (installerConfigJson == null || !installerConfigJson.isJsonObject()) {
                     throw new IllegalStateException("No installer configuration found for " + config.getServerId());
@@ -179,7 +188,7 @@ public class TaskRegistryInstaller implements ServerInstaller {
                 }
                 throw new InstallationException(e.getMessage(), e);
             }
-        });
+        }, INSTALLER_EXECUTOR);
     }
 
     @Override

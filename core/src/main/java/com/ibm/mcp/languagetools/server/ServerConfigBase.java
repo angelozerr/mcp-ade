@@ -24,14 +24,11 @@ import com.ibm.mcp.languagetools.installer.InstallResult;
 import com.ibm.mcp.languagetools.installer.InstallationStatus;
 import com.ibm.mcp.languagetools.installer.InstallerContext;
 import com.ibm.mcp.languagetools.installer.ServerInstaller;
-import com.ibm.mcp.languagetools.installer.TaskRegistryInstaller;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.language.DocumentSelector;
 import com.ibm.mcp.languagetools.lsp.Contributes;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
-import com.ibm.mcp.languagetools.progress.SharedProgressMonitor;
 import com.ibm.mcp.languagetools.runtime.RuntimeConfig;
-import com.ibm.mcp.languagetools.trace.TraceCollector;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
@@ -58,17 +55,10 @@ import java.util.function.Consumer;
  *
  * @see ServerBase
  */
-public class ServerConfigBase implements InstallableConfig {
+public class ServerConfigBase extends InstallableConfig {
 
     private static final Logger LOG = Logger.getLogger(ServerConfigBase.class);
 
-    private final String serverId;
-    private final Path serverHome;
-    private final Extension extension;
-    private String name;
-    private String description;
-    private String url;
-    private JsonElement installerConfig;
     private DocumentSelector documentSelector;
     private String command;
     private Map<String, String> env = new HashMap<>();
@@ -80,161 +70,50 @@ public class ServerConfigBase implements InstallableConfig {
 
     private ActivationCondition activateWhen;
 
-    /**
-     * Contributions (VS Code-like extension system)
-     */
     private Contributes contributes;
-
-    /**
-     * Contribution types this server accepts from other servers (e.g. ["classpath"], ["bundles"]).
-     */
     private List<String> acceptContributions;
-
-    /**
-     * Declarative settings from server.json, rendered dynamically in the admin UI.
-     */
     private List<ServerSettingDescriptor> settings;
-
-    /**
-     * Glob patterns for IDE settings keys applicable to this server (e.g. ["java.*"]).
-     */
     private List<String> applicableSettings;
-
-    private TraceCollector traceCollector;
-
-    // Lazy-loaded installer instance
-    private volatile ServerInstaller installer;
 
     // Cached: whether the installer JSON contains a configureServer task
     private boolean hasConfigureServer;
 
-    // Install progress monitor (set when installation starts)
+    // Install progress monitor (set when installation starts, used by Admin UI)
     private TraceProgressMonitor installProgress;
-
-    // Shared progress monitor for installation (allows multiple listeners)
-    private volatile SharedProgressMonitor sharedInstallProgress;
-
-    // Installation state - shared across all workspaces
-    private volatile CompletableFuture<InstallResult> installationFuture;
-    private volatile String lastInstallError;
 
     /**
      * Creates a server configuration with the given identity and extension.
-     *
-     * @param serverId   unique server identifier (e.g. "jdtls")
-     * @param serverHome installation directory for this server
-     * @param extension  the extension that registered this server
      */
     public ServerConfigBase(String serverId, Path serverHome, Extension extension) {
-        this.serverId = serverId;
-        this.serverHome = serverHome;
-        this.extension = extension;
+        super(serverId, serverHome, extension);
     }
 
-    // Common getters
+    // --- Runtime ---
 
-    /**
-     * Returns the unique server identifier (e.g. "jdtls", "java-debug").
-     */
-    public String getServerId() {
-        return serverId;
-    }
-
-    /**
-     * Returns the server installation directory.
-     */
-    public Path getServerHome() {
-        return serverHome;
-    }
-
-    /**
-     * Returns the human-readable server name.
-     */
-    public String getName() {
-        return name;
-    }
-
-    /**
-     * Sets the human-readable server name.
-     */
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    /**
-     * Returns the server description.
-     */
-    public String getDescription() {
-        return description;
-    }
-
-    /**
-     * Sets the server description.
-     */
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    /**
-     * Returns the server homepage URL.
-     */
-    public String getUrl() {
-        return url;
-    }
-
-    /**
-     * Sets the server homepage URL.
-     */
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    /**
-     * Returns the runtime identifier that this server requires (e.g. "jdk", "nodejs").
-     */
     public String getRuntime() {
         return runtime;
     }
 
-    /**
-     * Sets the runtime identifier that this server requires.
-     */
     public void setRuntime(String runtime) {
         this.runtime = runtime;
     }
 
-    /**
-     * Returns the resolved runtime configuration, or null if no runtime dependency.
-     */
     public RuntimeConfig getRuntimeConfig() {
         return runtimeConfig;
     }
 
-    /**
-     * Sets the resolved runtime configuration (called during wiring).
-     */
     public void setRuntimeConfig(RuntimeConfig runtimeConfig) {
         this.runtimeConfig = runtimeConfig;
     }
 
-    /**
-     * Returns the runtime's display name, or null if no runtime dependency.
-     */
     public String getRuntimeName() {
         return runtimeConfig != null ? runtimeConfig.getName() : null;
     }
 
-    /**
-     * Returns the runtime's installation status name, or null if no runtime dependency.
-     */
     public String getRuntimeStatusName() {
         return runtimeConfig != null ? runtimeConfig.getStatus().name() : null;
     }
 
-    /**
-     * Adds the runtime's bin directory to this server's PATH environment variable.
-     * Called after runtime installation so the server can find runtime binaries.
-     */
     private synchronized void addRuntimeToPath() {
         if (runtimePathAdded || runtimeConfig == null) {
             return;
@@ -258,24 +137,14 @@ public class ServerConfigBase implements InstallableConfig {
         runtimePathAdded = true;
     }
 
-    /**
-     * Returns the installer configuration JSON from server.json.
-     */
-    public JsonElement getInstallerConfig() {
-        return installerConfig;
-    }
+    // --- Installer config (with configureServer detection) ---
 
-    /**
-     * Sets the installer configuration JSON and detects if it contains a configureServer task.
-     */
+    @Override
     public void setInstallerConfig(JsonElement installerConfig) {
-        this.installerConfig = installerConfig;
+        super.setInstallerConfig(installerConfig);
         this.hasConfigureServer = detectConfigureServer(installerConfig);
     }
 
-    /**
-     * Returns {@code true} if the installer configuration contains a configureServer task.
-     */
     public boolean hasConfigureServer() {
         return hasConfigureServer;
     }
@@ -307,315 +176,183 @@ public class ServerConfigBase implements InstallableConfig {
         return false;
     }
 
-    /**
-     * Gets the installer instance (lazy-loaded).
-     * Returns null if no installer configuration is present.
-     */
-    public ServerInstaller getInstaller() {
-        ServerInstaller inst = installer;
-        if (inst == null && installerConfig != null) {
-            synchronized (this) {
-                inst = installer;
-                if (inst == null) {
-                    inst = createInstaller();
-                    installer = inst;
-                }
-            }
-        }
-        return inst;
-    }
+    // --- Installation status ---
 
-    /**
-     * Add installation status and error info to a map (used by list_language_servers and list_debug_adapters).
-     */
     public void addInstallationStatus(Map<String, Object> serverInfo) {
         ServerInstaller inst = getInstaller();
         if (inst != null) {
             serverInfo.put("installationStatus", inst.getStatus().name());
         }
-        if (lastInstallError != null) {
-            serverInfo.putIfAbsent("error", lastInstallError);
+        if (getLastInstallError() != null) {
+            serverInfo.putIfAbsent("error", getLastInstallError());
         }
     }
 
-    /**
-     * Creates the installer instance from configuration.
-     * Override this method to use a different installer implementation.
-     */
-    protected ServerInstaller createInstaller() {
-        if (installerConfig == null) {
-            return null;
-        }
-        return new TaskRegistryInstaller(this);
-    }
+    // --- Document selector ---
 
-    /**
-     * Gets the trace collector for this server.
-     */
-    public TraceCollector getTraceCollector() {
-        return traceCollector;
-    }
-
-    /**
-     * Sets the trace collector for this server.
-     */
-    public void setTraceCollector(TraceCollector traceCollector) {
-        this.traceCollector = traceCollector;
-    }
-
-    /**
-     * Returns the document selector for file matching.
-     */
     public DocumentSelector getDocumentSelector() {
         return documentSelector;
     }
 
-    /**
-     * Sets the document selector for file matching.
-     */
     public void setDocumentSelector(DocumentSelector documentSelector) {
         this.documentSelector = documentSelector;
     }
 
-    /**
-     * Returns the activation condition for this server.
-     */
+    // --- Activation ---
+
     public ActivationCondition getActivateWhen() {
         return activateWhen;
     }
 
-    /**
-     * Sets the activation condition for this server.
-     */
     public void setActivateWhen(ActivationCondition activateWhen) {
         this.activateWhen = activateWhen;
     }
 
-    /**
-     * Returns the contributions declared by this server.
-     */
+    // --- Contributions ---
+
     public Contributes getContributes() {
         return contributes;
     }
 
-    /**
-     * Returns {@code true} if this server declares contributions to other servers.
-     */
     public boolean hasContributions() {
         return contributes != null;
     }
 
-    /**
-     * Returns {@code true} if this server only provides contributions (no own command).
-     */
     public boolean isContributionOnly() {
         return !hasCommand() && hasContributions() && !hasConfigureServer();
     }
 
-    /**
-     * Sets the contributions declared by this server.
-     */
     public void setContributes(Contributes contributes) {
         this.contributes = contributes;
     }
 
-    /**
-     * Sets the list of contribution types this server accepts from other servers.
-     */
     public void setAcceptContributions(List<String> acceptContributions) {
         this.acceptContributions = acceptContributions;
     }
 
-    /**
-     * Returns {@code true} if this server accepts the given contribution type (e.g. "classpath", "bundles").
-     */
     public boolean acceptsContribution(String contributionType) {
         return acceptContributions != null && acceptContributions.contains(contributionType);
     }
 
-    /**
-     * Returns the declarative settings descriptors from server.json.
-     */
+    // --- Settings ---
+
     public List<ServerSettingDescriptor> getSettings() {
         return settings;
     }
 
-    /**
-     * Sets the declarative settings descriptors.
-     */
     public void setSettings(List<ServerSettingDescriptor> settings) {
         this.settings = settings;
     }
 
-    /**
-     * Returns the glob patterns for IDE settings keys applicable to this server.
-     */
     public List<String> getApplicableSettings() {
         return applicableSettings;
     }
 
-    /**
-     * Sets the glob patterns for IDE settings keys applicable to this server.
-     */
     public void setApplicableSettings(List<String> applicableSettings) {
         this.applicableSettings = applicableSettings;
     }
 
-    /**
-     * Returns the command line used to launch this server.
-     */
+    // --- Command ---
+
     public String getCommand() {
         return command;
     }
 
-    /**
-     * Returns {@code true} if a launch command is configured.
-     */
     public boolean hasCommand() {
         return command != null;
     }
 
-    /**
-     * Sets the command line used to launch this server.
-     */
     public void setCommand(String command) {
         this.command = command;
     }
 
-    /**
-     * Returns the environment variables to set when launching the server.
-     */
+    // --- Environment ---
+
     public Map<String, String> getEnv() {
         return env;
     }
 
-    /**
-     * Sets the environment variables to set when launching the server.
-     */
     public void setEnv(Map<String, String> env) {
         this.env = env;
     }
 
-    /**
-     * Returns the working directory for the server process.
-     */
+    // --- Working directory ---
+
     public String getWorkingDirectory() {
         return workingDirectory;
     }
 
-    /**
-     * Sets the working directory for the server process.
-     */
     public void setWorkingDirectory(String workingDirectory) {
         this.workingDirectory = workingDirectory;
     }
 
-    /**
-     * Check if this server can handle the given file within a workspace.
-     */
+    // --- Document matching ---
+
     public boolean canHandle(URI uri, String language, Path basePath) {
         return documentSelector != null && documentSelector.matches(uri, language, basePath);
     }
 
-    /**
-     * Get the resource base path for this server in the classpath.
-     * For example: "/lsp/quarkus" for quarkus, "/dap/vscode-js-debug" for vscode-js-debug.
-     * Derived from serverHome path structure.
-     */
+    // --- Resource path ---
+
     public String getResourceBasePath() {
-        // serverHome is like: /.../lsp/quarkus or /.../dap/vscode-js-debug
-        // We extract the last 2 segments: lsp/quarkus or dap/vscode-js-debug
-        Path parent = serverHome.getParent();  // lsp or dap
+        Path serverHome = getServerHome();
+        Path parent = serverHome.getParent();
         if (parent != null) {
             Path grandParent = parent.getParent();
             if (grandParent != null) {
                 return "/" + parent.getFileName() + "/" + serverHome.getFileName();
             }
         }
-        // Fallback
-        return "/lsp/" + serverId;
+        return "/lsp/" + getServerId();
     }
 
-    /**
-     * Gets the install progress monitor (used to show visual progress bar in UI).
-     */
+    // --- Install progress ---
+
     public TraceProgressMonitor getInstallProgress() {
         return installProgress;
     }
 
-    /**
-     * Gets the shared install progress monitor (used for cancellation from Admin UI).
-     * Returns null if no installation is in progress.
-     */
-    public SharedProgressMonitor getSharedInstallProgress() {
-        return sharedInstallProgress;
-    }
-
-    /**
-     * Sets the install progress monitor (called when installation starts).
-     */
     public void setInstallProgress(TraceProgressMonitor installProgress) {
         this.installProgress = installProgress;
     }
 
-    /**
-     * Returns the extension that registered this server.
-     */
-    public Extension getExtension() {
-        return extension;
-    }
+    // --- Source ---
 
-    /**
-     * Returns the extension identifier, or {@code null} if no extension.
-     */
-    public String getExtensionId() {
-        return extension != null ? extension.getId() : null;
-    }
-
-    /**
-     * Returns the source of this server configuration (built-in, user, etc.).
-     */
     public ServerConfigSource getSource() {
-        return extension != null ? extension.getSource() : null;
+        Extension ext = getExtension();
+        return ext != null ? ext.getSource() : null;
     }
 
-    /**
-     * Returns the application that owns this server's extension.
-     */
     public Application getApplication() {
-        return extension != null ? extension.getApplication() : null;
+        Extension ext = getExtension();
+        return ext != null ? ext.getApplication() : null;
     }
 
-    /**
-     * Reset installation state so the next ensureInstalled call starts fresh.
-     * Called from admin UI endpoints when the user explicitly requests an install.
-     */
-    public void resetInstallState() {
-        synchronized (this) {
-            CompletableFuture<InstallResult> future = installationFuture;
-            if (future != null && future.isDone()) {
-                installationFuture = null;
-            }
-        }
-    }
+    // --- Installation lifecycle ---
 
-    /**
-     * Called when installation (or check) resolves a server command.
-     * Subclasses can override to update their command field.
-     */
     protected void onCommandInstalled(String command) {
         this.command = command;
     }
 
+    @Override
+    protected void onTraceProgressCreated(TraceProgressMonitor traceProgress) {
+        setInstallProgress(traceProgress);
+    }
+
+    @Override
+    protected void onInstallSuccess(InstallResult result) {
+        if (result != null && result.getCommand() != null) {
+            onCommandInstalled(result.getCommand());
+        }
+        if (getApplication() != null) {
+            getApplication().fireOnInstalled(this, result);
+        }
+    }
+
     /**
      * Ensure server is installed.
-     * This method is thread-safe - only one installation will run even if called from multiple workspaces.
-     * Returns a CompletableFuture that completes when installation is done.
-     * If installation fails, the future is reset to null to allow retry.
-     *
-     * @param workspace             Workspace
-     * @param serverStatusCallback Status callback
-     * @param progressMonitor      Progress monitor (never null, use ProgressMonitor.none() if not available)
+     * Thread-safe — only one installation runs even if called from multiple workspaces.
+     * Installs runtime first if needed, then the server itself.
      */
     public CompletableFuture<InstallResult> ensureInstalled(Workspace workspace,
                                                             Consumer<ServerStatus> serverStatusCallback,
@@ -627,15 +364,11 @@ public class ServerConfigBase implements InstallableConfig {
                                                             Consumer<ServerStatus> serverStatusCallback,
                                                             ProgressMonitor progressMonitor,
                                                             boolean force) {
-        // progressMonitor must never be null - use ProgressMonitor.none() instead
-        // If null, let it fail with NullPointerException to catch bugs early
-
-        // Install runtime first if needed, then add its bin dir to server's PATH
         if (runtimeConfig != null) {
-            if (runtimeConfig.getTraceCollector() == null && traceCollector != null) {
-                runtimeConfig.setTraceCollector(traceCollector);
+            if (runtimeConfig.getTraceCollector() == null && getTraceCollector() != null) {
+                runtimeConfig.setTraceCollector(getTraceCollector());
             }
-            return runtimeConfig.ensureInstalled(progressMonitor, force, serverId, traceCollector)
+            return runtimeConfig.ensureInstalled(progressMonitor, force, getServerId(), getTraceCollector())
                     .thenCompose(runtimeResult -> {
                         addRuntimeToPath();
                         return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force);
@@ -648,87 +381,14 @@ public class ServerConfigBase implements InstallableConfig {
                                                                 Consumer<ServerStatus> serverStatusCallback,
                                                                 ProgressMonitor progressMonitor,
                                                                 boolean force) {
-        ServerInstaller installer = getInstaller();
-        if (installer == null) {
-            LOG.warnf("No installer for server '%s' (installerConfig=%s)", serverId, installerConfig != null ? "present" : "NULL");
-            return CompletableFuture.completedFuture(null);
-        }
-        LOG.infof("ensureInstalled called for '%s', force=%s, installationFuture=%s",
-                serverId, force, installationFuture != null ? (installationFuture.isDone() ? "done" : "running") : "null");
-
-        // Force install: reset previous installation state
-        if (force) {
-            synchronized (this) {
-                installationFuture = null;
-            }
-        }
-
-        // Double-checked locking pattern
-        CompletableFuture<InstallResult> future = installationFuture;
-        if (future == null) {
-            synchronized (this) {
-                future = installationFuture;
-                if (future == null) {
-                    // FIRST caller - create SharedProgressMonitor for this installation
-                    sharedInstallProgress = new SharedProgressMonitor();
-
-                    // Create task ID for this installation
-                    String taskId = "install-" + serverId;
-                    sharedInstallProgress.startTask(taskId);
-
-                    // Add TraceProgressMonitor for Admin UI
-                    TraceProgressMonitor traceProgress = new TraceProgressMonitor(traceCollector, 100.0,
-                            null, null, serverId, null);
-                    setInstallProgress(traceProgress);
-                    sharedInstallProgress.addListener(traceProgress);
-
-                    // Add progress monitor from parameter (never null)
-                    if (progressMonitor != ProgressMonitor.none()) {
-                        sharedInstallProgress.addListener(progressMonitor);
-                    }
-
-                    // Map InstallationStatus to ServerStatus
-                    InstallerContext context = createInstallerContext(workspace, serverStatusCallback, force);
-
-                    final SharedProgressMonitor installProgress = sharedInstallProgress;
-                    future = installer.ensureInstalled(context)
-                            .whenComplete((result, error) -> {
-                                installProgress.endTask(taskId);
-                                synchronized (ServerConfigBase.this) {
-                                    if (sharedInstallProgress == installProgress) {
-                                        sharedInstallProgress = null;
-                                    }
-                                }
-
-                                if (error != null) {
-                                    Throwable cause = error.getCause();
-                                    lastInstallError = cause != null ? cause.getMessage() : error.getMessage();
-                                    synchronized (ServerConfigBase.this) {
-                                        installationFuture = null;
-                                    }
-                                } else {
-                                    lastInstallError = null;
-                                    if (result != null && result.getCommand() != null) {
-                                        onCommandInstalled(result.getCommand());
-                                    }
-                                    if (getApplication() != null) {
-                                        getApplication().fireOnInstalled(ServerConfigBase.this, result);
-                                    }
-                                }
-                            });
-                    installationFuture = future;
-                }
-            }
-        } else if (sharedInstallProgress != null) {
-            // SUBSEQUENT callers - register as listener to get installation progress
-            if (progressMonitor != ProgressMonitor.none()) {
-                sharedInstallProgress.addListener(progressMonitor);
-            }
-        }
-        return future;
+        return executeInstallation(progressMonitor, force, false,
+                progress -> createInstallerContext(workspace, serverStatusCallback, progress, force));
     }
 
-    private InstallerContext createInstallerContext(Workspace workspace, Consumer<ServerStatus> serverStatusCallback, boolean force) {
+    private InstallerContext createInstallerContext(Workspace workspace,
+                                                    Consumer<ServerStatus> serverStatusCallback,
+                                                    ProgressMonitor progress,
+                                                    boolean force) {
         Consumer<InstallationStatus> installStatusCallback = installStatus -> {
             ServerStatus serverStatus = switch (installStatus) {
                 case INSTALLING -> ServerStatus.INSTALLING;
@@ -741,9 +401,9 @@ public class ServerConfigBase implements InstallableConfig {
             }
         };
 
-        InstallerContext context = new InstallerContext(this, sharedInstallProgress, installStatusCallback);
+        InstallerContext context = new InstallerContext(this, progress, installStatusCallback);
         PathManager pathManager = workspace.getApplication().getPathManager();
-        context.setVariable("USER_HOME", pathManager.getMcpLangToolsRoot().toString());
+        context.setVariable("MCP_HOME", pathManager.getMcpLangToolsRoot().toString());
         context.setVariable("WORKSPACE_FOLDER", workspace.getRootPath().toString());
         context.setForceInstall(force);
         if (env != null && !env.isEmpty()) {
@@ -751,5 +411,4 @@ public class ServerConfigBase implements InstallableConfig {
         }
         return context;
     }
-
 }

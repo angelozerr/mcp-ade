@@ -116,10 +116,10 @@ export async function showBspServerDetails(serverId) {
         return;
     }
 
-    const appContainer = document.querySelector('.app-container');
+    const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
     consoleColumn.style.display = 'flex';
-    appContainer.style.gridTemplateColumns = '400px 1fr';
+    contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
     const detailsHTML = `

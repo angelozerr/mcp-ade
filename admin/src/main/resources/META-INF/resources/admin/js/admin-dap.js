@@ -693,10 +693,10 @@ export async function showDapServerDetails(serverId) {
     }
 
     // Show console column
-    const appContainer = document.querySelector('.app-container');
+    const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
     consoleColumn.style.display = 'flex';
-    appContainer.style.gridTemplateColumns = '400px 1fr';
+    contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
     const docSelectorHTML = renderDocumentSelector(server.documentSelector);
@@ -1287,7 +1287,7 @@ function getSessionStateInfo(session) {
     } else if (session.state === 'TERMINATED') {
         stateIcon = '<span>⏹️</span>';
         statusText = 'Terminated';
-        statusClass = 'status-error';
+        statusClass = 'status-terminated';
     } else if (session.state === 'LAUNCH_FAILED') {
         stateIcon = '<span>❌</span>';
         statusText = 'Launch Failed';

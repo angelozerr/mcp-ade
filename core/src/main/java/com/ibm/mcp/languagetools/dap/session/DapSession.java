@@ -247,9 +247,14 @@ public class DapSession implements DapEventListener {
                                        ServerStatus newStatus) {
         LOG.infof("DAP server status changed for session %s: %s -> %s", sessionId, oldStatus, newStatus);
 
-        // Propagate ERROR status to session state
-        if (newStatus == ServerStatus.ERROR) {
-            setState(SessionState.ERROR);
+        if (newStatus == ServerStatus.ERROR || newStatus == ServerStatus.START_FAILED) {
+            if (state == SessionState.LAUNCHING || state == SessionState.ATTACHING) {
+                setState(state == SessionState.LAUNCHING
+                        ? SessionState.LAUNCH_FAILED : SessionState.ATTACH_FAILED,
+                        dapServer.getErrorMessage());
+            } else if (state != SessionState.TERMINATED) {
+                setState(SessionState.ERROR, dapServer.getErrorMessage());
+            }
         }
     }
 
@@ -1304,6 +1309,27 @@ public class DapSession implements DapEventListener {
                     getContextId(),
                     displayText,
                     messageType
+            );
+        }
+    }
+
+    /**
+     * Handle raw process stdout output (for debug adapters that don't send OutputEvents).
+     * Feeds the same channels as onOutput: programOutput for the MCP tool, traceCollector for the admin UI.
+     */
+    public void onProcessOutput(String line) {
+        if (line == null || line.isBlank()) {
+            return;
+        }
+        String text = line.endsWith("\n") ? line : line + "\n";
+        programOutput.addRawOutput("stdout", text);
+
+        if (traceCollector.isEnabled()) {
+            traceCollector.addTrace(
+                    workspace.getNormalizedUri(),
+                    contextId,
+                    line.trim(),
+                    TraceCollector.MessageType.INFO
             );
         }
     }

@@ -22,6 +22,7 @@ import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.server.ServerType;
+import com.ibm.mcp.languagetools.server.ServerVariables;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -43,6 +44,8 @@ import java.util.concurrent.TimeUnit;
  * Debug Adapter Protocol (DAP) server wrapper.
  * Manages lifecycle of a DAP server (debug adapter) for a workspace.
  * Similar to LspServer but for debugging instead of language features.
+ *
+ * @see <a href="https://microsoft.github.io/debug-adapter-protocol/specification">Debug Adapter Protocol Specification</a>
  */
 public class DapServer extends ServerBase<DapServerConfig> {
 
@@ -303,6 +306,9 @@ public class DapServer extends ServerBase<DapServerConfig> {
                     String host = address != null ? address : "127.0.0.1";
                     LOG.infof("Creating socket transport to %s:%d", host, port);
                     transportStreams = new SocketTransportStreams(host, port);
+
+                    // Stdout is free — forward program output to the session
+                    tracker.setStdoutConsumer(session::onProcessOutput);
                 } else {
                     // Stdio transport - use process stdin/stdout
                     LOG.infof("Creating stdio transport (using process stdin/stdout)");
@@ -370,7 +376,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
                 });
 
         debugServer = launcher.getRemoteProxy();
-        launcher.startListening();
+        startListening(launcher);
     }
 
     /**
@@ -519,6 +525,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
         if (cmd == null) {
             throw new IOException("No launch command configured for current OS");
         }
+        cmd = ServerVariables.resolve(cmd, config);
 
         if (cmd.contains("${port}")) {
             int port = getAvailablePort();

@@ -100,7 +100,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             and triggers LSP server initialization.
                         </div>
                         <div class="empty-workspaces-hint">
-                            💡 Try calling: get_diagnostics(cwd: "/path/to/project", fileUri: "file://...")
+                            💡 Try calling: get_diagnostics(cwd: "/path/to/project", uri: "file://...")
                         </div>
                     </div>
                 `;
@@ -297,13 +297,13 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 </div>
             `;
 
-            const appContainer = document.querySelector('.app-container');
+            const contentArea = document.querySelector('.content-area');
 
             const consoleContainer = document.getElementById('console-container');
 
             // Settings mode: servers-sidebar spans full width
             if (state.currentWorkspaceTab === 'settings') {
-                appContainer.classList.add('settings-mode');
+                contentArea.classList.add('settings-mode');
                 consoleContainer.style.display = 'none';
                 const settingsHeaderHTML = `
                     <div class="d-flex align-center detail-section-header">
@@ -318,7 +318,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
 
             // Normal mode: show tabs + servers/debuggers
-            appContainer.classList.remove('settings-mode');
+            contentArea.classList.remove('settings-mode');
             consoleContainer.style.display = '';
 
             const filterHTML = `

@@ -36,6 +36,9 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+
+import org.eclipse.lsp4j.jsonrpc.Launcher;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -92,6 +95,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
     private final List<StatusChangeListener> statusChangeListeners = new CopyOnWriteArrayList<>();
 
     private Process serverProcess;
+    private volatile Future<?> listeningFuture;
     private volatile boolean isReady;
     private volatile boolean isStarted;
     private volatile CompletableFuture<Void> readyFuture;
@@ -217,6 +221,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         if (cmd == null) {
             throw new IOException("No command configured for current OS");
         }
+        cmd = ServerVariables.resolve(cmd, getConfig());
         List<String> args = parseCommandLine(cmd);
         if (OSUtils.isWindows() && !args.isEmpty()) {
             String exe = args.get(0).toLowerCase();
@@ -538,6 +543,41 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
                 setStatus(ServerStatus.START_FAILED, message);
             }
         });
+    }
+
+    /**
+     * Starts listening on the given JSON-RPC launcher and monitors the connection.
+     * When the connection closes unexpectedly (while server is RUNNING/STARTING),
+     * the server status is set to ERROR.
+     */
+    protected void startListening(Launcher<?> launcher) {
+        Future<?> future = launcher.startListening();
+        this.listeningFuture = future;
+        Thread listenerThread = new Thread(() -> {
+            try {
+                future.get();
+            } catch (Exception e) {
+                // expected on normal shutdown
+            }
+            if (getStatus() == ServerStatus.RUNNING || getStatus() == ServerStatus.STARTING) {
+                String message = "Connection closed unexpectedly";
+                addTrace(message, TraceCollector.MessageType.ERROR);
+                setStatus(ServerStatus.ERROR, message);
+            }
+        }, "connection-monitor-" + config.getServerId());
+        listenerThread.setDaemon(true);
+        listenerThread.start();
+    }
+
+    /**
+     * Cancels the listening future (stops processing incoming messages).
+     */
+    protected void cancelListeningFuture() {
+        var future = this.listeningFuture;
+        if (future != null) {
+            future.cancel(true);
+            this.listeningFuture = null;
+        }
     }
 
     /**

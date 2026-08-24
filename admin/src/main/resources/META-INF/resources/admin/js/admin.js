@@ -506,7 +506,7 @@ function switchTab(tab, element, options = {}) {
         });
     }
 
-    const appContainer = document.querySelector('.app-container');
+    const contentArea = document.querySelector('.content-area');
     const serversColumn = document.querySelector('.servers-sidebar');
     const consoleColumn = document.querySelector('.console-container');
 
@@ -521,7 +521,7 @@ function switchTab(tab, element, options = {}) {
         showSidebarPanel('workspaces-list');
         serversColumn.style.display = 'flex';
         consoleColumn.style.display = 'flex';
-        appContainer.style.gridTemplateColumns = '400px 300px 1fr';
+        contentArea.style.gridTemplateColumns = '400px 300px 1fr';
         consoleColumn.style.gridColumn = '3';
 
         if (state.selectedWorkspace) {
@@ -549,7 +549,7 @@ function switchTab(tab, element, options = {}) {
         showSidebarPanel('lsp-servers-list');
         serversColumn.style.display = 'none';
         consoleColumn.style.display = 'flex';
-        appContainer.style.gridTemplateColumns = '400px 1fr';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
         loadAllLspServers(options.serverId);
@@ -557,7 +557,7 @@ function switchTab(tab, element, options = {}) {
         showSidebarPanel('dap-servers-list');
         serversColumn.style.display = 'none';
         consoleColumn.style.display = 'flex';
-        appContainer.style.gridTemplateColumns = '400px 1fr';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
         loadAllDapServers(options.serverId);
@@ -565,7 +565,7 @@ function switchTab(tab, element, options = {}) {
         showSidebarPanel('bsp-servers-list');
         serversColumn.style.display = 'none';
         consoleColumn.style.display = 'flex';
-        appContainer.style.gridTemplateColumns = '400px 1fr';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
         loadAllBspServers(options.serverId);
@@ -573,7 +573,7 @@ function switchTab(tab, element, options = {}) {
         showSidebarPanel('runtimes-list');
         serversColumn.style.display = 'none';
         consoleColumn.style.display = 'flex';
-        appContainer.style.gridTemplateColumns = '400px 1fr';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
         loadAllRuntimes(options.runtimeId);
@@ -582,7 +582,7 @@ function switchTab(tab, element, options = {}) {
         showSidebarPanel('extensions-container');
         serversColumn.style.display = 'none';
         consoleColumn.style.display = 'flex';
-        appContainer.style.gridTemplateColumns = '400px 1fr';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
         loadAllExtensions(options.extensionId);
@@ -591,7 +591,7 @@ function switchTab(tab, element, options = {}) {
         showSidebarPanel('mcp-traces-list');
         serversColumn.style.display = 'none';
         consoleColumn.style.display = 'flex';
-        appContainer.style.gridTemplateColumns = '400px 1fr';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
         const mcpClients = getMcpClients();

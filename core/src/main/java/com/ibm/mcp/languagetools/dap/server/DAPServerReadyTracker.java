@@ -41,6 +41,7 @@ public class DAPServerReadyTracker extends CompletableFuture<Void> {
     private Integer port;
     private boolean foundTrace;
     private final Consumer<String> traceConsumer;
+    private volatile Consumer<String> stdoutConsumer;
 
     public DAPServerReadyTracker(ServerReadyConfig config,
                                  Process serverProcess,
@@ -50,6 +51,10 @@ public class DAPServerReadyTracker extends CompletableFuture<Void> {
         this.traceConsumer = traceConsumer;
         this.port = config.getPort();
         this.address = config.getAddress();
+    }
+
+    public void setStdoutConsumer(Consumer<String> stdoutConsumer) {
+        this.stdoutConsumer = stdoutConsumer;
     }
 
     public Integer getPort() {
@@ -98,19 +103,23 @@ public class DAPServerReadyTracker extends CompletableFuture<Void> {
                 InputStream stdout = serverProcess.getInputStream();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(stdout));
                 String line;
-                while (!this.isDone() && (line = reader.readLine()) != null) {
-                    // Send line to trace consumer
-                    if (traceConsumer != null) {
-                        traceConsumer.accept(line);
-                    }
-
-                    // Check if line matches the pattern
-                    if (checkDebugServerReadyPattern(line)) {
-                        break;
+                while ((line = reader.readLine()) != null) {
+                    if (!foundTrace) {
+                        if (traceConsumer != null) {
+                            traceConsumer.accept(line);
+                        }
+                        checkDebugServerReadyPattern(line);
+                    } else {
+                        Consumer<String> consumer = stdoutConsumer;
+                        if (consumer != null) {
+                            consumer.accept(line);
+                        }
                     }
                 }
             } catch (IOException e) {
-                LOG.warnf("Error reading DAP server output: %s", e.getMessage());
+                if (serverProcess.isAlive()) {
+                    LOG.warnf("Error reading DAP server output: %s", e.getMessage());
+                }
             }
         });
     }

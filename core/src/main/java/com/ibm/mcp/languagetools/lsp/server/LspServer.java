@@ -46,13 +46,14 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /**
  * Generic Language Server instance.
  * Works with any LSP-compliant language server based on configuration.
+ *
+ * @see <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current/">Language Server Protocol Specification</a>
  */
 public class LspServer extends ServerBase<LspServerConfig> {
 
@@ -70,7 +71,6 @@ public class LspServer extends ServerBase<LspServerConfig> {
     private boolean isSocketConnection = false;
     private LspInstanceRegistry.InstanceInfo currentInstance;
     private final LspClientFeatures clientFeatures;
-    private Future<?> listeningFuture;
 
     public LspServer(LspServerConfig config, Workspace workspace) {
         super(config, workspace);
@@ -190,7 +190,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
             Launcher<LanguageServer> launcher = createLauncher(in, out);
 
             languageServer = launcher.getRemoteProxy();
-            listeningFuture = launcher.startListening();
+            startListening(launcher);
             socket = newSocket;
             isSocketConnection = true;
         } catch (Exception e) {
@@ -218,7 +218,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
         Launcher<LanguageServer> launcher = createLauncher(serverProcess.getInputStream(), serverProcess.getOutputStream());
 
         languageServer = launcher.getRemoteProxy();
-        listeningFuture = launcher.startListening();
+        startListening(launcher);
 
         LOG.infof("%s process started for workspace: %s", config.getServerId(), workspaceRoot);
 
@@ -589,11 +589,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     languageServer = null;
                 }
 
-                // Cancel the listening future to stop processing incoming messages
-                if (listeningFuture != null) {
-                    listeningFuture.cancel(true);
-                    listeningFuture = null;
-                }
+                cancelListeningFuture();
 
                 // Close socket connection if connected via socket
                 if (isSocketConnection && socket != null) {
@@ -657,17 +653,6 @@ public class LspServer extends ServerBase<LspServerConfig> {
      */
     protected void setLanguageServer(LanguageServer languageServer) {
         this.languageServer = languageServer;
-    }
-
-    /**
-     * Set the future returned by the LSP4J launcher's {@code startListening()}.
-     * Used by subclasses that override {@link #launchProcess()} to provide
-     * an in-process server connection (e.g., for testing).
-     *
-     * @param listeningFuture the listening future
-     */
-    protected void setListeningFuture(Future<?> listeningFuture) {
-        this.listeningFuture = listeningFuture;
     }
 
     /**
@@ -891,10 +876,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
             currentInstance = null;
             isSocketConnection = false;
             languageServer = null;
-            if (listeningFuture != null) {
-                listeningFuture.cancel(true);
-                listeningFuture = null;
-            }
+            cancelListeningFuture();
 
             // Launch our own server
             try {

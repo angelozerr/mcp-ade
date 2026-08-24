@@ -112,10 +112,10 @@ export function showExtensionDetails(extensionId) {
     const ext = extensionsData.find(e => e.id === extensionId);
     if (!ext) return;
 
-    const appContainer = document.querySelector('.app-container');
+    const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
     consoleColumn.style.display = 'flex';
-    appContainer.style.gridTemplateColumns = '400px 1fr';
+    contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
     const sourceBadge = `<span class="extension-source-badge ${ext.source.toLowerCase()}">${ext.source}</span>`;
@@ -212,10 +212,10 @@ export function showAddExtensionForm() {
     selectedExtension = null;
     renderExtensionsList();
 
-    const appContainer = document.querySelector('.app-container');
+    const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
     consoleColumn.style.display = 'flex';
-    appContainer.style.gridTemplateColumns = '400px 1fr';
+    contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
     const consoleArea = document.getElementById('console-area');

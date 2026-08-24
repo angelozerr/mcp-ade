@@ -47,8 +47,18 @@ public class DapProgramOutput {
         }
 
         String category = event.getCategory() != null ? event.getCategory() : "stdout";
-        OutputLine line = new OutputLine(category, event.getOutput());
+        addRawOutput(category, event.getOutput());
+    }
 
+    /**
+     * Add raw output text (e.g. from process stdout when the debug adapter
+     * does not send OutputEvents).
+     */
+    public void addRawOutput(String category, String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        OutputLine line = new OutputLine(category, text);
         while (!lines.offerLast(line)) {
             lines.pollFirst();
         }

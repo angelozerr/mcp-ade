@@ -2,10 +2,15 @@
   "id": "julia-debug-installer",
   "name": "julia-debug",
   "check": {
-    "exec": {
-      "name": "Check if DebugAdapter.jl is installed",
-      "command": "julia -e \"using DebugAdapter\"",
-      "timeout": 30000
+    "fileExists": {
+      "name": "Check if run_server.jl exists",
+      "file": "$SERVER_HOME$/run_server.jl",
+      "onSuccess": {
+        "fileExists": {
+          "name": "Check if DebugAdapter.jl is installed",
+          "file": "$USER_HOME$/.julia/packages/DebugAdapter/*"
+        }
+      }
     }
   },
   "run": {

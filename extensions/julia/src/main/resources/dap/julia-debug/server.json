@@ -4,7 +4,11 @@
   "description": "Debug adapter for Julia based on DebugAdapter.jl",
   "url": "https://github.com/julia-vscode/DebugAdapter.jl",
   "runtime": "julia",
-  "launch": "julia -e \"using DebugAdapter; DebugAdapter.run_debugger()\"",
+  "launch": "julia $SERVER_HOME$/run_server.jl",
+  "debugServerReadyPattern": "DAP server listening on port ${port}",
+  "attach": {
+    "port": "$port"
+  },
   "documentSelector": [
     {
       "language": "julia",
