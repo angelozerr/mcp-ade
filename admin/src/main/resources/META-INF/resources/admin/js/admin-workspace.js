@@ -280,14 +280,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 return;
             }
 
-            // Build workspace header (compact, same level as left sidebar)
-            const workspaceName = workspace ? getWorkspaceDisplayName(workspace.rootUri) : '';
-            const headerHTML = `
-                <div class="d-flex align-center detail-section-header">
-                    <span class="text-primary font-bold tab-label-sm">📂 ${workspaceName}</span>
-                </div>
-            `;
-
             // Build tabs header
             const tabsHTML = `
                 <div class="tabs bg-panel" style="border-bottom: 1px solid var(--bg-card);">
@@ -312,7 +304,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     </div>
                 `;
                 container.innerHTML =
-                    '<div class="workspace-servers-header">' + headerHTML + settingsHeaderHTML + '</div>' +
+                    '<div class="workspace-servers-header">' + settingsHeaderHTML + '</div>' +
                     '<div class="workspace-servers-content">' + renderWorkspaceSettings(workspace) + '</div>';
                 return;
             }
@@ -350,7 +342,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
 
             container.innerHTML =
-                '<div class="workspace-servers-header">' + headerHTML + tabsHTML + filterHTML + '</div>' +
+                '<div class="workspace-servers-header">' + tabsHTML + filterHTML + '</div>' +
                 '<div class="workspace-servers-content">' + contentHTML + '</div>';
 
             // Scroll auto-selected server into view (after DOM is updated)
