@@ -8,7 +8,8 @@ import { state, updateSearchBoxVisibility, buildGlobalContributedByMap } from '.
 import {
     confirmAction, showAlert, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     loadInstallerJsonEditor, saveInstallerJsonEditor,
-    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
+    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
+    selectListItem
 } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { formatErrorWithFolding } from './error-formatter.js';
@@ -651,7 +652,7 @@ export async function loadAllDapServers(serverIdToSelect) {
             } else {
                 serverToShow = filteredServers[0].id;
             }
-            showDapServerDetails(serverToShow);
+            showDapServerDetails(serverToShow, true);
         }
     } catch (error) {
         console.error('Failed to load DAP servers:', error);
@@ -661,7 +662,7 @@ export async function loadAllDapServers(serverIdToSelect) {
 /**
  * Show details for a global DAP server with Overview/Install tabs.
  */
-export async function showDapServerDetails(serverId) {
+export async function showDapServerDetails(serverId, scroll) {
     const previousServer = selectedDapServer;
     selectedDapServer = serverId;
     state.currentDapServerId = serverId;
@@ -672,18 +673,9 @@ export async function showDapServerDetails(serverId) {
     // Hide search box when showing server details (not traces)
     updateSearchBoxVisibility(false);
 
-    // Toggle active class instead of re-rendering the entire list
     if (dapLanguageFilter) {
-        const container = dapLanguageFilter.getItemsContainer();
-        if (previousServer) {
-            const prev = container.querySelector(`.server-item[data-server-id="${previousServer}"]`);
-            if (prev) prev.classList.remove('active');
-        }
-        const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
-        if (next) {
-            next.classList.add('active');
-            next.scrollIntoView({ block: 'start' });
-        }
+        selectListItem(dapLanguageFilter.getItemsContainer(),
+            '.server-item[data-server-id', previousServer, serverId, scroll);
     }
 
     const server = dapServerConfigs[serverId];

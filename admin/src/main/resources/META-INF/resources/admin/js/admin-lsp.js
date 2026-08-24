@@ -8,7 +8,8 @@ import { state, getServerApiBase, buildGlobalContributedByMap } from './shared-s
 import {
     showAlert, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     loadInstallerJsonEditor, saveInstallerJsonEditor,
-    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
+    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
+    selectListItem
 } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
@@ -82,7 +83,7 @@ export async function loadAllLspServers(serverIdToSelect) {
             } else {
                 serverToShow = filteredServers[0].id;
             }
-            showServerDetails(serverToShow);
+            showServerDetails(serverToShow, true);
         }
     } catch (error) {
         console.error('Failed to load all LSP servers:', error);
@@ -92,23 +93,14 @@ export async function loadAllLspServers(serverIdToSelect) {
 /**
  * Show details for a global LSP server with Overview/Contributions/Install tabs.
  */
-export async function showServerDetails(serverId) {
+export async function showServerDetails(serverId, scroll) {
     // Update selected server
     const previousServer = selectedAllServer;
     selectedAllServer = serverId;
 
-    // Toggle active class instead of re-rendering the entire list
     if (lspLanguageFilter) {
-        const container = lspLanguageFilter.getItemsContainer();
-        if (previousServer) {
-            const prev = container.querySelector(`.server-item[data-server-id="${previousServer}"]`);
-            if (prev) prev.classList.remove('active');
-        }
-        const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
-        if (next) {
-            next.classList.add('active');
-            next.scrollIntoView({ block: 'start' });
-        }
+        selectListItem(lspLanguageFilter.getItemsContainer(),
+            '.server-item[data-server-id', previousServer, serverId, scroll);
     }
 
     const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));

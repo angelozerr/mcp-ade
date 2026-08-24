@@ -8,7 +8,8 @@ import { state, updateSearchBoxVisibility } from './shared-state.js';
 import {
     renderExtensionSection, runServerInstaller,
     loadInstallerJsonEditor, saveInstallerJsonEditor,
-    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML
+    switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
+    selectListItem
 } from './shared-ui.js';
 import { LanguageFilter } from './language-filter.js';
 import { registerActions } from './event-delegation.js';
@@ -84,30 +85,22 @@ export async function loadAllBspServers(serverIdToSelect) {
             } else {
                 serverToShow = filteredServers[0].id;
             }
-            showBspServerDetails(serverToShow);
+            showBspServerDetails(serverToShow, true);
         }
     } catch (error) {
         console.error('Failed to load BSP servers:', error);
     }
 }
 
-export async function showBspServerDetails(serverId) {
+export async function showBspServerDetails(serverId, scroll) {
     const previousServer = selectedBspServer;
     selectedBspServer = serverId;
 
     updateSearchBoxVisibility(false);
 
     if (bspLanguageFilter) {
-        const container = bspLanguageFilter.getItemsContainer();
-        if (previousServer) {
-            const prev = container.querySelector(`.server-item[data-server-id="${previousServer}"]`);
-            if (prev) prev.classList.remove('active');
-        }
-        const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
-        if (next) {
-            next.classList.add('active');
-            next.scrollIntoView({ block: 'start' });
-        }
+        selectListItem(bspLanguageFilter.getItemsContainer(),
+            '.server-item[data-server-id', previousServer, serverId, scroll);
     }
 
     const server = bspServerConfigs[serverId];

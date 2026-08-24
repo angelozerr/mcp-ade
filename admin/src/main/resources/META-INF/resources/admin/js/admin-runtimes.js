@@ -5,7 +5,7 @@
  */
 
 import { state, updateSearchBoxVisibility } from './shared-state.js';
-import { getRuntimeStatusInfo, appendTraceLine, renderServerLink, renderExtensionLink } from './shared-ui.js';
+import { getRuntimeStatusInfo, appendTraceLine, renderServerLink, renderExtensionLink, selectListItem } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
 
 let selectedRuntime = null;
@@ -75,24 +75,17 @@ export function loadAllRuntimes(runtimeIdToSelect) {
     } else {
         runtimeToShow = runtimes[0].id;
     }
-    showRuntimeDetails(runtimeToShow);
+    showRuntimeDetails(runtimeToShow, true);
 }
 
-export async function showRuntimeDetails(runtimeId) {
+export async function showRuntimeDetails(runtimeId, scroll) {
     const previousRuntime = selectedRuntime;
     selectedRuntime = runtimeId;
 
     updateSearchBoxVisibility(false);
 
-    const container = document.getElementById('runtimes-list');
-    if (container) {
-        if (previousRuntime) {
-            const prev = container.querySelector(`.server-item[data-runtime-id="${previousRuntime}"]`);
-            if (prev) prev.classList.remove('active');
-        }
-        const next = container.querySelector(`.server-item[data-runtime-id="${runtimeId}"]`);
-        if (next) next.classList.add('active');
-    }
+    selectListItem(document.getElementById('runtimes-list'),
+        '.server-item[data-runtime-id', previousRuntime, runtimeId, scroll);
 
     const runtime = state.runtimeConfigs[runtimeId];
     if (!runtime) {

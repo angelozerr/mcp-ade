@@ -5,7 +5,7 @@
  * and their individual LSP/DAP servers.
  */
 
-import { confirmAction, showAlert, renderServerLink, renderRuntimeLink } from './shared-ui.js';
+import { confirmAction, showAlert, renderServerLink, renderRuntimeLink, selectListItem } from './shared-ui.js';
 import { state, loadLspConfigs, loadDapConfigs } from './shared-state.js';
 import { registerActions } from './event-delegation.js';
 
@@ -81,7 +81,7 @@ export async function loadAllExtensions(extensionIdToSelect) {
             const toSelect = extensionIdToSelect
                 || (selectedExtension && extensionsData.find(e => e.id === selectedExtension) ? selectedExtension : null)
                 || extensionsData[0].id;
-            showExtensionDetails(toSelect);
+            showExtensionDetails(toSelect, true);
         }
     } catch (error) {
         console.error('Failed to load extensions:', error);
@@ -91,23 +91,12 @@ export async function loadAllExtensions(extensionIdToSelect) {
 /**
  * Show details for an extension in the console panel.
  */
-export function showExtensionDetails(extensionId) {
+export function showExtensionDetails(extensionId, scroll) {
     const previousExtension = selectedExtension;
     selectedExtension = extensionId;
 
-    // Toggle active class instead of re-rendering the entire list
-    const container = document.getElementById('extensions-list');
-    if (container) {
-        if (previousExtension) {
-            const prev = container.querySelector(`.extension-item[data-extension-id="${previousExtension}"]`);
-            if (prev) prev.classList.remove('active');
-        }
-        const next = container.querySelector(`.extension-item[data-extension-id="${extensionId}"]`);
-        if (next) {
-            next.classList.add('active');
-            next.scrollIntoView({ block: 'start' });
-        }
-    }
+    selectListItem(document.getElementById('extensions-list'),
+        '.extension-item[data-extension-id', previousExtension, extensionId, scroll);
 
     const ext = extensionsData.find(e => e.id === extensionId);
     if (!ext) return;

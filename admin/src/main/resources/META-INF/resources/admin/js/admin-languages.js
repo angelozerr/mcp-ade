@@ -1,5 +1,5 @@
 import { updateSearchBoxVisibility } from './shared-state.js';
-import { renderServerLink } from './shared-ui.js';
+import { renderServerLink, selectListItem } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
 
 let selectedLanguage = null;
@@ -70,30 +70,20 @@ export async function loadAllLanguages(languageIdToSelect) {
         } else {
             langToShow = languagesData[0].id;
         }
-        showLanguageDetails(langToShow);
+        showLanguageDetails(langToShow, true);
     } catch (error) {
         console.error('Failed to load languages:', error);
     }
 }
 
-function showLanguageDetails(languageId) {
+function showLanguageDetails(languageId, scroll) {
     const previousLanguage = selectedLanguage;
     selectedLanguage = languageId;
 
     updateSearchBoxVisibility(false);
 
-    const container = document.getElementById('languages-list');
-    if (container) {
-        if (previousLanguage) {
-            const prev = container.querySelector(`.server-item[data-language-id="${previousLanguage}"]`);
-            if (prev) prev.classList.remove('active');
-        }
-        const next = container.querySelector(`.server-item[data-language-id="${languageId}"]`);
-        if (next) {
-            next.classList.add('active');
-            next.scrollIntoView({ block: 'start' });
-        }
-    }
+    selectListItem(document.getElementById('languages-list'),
+        '.server-item[data-language-id', previousLanguage, languageId, scroll);
 
     const lang = languagesData.find(l => l.id === languageId);
     if (!lang) return;

@@ -2,6 +2,19 @@ import { state, getServerApiBase, getServerName, getRuntimeName } from './shared
 import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 import { renderServerDiagram } from './diagram.js';
 
+export function selectListItem(container, itemSelector, previousId, newId, scroll) {
+    if (!container) return;
+    if (previousId) {
+        const prev = container.querySelector(`${itemSelector}="${previousId}"]`);
+        if (prev) prev.classList.remove('active');
+    }
+    const next = container.querySelector(`${itemSelector}="${newId}"]`);
+    if (next) {
+        next.classList.add('active');
+        if (scroll) next.scrollIntoView({ block: 'start' });
+    }
+}
+
 const SERVER_ICONS = { lsp: '🚀', dap: '🐛', bsp: '🔧' };
 const SERVER_ACTIONS = { lsp: 'switchToLspServer', dap: 'switchToDapServer', bsp: 'switchToBspServer' };
 
