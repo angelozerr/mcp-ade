@@ -709,10 +709,7 @@ registerActions('click', {
 // ========== Init ==========
 
 (async function init() {
-    await loadLspConfigs();
-    await loadDapConfigs();
-    await loadBspConfigs();
-    await loadRuntimeConfigs();
+    await Promise.all([loadLspConfigs(), loadDapConfigs(), loadBspConfigs(), loadRuntimeConfigs()]);
     connectAdminWebSocket();
 
     KeyboardShortcuts.register({

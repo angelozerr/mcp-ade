@@ -9,14 +9,14 @@ export const state = {
     tracesByServer: {},
     traceLevels: {},
     lspConfigs: {},
-    dapConfigs: {},
+    dapConfigs: null,
     bspConfigs: {},
     runtimeConfigs: {},
     currentDapSessionId: null,
     currentDapServerId: null,
     dapTracesBySession: {},
     dapTracesByServer: {},
-    dapSessions: [],
+    dapSessions: null,
     installOutputServerId: null,
     currentDiagramServers: null,
     currentDiagramServerId: null,
@@ -93,8 +93,8 @@ export function getRuntimeName(runtimeId) {
 }
 
 export function getServerApiBase(serverId) {
-    if (state.bspConfigs[serverId]) return '/api/admin/bsp/configs';
-    if (state.dapConfigs[serverId]) return '/api/admin/dap/configs';
+    if (state.bspConfigs?.[serverId]) return '/api/admin/bsp/configs';
+    if (state.dapConfigs?.[serverId]) return '/api/admin/dap/configs';
     return '/api/admin/lsp/configs';
 }
 

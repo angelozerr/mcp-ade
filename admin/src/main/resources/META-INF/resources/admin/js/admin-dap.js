@@ -506,29 +506,29 @@ export async function selectDapSession(sessionId) {
         return;
     }
 
-    // Session div doesn't exist yet, fetch details and create it
-    try {
-        const response = await fetch(`/api/admin/dap/sessions`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch DAP sessions');
-        }
-        const sessions = await response.json();
-
-        // Find the session by ID
-        const session = sessions.find(s => s.sessionId === sessionId);
-
-        if (!session) {
-            console.error('Session not found:', sessionId);
+    // Session div doesn't exist yet — use cached state first, fetch only as fallback
+    let session = state.dapSessions?.find(s => s.sessionId === sessionId);
+    if (!session) {
+        try {
+            const response = await fetch(`/api/admin/dap/sessions`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch DAP sessions');
+            }
+            const sessions = await response.json();
+            session = sessions.find(s => s.sessionId === sessionId);
+        } catch (error) {
+            console.error('Error loading session:', error);
+            showAlert('Failed to Load Session', error.message);
             return;
         }
-
-        // Create and show launch config form
-        showLaunchConfigForm(session, session.serverId);
-
-    } catch (error) {
-        console.error('Error loading session:', error);
-        showAlert('Failed to Load Session', error.message);
     }
+
+    if (!session) {
+        console.error('Session not found:', sessionId);
+        return;
+    }
+
+    showLaunchConfigForm(session, session.serverId);
 }
 
 let currentDapTraceLevel = 'off';
