@@ -183,7 +183,7 @@
 .console-line { padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border-primary); font-size: 0.8rem; }
 .contribution-label { min-width: 120px; }
 .session-btn-sm { font-size: 0.7rem; padding: 0.15rem 0.3rem; }
-.template-selector { margin-left: 2rem; padding: 0.25rem 0.5rem; opacity: 0.9; transition: background-color 0.2s; }
+.template-selector { padding: 0.4rem 0.5rem 0.4rem 1.5rem; transition: all 0.2s; border-bottom: 1px solid var(--border-subtle); font-size: 0.8rem; color: var(--text-secondary); }
 .link-accent { color: var(--accent-primary); text-decoration: none; }
 .nav-link { color: var(--accent-primary); text-decoration: none; cursor: pointer; }
 .nav-link:hover { text-decoration: underline; }
@@ -694,7 +694,7 @@ body {
 }
 
 .server-item.active {
-    background: var(--bg-server-hover);
+    background: var(--bg-active-item, var(--bg-server-hover));
     border-left-color: var(--accent-primary);
 }
 
@@ -704,8 +704,14 @@ body {
 }
 
 .dap-session-item.active {
-    background: var(--bg-server-hover);
+    background: var(--bg-active-item, var(--bg-server-hover));
     border-left: 3px solid var(--accent-primary);
+}
+
+.dap-session-item .session-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
 /* Session icons */
@@ -874,13 +880,13 @@ body {
     text-align: center;
 }
 
-/* Compact variant for DAP session badges */
+/* Compact variant for inline badges (workspace items, DAP sessions) */
 .status-badge.status-badge-compact {
     padding: 0.1rem 0.4rem;
-    width: 5rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 0.6rem;
+    min-width: auto;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .status-starting { background: var(--status-starting-bg); color: var(--text-on-accent); }
@@ -894,6 +900,8 @@ body {
 .status-install_failed { background: var(--status-install-failed-bg); color: var(--text-on-accent); }
 .status-start_failed { background: var(--status-start-failed-bg); color: var(--text-on-accent); }
 .status-error { background: var(--status-error-bg); color: var(--text-on-accent); }
+.status-initializing { background: var(--status-starting-bg); color: var(--text-on-accent); animation: status-pulse 1.2s ease-in-out infinite; }
+.status-failed { background: var(--status-error-bg); color: var(--text-on-accent); }
 .status-switching { background: var(--status-switching-bg); color: var(--text-on-accent); }
 .status-connecting_to_ide { background: var(--status-connecting-bg); color: var(--text-on-accent); }
 .status-connected_to_ide { background: var(--status-connected-bg); color: var(--text-on-accent); font-weight: 600; }

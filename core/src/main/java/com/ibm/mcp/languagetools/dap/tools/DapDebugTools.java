@@ -426,6 +426,12 @@ public class DapDebugTools {
             uri = path.toUri();
         }
 
+        // Flush pending file watcher events so language servers see recent file changes
+        var workspace = application.getWorkspaceForPath(cwd);
+        if (workspace != null) {
+            workspace.flushFileWatcher();
+        }
+
         // Generate session name if not provided
         String actualSessionName = sessionName != null ? sessionName : "Debug Session";
 

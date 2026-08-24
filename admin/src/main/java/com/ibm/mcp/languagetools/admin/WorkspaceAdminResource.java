@@ -295,7 +295,9 @@ public class WorkspaceAdminResource {
                 .entity(Map.of(
                         "fileWatcherEnabled", resolved.value(),
                         "fileWatcherEnabledSource", resolved.source().name(),
-                        "fileWatcherRunning", workspace.isFileWatcherRunning()))
+                        "fileWatcherRunning", workspace.isFileWatcherRunning(),
+                        "fileWatcherStatus", workspace.getFileWatcherStatus().name(),
+                        "fileWatcherFailureReason", workspace.getFileWatcherFailureReason() != null ? workspace.getFileWatcherFailureReason() : ""))
                 .build();
     }
 

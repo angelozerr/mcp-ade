@@ -25,6 +25,7 @@ import com.ibm.mcp.languagetools.installer.InstallationStatus;
 import com.ibm.mcp.languagetools.installer.InstallerContext;
 import com.ibm.mcp.languagetools.installer.ServerInstaller;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.language.DocumentSelector;
 import com.ibm.mcp.languagetools.lsp.Contributes;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
@@ -357,24 +358,73 @@ public class ServerConfigBase extends InstallableConfig {
     public CompletableFuture<InstallResult> ensureInstalled(Workspace workspace,
                                                             Consumer<ServerStatus> serverStatusCallback,
                                                             ProgressMonitor progressMonitor) {
-        return ensureInstalled(workspace, serverStatusCallback, progressMonitor, false);
+        return ensureInstalled(workspace, serverStatusCallback, progressMonitor, false, null);
     }
 
     public CompletableFuture<InstallResult> ensureInstalled(Workspace workspace,
                                                             Consumer<ServerStatus> serverStatusCallback,
                                                             ProgressMonitor progressMonitor,
                                                             boolean force) {
+        return ensureInstalled(workspace, serverStatusCallback, progressMonitor, force, null);
+    }
+
+    /**
+     * Ensure server is installed, tracking progress via OperationEntry.
+     * When a runtime is configured, creates two separate children on the operationEntry:
+     * one for the runtime installation and one for the server installation.
+     * When no runtime is configured, creates a single "installing" child.
+     *
+     * @param operationEntry optional parent entry for operation tracking (nullable)
+     */
+    public CompletableFuture<InstallResult> ensureInstalled(Workspace workspace,
+                                                            Consumer<ServerStatus> serverStatusCallback,
+                                                            ProgressMonitor progressMonitor,
+                                                            boolean force,
+                                                            OperationEntry operationEntry) {
         if (runtimeConfig != null) {
             if (runtimeConfig.getTraceCollector() == null && getTraceCollector() != null) {
                 runtimeConfig.setTraceCollector(getTraceCollector());
             }
+            OperationEntry runtimeEntry = operationEntry != null
+                    ? operationEntry.addChild("installing " + runtimeConfig.getName()) : null;
             return runtimeConfig.ensureInstalled(progressMonitor, force, getServerId(), getTraceCollector())
+                    .whenComplete((result, error) -> {
+                        if (runtimeEntry != null) {
+                            if (error != null) {
+                                runtimeEntry.fail(error.getMessage());
+                            } else {
+                                runtimeEntry.complete();
+                            }
+                        }
+                    })
                     .thenCompose(runtimeResult -> {
                         addRuntimeToPath();
-                        return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force);
+                        OperationEntry serverEntry = operationEntry != null
+                                ? operationEntry.addChild("installing " + getName()) : null;
+                        return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force)
+                                .whenComplete((result, error) -> {
+                                    if (serverEntry != null) {
+                                        if (error != null) {
+                                            serverEntry.fail(error.getMessage());
+                                        } else {
+                                            serverEntry.complete();
+                                        }
+                                    }
+                                });
                     });
         }
-        return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force);
+        OperationEntry installEntry = operationEntry != null
+                ? operationEntry.addChild("installing") : null;
+        return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force)
+                .whenComplete((result, error) -> {
+                    if (installEntry != null) {
+                        if (error != null) {
+                            installEntry.fail(error.getMessage());
+                        } else {
+                            installEntry.complete();
+                        }
+                    }
+                });
     }
 
     private CompletableFuture<InstallResult> doEnsureInstalled(Workspace workspace,

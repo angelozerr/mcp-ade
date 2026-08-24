@@ -1,7 +1,7 @@
 import { state, getCurrentTheme, setTheme, updateThemeIcon, traceKey,
     formatStatusClass, formatStatusLabel, updateSearchBoxVisibility,
     loadLspConfigs, loadDapConfigs, loadBspConfigs, loadRuntimeConfigs } from './shared-state.js';
-import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, renderServerActions } from './shared-ui.js';
+import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, renderServerActions, renderBadge } from './shared-ui.js';
 import { escapeHtml, updateTraceControls, clearHighlights, closeSearch } from './trace-renderer.js';
 import { initEventDelegation, registerActions } from './event-delegation.js';
 import { KeyboardShortcuts } from './keyboard-shortcuts.js';
@@ -12,14 +12,15 @@ import { handleProgressInit, handleProgressUpdate, setInstallProgressCallback, s
 import { renderWorkspaces, selectWorkspace, selectServer, selectDapSessionByServerId,
     switchWorkspaceTab, loadConsole, renderConsole, loadServers,
     onWorkspaceTaskStarted, onWorkspaceTaskCompleted,
+    refreshWorkspaceServers,
     setCreateSessionHTMLFn, setInstallerCallbacks, setChangeDapServerTraceLevelFn,
     setRenderDapTracesForSessionFn, setRenderMcpConsoleWithHighlightsFn,
-    setCurrentTraceLevel } from './admin-workspace.js';
+    setCurrentTraceLevel, updateFileWatcherBadge } from './admin-workspace.js';
 import { loadAllLspServers, saveInstallerJson, resetInstallerJson, runInstaller,
     loadInstallerJson } from './admin-lsp.js';
 import { loadAllDapServers, onDapSessionUpdate, renderDapTracesForSession,
     createSessionHTML, changeDapServerTraceLevel,
-    setSelectDapSessionByServerIdCallback } from './admin-dap.js';
+    setSelectDapSessionByServerIdCallback, setRefreshWorkspaceServersFn } from './admin-dap.js';
 import { loadAllBspServers } from './admin-bsp.js';
 import { loadAllRuntimes, updateRuntimeStatus, appendRuntimeTrace, setSwitchTabCallback as setRuntimeSwitchTabCallback } from './admin-runtimes.js';
 import { loadAllExtensions, showAddExtensionForm, setSwitchTabCallback } from './admin-extensions.js';
@@ -135,6 +136,9 @@ function handleWebSocketMessage(message) {
             break;
         case 'runtime-trace':
             appendRuntimeTrace(message);
+            break;
+        case 'file-watcher-status-changed':
+            handleFileWatcherStatusChanged(message);
             break;
         default:
             console.warn('Unknown WebSocket message type:', message.type);
@@ -378,10 +382,27 @@ function handleServerStatusChanged(event) {
 
     if (state.selectedWorkspace === event.workspaceUri) {
         console.log('Badge: updating badge for', event.serverId, 'status=', changedServer.status);
-        updateServerStatusBadge(event.serverId, changedServer);
+
+        const serverElement = findWorkspaceServerElement(event.serverId);
+        if (serverElement) {
+            updateServerStatusBadge(event.serverId, changedServer);
+        } else {
+            refreshWorkspaceServers();
+        }
 
         if (state.selectedServer && state.selectedServer.id === event.serverId) {
             updateDetailPanelStatusBadge(changedServer);
+        }
+
+        if (!state.userExplicitlySelectedServer
+            && event.newStatus !== 'STOPPED'
+            && state.selectedServer?.id !== event.serverId) {
+            const currentSelected = state.selectedServer
+                ? servers?.find(s => s.id === state.selectedServer.id)
+                : null;
+            if (!currentSelected || currentSelected.status === 'STOPPED') {
+                selectServer(changedServer, false);
+            }
         }
     } else {
         console.warn('Badge: workspace mismatch. selectedWorkspace=', state.selectedWorkspace, 'event.workspaceUri=', event.workspaceUri);
@@ -429,6 +450,20 @@ function handleRuntimeStatusChanged(message) {
     updateRuntimeStatus(message.runtimeId, message.status, message.error);
 }
 
+function handleFileWatcherStatusChanged(message) {
+    const workspace = state.workspaces.find(w => w.rootUri === message.workspaceUri);
+    if (workspace) {
+        workspace.fileWatcherStatus = message.status;
+        workspace.fileWatcherFailureReason = message.failureReason;
+        workspace.fileWatcherRunning = message.status === 'RUNNING';
+        workspace.fileWatcherScannedDirs = message.scannedDirs;
+    }
+    updateFileWatcherBadge(message.workspaceUri);
+    if (state.currentWorkspaceTab === 'settings' && state.selectedWorkspace === message.workspaceUri) {
+        refreshWorkspaceServers();
+    }
+}
+
 // ========== Status badge updates ==========
 
 function findWorkspaceServerElement(serverId) {
@@ -451,7 +486,7 @@ function updateServerStatusBadge(serverId, server) {
         const statusMessageHTML = server.statusMessage
             ? `<span class="server-status-message text-secondary font-md ml-sm">${escapeHtml(server.statusMessage)}</span>`
             : '';
-        statusBadgeContainer.innerHTML = `<span class="status-badge ${statusClass}">${label}</span>${statusMessageHTML}`;
+        statusBadgeContainer.innerHTML = `${renderBadge(statusClass.replace('status-', ''), label)}${statusMessageHTML}`;
     }
 
     const actionsContainer = serverElement.querySelector('.server-actions');
@@ -635,6 +670,7 @@ setInstallProgressCallback(updateInstallProgress);
 setTaskStartedCallback((taskId, workspaceUri) => onWorkspaceTaskStarted(taskId, workspaceUri));
 setTaskCompletedCallback((taskId) => onWorkspaceTaskCompleted(taskId));
 setSelectDapSessionByServerIdCallback(selectDapSessionByServerId);
+setRefreshWorkspaceServersFn(refreshWorkspaceServers);
 setCreateSessionHTMLFn(createSessionHTML);
 setInstallerCallbacks({
     saveInstallerJson,

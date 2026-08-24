@@ -1,5 +1,5 @@
 import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility, loadDapConfigs } from './shared-state.js';
-import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector, runServerInstaller, renderServerActions } from './shared-ui.js';
+import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector, runServerInstaller, renderServerActions, renderBadge } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
@@ -15,9 +15,6 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         // Global variable to store DAP sessions
         let dapSessions = [];
-
-        // Track if user explicitly selected a server (to prevent auto-switching)
-        let userExplicitlySelectedServer = false;
 
         // Filter to show only active (non-STOPPED) servers
         let showOnlyActiveServers = false;
@@ -60,14 +57,20 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         function toggleShowActiveServers() {
             showOnlyActiveServers = !showOnlyActiveServers;
+            refreshWorkspaceServers();
+        }
+
+        export async function refreshWorkspaceServers() {
             const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             if (!workspace) return;
 
             if (state.currentWorkspaceTab === 'debuggers') {
                 const sessions = state.dapSessions || [];
-                renderServers([], sessions, workspace);
+                await renderServers([], sessions, workspace);
+            } else if (state.currentWorkspaceTab === 'build') {
+                await renderServers([], [], workspace);
             } else {
-                renderServers(workspace.lspServers || [], [], workspace);
+                await renderServers(workspace.lspServers || [], [], workspace);
             }
         }
 
@@ -82,6 +85,48 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             } catch (error) {
                 console.error('Failed to load DAP sessions:', error);
             }
+        }
+
+        export function updateFileWatcherBadge(workspaceUri) {
+            const ws = state.workspaces.find(w => w.rootUri === workspaceUri);
+            if (!ws) return;
+            const workspaceEl = document.querySelector(`.workspace-item[data-uri="${workspaceUri}"]`);
+            if (!workspaceEl) return;
+            const badgeSlot = workspaceEl.querySelector('.fw-badge-slot');
+            if (badgeSlot) {
+                const { badgeHtml } = renderFileWatcherBadge(ws);
+                badgeSlot.innerHTML = badgeHtml;
+            }
+            const errorSlot = workspaceEl.querySelector('.fw-error-slot');
+            if (errorSlot) {
+                const { errorHtml } = renderFileWatcherBadge(ws);
+                errorSlot.innerHTML = errorHtml;
+            }
+        }
+
+        function renderFileWatcherBadge(ws) {
+            const fwStatus = ws.fileWatcherStatus || (ws.fileWatcherRunning ? 'RUNNING' : 'STOPPED');
+            const fwEnabled = ws.fileWatcherEnabled || false;
+            let badgeHtml = '';
+            let errorHtml = '';
+            if (fwEnabled || fwStatus !== 'STOPPED') {
+                if (fwStatus === 'RUNNING') {
+                    badgeHtml = renderBadge('running', 'watching', { compact: true });
+                } else if (fwStatus === 'INITIALIZING') {
+                    const scanned = ws.fileWatcherScannedDirs || 0;
+                    const progress = scanned > 0 ? ` (${scanned} dirs)` : '';
+                    badgeHtml = renderBadge('initializing', `scanning${progress}`, { compact: true });
+                } else if (fwStatus === 'FAILED') {
+                    const fwReason = ws.fileWatcherFailureReason || '';
+                    badgeHtml = renderBadge('failed', 'watcher failed', { compact: true });
+                    if (fwReason) {
+                        errorHtml = `<div class="text-error font-sm" style="margin-top:0.2rem;word-break:break-word">${escapeHtml(fwReason)}</div>`;
+                    }
+                } else {
+                    badgeHtml = renderBadge('stopped', 'stopped', { compact: true });
+                }
+            }
+            return { badgeHtml, errorHtml };
         }
 
         export function renderWorkspaces() {
@@ -122,15 +167,18 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 // Extract folder name from URI
                 const folderName = getWorkspaceDisplayName(ws.rootUri);
 
+                const { badgeHtml: fwBadgeHtml, errorHtml: fwErrorHtml } = renderFileWatcherBadge(ws);
+
                 return `
                 <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
                     <div class="d-flex justify-between align-center">
-                        <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div>
+                        <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName} <span class="fw-badge-slot">${fwBadgeHtml}</span></div>
                         <button class="close-workspace-btn" data-action="openWorkspaceSettings" data-uri="${ws.rootUri}" data-stop-propagation title="Workspace settings" style="font-size:0.9rem">⚙</button>
                         <button class="close-workspace-btn" data-action="buildWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Build workspace" style="font-size:0.9rem">🔨</button>
                         <button class="close-workspace-btn" data-action="refreshWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Refresh workspace" style="font-size:1.1rem">↻</button>
                         <button class="close-workspace-btn" data-action="closeWorkspace" data-uri="${ws.rootUri}" data-stop-propagation title="Close workspace and stop all servers">×</button>
                     </div>
+                    <span class="fw-error-slot">${fwErrorHtml}</span>
                     ${ws.mcpClients && ws.mcpClients.length > 0 ? `
                         <div class="workspace-section">
                             <div class="workspace-section-title">AI Agents</div>
@@ -163,7 +211,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             // Only reset server selection if we're changing workspace
             if (state.selectedWorkspace !== uri) {
                 state.selectedServer = null;
-                userExplicitlySelectedServer = false; // Reset explicit selection when changing workspace
+                state.userExplicitlySelectedServer = false; // Reset explicit selection when changing workspace
             }
 
             state.selectedWorkspace = uri;
@@ -266,11 +314,9 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         function renderStatusBadge(server) {
-            const statusClass = formatStatusClass(server.status);
+            const statusClass = formatStatusClass(server.status).replace('status-', '');
             const label = formatStatusLabel(server.status, server.externalInstance);
-
-            // In server list, show simple badge (progress bar is shown in detail panel only)
-            return `<span class="status-badge ${statusClass}">${label}</span>`;
+            return renderBadge(statusClass, label);
         }
 
         export async function renderServers(lspServers, dapSessions = [], workspace = null) {
@@ -360,7 +406,11 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 if (bspServers.length > 0) {
                     const isBspServerSelected = state.selectedServer && state.selectedServer.isBsp && bspServers.find(s => s.id === state.selectedServer.id);
                     if (!isBspServerSelected) {
-                        selectBspServer(bspServers[0]);
+                        // Set state + active class directly to avoid re-rendering the server list
+                        state.selectedServer = {...bspServers[0], isBsp: true};
+                        const serverEl = container.querySelector(`[data-server-id="${bspServers[0].id}"]`);
+                        if (serverEl) serverEl.classList.add('active');
+                        loadConsole(state.selectedServer);
                     }
                 }
             }
@@ -369,9 +419,25 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 const isDapServerSelected = state.selectedServer && Object.values(state.dapConfigs || {}).find(s => s.id === state.selectedServer.id);
 
                 if (!isDapServerSelected) {
-                    // Select first DAP server
-                    const firstDapServer = Object.values(state.dapConfigs || {})[0];
-                    selectDapServer(firstDapServer);
+                    const sessions = state.dapSessions || [];
+                    const activeSession = sessions.find(s => s.state === 'RUNNING')
+                        || sessions.find(s => s.state === 'PAUSED')
+                        || sessions.find(s => s.state === 'STARTING' || s.state === 'INSTALLING' || s.state === 'LAUNCHING' || s.state === 'ATTACHING')
+                        || sessions[0];
+                    if (activeSession) {
+                        selectDapSession(activeSession.sessionId);
+                    } else {
+                        const firstDapServer = Object.values(state.dapConfigs || {})[0];
+                        if (firstDapServer) {
+                            // Set state + active class directly to avoid re-rendering the server list
+                            const dapTraceLevel = (state.traceLevels && state.traceLevels['dap.' + firstDapServer.id]) || 'off';
+                            state.selectedServer = {...firstDapServer, isDap: true, traceLevel: dapTraceLevel};
+                            dapSessions = state.dapSessions || [];
+                            const serverEl = container.querySelector(`[data-server-id="${firstDapServer.id}"]`);
+                            if (serverEl) serverEl.classList.add('active');
+                            loadConsole(state.selectedServer);
+                        }
+                    }
                 }
             }
         }
@@ -379,12 +445,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         function renderWorkspaceSettings(workspace) {
             if (!workspace) return '<div class="servers-placeholder">No workspace selected</div>';
 
-            const fwEnabled = workspace.fileWatcherEnabled || false;
             const fwSource = workspace.fileWatcherEnabledSource || 'DEFAULT';
-            const fwRunning = workspace.fileWatcherRunning || false;
-            const fwStatusHtml = fwRunning
-                ? '<span class="status-badge status-running" style="font-size:0.7rem;padding:0.1rem 0.4rem">watching</span>'
-                : (fwEnabled ? '<span class="status-badge status-stopped" style="font-size:0.7rem;padding:0.1rem 0.4rem">stopped</span>' : '');
+            const { badgeHtml: fwStatusHtml } = renderFileWatcherBadge(workspace, 'lg');
 
             const uri = workspace.rootUri;
 
@@ -445,11 +507,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 showPlaceholder();
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'debuggers') {
-                // Load DAP configs and sessions lazy
-                if (!state.dapConfigs || Object.keys(state.dapConfigs).length === 0) {
-                    await loadDapConfigs();
-                }
-                await loadDapSessionsForWorkspace();
+                // Load DAP configs and sessions in parallel
+                const needsConfigs = !state.dapConfigs || Object.keys(state.dapConfigs).length === 0;
+                await Promise.all([
+                    needsConfigs ? loadDapConfigs() : Promise.resolve(),
+                    loadDapSessionsForWorkspace()
+                ]);
                 renderServers([], dapSessions, workspace);
             } else if (tab === 'build') {
                 state.selectedServer = null;
@@ -537,7 +600,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 const currentServer = servers.find(s => s.id === state.selectedServer.id);
                 if (currentServer) {
                     // Only auto-switch if user has NOT explicitly selected
-                    if (!userExplicitlySelectedServer && currentServer.status === 'STOPPED') {
+                    if (!state.userExplicitlySelectedServer && currentServer.status === 'STOPPED') {
                         // Prefer RUNNING, then any non-STOPPED status
                         const runningServer = servers.find(s => s.status === 'RUNNING');
                         const activeServer = runningServer || servers.find(s => s.status !== 'STOPPED');
@@ -546,12 +609,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             selectServer(activeServer, false); // false = not a user action
                         }
                     } else {
-                        console.log('Keeping selected server:', state.selectedServer.id, '(status:', currentServer.status, ', userExplicit:', userExplicitlySelectedServer, ')');
+                        console.log('Keeping selected server:', state.selectedServer.id, '(status:', currentServer.status, ', userExplicit:', state.userExplicitlySelectedServer, ')');
                     }
                 } else {
                     console.log('Selected server no longer exists, auto-selecting...');
                     state.selectedServer = null;
-                    userExplicitlySelectedServer = false; // Reset since server disappeared
+                    state.userExplicitlySelectedServer = false; // Reset since server disappeared
                 }
             }
 
@@ -799,6 +862,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             selectDapSessionImpl(sessionId);
         }
 
+
         export function selectDapServer(dapServer) {
             const dapTraceLevel = (state.traceLevels && state.traceLevels['dap.' + dapServer.id]) || 'off';
             state.selectedServer = {...dapServer, isDap: true, traceLevel: dapTraceLevel};
@@ -829,7 +893,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
             // Track if this is an explicit user action
             if (isUserAction) {
-                userExplicitlySelectedServer = true;
+                state.userExplicitlySelectedServer = true;
                 console.log('User explicitly selected server:', server.id);
             }
 
@@ -1630,6 +1694,8 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         workspace.fileWatcherEnabled = result.fileWatcherEnabled;
                         workspace.fileWatcherEnabledSource = result.fileWatcherEnabledSource;
                         workspace.fileWatcherRunning = result.fileWatcherRunning;
+                        workspace.fileWatcherStatus = result.fileWatcherStatus;
+                        workspace.fileWatcherFailureReason = result.fileWatcherFailureReason;
                     }
                     renderWorkspaces();
                     if (state.currentWorkspaceTab === 'settings') {

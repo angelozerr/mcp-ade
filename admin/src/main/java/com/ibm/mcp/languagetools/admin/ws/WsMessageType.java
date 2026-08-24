@@ -31,7 +31,8 @@ public enum WsMessageType {
     OPERATION_UPDATE("operation-update"),
     ACTIVITY_STATE("activity-state"),
     RUNTIME_STATUS_CHANGED("runtime-status-changed"),
-    RUNTIME_TRACE("runtime-trace");
+    RUNTIME_TRACE("runtime-trace"),
+    FILE_WATCHER_STATUS_CHANGED("file-watcher-status-changed");
 
     private final String label;
 

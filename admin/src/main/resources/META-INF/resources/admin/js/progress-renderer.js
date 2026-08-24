@@ -1,8 +1,9 @@
 import { escapeHtml } from './trace-renderer.js';
+import { renderBadge } from './shared-ui.js';
 
 export function renderProgressBadge(label, statusClass, progressPercent, message) {
     if (progressPercent == null) {
-        return `<span class="status-badge ${statusClass}">${label}</span>`;
+        return renderBadge(statusClass.replace('status-', ''), label);
     }
 
     const percent = Math.round(progressPercent);

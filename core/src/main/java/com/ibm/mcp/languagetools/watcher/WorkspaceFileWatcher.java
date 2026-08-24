@@ -53,15 +53,31 @@ public class WorkspaceFileWatcher {
     private final Path root;
     private final Consumer<List<FileEvent>> eventHandler;
     private final Set<String> excludedDirs;
+    private volatile Consumer<WorkspaceFileWatcher> statusChangeCallback;
+
+    public enum Status {
+        STOPPED, INITIALIZING, RUNNING, FAILED
+    }
 
     private DirectoryWatcher watcher;
     private CompletableFuture<Void> watchFuture;
-    private volatile boolean running;
+    private volatile Status status = Status.STOPPED;
+    private volatile String failureReason;
+    private volatile int scannedDirs;
+
+    private final ExecutorService watchExecutor =
+            Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "file-watcher-loop");
+                t.setDaemon(true);
+                t.setPriority(Thread.MIN_PRIORITY);
+                return t;
+            });
 
     private final ScheduledExecutorService batchScheduler =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "file-watcher-batch");
                 t.setDaemon(true);
+                t.setPriority(Thread.MIN_PRIORITY);
                 return t;
             });
 
@@ -86,37 +102,70 @@ public class WorkspaceFileWatcher {
     }
 
     public void start() {
-        if (running) {
+        if (status == Status.RUNNING || status == Status.INITIALIZING) {
             return;
         }
-        running = true;
+        status = Status.INITIALIZING;
+        failureReason = null;
+        fireStatusChange();
         batchScheduler.submit(() -> {
             try {
                 LOG.infof("Initializing file watcher for workspace: %s", root);
+                scannedDirs = 0;
                 long startTime = System.currentTimeMillis();
+                FilteringFileTreeVisitor visitor = new FilteringFileTreeVisitor(excludedDirs, count -> {
+                    scannedDirs = count;
+                    if (status == Status.INITIALIZING) {
+                        fireStatusChange();
+                    }
+                });
                 DirectoryWatcher built = DirectoryWatcher.builder()
                         .path(root)
                         .listener(this::onEvent)
-                        .fileTreeVisitor(new FilteringFileTreeVisitor(excludedDirs))
+                        .fileHashing(false)
+                        .fileTreeVisitor(visitor)
                         .build();
                 long elapsed = System.currentTimeMillis() - startTime;
                 synchronized (this) {
-                    if (!running) {
+                    if (status != Status.INITIALIZING) {
                         try { built.close(); } catch (IOException ignored) {}
                         return;
                     }
                     watcher = built;
                 }
-                watchFuture = watcher.watchAsync();
+                watchFuture = watcher.watchAsync(watchExecutor);
+                status = Status.RUNNING;
+                // Fire synthetic CREATE events for files created/modified during the scan.
+                // OS watchers are registered incrementally (via onDirectory.call) during build(),
+                // so events from already-scanned directories are buffered and delivered by watchAsync().
+                // But files created in not-yet-scanned directories are invisible: no OS watcher
+                // was registered when the file appeared, and when the scanner reaches the directory,
+                // the file is part of the baseline (no CREATE event). The timestamp check in
+                // visitFile catches these files.
+                List<Path> recentFiles = visitor.getFilesCreatedDuringScan();
+                if (!recentFiles.isEmpty()) {
+                    LOG.infof("Found %d files created during scan, firing synthetic events", recentFiles.size());
+                    for (Path file : recentFiles) {
+                        String uri = file.toUri().toString();
+                        pendingBatch.add(new FileEvent(uri, FileChangeType.Created));
+                    }
+                    scheduleBatchFlush();
+                }
                 LOG.infof("Started file watcher for workspace: %s (%d ms)", root, elapsed);
-            } catch (IOException e) {
-                LOG.errorf(e, "Failed to start file watcher for: %s", root);
+                fireStatusChange();
+            } catch (Exception e) {
+                if (status == Status.INITIALIZING) {
+                    status = Status.FAILED;
+                    failureReason = e.getMessage();
+                    LOG.errorf(e, "Failed to start file watcher for: %s", root);
+                    fireStatusChange();
+                }
             }
         });
     }
 
     public void stop() {
-        running = false;
+        status = Status.STOPPED;
         if (watcher != null) {
             try {
                 watcher.close();
@@ -129,17 +178,45 @@ public class WorkspaceFileWatcher {
             watchFuture.cancel(true);
             watchFuture = null;
         }
+        watchExecutor.shutdownNow();
         batchScheduler.shutdownNow();
         flushBatch();
         LOG.infof("Stopped file watcher for workspace: %s", root);
     }
 
     public boolean isRunning() {
-        return running;
+        return status == Status.RUNNING;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
+    }
+
+    public int getScannedDirs() {
+        return scannedDirs;
+    }
+
+    public void setStatusChangeCallback(Consumer<WorkspaceFileWatcher> callback) {
+        this.statusChangeCallback = callback;
+    }
+
+    private void fireStatusChange() {
+        var cb = statusChangeCallback;
+        if (cb != null) {
+            try {
+                cb.accept(this);
+            } catch (Exception e) {
+                LOG.debugf("Error in status change callback: %s", e.getMessage());
+            }
+        }
     }
 
     private void onEvent(DirectoryChangeEvent event) {
-        if (!running) {
+        if (status != Status.RUNNING) {
             return;
         }
 
@@ -182,7 +259,7 @@ public class WorkspaceFileWatcher {
         try {
             batchFuture = batchScheduler.schedule(this::flushBatch, BATCH_DELAY_MS, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException e) {
-            // Scheduler shut down
+            LOG.debugf("Batch flush rejected - scheduler shut down");
         }
     }
 
@@ -225,31 +302,64 @@ public class WorkspaceFileWatcher {
 
     private static class FilteringFileTreeVisitor implements FileTreeVisitor {
 
-        private final Set<String> excludedDirs;
+        private static final long PROGRESS_INTERVAL_MS = 1000;
 
-        FilteringFileTreeVisitor(Set<String> excludedDirs) {
+        private final Set<String> excludedDirs;
+        private final java.util.function.IntConsumer progressCallback;
+        private int dirCount;
+        private long lastProgressTime;
+        private long scanStartTime;
+        private final List<Path> filesCreatedDuringScan = new ArrayList<>();
+
+        FilteringFileTreeVisitor(Set<String> excludedDirs, java.util.function.IntConsumer progressCallback) {
             this.excludedDirs = excludedDirs;
+            this.progressCallback = progressCallback;
         }
 
         @Override
         public void recursiveVisitFiles(Path root, Callback onDirectory, Callback onFile) throws IOException {
+            dirCount = 0;
+            scanStartTime = System.currentTimeMillis();
+            lastProgressTime = scanStartTime;
+            filesCreatedDuringScan.clear();
             Files.walkFileTree(root, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    if (Thread.currentThread().isInterrupted()) {
+                        return FileVisitResult.TERMINATE;
+                    }
                     String dirName = dir.getFileName() != null ? dir.getFileName().toString() : "";
                     if (excludedDirs.contains(dirName)) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
                     onDirectory.call(dir);
+                    dirCount++;
+                    if (progressCallback != null) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastProgressTime >= PROGRESS_INTERVAL_MS) {
+                            lastProgressTime = now;
+                            progressCallback.accept(dirCount);
+                        }
+                    }
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     onFile.call(file);
+                    if (attrs.lastModifiedTime().toMillis() >= scanStartTime) {
+                        filesCreatedDuringScan.add(file);
+                    }
                     return FileVisitResult.CONTINUE;
                 }
             });
+            if (progressCallback != null) {
+                progressCallback.accept(dirCount);
+            }
+        }
+
+        List<Path> getFilesCreatedDuringScan() {
+            return filesCreatedDuringScan;
         }
     }
 }

@@ -144,7 +144,8 @@ public class JavaDebugServer extends DapServer {
                         progressMonitor.reportProgress("JDT.LS ready, setting up module...");
                         addTrace("JDT.LS ready, setting up module...");
                         LOG.infof("Triggering module setup for debug CWD: %s", cwd);
-                        return j.ensureModuleSetupIfFastMode(cwd);
+                        return j.ensureModuleSetupIfFastMode(cwd)
+                                .thenCompose(v -> j.waitForPendingFileWatcherModuleSetups());
                     }
                     return CompletableFuture.completedFuture(null);
                 })

@@ -23,6 +23,7 @@ export const state = {
     currentWorkspaceDiagramServers: null,
     currentWorkspaceDiagramServerId: null,
     modalResolve: null,
+    userExplicitlySelectedServer: false,
 };
 
 const THEME_DARK = 'dark';

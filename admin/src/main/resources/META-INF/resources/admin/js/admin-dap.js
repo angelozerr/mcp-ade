@@ -23,6 +23,10 @@ import { registerActions } from './event-delegation.js';
 let selectDapSessionByServerIdCallback = null;
 export function setSelectDapSessionByServerIdCallback(cb) { selectDapSessionByServerIdCallback = cb; }
 
+let refreshWorkspaceServersFn = null;
+export function setRefreshWorkspaceServersFn(fn) { refreshWorkspaceServersFn = fn; }
+
+
 /**
  * Create a new test session for a DAP server.
  * Called from the workspace Debuggers tab.
@@ -216,7 +220,7 @@ function showLaunchConfigForm(session, dapServerId) {
                 <div class="d-flex justify-between align-center mb-sm">
                     <label class="text-primary font-medium">Console:</label>
                     <div class="console-controls">
-                        ${renderTraceControls('dap-trace', (state.traceLevels && state.traceLevels['dap.' + dapServerId]) || 'off', 'changeDapTraceLevel', {
+                        ${renderTraceControls('dap-trace-' + sessionId, (state.traceLevels && state.traceLevels['dap.' + dapServerId]) || 'off', 'changeDapTraceLevel', {
                             foldAction: 'toggleAllDapTraces',
                             clearAction: 'clearDapConsole'
                         })}
@@ -493,7 +497,11 @@ export async function selectDapSession(sessionId) {
     // Check if session div already exists
     const sessionDiv = document.getElementById(`dap-session-${sessionId}`);
     if (sessionDiv) {
-        // Just show it
+        // Sync status from state in case it changed while off-tab
+        const cachedSession = state.dapSessions?.find(s => s.sessionId === sessionId);
+        if (cachedSession) {
+            updateSessionStateInDOM(sessionId, cachedSession.state, cachedSession.debugMode);
+        }
         showSessionDiv(sessionId);
         return;
     }
@@ -541,7 +549,9 @@ async function loadWorkspaceDapTraceLevel(serverId, workspaceUri) {
             const traceSetting = settings.find(s => s.key === 'trace');
             if (traceSetting) {
                 currentDapTraceLevel = traceSetting.currentValue || 'off';
-                updateTraceControls('dap-trace', currentDapTraceLevel);
+                if (state.currentDapSessionId) {
+                    updateTraceControls('dap-trace-' + state.currentDapSessionId, currentDapTraceLevel);
+                }
                 if (state.currentDapSessionId) {
                     renderDapTracesForSession(state.currentDapSessionId);
                 }
@@ -851,7 +861,7 @@ let dapFoldedState = {};
 
 export function toggleAllDapTraces(sessionId) {
     const container = document.getElementById(`dap-traces-container-${sessionId}`);
-    const foldButton = document.getElementById('dap-trace-fold-button');
+    const foldButton = document.getElementById(`dap-trace-${sessionId}-fold-button`);
     const isFolded = dapFoldedState[sessionId] || false;
 
     // Use toggleAllTraces
@@ -917,7 +927,7 @@ export async function changeDapTraceLevel(sessionId, level) {
     } else if (serverId) {
         changeServerTraceLevel('dap', serverId, level);
     }
-    updateTraceControls('dap-trace', level);
+    updateTraceControls('dap-trace-' + sessionId, level);
     renderDapTracesForSession(sessionId);
 }
 
@@ -928,18 +938,12 @@ export async function changeDapTraceLevel(sessionId, level) {
 export async function onDapSessionUpdate(message) {
     console.log('[DAP] Session update:', message.eventType, message.sessionId, message.newStatus);
 
-    if (state.currentWorkspaceTab !== 'debuggers') {
-        return; // Not on debuggers tab, ignore
-    }
+    const onDebuggersTab = state.currentWorkspaceTab === 'debuggers';
 
     // Update only the affected session based on event type
     switch (message.eventType) {
         case 'CREATED':
             if (message.workspaceUri === state.selectedWorkspace) {
-                // Skip if already in DOM (added by createNewTestSession)
-                if (document.querySelector(`[data-session-id="${message.sessionId}"]`)) {
-                    break;
-                }
                 try {
                     const response = await fetch(`/api/admin/dap/sessions`);
                     if (response.ok) {
@@ -951,10 +955,20 @@ export async function onDapSessionUpdate(message) {
                                 state.dapSessions.push(newSession);
                             }
 
-                            const serverElement = document.querySelector(`[data-dap-server="${newSession.serverId}"]`);
-                            if (serverElement) {
-                                serverElement.insertAdjacentHTML('afterend', createSessionHTML(newSession));
-                                selectDapSession(newSession.sessionId);
+                            if (onDebuggersTab) {
+                                // Skip DOM insert if already in DOM (added by createNewTestSession)
+                                if (document.querySelector(`[data-session-id="${message.sessionId}"]`)) {
+                                    break;
+                                }
+                                const serverElement = document.querySelector(`[data-dap-server="${newSession.serverId}"]`);
+                                if (serverElement) {
+                                    serverElement.insertAdjacentHTML('afterend', createSessionHTML(newSession));
+                                } else if (refreshWorkspaceServersFn) {
+                                    await refreshWorkspaceServersFn();
+                                }
+                                if (!state.userExplicitlySelectedServer) {
+                                    selectDapSession(newSession.sessionId);
+                                }
                             }
                         }
                     }
@@ -982,9 +996,17 @@ export async function onDapSessionUpdate(message) {
             if (message.createdAt) session.createdAt = message.createdAt;
             if (message.launchBy) session.launchedBy = message.launchBy;
             if (message.launchedAt) session.launchedAt = message.launchedAt;
+            session.state = message.newStatus;
 
-            updateSessionStateInDOM(message.sessionId, message.newStatus, message.debugMode);
-            updateSessionDetailInDOM(message.sessionId, message);
+            if (onDebuggersTab) {
+                updateSessionStateInDOM(message.sessionId, message.newStatus, message.debugMode);
+                updateSessionDetailInDOM(message.sessionId, message);
+
+                const activeStates = ['RUNNING', 'PAUSED', 'STARTING', 'INSTALLING', 'LAUNCHING', 'ATTACHING'];
+                if (!state.userExplicitlySelectedServer && activeStates.includes(message.newStatus)) {
+                    selectDapSession(message.sessionId);
+                }
+            }
             break;
 
         case 'DELETED': {
@@ -995,18 +1017,21 @@ export async function onDapSessionUpdate(message) {
             if (state.dapSessions) {
                 state.dapSessions = state.dapSessions.filter(s => s.sessionId !== message.sessionId);
             }
-            removeSessionFromDOM(message.sessionId);
 
-            if (wasDisplayed) {
-                const remainingSession = document.querySelector('.dap-session-item[data-session-id]');
-                if (remainingSession) {
-                    selectDapSession(remainingSession.getAttribute('data-session-id'));
-                } else if (deletedServerId && selectDapSessionByServerIdCallback) {
-                    selectDapSessionByServerIdCallback(deletedServerId);
-                } else {
-                    const consoleArea = document.getElementById('console-area');
-                    if (consoleArea) {
-                        consoleArea.innerHTML = '<div class="placeholder">No active debug session</div>';
+            if (onDebuggersTab) {
+                removeSessionFromDOM(message.sessionId);
+
+                if (wasDisplayed) {
+                    const remainingSession = document.querySelector('.dap-session-item[data-session-id]');
+                    if (remainingSession) {
+                        selectDapSession(remainingSession.getAttribute('data-session-id'));
+                    } else if (deletedServerId && selectDapSessionByServerIdCallback) {
+                        selectDapSessionByServerIdCallback(deletedServerId);
+                    } else {
+                        const consoleArea = document.getElementById('console-area');
+                        if (consoleArea) {
+                            consoleArea.innerHTML = '<div class="placeholder">No active debug session</div>';
+                        }
                     }
                 }
             }
@@ -1066,7 +1091,7 @@ function updateSessionStateInDOM(sessionId, newStatus, debugMode) {
         // Update icon (use stateIcon from getSessionStateInfo)
         const iconElement = sessionElement.querySelector('span:first-child');
         if (iconElement) {
-            // Extract emoji from HTML string (e.g., "<span>⏹️</span>" -> "⏹️")
+            // Extract emoji from HTML string (e.g., "<span>■</span>" -> "⏹️")
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = stateIcon;
             iconElement.textContent = tempDiv.textContent;
@@ -1246,7 +1271,7 @@ function getSessionButtonStates(sessionState) {
  * Get session state display info (icon, text, CSS class).
  */
 function getSessionStateInfo(session) {
-    let stateIcon = '<span>⏹️</span>';
+    let stateIcon = '<span>■</span>';
     let statusText = session.state ? session.state.charAt(0) + session.state.slice(1).toLowerCase() : 'Created';
     let statusClass = 'status-stopped';
 
@@ -1269,24 +1294,24 @@ function getSessionStateInfo(session) {
     } else if (session.state === 'RUNNING') {
         // Check if it's debugging or just running
         const isDebugging = session.debugMode === true;
-        stateIcon = isDebugging ? '<span>🐛</span>' : '<span>▶️</span>';
+        stateIcon = isDebugging ? '<span>🐛</span>' : '<span>▶</span>';
         statusText = isDebugging ? 'Debugging' : 'Running';
         statusClass = 'status-running';
     } else if (session.state === 'PAUSED') {
-        stateIcon = '<span>⏸️</span>';
+        stateIcon = '<span>⏸</span>';
         statusText = 'Paused';
         statusClass = 'status-paused';
     } else if (session.state === 'TERMINATED') {
-        stateIcon = '<span>⏹️</span>';
+        stateIcon = '<span>■</span>';
         statusText = 'Terminated';
         statusClass = 'status-terminated';
     } else if (session.state === 'LAUNCH_FAILED') {
         stateIcon = '<span>❌</span>';
-        statusText = 'Launch Failed';
+        statusText = 'Failed';
         statusClass = 'status-error';
     } else if (session.state === 'ATTACH_FAILED') {
         stateIcon = '<span>❌</span>';
-        statusText = 'Attach Failed';
+        statusText = 'Failed';
         statusClass = 'status-error';
     } else if (session.state === 'ERROR' || session.state === 'START_FAILED') {
         stateIcon = '<span>❌</span>';
@@ -1319,12 +1344,10 @@ export function createSessionHTML(session) {
         : '<span class="text-dimmed font-sm opacity-50" title="Creator unknown">❓</span>';
 
     return `
-        <div data-session-id="${session.sessionId}" class="dap-session-item d-flex align-center gap-sm cursor-pointer font-md rounded template-selector" data-action="selectDapSession">
+        <div data-session-id="${session.sessionId}" class="dap-session-item d-flex align-center gap-sm cursor-pointer rounded template-selector" data-action="selectDapSession">
             ${stateIcon}
-            ${creatorIcon}
-            <span class="flex-1 truncate">${session.sessionName}</span>
+            <span class="flex-1 truncate session-name">${session.sessionName}</span>
             <span class="status-badge status-badge-compact ${statusClass}">${statusText}</span>
-            ${actions}
         </div>
     `;
 }

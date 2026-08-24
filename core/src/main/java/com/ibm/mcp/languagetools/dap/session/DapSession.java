@@ -265,8 +265,12 @@ public class DapSession implements DapEventListener {
      * Installation happens automatically inside dapServer.start().
      */
     public CompletableFuture<Void> initialize(ProgressMonitor progressMonitor) {
+        return initialize(progressMonitor, null);
+    }
+
+    public CompletableFuture<Void> initialize(ProgressMonitor progressMonitor, OperationEntry operationEntry) {
         LOG.infof("Initializing DAP session: %s (%s)", sessionName, sessionId);
-        return trackFuture(dapServer.start(progressMonitor)
+        return trackFuture(dapServer.start(progressMonitor, operationEntry)
                 .thenAccept(v -> {
                     // Server is now RUNNING, session stays CREATED until launch
                     LOG.infof("DAP session initialized: %s", sessionId);
@@ -374,8 +378,6 @@ public class DapSession implements DapEventListener {
             progressMonitor.reportProgress(10.0, "Starting debug adapter");
         }
 
-        OperationEntry installEntry = serverEntry != null ? serverEntry.addChild("installing") : null;
-
         // Restart server if not running (first launch or after crash)
         CompletableFuture<Void> initFuture;
         var serverStatus = dapServer.getStatus();
@@ -385,29 +387,20 @@ public class DapSession implements DapEventListener {
         if (previousState == SessionState.TERMINATED && serverStatus == ServerStatus.RUNNING) {
             LOG.infof("Session TERMINATED but server RUNNING - stopping server to clear state");
             initFuture = CompletableFuture.runAsync(() -> dapServer.stop())
-                    .thenCompose(v -> initialize(progressMonitor));
+                    .thenCompose(v -> initialize(progressMonitor, serverEntry));
         } else if (previousState == SessionState.CREATED
                 || serverStatus == ServerStatus.NOT_STARTED
                 || serverStatus == ServerStatus.START_FAILED
                 || serverStatus == ServerStatus.ERROR
                 || serverStatus == ServerStatus.STOPPED) {
             LOG.infof("Server not running or in error, starting and initializing...");
-            initFuture = initialize(progressMonitor);
+            initFuture = initialize(progressMonitor, serverEntry);
         } else {
             LOG.infof("Server already running, skipping init");
             initFuture = CompletableFuture.completedFuture(null);
         }
 
         return trackFuture(initFuture
-                .whenComplete((v, initEx) -> {
-                    if (installEntry != null) {
-                        if (initEx != null) {
-                            installEntry.fail(initEx.getMessage());
-                        } else {
-                            installEntry.complete();
-                        }
-                    }
-                })
                 .thenCompose(v -> {
             OperationEntry launchEntry = serverEntry != null
                     ? serverEntry.addChild(attachMode ? "attaching" : "launching") : null;

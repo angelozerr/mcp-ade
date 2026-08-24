@@ -5,7 +5,7 @@
  */
 
 import { state, updateSearchBoxVisibility } from './shared-state.js';
-import { getRuntimeStatusInfo, appendTraceLine, renderServerLink, renderExtensionLink, selectListItem } from './shared-ui.js';
+import { getRuntimeStatusInfo, appendTraceLine, renderServerLink, renderExtensionLink, selectListItem, renderBadge } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
 
 let selectedRuntime = null;
@@ -20,7 +20,7 @@ function getStatusIconHTML(runtime) {
 
 function getStatusBadge(runtime) {
     const info = getRuntimeStatusInfo(runtime.status, runtime.autoInstallable);
-    return `<span class="badge ${info.badgeClass}">${info.label}</span>`;
+    return renderBadge(info.statusClass, info.label, { animate: info.animate });
 }
 
 function renderRuntimeItem(runtime) {
@@ -297,7 +297,7 @@ export function updateRuntimeStatus(runtimeId, status, error) {
         if (item) {
             const iconEl = item.querySelector('.server-source-icon');
             if (iconEl) iconEl.outerHTML = getStatusIconHTML(runtime);
-            const badgeEl = item.querySelector('.badge');
+            const badgeEl = item.querySelector('.status-badge');
             if (badgeEl) badgeEl.outerHTML = getStatusBadge(runtime);
         }
     }

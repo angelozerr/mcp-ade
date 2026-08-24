@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.dap.session.DapSession;
 import com.ibm.mcp.languagetools.dap.transport.SocketTransportStreams;
 import com.ibm.mcp.languagetools.dap.transport.StdioTransportStreams;
 import com.ibm.mcp.languagetools.dap.transport.TransportStreams;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
@@ -96,6 +97,10 @@ public class DapServer extends ServerBase<DapServerConfig> {
      * </ul>
      */
     public final CompletableFuture<Void> start(ProgressMonitor progressMonitor) {
+        return start(progressMonitor, null);
+    }
+
+    public final CompletableFuture<Void> start(ProgressMonitor progressMonitor, OperationEntry operationEntry) {
         if (!prepareStart()) {
             return CompletableFuture.completedFuture(null);
         }
@@ -108,7 +113,9 @@ public class DapServer extends ServerBase<DapServerConfig> {
             getConfig().ensureInstalled(
                     getWorkspace(),
                     this::setStatus,
-                    progressMonitor)
+                    progressMonitor,
+                    false,
+                    operationEntry)
                 .thenCompose(v -> doStart())
         );
     }

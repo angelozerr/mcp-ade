@@ -95,6 +95,9 @@ public class Application {
     @Inject
     Event<ServerStatusChangeEvent> serverStatusChangeEvent;
 
+    @Inject
+    Event<Workspace.FileWatcherStatusChangeEvent> fileWatcherStatusChangeEvent;
+
     // ----------- DAP servers
 
     @Inject
@@ -205,6 +208,12 @@ public class Application {
                 LOG.infof("WorkspaceManager: Firing server status change event: %s/%s - %s -> %s",
                         event.workspaceUri(), event.serverId(), event.oldStatus(), event.newStatus());
                 serverStatusChangeEvent.fire(event);
+            });
+
+            ws.setFileWatcherStatusChangeCallback(event -> {
+                LOG.infof("WorkspaceManager: File watcher status changed: %s - %s",
+                        event.workspaceUri(), event.status());
+                fileWatcherStatusChangeEvent.fire(event);
             });
 
             LOG.infof("Created workspace %s", uri);

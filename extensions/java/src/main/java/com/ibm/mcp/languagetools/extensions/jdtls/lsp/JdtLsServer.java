@@ -31,6 +31,8 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.jboss.logging.Logger;
 
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.FileChangeType;
+import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 
 import jakarta.enterprise.inject.spi.CDI;
@@ -47,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Custom LSP server for Eclipse JDT.LS.
@@ -68,6 +71,8 @@ public class JdtLsServer extends LspServer implements InstallerListener {
 
     private volatile String mavenBuildSupport;
     private volatile String gradleBuildSupport;
+
+    private final List<CompletableFuture<Void>> pendingFileWatcherModuleSetups = new CopyOnWriteArrayList<>();
 
     public JdtLsServer(LspServerConfig config, Workspace workspace) {
         super(config, workspace);
@@ -310,6 +315,31 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             LOG.debugf(e, "CDI not available for BuildSupportManager lookup");
             return CompletableFuture.completedFuture(null);
         }
+    }
+
+    @Override
+    public void sendDidChangeWatchedFiles(List<FileEvent> changes) {
+        if (isFastMode()) {
+            for (FileEvent event : changes) {
+                if (event.getType() == FileChangeType.Created
+                        && event.getUri().endsWith(".java")) {
+                    CompletableFuture<Void> setup = ensureModuleSetupIfFastMode(event.getUri());
+                    if (setup != null && !setup.isDone()) {
+                        pendingFileWatcherModuleSetups.add(setup);
+                        setup.whenComplete((v, ex) -> pendingFileWatcherModuleSetups.remove(setup));
+                    }
+                }
+            }
+        }
+        super.sendDidChangeWatchedFiles(changes);
+    }
+
+    public CompletableFuture<Void> waitForPendingFileWatcherModuleSetups() {
+        List<CompletableFuture<Void>> snapshot = List.copyOf(pendingFileWatcherModuleSetups);
+        if (snapshot.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return CompletableFuture.allOf(snapshot.toArray(new CompletableFuture[0]));
     }
 
     private boolean hasDiagnosticsCommand() {

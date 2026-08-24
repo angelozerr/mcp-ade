@@ -39,6 +39,7 @@ import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.watcher.WorkspaceFileWatcher;
 import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.FileSystemWatcher;
+import org.eclipse.lsp4j.RelativePattern;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
@@ -77,6 +78,9 @@ public class Workspace {
     private final Map<String, LspServer> lspServers = new ConcurrentHashMap<>();
     private final Map<String, McpClientInfo> mcpClientConnections = new ConcurrentHashMap<>();
     private Consumer<ServerStatusChangeEvent> statusChangeCallback;
+    private Consumer<FileWatcherStatusChangeEvent> fileWatcherStatusChangeCallback;
+
+    public record FileWatcherStatusChangeEvent(String workspaceUri, String status, String failureReason, int scannedDirs) {}
 
     // BSP
     private final Map<String, BspServer> bspServers = new ConcurrentHashMap<>();
@@ -126,6 +130,10 @@ public class Workspace {
      */
     public void setServerStatusChangeCallback(Consumer<ServerStatusChangeEvent> callback) {
         this.statusChangeCallback = callback;
+    }
+
+    public void setFileWatcherStatusChangeCallback(Consumer<FileWatcherStatusChangeEvent> callback) {
+        this.fileWatcherStatusChangeCallback = callback;
     }
 
     /**
@@ -237,15 +245,10 @@ public class Workspace {
         LspServerConfig serverConfig = application.getLspServerConfig(serverId);
         String serverName = serverConfig != null ? serverConfig.getName() : serverId;
 
-        OperationEntry installChild = serverEntry != null ? serverEntry.addChild("installing") : null;
-
         ProgressMonitor installMonitor = progressMonitor.beginStep(ProgressStep.INSTALLING);
         installMonitor.reportProgress(0.0, "Installing " + serverName);
-        return prepareManagedLspServer(serverId, installMonitor)
+        return prepareManagedLspServer(serverId, installMonitor, serverEntry)
                 .thenCompose(server -> {
-                    if (installChild != null) {
-                        installChild.complete();
-                    }
                     if (serverEntry != null) {
                         serverEntry.addChild("starting");
                         server.setOperationEntry(serverEntry);
@@ -265,6 +268,16 @@ public class Workspace {
      * Callers can chain server.initialize() after step transitions.
      */
     public CompletableFuture<LspServer> prepareManagedLspServer(String serverId, ProgressMonitor progressMonitor) {
+        return prepareManagedLspServer(serverId, progressMonitor, null);
+    }
+
+    /**
+     * Prepare a managed server with operation tracking.
+     *
+     * @param operationEntry optional parent entry for operation tracking (nullable)
+     */
+    public CompletableFuture<LspServer> prepareManagedLspServer(String serverId, ProgressMonitor progressMonitor,
+                                                                 OperationEntry operationEntry) {
         LspServerConfig serverConfig = application.getLspServerConfig(serverId);
         if (serverConfig == null) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Server not found: " + serverId));
@@ -289,7 +302,7 @@ public class Workspace {
                 newServer.setStatus(ServerStatus.INSTALLING);
             }
 
-            return newServer.startManagedOnly(progressMonitor)
+            return newServer.startManagedOnly(progressMonitor, operationEntry)
                     .thenApply(initV -> newServer)
                     .exceptionally(ex -> {
                         LOG.errorf(ex, "Failed to start MCP-managed LSP server '%s'", serverId);
@@ -722,6 +735,16 @@ public class Workspace {
             additionalExcludes.removeIf(String::isBlank);
         }
         fileWatcher = new WorkspaceFileWatcher(rootPath, this::onFileChanges, additionalExcludes);
+        fileWatcher.setStatusChangeCallback(fw -> {
+            var cb = fileWatcherStatusChangeCallback;
+            if (cb != null) {
+                cb.accept(new FileWatcherStatusChangeEvent(
+                        normalizedRootUriString,
+                        fw.getStatus().name(),
+                        fw.getFailureReason(),
+                        fw.getScannedDirs()));
+            }
+        });
         fileWatcher.start();
     }
 
@@ -741,6 +764,18 @@ public class Workspace {
      */
     public boolean isFileWatcherRunning() {
         return fileWatcher != null && fileWatcher.isRunning();
+    }
+
+    public WorkspaceFileWatcher.Status getFileWatcherStatus() {
+        if (fileWatcher == null) {
+            boolean enabled = configuration.resolveBoolean("fileWatchers.enabled", true).value();
+            return enabled ? WorkspaceFileWatcher.Status.STOPPED : WorkspaceFileWatcher.Status.STOPPED;
+        }
+        return fileWatcher.getStatus();
+    }
+
+    public String getFileWatcherFailureReason() {
+        return fileWatcher != null ? fileWatcher.getFailureReason() : null;
     }
 
     public boolean isNeedsFullBuild() {
@@ -872,18 +907,26 @@ public class Workspace {
 
     private List<FileEvent> filterByPatterns(List<FileEvent> events, LspServer server) {
         List<PathMatcher> matchers = new ArrayList<>();
+        List<String> patternStrings = new ArrayList<>();
 
         // Dynamic patterns from registerCapability
         LspClientFeatures features = server.getClientFeatures();
         for (FileSystemWatcher w : features.getFileWatchers()) {
             String pattern = w.getGlobPattern().getLeft();
             if (pattern == null) {
+                RelativePattern rel = w.getGlobPattern().getRight();
+                if (rel != null) {
+                    pattern = rel.getPattern();
+                }
+            }
+            if (pattern == null) {
                 continue;
             }
             try {
                 matchers.add(FileSystems.getDefault().getPathMatcher("glob:" + pattern));
+                patternStrings.add(pattern);
             } catch (Exception e) {
-                // invalid pattern
+                LOG.warnf("Invalid dynamic file watcher pattern for %s: %s", server.getId(), pattern);
             }
         }
 
@@ -893,8 +936,9 @@ public class Workspace {
             for (LspServerConfig.FileWatcherPattern p : config.getFileWatchers()) {
                 try {
                     matchers.add(FileSystems.getDefault().getPathMatcher("glob:" + p.getGlobPattern()));
+                    patternStrings.add(p.getGlobPattern());
                 } catch (Exception e) {
-                    // invalid pattern
+                    LOG.warnf("Invalid static file watcher pattern for %s: %s", server.getId(), p.getGlobPattern());
                 }
             }
         }
@@ -903,7 +947,7 @@ public class Workspace {
             return events;
         }
 
-        return events.stream()
+        List<FileEvent> result = events.stream()
                 .filter(event -> {
                     try {
                         Path filePath = rootPath.relativize(Path.of(URI.create(event.getUri())));
@@ -913,6 +957,7 @@ public class Workspace {
                     }
                 })
                 .toList();
+        return result;
     }
 
     /**

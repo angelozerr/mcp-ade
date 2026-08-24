@@ -19,6 +19,7 @@ import com.ibm.mcp.languagetools.lsp.LspInstanceRegistry;
 import com.ibm.mcp.languagetools.lsp.client.GenericLanguageClient;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
+import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
@@ -147,13 +148,23 @@ public class LspServer extends ServerBase<LspServerConfig> {
      * @param progressMonitor Progress monitor (never null, use ProgressMonitor.none() if not available)
      */
     public CompletableFuture<Void> startManagedOnly(ProgressMonitor progressMonitor) {
+        return startManagedOnly(progressMonitor, null);
+    }
+
+    /**
+     * Start MCP-managed language server process only (do not connect to IDE instance).
+     *
+     * @param progressMonitor Progress monitor (never null, use ProgressMonitor.none() if not available)
+     * @param operationEntry optional parent entry for operation tracking (nullable)
+     */
+    public CompletableFuture<Void> startManagedOnly(ProgressMonitor progressMonitor, OperationEntry operationEntry) {
         var config = super.getConfig();
         LOG.infof("Starting managed-only %s for workspace: %s", config.getServerId(), workspaceRoot);
         setStatus(ServerStatus.STARTING);
 
         // Ensure server and its contributors are installed first
         return withErrorLogging(
-                config.ensureInstalled(getWorkspace(), this::setStatus, progressMonitor)
+                config.ensureInstalled(getWorkspace(), this::setStatus, progressMonitor, false, operationEntry)
                         .thenCompose(v -> ensureContributorsInstalled(progressMonitor))
                         .thenCompose(v -> CompletableFuture.runAsync(() -> {
                             String workspacePath = Paths.get(workspaceRoot).toString();

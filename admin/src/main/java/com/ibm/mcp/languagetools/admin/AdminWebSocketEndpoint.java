@@ -473,6 +473,13 @@ public class AdminWebSocketEndpoint {
         broadcast(msg);
     }
 
+    void onFileWatcherStatusChange(@Observes com.ibm.mcp.languagetools.workspace.Workspace.FileWatcherStatusChangeEvent event) {
+        FileWatcherStatusChangedWsMessage msg = new FileWatcherStatusChangedWsMessage(
+                event.workspaceUri(), event.status(), event.failureReason(),
+                event.scannedDirs());
+        broadcast(msg);
+    }
+
     void onRuntimeStatusChange(@Observes RuntimeStatusChangeEvent event) {
         LOG.infof("WebSocket: Runtime status changed: %s -> %s (broadcasting to %d clients)",
                 event.runtimeId(), event.status(), sessions.size());

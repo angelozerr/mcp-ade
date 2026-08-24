@@ -23,7 +23,9 @@ public record WorkspaceDTO(
     List<McpClientInfo> mcpClients,
     boolean fileWatcherEnabled,
     String fileWatcherEnabledSource,
-    boolean fileWatcherRunning
+    boolean fileWatcherRunning,
+    String fileWatcherStatus,
+    String fileWatcherFailureReason
 ) {
     public record McpClientInfo(
         String name,
@@ -40,6 +42,9 @@ public record WorkspaceDTO(
 
         var uri = workspace.getNormalizedUri();
         var fwResolved = workspace.getWorkspaceConfiguration().resolveBoolean("fileWatchers.enabled", true);
-        return new WorkspaceDTO(uri, mcpClients, fwResolved.value(), fwResolved.source().name(), workspace.isFileWatcherRunning());
+        return new WorkspaceDTO(uri, mcpClients, fwResolved.value(), fwResolved.source().name(),
+                workspace.isFileWatcherRunning(),
+                workspace.getFileWatcherStatus().name(),
+                workspace.getFileWatcherFailureReason());
     }
 }

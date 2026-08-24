@@ -52,26 +52,40 @@ export function renderDocumentSelector(selectors) {
 }
 
 /**
+ * Renders a status badge with uniform styling.
+ * @param {string} statusClass - CSS class suffix (e.g. 'running', 'starting', 'error', 'stopped')
+ * @param {string} label - Display text
+ * @param {object} [opts] - Options: compact (boolean), animate (boolean)
+ * @returns {string} HTML string
+ */
+export function renderBadge(statusClass, label, opts) {
+    const classes = ['status-badge', `status-${statusClass}`];
+    if (opts?.compact) classes.push('status-badge-compact');
+    if (opts?.animate) classes.push('status-checking');
+    return `<span class="${classes.join(' ')}">${label}</span>`;
+}
+
+/**
  * Returns display info for a runtime status: icon, label, cssClass, badgeClass.
  */
 export function getRuntimeStatusInfo(status, autoInstallable) {
     status = status || 'NOT_INSTALLED';
     if (status === 'INSTALLED' || status === 'ALREADY_INSTALLED') {
-        return { icon: '🟢', label: 'Installed', cssClass: 'success', badgeClass: 'badge-success', animate: false };
+        return { icon: '🟢', label: 'Installed', cssClass: 'success', badgeClass: 'badge-success', statusClass: 'running', animate: false };
     }
     if (status === 'INSTALLING') {
-        return { icon: '🟡', label: 'Installing...', cssClass: 'warning', badgeClass: 'badge-checking', animate: true };
+        return { icon: '🟡', label: 'Installing...', cssClass: 'warning', badgeClass: 'badge-checking', statusClass: 'installing', animate: true };
     }
     if (status === 'CHECKING') {
-        return { icon: '🟡', label: 'Checking...', cssClass: 'warning', badgeClass: 'badge-checking', animate: true };
+        return { icon: '🟡', label: 'Checking...', cssClass: 'warning', badgeClass: 'badge-checking', statusClass: 'installing', animate: true };
     }
     if (status === 'FAILED' || status === 'ERROR') {
-        return { icon: '🔴', label: 'Error', cssClass: 'error', badgeClass: 'badge-error', animate: false };
+        return { icon: '🔴', label: 'Error', cssClass: 'error', badgeClass: 'badge-error', statusClass: 'error', animate: false };
     }
     if (autoInstallable) {
-        return { icon: '🔵', label: 'Auto-installable', cssClass: 'info', badgeClass: 'badge-info', animate: false };
+        return { icon: '🔵', label: 'Auto-installable', cssClass: 'info', badgeClass: 'badge-info', statusClass: 'starting', animate: false };
     }
-    return { icon: '⚪', label: 'Check-only', cssClass: 'dimmed', badgeClass: 'badge-dimmed', animate: false };
+    return { icon: '⚪', label: 'Check-only', cssClass: 'dimmed', badgeClass: 'badge-dimmed', statusClass: 'stopped', animate: false };
 }
 
 /**
@@ -85,7 +99,7 @@ export function renderRuntimeSection(data) {
             <span class="detail-label">Runtime:</span>
             <span class="detail-value">
                 ${renderRuntimeLink(data.runtime)}
-                ${data.runtimeStatus ? ` <span class="badge ${info.badgeClass}">${info.label}</span>` : ''}
+                ${data.runtimeStatus ? ` ${renderBadge(info.statusClass, info.label, { animate: info.animate })}` : ''}
             </span>
         </div>
     `;
