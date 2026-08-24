@@ -175,7 +175,8 @@ public abstract class AbstractServerAdminResource {
             String taskId, String serverId, String title) {
         TraceProgressMonitor monitor = new TraceProgressMonitor(
                 traceCollector, 100.0, progressBroadcaster, taskId, serverId, title);
-        monitor.addStep(ProgressStep.INSTALLING, 0.50);
+        monitor.addStep(ProgressStep.INSTALLING_RUNTIME, 0.20);
+        monitor.addStep(ProgressStep.INSTALLING, 0.30);
         monitor.addStep(ProgressStep.STARTING, 0.10);
         monitor.addStep(ProgressStep.INITIALIZING, 0.40);
         monitor.initializeSteps();

@@ -19,6 +19,7 @@ package com.ibm.mcp.languagetools.progress;
 public enum ProgressStep {
 
     CHECKING("Checking"),
+    INSTALLING_RUNTIME("Installing runtime"),
     INSTALLING("Installing"),
     STARTING("Starting"),
     INITIALIZING("Initializing"),

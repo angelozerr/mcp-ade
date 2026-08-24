@@ -22,18 +22,21 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ExecTask extends InstallerTask {
     private final String command;
     private final Integer timeout;
     private final String workingDir;
+    private final boolean shell;
 
-    public ExecTask(String name, InstallerTask onSuccess, String command, Integer timeout, String workingDir) {
+    public ExecTask(String name, InstallerTask onSuccess, String command, Integer timeout, String workingDir, boolean shell) {
         super(name, onSuccess);
         this.command = command;
         this.timeout = timeout;
         this.workingDir = workingDir;
+        this.shell = shell;
     }
 
     @Override
@@ -43,10 +46,14 @@ public class ExecTask extends InstallerTask {
 
         try {
             ProcessBuilder pb;
-            if (OSUtils.isWindows()) {
-                pb = new ProcessBuilder("cmd", "/c", resolvedCommand);
+            if (shell) {
+                if (OSUtils.isWindows()) {
+                    pb = new ProcessBuilder("cmd", "/c", resolvedCommand);
+                } else {
+                    pb = new ProcessBuilder("sh", "-c", resolvedCommand);
+                }
             } else {
-                pb = new ProcessBuilder("sh", "-c", resolvedCommand);
+                pb = new ProcessBuilder(tokenizeCommand(resolvedCommand));
             }
             pb.redirectErrorStream(false);
 
@@ -93,6 +100,7 @@ public class ExecTask extends InstallerTask {
             if (timeout != null) {
                 finished = process.waitFor(timeout, TimeUnit.MILLISECONDS);
                 if (!finished) {
+                    process.descendants().forEach(ProcessHandle::destroyForcibly);
                     process.destroyForcibly();
                     context.traceError("Command timed out after " + timeout + "ms");
                     return false;
@@ -119,6 +127,29 @@ public class ExecTask extends InstallerTask {
         }
     }
 
+    static List<String> tokenizeCommand(String command) {
+        List<String> tokens = new java.util.ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < command.length(); i++) {
+            char c = command.charAt(i);
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ' ' && !inQuotes) {
+                if (current.length() > 0) {
+                    tokens.add(current.toString());
+                    current.setLength(0);
+                }
+            } else {
+                current.append(c);
+            }
+        }
+        if (current.length() > 0) {
+            tokens.add(current.toString());
+        }
+        return tokens;
+    }
+
     public static class Factory extends InstallerTaskFactoryBase {
         @Override
         public String getType() {
@@ -135,7 +166,8 @@ public class ExecTask extends InstallerTask {
             String command = OSUtils.getStringFromOs(json, "command");
             Integer timeout = json.has("timeout") ? json.get("timeout").getAsInt() : null;
             String workingDir = json.has("workingDir") ? json.get("workingDir").getAsString() : null;
-            return new ExecTask(name, onSuccess, command, timeout, workingDir);
+            boolean shell = !json.has("shell") || json.get("shell").getAsBoolean();
+            return new ExecTask(name, onSuccess, command, timeout, workingDir, shell);
         }
     }
 }

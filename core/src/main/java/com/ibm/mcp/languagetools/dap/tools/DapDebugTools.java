@@ -407,14 +407,26 @@ public class DapDebugTools {
         ProgressMonitor progressMonitor = progressMonitorManager.createProgressMonitor(
                 progress, cancellation, ProgressContext.forOperation("start_debugging", "Start debugging"));
 
-        // Define steps for DAP operations
-        progressMonitor
-                .addStep(ProgressStep.INSTALLING, 0.40)
-                .addStep(ProgressStep.STARTING, 0.20)
-                .addStep(ProgressStep.EXECUTING, 0.40);
+        // Define steps for DAP operations (with separate runtime/server install steps)
+        DapServerConfig dapConfig = application.getDapServerConfig(debuggerId);
+        boolean hasRuntime = dapConfig != null && dapConfig.getRuntimeConfig() != null;
+        String serverInstallStep = "Installing " + debuggerId;
 
-        progressMonitor.beginStep(ProgressStep.INSTALLING);
-        progressMonitor.reportProgress(0.0, "Installing debug adapter");
+        if (hasRuntime) {
+            String runtimeInstallStep = "Installing " + dapConfig.getRuntimeConfig().getName();
+            progressMonitor
+                    .addStep(runtimeInstallStep, 0.15)
+                    .addStep(serverInstallStep, 0.15)
+                    .addStep(ProgressStep.STARTING, 0.20)
+                    .addStep(ProgressStep.EXECUTING, 0.50);
+            progressMonitor.beginStep(runtimeInstallStep);
+        } else {
+            progressMonitor
+                    .addStep(serverInstallStep, 0.30)
+                    .addStep(ProgressStep.STARTING, 0.20)
+                    .addStep(ProgressStep.EXECUTING, 0.50);
+            progressMonitor.beginStep(serverInstallStep);
+        }
 
         // Convert cwd to URI (handle both file:// URIs and Windows/Unix paths)
         URI uri;

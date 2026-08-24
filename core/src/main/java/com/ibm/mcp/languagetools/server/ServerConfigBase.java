@@ -29,6 +29,7 @@ import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.language.DocumentSelector;
 import com.ibm.mcp.languagetools.lsp.Contributes;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.runtime.RuntimeConfig;
 import org.jboss.logging.Logger;
 
@@ -399,6 +400,8 @@ public class ServerConfigBase extends InstallableConfig {
                     })
                     .thenCompose(runtimeResult -> {
                         addRuntimeToPath();
+                        progressMonitor.beginStep("Installing " + getServerId());
+                        progressMonitor.beginStep(ProgressStep.INSTALLING);
                         OperationEntry serverEntry = operationEntry != null
                                 ? operationEntry.addChild("installing " + getName()) : null;
                         return doEnsureInstalled(workspace, serverStatusCallback, progressMonitor, force)

@@ -372,12 +372,6 @@ public class DapSession implements DapEventListener {
         this.attachMode = "attach".equals(launchConfig.get("request"));
         setState(isAttach() ? SessionState.ATTACHING : SessionState.LAUNCHING);
 
-        // Report progress: Starting debug adapter
-        if (progressMonitor != null) {
-            progressMonitor.beginStep(ProgressStep.STARTING);
-            progressMonitor.reportProgress(10.0, "Starting debug adapter");
-        }
-
         // Restart server if not running (first launch or after crash)
         CompletableFuture<Void> initFuture;
         var serverStatus = dapServer.getStatus();

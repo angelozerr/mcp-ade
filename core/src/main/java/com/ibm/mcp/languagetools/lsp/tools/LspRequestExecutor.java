@@ -143,15 +143,16 @@ public class LspRequestExecutor {
                 progress, cancellation, ProgressContext.forOperation(strategy.getCapability().name(), strategy.getTitle()));
 
         progressMonitor
-                .addStep(ProgressStep.INSTALLING, 0.40)
+                .addStep(ProgressStep.INSTALLING_RUNTIME, 0.15)
+                .addStep(ProgressStep.INSTALLING, 0.25)
                 .addStep(ProgressStep.STARTING, 0.10)
                 .addStep(ProgressStep.INDEXING, 0.35)
                 .addStep(ProgressStep.EXECUTING, 0.15);
 
-        ProgressMonitor installMonitor = progressMonitor.beginStep(ProgressStep.INSTALLING);
-        installMonitor.reportProgress(0.0, "Installing language server");
+        progressMonitor.beginStep(ProgressStep.INSTALLING_RUNTIME);
+        progressMonitor.reportProgress(0.0, "Installing language server");
 
-        return strategy.resolveServers(serverResolver, params, installMonitor, operationContext)
+        return strategy.resolveServers(serverResolver, params, progressMonitor, operationContext)
                 .thenCompose(servers -> {
                     if (servers.isEmpty()) {
                         return CompletableFuture.completedFuture(List.<TResult>of());

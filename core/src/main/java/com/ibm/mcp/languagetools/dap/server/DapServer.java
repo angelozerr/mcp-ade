@@ -20,6 +20,7 @@ import com.ibm.mcp.languagetools.dap.transport.StdioTransportStreams;
 import com.ibm.mcp.languagetools.dap.transport.TransportStreams;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.server.ServerType;
@@ -116,7 +117,10 @@ public class DapServer extends ServerBase<DapServerConfig> {
                     progressMonitor,
                     false,
                     operationEntry)
-                .thenCompose(v -> doStart())
+                .thenCompose(v -> {
+                    progressMonitor.beginStep(ProgressStep.STARTING);
+                    return doStart();
+                })
         );
     }
 

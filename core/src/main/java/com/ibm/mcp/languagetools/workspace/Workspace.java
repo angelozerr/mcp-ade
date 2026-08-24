@@ -183,9 +183,9 @@ public class Workspace {
         LspServerConfig serverConfig = application.getLspServerConfig(serverId);
         String serverName = serverConfig != null ? serverConfig.getName() : serverId;
 
-        ProgressMonitor installMonitor = progressMonitor.beginStep(ProgressStep.INSTALLING);
-        installMonitor.reportProgress(0.0, "Installing " + serverName);
-        return prepareRestartLspServer(serverId, installMonitor)
+        progressMonitor.beginStep(ProgressStep.INSTALLING_RUNTIME);
+        progressMonitor.reportProgress(0.0, "Installing " + serverName);
+        return prepareRestartLspServer(serverId, progressMonitor)
                 .thenCompose(server -> {
                     progressMonitor.beginStep(ProgressStep.STARTING);
                     progressMonitor.beginStep(ProgressStep.INITIALIZING);
@@ -245,9 +245,9 @@ public class Workspace {
         LspServerConfig serverConfig = application.getLspServerConfig(serverId);
         String serverName = serverConfig != null ? serverConfig.getName() : serverId;
 
-        ProgressMonitor installMonitor = progressMonitor.beginStep(ProgressStep.INSTALLING);
-        installMonitor.reportProgress(0.0, "Installing " + serverName);
-        return prepareManagedLspServer(serverId, installMonitor, serverEntry)
+        progressMonitor.beginStep(ProgressStep.INSTALLING_RUNTIME);
+        progressMonitor.reportProgress(0.0, "Installing " + serverName);
+        return prepareManagedLspServer(serverId, progressMonitor, serverEntry)
                 .thenCompose(server -> {
                     if (serverEntry != null) {
                         serverEntry.addChild("starting");
