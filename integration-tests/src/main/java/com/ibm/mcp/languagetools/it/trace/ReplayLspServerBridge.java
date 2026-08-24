@@ -80,7 +80,7 @@ public class ReplayLspServerBridge extends LspServer {
         // Client-side launcher: reads from serverToClientIn, writes to clientToServerOut
         Launcher<LanguageServer> clientLauncher = createLauncher(serverToClientIn, clientToServerOut);
         setLanguageServer(clientLauncher.getRemoteProxy());
-        setListeningFuture(clientLauncher.startListening());
+        startListening(clientLauncher);
     }
 
     /**

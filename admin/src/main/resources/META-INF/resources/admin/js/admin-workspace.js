@@ -1,4 +1,4 @@
-import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility } from './shared-state.js';
+import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility, loadDapConfigs } from './shared-state.js';
 import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector, runServerInstaller, renderServerActions } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
@@ -349,7 +349,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             if (state.selectedServer) {
                 const selectedEl = container.querySelector(`.server-item[data-server-id="${state.selectedServer.id}"]`);
                 if (selectedEl) {
-                    selectedEl.scrollIntoView({ block: 'nearest' });
+                    selectedEl.scrollIntoView({ block: 'start' });
                 }
             }
 
@@ -445,7 +445,10 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 showPlaceholder();
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'debuggers') {
-                // Load DAP sessions lazy
+                // Load DAP configs and sessions lazy
+                if (!state.dapConfigs || Object.keys(state.dapConfigs).length === 0) {
+                    await loadDapConfigs();
+                }
                 await loadDapSessionsForWorkspace();
                 renderServers([], dapSessions, workspace);
             } else if (tab === 'build') {

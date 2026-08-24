@@ -106,7 +106,7 @@ export async function showBspServerDetails(serverId) {
         const next = container.querySelector(`.server-item[data-server-id="${serverId}"]`);
         if (next) {
             next.classList.add('active');
-            next.scrollIntoView({ block: 'nearest' });
+            next.scrollIntoView({ block: 'start' });
         }
     }
 

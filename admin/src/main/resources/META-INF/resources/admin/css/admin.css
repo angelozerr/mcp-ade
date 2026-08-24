@@ -453,6 +453,7 @@ body {
 #dap-servers-list,
 #bsp-servers-list,
 #runtimes-list,
+#languages-list,
 #mcp-traces-list {
     flex: 1;
     overflow-y: auto;
@@ -1426,14 +1427,27 @@ body {
     color: var(--text-primary);
 }
 
+.selector-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
 .selector-item {
     background: var(--bg-card-alt);
     padding: 0.5rem;
     border-radius: 3px;
-    margin-bottom: 0.5rem;
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    width: 100%;
+}
+
+.selector-item-inline {
+    width: auto;
+    background: none;
+    padding: 0;
 }
 
 .selector-tag {
@@ -1443,6 +1457,14 @@ body {
     border-radius: 3px;
     font-size: 0.85rem;
     font-family: 'Courier New', monospace;
+}
+
+.selector-tag-link {
+    cursor: pointer;
+}
+
+.selector-tag-link:hover {
+    filter: brightness(1.2);
 }
 
 /* ── Language filter (chips + autocomplete) ── */

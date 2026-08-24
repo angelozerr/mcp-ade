@@ -27,13 +27,15 @@ export function renderDocumentSelector(selectors) {
     if (!selectors || selectors.length === 0) {
         return '<p class="text-secondary">None configured</p>';
     }
-    return selectors.map(selector => `
-        <div class="selector-item">
-            ${selector.language ? `<span class="selector-tag">language: ${selector.language}</span>` : ''}
+    return `<div class="selector-list">${selectors.map(selector => {
+        const isSimple = selector.language && !selector.scheme && !selector.pattern;
+        return `
+        <div class="selector-item${isSimple ? ' selector-item-inline' : ''}">
+            ${selector.language ? `<span class="selector-tag selector-tag-link" data-action="navigateToLanguage" data-language-id="${selector.language}">language: ${selector.language}</span>` : ''}
             ${selector.scheme ? `<span class="selector-tag">scheme: ${selector.scheme}</span>` : ''}
             ${selector.pattern ? `<span class="selector-tag">pattern: ${selector.pattern}</span>` : ''}
-        </div>
-    `).join('');
+        </div>`;
+    }).join('')}</div>`;
 }
 
 /**

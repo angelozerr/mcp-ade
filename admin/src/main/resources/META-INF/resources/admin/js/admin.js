@@ -23,6 +23,7 @@ import { loadAllDapServers, onDapSessionUpdate, renderDapTracesForSession,
 import { loadAllBspServers } from './admin-bsp.js';
 import { loadAllRuntimes, updateRuntimeStatus, appendRuntimeTrace, setSwitchTabCallback as setRuntimeSwitchTabCallback } from './admin-runtimes.js';
 import { loadAllExtensions, showAddExtensionForm, setSwitchTabCallback } from './admin-extensions.js';
+import { loadAllLanguages } from './admin-languages.js';
 import { getMcpClients, getSelectedMcpClient, getMcpTracesByClient,
     setMcpTraceLevel, handleMcpTrace, handleMcpClientsUpdate,
     selectMcpClient, loadMcpConsole, loadMcpTracesConsole,
@@ -511,7 +512,7 @@ function switchTab(tab, element, options = {}) {
     const consoleColumn = document.querySelector('.console-container');
 
     function showSidebarPanel(activeId) {
-        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'bsp-servers-list', 'runtimes-list', 'extensions-container', 'mcp-traces-list'];
+        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'bsp-servers-list', 'runtimes-list', 'languages-list', 'extensions-container', 'mcp-traces-list'];
         panels.forEach(id => {
             document.getElementById(id).classList.toggle('d-none', id !== activeId);
         });
@@ -577,6 +578,15 @@ function switchTab(tab, element, options = {}) {
         consoleColumn.style.gridColumn = '2';
 
         loadAllRuntimes(options.runtimeId);
+        updateSearchBoxVisibility(false);
+    } else if (tab === 'languages') {
+        showSidebarPanel('languages-list');
+        serversColumn.style.display = 'none';
+        consoleColumn.style.display = 'flex';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
+        consoleColumn.style.gridColumn = '2';
+
+        loadAllLanguages(options.languageId);
         updateSearchBoxVisibility(false);
     } else if (tab === 'extensions') {
         showSidebarPanel('extensions-container');
@@ -649,6 +659,10 @@ registerActions('click', {
     navigateToRuntime: (el) => {
         const runtimeId = el.dataset.runtimeId;
         switchTab('runtimes', null, { runtimeId });
+    },
+    navigateToLanguage: (el) => {
+        const languageId = el.dataset.languageId;
+        switchTab('languages', null, { languageId });
     },
     navigateToExtension: (el) => {
         const extensionId = el.dataset.extensionId;

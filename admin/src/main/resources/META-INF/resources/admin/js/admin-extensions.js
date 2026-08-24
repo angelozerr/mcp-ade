@@ -105,7 +105,7 @@ export function showExtensionDetails(extensionId) {
         const next = container.querySelector(`.extension-item[data-extension-id="${extensionId}"]`);
         if (next) {
             next.classList.add('active');
-            next.scrollIntoView({ block: 'nearest' });
+            next.scrollIntoView({ block: 'start' });
         }
     }
 
