@@ -331,7 +331,7 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 | **Ansible** | ansible-language-server | — |
 | **Bash** | bash-language-server | — |
 | **C/C++** | clangd | codelldb |
-| **C#** | OmniSharp | — |
+| **C#** | Roslyn Language Server | netcoredbg |
 | **Clojure** | clojure-lsp | — |
 | **Crystal** | Crystalline | — |
 | **Dart** | dart-lsp | dart-debug |
@@ -339,7 +339,7 @@ All refactoring tools (except `java_organize_imports`) support the [`apply` para
 | **Elixir** | ElixirLS | — |
 | **Elm** | elm-language-server | — |
 | **Erlang** | erlang-ls | — |
-| **F#** | FsAutoComplete | — |
+| **F#** | FsAutoComplete | netcoredbg |
 | **Fortran** | fortls | — |
 | **Go** | gopls | go-delve |
 | **Haskell** | haskell-language-server | — |
@@ -474,7 +474,7 @@ mcp-lsp/
 │   ├── go/                      # Go (gopls + go-delve)
 │   ├── rust/                    # Rust (rust-analyzer)
 │   ├── c/                       # C/C++ (clangd + codelldb)
-│   ├── csharp/                  # C# (OmniSharp)
+│   ├── dotnet/                  # C#/F# (Roslyn, FsAutoComplete, netcoredbg)
 │   ├── web/                     # HTML, CSS, JSON (vscode-langservers-extracted)
 │   ├── angular/                 # Angular
 │   ├── vue/                     # Vue
@@ -493,7 +493,7 @@ mcp-lsp/
 │   ├── lua/                     # Lua
 │   ├── terraform/               # Terraform
 │   ├── dockerfile/              # Dockerfile
-│   ├── ...                      # + 22 more (Ada, Ansible, Crystal, Elm, Erlang, F#, Fortran,
+│   ├── ...                      # + 21 more (Ada, Ansible, Crystal, Elm, Erlang, Fortran,
 │   │                            #   Julia, Jakarta EE, LaTeX, Liberty, Markdown, MicroProfile,
 │   │                            #   Nix, OCaml, Pascal, Perl, Quarkus, R, Swift, TOML, Zig)
 ├── admin/                       # Admin UI module
