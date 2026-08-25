@@ -11,20 +11,10 @@
  * Contributors:
  *     Angelo ZERR - initial API and implementation
  *******************************************************************************/
-package com.ibm.mcp.languagetools.runtime;
-
-import com.ibm.mcp.languagetools.installer.InstallationStatus;
+package com.ibm.mcp.languagetools.admin;
 
 /**
- * CDI event fired when a runtime installation status changes.
+ * CDI event fired when a server/runtime installation status check completes.
  */
-public record RuntimeStatusChangeEvent(
-    String runtimeId,
-    InstallationStatus status,
-    String error,
-    String resolvedPath,
-    String activeSource,
-    boolean fallbackUsed,
-    String sourcePreference
-) {
+public record InstallStatusChangeEvent(String serverId, String installationStatus) {
 }

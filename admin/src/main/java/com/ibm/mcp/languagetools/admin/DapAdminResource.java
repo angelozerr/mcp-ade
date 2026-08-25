@@ -17,6 +17,7 @@ import com.ibm.mcp.languagetools.admin.dto.ContributionDTOBuilder;
 import com.ibm.mcp.languagetools.admin.dto.DapConfigDTO;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
+import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -48,6 +49,11 @@ public class DapAdminResource extends AbstractServerAdminResource {
         return "DAP";
     }
 
+    @Override
+    protected TraceCollector getTraceCollector() {
+        return application.getDapTraceCollector();
+    }
+
     // ========== DAP Configs ==========
 
     /**
@@ -56,8 +62,9 @@ public class DapAdminResource extends AbstractServerAdminResource {
     @GET
     @Path("/configs")
     public List<DapConfigDTO> listConfigs() {
-        return application.getDapServerConfigs()
-                .stream()
+        var configs = application.getDapServerConfigs();
+        checkUncheckedServers(configs);
+        return configs.stream()
                 .map(this::toDTO)
                 .toList();
     }
@@ -88,7 +95,10 @@ public class DapAdminResource extends AbstractServerAdminResource {
             extensionRegistry.isServerEnabled(config.getServerId()),
             config.getRuntime(),
             config.getRuntimeStatusName(),
-            config.getExtensionId()
+            config.getExtensionId(),
+            config.getInstaller() != null,
+            config.getInstaller() != null ? config.getStatus().name() : null,
+            config.getInstaller() != null ? config.getServerHome().toString() : null
         );
     }
 

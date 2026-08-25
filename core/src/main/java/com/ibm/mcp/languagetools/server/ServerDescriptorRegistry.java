@@ -198,7 +198,10 @@ public class ServerDescriptorRegistry {
             }
         }
 
-        // Wire servers to runtimes
+        // Wire installer runtimes for runtimes (must be after all runtimes are registered)
+        runtimeRegistry.wireAllInstallerRuntimes();
+
+        // Wire servers to runtimes (also wires installer runtimes for each server)
         for (ServerConfigBase config : configs.values()) {
             runtimeRegistry.wireServer(config);
         }

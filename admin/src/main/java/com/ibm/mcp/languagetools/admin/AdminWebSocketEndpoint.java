@@ -39,11 +39,12 @@ import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
 import org.jboss.logging.Logger;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * WebSocket endpoint for real-time admin UI updates.
@@ -79,6 +80,12 @@ public class AdminWebSocketEndpoint {
     // Thread-safe set of active WebSocket sessions
     private final Set<Session> sessions = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+    // Per-session message queues for non-blocking, serialized WebSocket sends.
+    // Concurrent sends on the same session violate the Jakarta WebSocket spec;
+    // using a queue + SendHandler callback ensures only one send is in flight per session.
+    private final ConcurrentHashMap<String, Queue<String>> sendQueues = new ConcurrentHashMap<>();
+    private final Set<String> sendingInProgress = ConcurrentHashMap.newKeySet();
+
     @PostConstruct
     void init() {
         application.getLspTraceCollector().addTraceListener(this::onTrace);
@@ -95,6 +102,7 @@ public class AdminWebSocketEndpoint {
 
     @OnOpen
     public void onOpen(Session session) {
+        session.getAsyncRemote().setSendTimeout(5000);
         sessions.add(session);
         LOG.infof("WebSocket client connected: %s (total: %d)", session.getId(), sessions.size());
 
@@ -105,6 +113,7 @@ public class AdminWebSocketEndpoint {
     @OnClose
     public void onClose(Session session, CloseReason closeReason) {
         sessions.remove(session);
+        cleanupSessionQueue(session);
         LOG.infof("WebSocket client disconnected: %s, reason: %s (remaining: %d)",
                 session.getId(), closeReason, sessions.size());
     }
@@ -113,6 +122,7 @@ public class AdminWebSocketEndpoint {
     public void onError(Session session, Throwable throwable) {
         LOG.errorf(throwable, "WebSocket error for session: %s", session.getId());
         sessions.remove(session);
+        cleanupSessionQueue(session);
     }
 
     /**
@@ -135,6 +145,10 @@ public class AdminWebSocketEndpoint {
             // Send trace levels early so the UI has them before trace history
             sendTraceLevels(session);
 
+            // Send active progress state BEFORE trace history so the frontend
+            // knows which servers are installing and can store their traces
+            sendProgressState(session);
+
             // Send LSP trace history for all servers
             sendLspTraceHistory(session);
 
@@ -147,8 +161,8 @@ public class AdminWebSocketEndpoint {
             // Send BSP trace history
             sendBspTraceHistory(session);
 
-            // Send active progress state
-            sendProgressState(session);
+            // Send runtime install trace history
+            sendRuntimeTraceHistory(session);
 
             // Send activity state
             sendToSession(session, new com.ibm.mcp.languagetools.admin.ws.ActivityStateWsMessage(
@@ -265,6 +279,23 @@ public class AdminWebSocketEndpoint {
             LOG.debugf("BSP trace history sent to session: %s", session.getId());
         } catch (Exception e) {
             LOG.errorf(e, "Failed to send BSP trace history to session: %s", session.getId());
+        }
+    }
+
+    private void sendRuntimeTraceHistory(Session session) {
+        try {
+            var traces = application.getRuntimeTraceCollector().getTraces(500);
+            for (var trace : traces) {
+                RuntimeTraceWsMessage msg = new RuntimeTraceWsMessage(
+                        trace.contextId(),
+                        trace.content(),
+                        trace.messageType()
+                );
+                sendToSession(session, msg);
+            }
+            LOG.debugf("Runtime trace history sent to session: %s", session.getId());
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to send runtime trace history to session: %s", session.getId());
         }
     }
 
@@ -486,8 +517,16 @@ public class AdminWebSocketEndpoint {
         RuntimeStatusChangedWsMessage msg = new RuntimeStatusChangedWsMessage(
                 event.runtimeId(),
                 event.status().name(),
-                event.error());
+                event.error(),
+                event.resolvedPath(),
+                event.activeSource(),
+                event.fallbackUsed(),
+                event.sourcePreference());
         broadcast(msg);
+    }
+
+    void onInstallStatusChange(@Observes InstallStatusChangeEvent event) {
+        broadcast(new InstallStatusChangedWsMessage(event.serverId(), event.installationStatus()));
     }
 
     void onServerEnabledChange(@Observes ServerEnabledChangeEvent event) {
@@ -525,40 +564,87 @@ public class AdminWebSocketEndpoint {
             return;
         }
 
-        sessions.forEach(session -> {
+        for (Session session : sessions) {
             if (session.isOpen()) {
-                // Use async send with callback for backpressure handling
-                session.getAsyncRemote().sendText(json, result -> {
-                    if (!result.isOK()) {
-                        if (sessions.remove(session)) {
-                            LOG.debugf("Removing unresponsive WebSocket session: %s", session.getId());
-                            try {
-                                session.close(new CloseReason(
-                                        CloseReason.CloseCodes.TRY_AGAIN_LATER,
-                                        "Client too slow"
-                                ));
-                            } catch (IOException e) {
-                                // Session already closed
-                            }
-                        }
-                    }
-                });
+                enqueueMessage(session, json);
             } else {
                 sessions.remove(session);
+                cleanupSessionQueue(session);
             }
-        });
+        }
     }
 
     /**
      * Send message to a specific session.
      */
     private void sendToSession(Session session, Object message) {
+        String json;
         try {
-            String json = objectMapper.writeValueAsString(message);
-            session.getAsyncRemote().sendText(json);
+            json = objectMapper.writeValueAsString(message);
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send message to session: %s", session.getId());
+            LOG.errorf(e, "Failed to serialize message for session: %s", session.getId());
+            return;
         }
+        enqueueMessage(session, json);
+    }
+
+    private void enqueueMessage(Session session, String json) {
+        sendQueues.computeIfAbsent(session.getId(), k -> new ConcurrentLinkedQueue<>()).add(json);
+        drainSessionQueue(session);
+    }
+
+    /**
+     * Drain the send queue for a session, sending one message at a time via async send.
+     * The SendHandler callback triggers the next send, ensuring sequential delivery
+     * without blocking any thread.
+     */
+    private void drainSessionQueue(Session session) {
+        String sessionId = session.getId();
+        if (!sendingInProgress.add(sessionId)) {
+            return;
+        }
+
+        Queue<String> queue = sendQueues.get(sessionId);
+        if (queue == null) {
+            sendingInProgress.remove(sessionId);
+            return;
+        }
+
+        String json = queue.poll();
+        if (json == null) {
+            sendingInProgress.remove(sessionId);
+            if (!queue.isEmpty()) {
+                drainSessionQueue(session);
+            }
+            return;
+        }
+
+        if (!session.isOpen()) {
+            sessions.remove(session);
+            cleanupSessionQueue(session);
+            return;
+        }
+
+        try {
+            session.getAsyncRemote().sendText(json, result -> {
+                if (!result.isOK()) {
+                    LOG.debugf("Failed to send to session %s: %s", sessionId,
+                            result.getException() != null ? result.getException().getMessage() : "unknown error");
+                }
+                sendingInProgress.remove(sessionId);
+                drainSessionQueue(session);
+            });
+        } catch (Exception e) {
+            LOG.debugf("Error initiating send to session %s: %s", sessionId, e.getMessage());
+            sendingInProgress.remove(sessionId);
+            sessions.remove(session);
+            cleanupSessionQueue(session);
+        }
+    }
+
+    private void cleanupSessionQueue(Session session) {
+        sendQueues.remove(session.getId());
+        sendingInProgress.remove(session.getId());
     }
 
     private List<WorkspaceDTO> getCurrentWorkspaces() {

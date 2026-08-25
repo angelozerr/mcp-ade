@@ -14,14 +14,20 @@
 package com.ibm.mcp.languagetools.installer;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.SharedProgressMonitor;
+import com.ibm.mcp.languagetools.runtime.RuntimeConfig;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import org.jboss.logging.Logger;
 
+import java.io.File;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -54,6 +60,7 @@ public abstract class InstallableConfig {
     private volatile CompletableFuture<InstallResult> installationFuture;
     private volatile SharedProgressMonitor sharedInstallProgress;
     private volatile String lastInstallError;
+    private volatile RuntimeConfig installerRuntimeConfig;
 
     protected InstallableConfig(String serverId, Path serverHome, Extension extension) {
         this.serverId = serverId;
@@ -145,7 +152,22 @@ public abstract class InstallableConfig {
 
     public InstallationStatus getStatus() {
         ServerInstaller inst = getInstaller();
-        return inst != null ? inst.getStatus() : InstallationStatus.NOT_INSTALLED;
+        if (inst == null) {
+            return InstallationStatus.NOT_INSTALLED;
+        }
+        InstallationStatus status = inst.getStatus();
+        if (status == InstallationStatus.NOT_INSTALLED && isChecking()) {
+            return InstallationStatus.CHECKING;
+        }
+        return status;
+    }
+
+    /**
+     * Checks whether this component is installed without attempting to install it.
+     * Thread-safe — only one check runs; result is cached.
+     */
+    public CompletableFuture<InstallResult> checkInstalled() {
+        return executeCheck(() -> createInstallerContext(ProgressMonitor.none()));
     }
 
     public boolean isChecking() {
@@ -168,6 +190,43 @@ public abstract class InstallableConfig {
                 installationFuture = null;
             }
         }
+    }
+
+    // --- Installer runtime dependency ---
+
+    public String getInstallerRuntimeId() {
+        if (installerConfig == null || !installerConfig.isJsonObject()) {
+            return null;
+        }
+        JsonObject config = installerConfig.getAsJsonObject();
+        if (config.has("runtime")) {
+            JsonElement runtime = config.get("runtime");
+            if (runtime.isJsonPrimitive()) {
+                return runtime.getAsString();
+            }
+        }
+        return null;
+    }
+
+    public RuntimeConfig getInstallerRuntimeConfig() {
+        return installerRuntimeConfig;
+    }
+
+    public void setInstallerRuntimeConfig(RuntimeConfig config) {
+        this.installerRuntimeConfig = config;
+    }
+
+    // --- InstallerContext factory ---
+
+    protected InstallerContext createInstallerContext(ProgressMonitor progress) {
+        return createInstallerContext(progress, null);
+    }
+
+    protected InstallerContext createInstallerContext(ProgressMonitor progress,
+                                                      Consumer<InstallationStatus> statusChangeCallback) {
+        InstallerContext context = new InstallerContext(this, progress, statusChangeCallback);
+        context.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
+        return context;
     }
 
     // --- Installation lifecycle ---
@@ -227,9 +286,21 @@ public abstract class InstallableConfig {
                     }
 
                     InstallerContext context = contextFactory.apply(sharedInstallProgress);
+                    context.setForceInstall(force);
 
                     final SharedProgressMonitor installProgress = sharedInstallProgress;
-                    future = inst.ensureInstalled(context)
+                    RuntimeConfig irtc = installerRuntimeConfig;
+                    CompletableFuture<InstallResult> baseFuture;
+                    if (irtc != null) {
+                        baseFuture = irtc.ensureInstalled(ProgressMonitor.none())
+                                .thenCompose(runtimeResult -> {
+                                    addInstallerRuntimeToContextPath(context, irtc);
+                                    return inst.ensureInstalled(context);
+                                });
+                    } else {
+                        baseFuture = inst.ensureInstalled(context);
+                    }
+                    future = baseFuture
                             .whenComplete((result, error) -> {
                                 installProgress.endTask(taskId);
                                 synchronized (InstallableConfig.this) {
@@ -303,5 +374,56 @@ public abstract class InstallableConfig {
     }
 
     protected void onInstallSuccess(InstallResult result) {
+    }
+
+    private static void addInstallerRuntimeToContextPath(InstallerContext context, RuntimeConfig installerRuntime) {
+        String runtimeDir = null;
+        String resolvedPath = installerRuntime.getResolvedPath();
+        if (resolvedPath != null) {
+            Path parentDir = Path.of(resolvedPath).getParent();
+            if (parentDir != null) {
+                runtimeDir = parentDir.toString();
+            }
+        }
+        InstallerContext runtimeCtx = null;
+        if (runtimeDir == null) {
+            runtimeCtx = createRuntimeInstallerContext(installerRuntime);
+            runtimeDir = TaskRegistryInstaller.extractCommandDir(installerRuntime.getInstallerConfig(), runtimeCtx);
+        }
+        if (runtimeDir == null) {
+            return;
+        }
+        Map<String, String> env = context.getEnv();
+        if (env == null) {
+            env = new HashMap<>();
+        }
+        String currentPath = env.getOrDefault("PATH", System.getenv("PATH"));
+        env.put("PATH", runtimeDir + File.pathSeparator + (currentPath != null ? currentPath : ""));
+        addInstallerRuntimeEnv(env, installerRuntime, runtimeCtx);
+        context.setEnv(env);
+    }
+
+    private static void addInstallerRuntimeEnv(Map<String, String> env, RuntimeConfig installerRuntime,
+                                                InstallerContext runtimeCtx) {
+        JsonElement installerConfig = installerRuntime.getInstallerConfig();
+        if (installerConfig == null || !installerConfig.isJsonObject()) {
+            return;
+        }
+        JsonElement envElement = installerConfig.getAsJsonObject().get("env");
+        if (envElement == null || !envElement.isJsonObject()) {
+            return;
+        }
+        if (runtimeCtx == null) {
+            runtimeCtx = createRuntimeInstallerContext(installerRuntime);
+        }
+        for (var entry : envElement.getAsJsonObject().entrySet()) {
+            env.put(entry.getKey(), runtimeCtx.resolveVariables(entry.getValue().getAsString()));
+        }
+    }
+
+    private static InstallerContext createRuntimeInstallerContext(RuntimeConfig installerRuntime) {
+        InstallerContext ctx = new InstallerContext(installerRuntime, ProgressMonitor.none());
+        ctx.setVariable("MCP_HOME", installerRuntime.getServerHome().getParent().getParent().toString());
+        return ctx;
     }
 }

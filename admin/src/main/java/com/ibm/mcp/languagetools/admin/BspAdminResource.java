@@ -46,19 +46,31 @@ public class BspAdminResource extends AbstractServerAdminResource {
         return "BSP";
     }
 
+    @Override
+    protected TraceCollector getTraceCollector() {
+        return application.getBspTraceCollector();
+    }
+
     // ========== BSP Configs ==========
 
     @GET
     @Path("/configs")
     public List<Map<String, Object>> listConfigs() {
+        var bspConfigs = application.getBspServerConfigs();
+        checkUncheckedServers(bspConfigs);
         List<Map<String, Object>> result = new ArrayList<>();
-        for (BspServerConfig config : application.getBspServerConfigs()) {
+        for (BspServerConfig config : bspConfigs) {
             Map<String, Object> dto = new LinkedHashMap<>();
             dto.put("id", config.getServerId());
             dto.put("name", config.getName());
             dto.put("description", config.getDescription());
             dto.put("url", config.getUrl());
             dto.put("enabled", application.getExtensionRegistry().isServerEnabled(config.getServerId()));
+            dto.put("hasInstaller", config.getInstaller() != null);
+            if (config.getInstaller() != null) {
+                dto.put("installationStatus", config.getStatus().name());
+                dto.put("installDir", config.getServerHome().toString());
+            }
             if (config.getExtensionId() != null) {
                 dto.put("extensionId", config.getExtensionId());
             }
@@ -80,6 +92,11 @@ public class BspAdminResource extends AbstractServerAdminResource {
         dto.put("description", config.getDescription());
         dto.put("url", config.getUrl());
         dto.put("enabled", application.getExtensionRegistry().isServerEnabled(config.getServerId()));
+        dto.put("hasInstaller", config.getInstaller() != null);
+        if (config.getInstaller() != null) {
+            dto.put("installationStatus", config.getStatus().name());
+            dto.put("installDir", config.getServerHome().toString());
+        }
         if (config.getExtensionId() != null) {
             dto.put("extensionId", config.getExtensionId());
         }

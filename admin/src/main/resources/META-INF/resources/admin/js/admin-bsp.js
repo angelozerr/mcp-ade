@@ -1,15 +1,15 @@
 /**
  * Admin UI - BSP (Build Server Protocol) Global Management
  *
- * Handles global BSP server listing with Overview/Settings/Install tabs
+ * Handles global BSP server listing with Overview/Settings tabs
  */
 
-import { state, updateSearchBoxVisibility } from './shared-state.js';
+import { state, updateSearchBoxVisibility, ensureBspConfigs } from './shared-state.js';
 import {
     renderExtensionSection, runServerInstaller,
-    loadInstallerJsonEditor, saveInstallerJsonEditor,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
-    selectListItem
+    selectListItem, buildInstallOutputHTML, buildInstallerControlsHTML,
+    getInstallStatusBadge, renderServerNameHeader, restoreInstallOutput
 } from './shared-ui.js';
 import { LanguageFilter } from './language-filter.js';
 import { registerActions } from './event-delegation.js';
@@ -24,16 +24,7 @@ function renderBspServerItem(server) {
     const disabledClass = server.enabled === false ? 'server-disabled' : '';
     return `
         <div class="server-item ${isActive} ${disabledClass}" data-action="showBspServerDetails" data-server-id="${server.id}">
-            <div class="server-name d-flex align-center justify-between">
-                <span>
-                    <span class="server-source-icon">🔨</span>
-                    ${server.name}
-                </span>
-                <label class="toggle-switch" onclick="event.stopPropagation()">
-                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleBspServerEnabled" data-server-id="${server.id}">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
+            ${renderServerNameHeader(server, { icon: '🔨', toggleAction: 'toggleBspServerEnabled' })}
             <div class="server-id">${server.id}</div>
         </div>
     `;
@@ -41,13 +32,8 @@ function renderBspServerItem(server) {
 
 export async function loadAllBspServers(serverIdToSelect) {
     try {
-        let bspServers;
-        if (state.bspConfigs && Object.keys(state.bspConfigs).length > 0) {
-            bspServers = Object.values(state.bspConfigs).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        } else {
-            const response = await fetch('/api/admin/bsp/configs');
-            bspServers = (await response.json()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        }
+        await ensureBspConfigs();
+        const bspServers = Object.values(state.bspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
         bspServerConfigs = {};
         bspServers.forEach(server => {
@@ -139,6 +125,13 @@ export async function showBspServerDetails(serverId, scroll) {
 
         ${renderExtensionSection(server)}
 
+        ${server.installDir ? `
+        <div class="detail-row">
+            <span class="detail-label">Install Path:</span>
+            <span class="detail-value"><code>${server.installDir}</code></span>
+        </div>
+        ` : ''}
+
         <div class="p-lg bg-panel rounded mt-2xl border-left-success">
             <strong>Note:</strong> Build servers are started on-demand when build tools are invoked. They are not automatically started with workspaces.
         </div>
@@ -149,19 +142,19 @@ export async function showBspServerDetails(serverId, scroll) {
             <div class="console-title">
                 <span class="server-source-icon">🔨</span>
                 ${server.name || server.id}
+                <span class="console-install-badge" data-server-id="${server.id}">${getInstallStatusBadge(server)}</span>
             </div>
             <div class="console-tabs">
                 <button class="tab-button ${currentBspServerTab === 'overview' ? 'active' : ''}" data-action="switchBspServerTab" data-tab="overview">Overview</button>
                 <button class="tab-button ${currentBspServerTab === 'settings' ? 'active' : ''}" data-action="switchBspServerTab" data-tab="settings">Settings</button>
-                <button class="tab-button ${currentBspServerTab === 'install' ? 'active' : ''}" data-action="switchBspServerTab" data-tab="install">Install</button>
             </div>
-            <div class="console-controls">
-            </div>
+            ${server.hasInstaller ? buildInstallerControlsHTML(server.id, 'installBspServer') : ''}
         </div>
         <div class="tab-content">
             <div id="bsp-server-overview-tab" class="tab-panel ${currentBspServerTab === 'overview' ? 'active' : ''}">
                 <div class="details-panel text-primary detail-content">
                     ${detailsHTML}
+                    ${buildInstallOutputHTML()}
                 </div>
             </div>
             <div id="bsp-server-settings-tab" class="tab-panel ${currentBspServerTab === 'settings' ? 'active' : ''}">
@@ -169,44 +162,17 @@ export async function showBspServerDetails(serverId, scroll) {
                     ${buildBspSettingsHTML(server)}
                 </div>
             </div>
-            <div id="bsp-server-install-tab" class="tab-panel ${currentBspServerTab === 'install' ? 'active' : ''}">
-                <div class="install-panel">
-                    <h3>Installer Configuration</h3>
-                    <div class="install-info">
-                        <p><strong>Build Server:</strong> ${server.name}</p>
-                        <p><strong>ID:</strong> ${server.id}</p>
-                    </div>
-                    <div class="installer-editor">
-                        <div class="editor-header">
-                            <span>installer.json</span>
-                            <div class="editor-actions">
-                                <button class="editor-btn" data-action="saveBspInstallerJson" data-server-id="${server.id}" title="Save">💾 Save</button>
-                                <button class="editor-btn" data-action="resetBspInstallerJson" data-server-id="${server.id}" title="Reset">↻ Reset</button>
-                                <span class="editor-separator"></span>
-                                <button class="editor-btn install-run-btn" data-action="runBspInstaller" data-server-id="${server.id}" data-force="false" title="Install (check first, skip if already installed)">▶ Install</button>
-                                <button class="editor-btn install-force-btn" data-action="runBspInstaller" data-server-id="${server.id}" data-force="true" title="Force Install (skip check, always re-install)">⟳ Force Install</button>
-                            </div>
-                        </div>
-                        <textarea id="bsp-installer-json-editor" class="json-editor" spellcheck="false"></textarea>
-                    </div>
-                    <div id="bsp-install-output" class="install-output"></div>
-                </div>
-            </div>
         </div>
     `;
 
     document.getElementById('console-area').innerHTML = html;
 
-    if (currentBspServerTab === 'install') {
-        loadBspInstallerJson(server.id);
-    }
+    restoreInstallOutput(serverId, 'server-install-output');
 }
 
 export function switchBspServerTab(tab) {
     currentBspServerTab = tab;
-    switchServerTabs('bsp-server', tab, (t) => {
-        if (t === 'install' && selectedBspServer) loadBspInstallerJson(selectedBspServer);
-    });
+    switchServerTabs('bsp-server', tab);
 }
 
 function buildBspSettingsHTML(server) {
@@ -219,21 +185,10 @@ function updateBspServerSetting(serverId, settingKey, value) {
     }
 }
 
-async function loadBspInstallerJson(serverId) {
-    loadInstallerJsonEditor(serverId, 'bsp-installer-json-editor');
-}
-
-async function saveBspInstallerJson(serverId) {
-    saveInstallerJsonEditor(serverId, 'bsp-installer-json-editor');
-}
-
-async function resetBspInstallerJson(serverId) {
-    loadBspInstallerJson(serverId);
-}
-
-async function runBspInstaller(serverId, force) {
+async function installBspServer(serverId) {
+    switchBspServerTab('overview');
     const installUrl = `/api/admin/bsp/configs/${serverId}/install`;
-    return runServerInstaller(serverId, force, 'bsp-install-output', installUrl);
+    return runServerInstaller(serverId, true, 'server-install-output', installUrl);
 }
 
 async function toggleBspServerEnabled(serverId, enabled) {
@@ -244,9 +199,8 @@ async function toggleBspServerEnabled(serverId, enabled) {
 registerActions('click', {
     showBspServerDetails: (el) => showBspServerDetails(el.dataset.serverId),
     switchBspServerTab: (el) => switchBspServerTab(el.dataset.tab),
-    saveBspInstallerJson: (el) => saveBspInstallerJson(el.dataset.serverId),
-    resetBspInstallerJson: (el) => resetBspInstallerJson(el.dataset.serverId),
-    runBspInstaller: (el) => runBspInstaller(el.dataset.serverId, el.dataset.force === 'true'),
+    installBspServer: (el) => installBspServer(el.dataset.serverId),
+
 });
 
 registerActions('change', {

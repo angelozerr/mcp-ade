@@ -16,6 +16,11 @@ package com.ibm.mcp.languagetools.utils;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 public class OSUtils {
 
     private static final String WINDOWS = "windows";
@@ -141,6 +146,56 @@ public class OSUtils {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolves the full path of a command on the system PATH
+     * using {@code where} (Windows) or {@code which} (Unix).
+     *
+     * @return the resolved absolute path, or null if not found
+     */
+    public static String resolveCommandPath(String command) {
+        return resolveCommandPath(command, null);
+    }
+
+    /**
+     * Resolves the full path of a command, optionally using a custom environment
+     * (e.g. with the installer's runtime directory prepended to PATH).
+     *
+     * @return the resolved absolute path, or null if not found
+     */
+    public static String resolveCommandPath(String command, Map<String, String> env) {
+        if (command == null || command.isEmpty()) {
+            return null;
+        }
+        try {
+            ProcessBuilder pb;
+            if (isWindows()) {
+                pb = new ProcessBuilder("cmd", "/c", "where", command);
+            } else {
+                pb = new ProcessBuilder("/usr/bin/which", command);
+            }
+            pb.redirectErrorStream(true);
+            if (env != null) {
+                pb.environment().putAll(env);
+            }
+            Process process = pb.start();
+            String firstLine;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                firstLine = reader.readLine();
+            }
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return null;
+            }
+            if (process.exitValue() != 0 || firstLine == null) {
+                return null;
+            }
+            return firstLine.trim();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private OSUtils() {

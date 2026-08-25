@@ -1,11 +1,12 @@
 {
   "id": "fsautocomplete-installer",
   "name": "fsautocomplete",
+  "runtime": "dotnet",
   "check": {
     "fileExists": {
       "name": "Check if fsautocomplete is installed",
       "file": {
-        "windows": "$SERVER_HOME$/fsautocomplete.exe",
+        "windows": "$SERVER_HOME$/fsautocomplete.cmd",
         "default": "$SERVER_HOME$/fsautocomplete"
       }
     }
@@ -18,7 +19,7 @@
         "configureServer": {
           "name": "Configure fsautocomplete command",
           "command": {
-            "windows": "$SERVER_HOME$/fsautocomplete.exe --adaptive-lsp-server-enabled",
+            "windows": "$SERVER_HOME$/fsautocomplete.cmd --adaptive-lsp-server-enabled",
             "default": "$SERVER_HOME$/fsautocomplete --adaptive-lsp-server-enabled"
           }
         }

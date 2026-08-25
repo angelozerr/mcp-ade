@@ -18,6 +18,9 @@ import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.installer.InstallerContext;
 import com.ibm.mcp.languagetools.installer.download.*;
 import com.ibm.mcp.languagetools.progress.AbstractProgressMonitor;
+import com.ibm.mcp.languagetools.progress.MultiProgressMonitor;
+import com.ibm.mcp.languagetools.progress.NoOpProgressMonitor;
+import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.utils.OSUtils;
 import org.jboss.logging.Logger;
 
@@ -65,7 +68,6 @@ public class DownloadTask extends InstallerTask {
         String resolvedOutputDir = context.resolveVariables(outputInfo.outputDir());
 
         context.traceInfo("Downloading from: " + resolvedUrl);
-        context.getProgress().reportProgress("Downloading " + getName());
 
         try {
             Path outputPath = Paths.get(resolvedOutputDir);
@@ -78,15 +80,24 @@ public class DownloadTask extends InstallerTask {
             Path downloadedFile = Files.createTempFile("download-", fileName);
 
             try {
+                context.getProgress().beginStep(getName());
                 ProgressMonitorWrapper downloadProgress = new ProgressMonitorWrapper(context, getName());
                 DownloadUtils.DownloadResult result = DownloadUtils.download(resolvedUrl, downloadedFile, downloadProgress);
 
                 DecompressorUtils.Decompressor decompressor = DecompressorUtils.getDecompressor(downloadedFile);
                 context.getProgress().beginStep(getExtractStepName(getName()));
                 if (decompressor != null) {
-                    context.getProgress().reportProgress("Extracting " + getName());
                     context.traceUpdate("Extracting " + getName());
-                    Path rootDir = decompressor.decompress(downloadedFile, outputPath, context.getProgress());
+                    ProgressMonitor extractProgress = new MultiProgressMonitor(
+                            context.getProgress(),
+                            new NoOpProgressMonitor() {
+                                @Override
+                                public void reportProgress(double progress, String message) {
+                                    context.traceUpdate(message);
+                                }
+                            }
+                    );
+                    Path rootDir = decompressor.decompress(downloadedFile, outputPath, extractProgress);
                     if (rootDir != null && outputInfo.stripRootDir()) {
                         stripRootDir(rootDir, outputPath, context);
                     }

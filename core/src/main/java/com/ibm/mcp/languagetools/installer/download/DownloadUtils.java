@@ -33,6 +33,10 @@ import java.nio.file.Path;
 public class DownloadUtils {
     private static final Logger LOG = Logger.getLogger(DownloadUtils.class);
 
+    private static final HttpClient SHARED_CLIENT = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
     /**
      * Result of a download operation.
      */
@@ -56,15 +60,12 @@ public class DownloadUtils {
     public static DownloadResult download(String downloadUrl,
                                           Path downloadedFile,
                                           ProgressMonitor progressMonitor) throws IOException {
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(downloadUrl))
                     .build();
 
-            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = SHARED_CLIENT.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() != 200) {
                 throw new IOException("Download failed with status " + response.statusCode() + ": " + downloadUrl);
@@ -107,14 +108,6 @@ public class DownloadUtils {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Download interrupted", e);
-        } finally {
-            // HttpClient implements AutoCloseable only in Java 21+
-            if (client instanceof AutoCloseable) {
-                try {
-                    ((AutoCloseable) client).close();
-                } catch (Exception ignored) {
-                }
-            }
         }
     }
 }

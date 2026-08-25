@@ -3,6 +3,9 @@
   "name": ".NET SDK",
   "description": ".NET SDK required by .NET-based language servers",
   "url": "https://dotnet.microsoft.com",
+  "env": {
+    "DOTNET_ROOT": "$SERVER_HOME$"
+  },
   "check": {
     "exec": {
       "name": "Check if .NET is available",

@@ -15,8 +15,12 @@ package com.ibm.mcp.languagetools.admin;
 
 import com.ibm.mcp.languagetools.admin.dto.ErrorResponse;
 import com.ibm.mcp.languagetools.admin.dto.StatusResponse;
+import com.ibm.mcp.languagetools.installer.TaskRegistryInstaller;
+import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
+import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
 import com.ibm.mcp.languagetools.runtime.RuntimeConfig;
 import com.ibm.mcp.languagetools.runtime.RuntimeRegistry;
+import com.ibm.mcp.languagetools.runtime.RuntimeSourcePreference;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -41,6 +45,9 @@ public class RuntimeAdminResource {
     @Inject
     RuntimeRegistry runtimeRegistry;
 
+    @Inject
+    ProgressBroadcaster progressBroadcaster;
+
     /**
      * List all registered runtimes with their status and dependent servers.
      * Triggers async checks for unchecked runtimes — results arrive via WebSocket.
@@ -49,38 +56,9 @@ public class RuntimeAdminResource {
     public List<Map<String, Object>> listRuntimes() {
         runtimeRegistry.checkUnchecked();
         List<Map<String, Object>> result = new ArrayList<>();
-
         for (RuntimeConfig runtime : runtimeRegistry.getAll().values()) {
-            Map<String, Object> dto = new LinkedHashMap<>();
-            dto.put("id", runtime.getRuntimeId());
-            dto.put("name", runtime.getName());
-            dto.put("description", runtime.getDescription());
-            dto.put("url", runtime.getUrl());
-            dto.put("autoInstallable", runtime.isAutoInstallable());
-            String statusName = runtime.isChecking() ? "CHECKING" : runtime.getStatus().name();
-            dto.put("status", statusName);
-
-            String error = runtime.getLastInstallError();
-            if (error != null) {
-                dto.put("error", error);
-            }
-
-            // Dependent servers grouped by type
-            Map<String, List<String>> dependents = new LinkedHashMap<>();
-            for (ServerConfigBase server : runtime.getDependentServers()) {
-                String type = getServerType(server);
-                dependents.computeIfAbsent(type, k -> new ArrayList<>())
-                        .add(server.getServerId());
-            }
-            dto.put("dependentServers", dependents);
-
-            if (runtime.getExtensionId() != null) {
-                dto.put("extensionId", runtime.getExtensionId());
-            }
-
-            result.add(dto);
+            result.add(buildRuntimeDto(runtime));
         }
-
         return result;
     }
 
@@ -94,21 +72,24 @@ public class RuntimeAdminResource {
         if (runtime == null) {
             return Response.status(404).entity(new ErrorResponse("Runtime not found: " + runtimeId)).build();
         }
+        return Response.ok(buildRuntimeDto(runtime)).build();
+    }
 
+    private Map<String, Object> buildRuntimeDto(RuntimeConfig runtime) {
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("id", runtime.getRuntimeId());
         dto.put("name", runtime.getName());
         dto.put("description", runtime.getDescription());
         dto.put("url", runtime.getUrl());
         dto.put("autoInstallable", runtime.isAutoInstallable());
-        dto.put("status", runtime.getStatus().name());
+        String statusName = runtime.isChecking() ? "CHECKING" : runtime.getStatus().name();
+        dto.put("status", statusName);
 
         String error = runtime.getLastInstallError();
         if (error != null) {
             dto.put("error", error);
         }
 
-        // Dependent servers grouped by type (same structure as list endpoint)
         Map<String, List<String>> dependents = new LinkedHashMap<>();
         for (ServerConfigBase server : runtime.getDependentServers()) {
             String type = getServerType(server);
@@ -117,15 +98,25 @@ public class RuntimeAdminResource {
         }
         dto.put("dependentServers", dependents);
 
-        return Response.ok(dto).build();
+        if (runtime.getExtensionId() != null) {
+            dto.put("extensionId", runtime.getExtensionId());
+        }
+
+        dto.put("resolvedPath", runtime.getResolvedPath());
+        dto.put("activeSource", runtime.getActiveSource() != null ? runtime.getActiveSource().name() : null);
+        dto.put("sourcePreference", runtime.getSourcePreference().name());
+        dto.put("fallbackUsed", runtime.isFallbackUsed());
+
+        return dto;
     }
 
     /**
-     * Install a runtime.
+     * Install a runtime with progress monitoring (same pattern as server install).
      */
     @POST
     @Path("/{runtimeId}/install")
-    public Response installRuntime(@PathParam("runtimeId") String runtimeId) {
+    public Response installRuntime(@PathParam("runtimeId") String runtimeId,
+                                    @QueryParam("force") @DefaultValue("true") boolean force) {
         RuntimeConfig runtime = runtimeRegistry.get(runtimeId);
         if (runtime == null) {
             return Response.status(404).entity(new ErrorResponse("Runtime not found: " + runtimeId)).build();
@@ -137,9 +128,39 @@ public class RuntimeAdminResource {
                     .build();
         }
 
-        runtimeRegistry.installRuntimeAsync(runtime);
+        String taskId = "install-" + runtimeId;
+        String title = "Installing " + (runtime.getName() != null ? runtime.getName() : runtimeId);
+        TraceProgressMonitor progressMonitor = new TraceProgressMonitor(
+                runtime.getTraceCollector(), 100.0, progressBroadcaster, taskId, runtimeId, title);
+        TaskRegistryInstaller.configureInstallerSteps(progressMonitor, runtime.getInstallerConfig(), force);
+        progressMonitor.initializeSteps();
+
+        runtimeRegistry.installRuntimeAsync(runtime, progressMonitor);
 
         return Response.accepted().entity(new StatusResponse("installing")).build();
+    }
+
+    /**
+     * Cancel a progress task (e.g., a runtime installation).
+     */
+    @POST
+    @Path("/progress/{taskId}/cancel")
+    public Response cancelTask(@PathParam("taskId") String taskId) {
+        String runtimeId = taskId.replaceFirst("^install-", "");
+        RuntimeConfig runtime = runtimeRegistry.get(runtimeId);
+        if (runtime == null) {
+            return Response.status(404).entity(new ErrorResponse("Runtime not found: " + runtimeId)).build();
+        }
+
+        var sharedProgress = runtime.getSharedInstallProgress();
+        if (sharedProgress == null) {
+            return Response.status(404).entity(new ErrorResponse("No active task to cancel")).build();
+        }
+
+        LOG.infof("Cancelling task '%s' for runtime '%s'", taskId, runtimeId);
+        sharedProgress.cancel(taskId);
+
+        return Response.ok().entity(new StatusResponse("cancelled")).build();
     }
 
     /**
@@ -157,6 +178,23 @@ public class RuntimeAdminResource {
         runtimeRegistry.checkRuntimeAsync(runtime);
 
         return Response.accepted().entity(new StatusResponse("checking")).build();
+    }
+
+    /**
+     * Change the source preference for a runtime (AUTO, PATH, INSTALLER).
+     */
+    @PUT
+    @Path("/{runtimeId}/source-preference")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response setSourcePreference(@PathParam("runtimeId") String runtimeId, Map<String, String> body) {
+        RuntimeConfig runtime = runtimeRegistry.get(runtimeId);
+        if (runtime == null) {
+            return Response.status(404).entity(new ErrorResponse("Runtime not found: " + runtimeId)).build();
+        }
+        String value = body.get("sourcePreference");
+        RuntimeSourcePreference pref = RuntimeSourcePreference.fromValue(value);
+        runtimeRegistry.setSourcePreference(runtimeId, pref);
+        return Response.accepted().entity(new StatusResponse(pref.name())).build();
     }
 
     private String getServerType(ServerConfigBase server) {

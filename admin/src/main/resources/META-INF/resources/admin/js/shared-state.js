@@ -18,6 +18,10 @@ export const state = {
     dapTracesByServer: {},
     dapSessions: null,
     installOutputServerId: null,
+    installingServers: new Set(),
+    installTraces: {},
+    installStatus: {},
+    installProgress: {},
     currentDiagramServers: null,
     currentDiagramServerId: null,
     currentWorkspaceDiagramServers: null,
@@ -121,6 +125,8 @@ export function mergeServerData(runtime) {
         isReady: runtime.isReady,
         pid: runtime.pid,
         externalInstance: runtime.externalInstance,
+        hasInstaller: config.hasInstaller,
+        installationStatus: config.installationStatus,
         installProgress: runtime.installProgress,
         traceLevel: runtime.traceLevel
     };
@@ -135,6 +141,8 @@ export function mergeBspServerData(runtime) {
         description: config.description,
         enabled: config.enabled,
         isBsp: true,
+        hasInstaller: config.hasInstaller,
+        installationStatus: config.installationStatus,
         status: runtime.status,
         statusMessage: runtime.statusMessage,
         isReady: runtime.isReady,
@@ -144,16 +152,34 @@ export function mergeBspServerData(runtime) {
     };
 }
 
+let lspConfigsLoaded = false;
+let lspConfigsPromise = null;
+let dapConfigsLoaded = false;
+let dapConfigsPromise = null;
+let bspConfigsLoaded = false;
+let bspConfigsPromise = null;
+let runtimeConfigsLoaded = false;
+let runtimeConfigsPromise = null;
+
 export async function loadLspConfigs() {
     try {
         const response = await fetch('/api/admin/lsp/configs');
         const configs = await response.json();
         state.lspConfigs = {};
         configs.forEach(config => { state.lspConfigs[config.id] = config; });
+        lspConfigsLoaded = true;
         console.log('Loaded', configs.length, 'LSP configs');
     } catch (error) {
         console.error('Failed to load LSP configs:', error);
     }
+}
+
+export async function ensureLspConfigs() {
+    if (lspConfigsLoaded) return;
+    if (!lspConfigsPromise) {
+        lspConfigsPromise = loadLspConfigs().finally(() => { lspConfigsPromise = null; });
+    }
+    return lspConfigsPromise;
 }
 
 export async function loadDapConfigs() {
@@ -162,11 +188,20 @@ export async function loadDapConfigs() {
         const configs = await response.json();
         state.dapConfigs = {};
         configs.forEach(config => { state.dapConfigs[config.id] = config; });
+        dapConfigsLoaded = true;
         console.log('Loaded', configs.length, 'DAP configs');
     } catch (error) {
         console.error('Failed to load DAP configs:', error);
         state.dapConfigs = {};
     }
+}
+
+export async function ensureDapConfigs() {
+    if (dapConfigsLoaded) return;
+    if (!dapConfigsPromise) {
+        dapConfigsPromise = loadDapConfigs().finally(() => { dapConfigsPromise = null; });
+    }
+    return dapConfigsPromise;
 }
 
 export async function loadBspConfigs() {
@@ -175,11 +210,20 @@ export async function loadBspConfigs() {
         const configs = await response.json();
         state.bspConfigs = {};
         configs.forEach(config => { state.bspConfigs[config.id] = config; });
+        bspConfigsLoaded = true;
         console.log('Loaded', configs.length, 'BSP configs');
     } catch (error) {
         console.error('Failed to load BSP configs:', error);
         state.bspConfigs = {};
     }
+}
+
+export async function ensureBspConfigs() {
+    if (bspConfigsLoaded) return;
+    if (!bspConfigsPromise) {
+        bspConfigsPromise = loadBspConfigs().finally(() => { bspConfigsPromise = null; });
+    }
+    return bspConfigsPromise;
 }
 
 export async function loadRuntimeConfigs() {
@@ -188,11 +232,20 @@ export async function loadRuntimeConfigs() {
         const runtimes = await response.json();
         state.runtimeConfigs = {};
         runtimes.forEach(rt => { state.runtimeConfigs[rt.id] = rt; });
+        runtimeConfigsLoaded = true;
         console.log('Loaded', runtimes.length, 'runtime configs');
     } catch (error) {
         console.error('Failed to load runtime configs:', error);
         state.runtimeConfigs = {};
     }
+}
+
+export async function ensureRuntimeConfigs() {
+    if (runtimeConfigsLoaded) return;
+    if (!runtimeConfigsPromise) {
+        runtimeConfigsPromise = loadRuntimeConfigs().finally(() => { runtimeConfigsPromise = null; });
+    }
+    return runtimeConfigsPromise;
 }
 
 export function updateSearchBoxVisibility(showSearchBox) {

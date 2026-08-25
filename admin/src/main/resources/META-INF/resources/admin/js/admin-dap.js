@@ -4,12 +4,12 @@
  * Handles DAP session creation, launching, and management
  */
 
-import { state, updateSearchBoxVisibility, buildGlobalContributedByMap } from './shared-state.js';
+import { state, updateSearchBoxVisibility, buildGlobalContributedByMap, ensureDapConfigs } from './shared-state.js';
 import {
     confirmAction, showAlert, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
-    loadInstallerJsonEditor, saveInstallerJsonEditor,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
-    selectListItem
+    selectListItem, buildInstallOutputHTML, buildInstallerControlsHTML,
+    getInstallStatusBadge, renderServerNameHeader, restoreInstallOutput
 } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { formatErrorWithFolding } from './error-formatter.js';
@@ -588,7 +588,7 @@ export function renderDapTracesForSession(sessionId) {
  */
 
 let selectedDapServer = null;
-let currentDapServerTab = 'overview'; // overview, install
+let currentDapServerTab = 'overview'; // overview, contributions, settings
 let dapServerConfigs = {};
 let dapLanguageFilter = null;
 
@@ -600,16 +600,7 @@ function renderDapServerItem(server) {
     const disabledClass = server.enabled === false ? 'server-disabled' : '';
     return `
         <div class="server-item ${isActive} ${disabledClass}" data-action="showDapServerDetails" data-server-id="${server.id}">
-            <div class="server-name d-flex align-center justify-between">
-                <span>
-                    <span class="server-source-icon">🐛</span>
-                    ${server.name}
-                </span>
-                <label class="toggle-switch" onclick="event.stopPropagation()">
-                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleDapServerEnabled" data-server-id="${server.id}">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
+            ${renderServerNameHeader(server, { icon: '🐛', toggleAction: 'toggleDapServerEnabled' })}
             <div class="server-id">${server.id}</div>
         </div>
     `;
@@ -617,14 +608,8 @@ function renderDapServerItem(server) {
 
 export async function loadAllDapServers(serverIdToSelect) {
     try {
-        // Use cached configs if available, otherwise fetch
-        let dapServers;
-        if (state.dapConfigs && Object.keys(state.dapConfigs).length > 0) {
-            dapServers = Object.values(state.dapConfigs).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        } else {
-            const response = await fetch('/api/admin/dap/configs');
-            dapServers = (await response.json()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        }
+        await ensureDapConfigs();
+        const dapServers = Object.values(state.dapConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
         dapServerConfigs = {};
         dapServers.forEach(server => {
@@ -670,7 +655,7 @@ export async function loadAllDapServers(serverIdToSelect) {
 }
 
 /**
- * Show details for a global DAP server with Overview/Install tabs.
+ * Show details for a global DAP server with Overview/Contributions/Settings tabs.
  */
 export async function showDapServerDetails(serverId, scroll) {
     const previousServer = selectedDapServer;
@@ -745,6 +730,13 @@ export async function showDapServerDetails(serverId, scroll) {
 
         ${renderExtensionSection(server)}
 
+        ${server.installDir ? `
+        <div class="detail-row">
+            <span class="detail-label">Install Path:</span>
+            <span class="detail-value"><code>${server.installDir}</code></span>
+        </div>
+        ` : ''}
+
         <div class="mb-lg">
             <strong class="text-label">Supported Languages/Files:</strong>
             ${docSelectorHTML}
@@ -760,20 +752,20 @@ export async function showDapServerDetails(serverId, scroll) {
             <div class="console-title">
                 <span class="server-source-icon">🐛</span>
                 ${server.name || server.id}
+                <span class="console-install-badge" data-server-id="${server.id}">${getInstallStatusBadge(server)}</span>
             </div>
             <div class="console-tabs">
                 <button class="tab-button ${currentDapServerTab === 'overview' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="overview">Overview</button>
                 ${hasContributions ? `<button class="tab-button ${currentDapServerTab === 'contributions' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="contributions">Contributions</button>` : ''}
                 <button class="tab-button ${currentDapServerTab === 'settings' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="settings">Settings</button>
-                <button class="tab-button ${currentDapServerTab === 'install' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="install">Install</button>
             </div>
-            <div class="console-controls">
-            </div>
+            ${server.hasInstaller ? buildInstallerControlsHTML(server.id, 'installDapServer') : ''}
         </div>
         <div class="tab-content">
             <div id="dap-server-overview-tab" class="tab-panel ${currentDapServerTab === 'overview' ? 'active' : ''}">
                 <div class="details-panel text-primary detail-content">
                     ${detailsHTML}
+                    ${buildInstallOutputHTML()}
                 </div>
             </div>
             ${hasContributions ? `
@@ -790,64 +782,28 @@ export async function showDapServerDetails(serverId, scroll) {
                     ${buildDapSettingsHTML(server)}
                 </div>
             </div>
-            <div id="dap-server-install-tab" class="tab-panel ${currentDapServerTab === 'install' ? 'active' : ''}">
-                <div class="install-panel">
-                    <h3>Installer Configuration</h3>
-                    <div class="install-info">
-                        <p><strong>Debugger:</strong> ${server.name}</p>
-                        <p><strong>ID:</strong> ${server.id}</p>
-                    </div>
-                    <div class="installer-editor">
-                        <div class="editor-header">
-                            <span>installer.json</span>
-                            <div class="editor-actions">
-                                <button class="editor-btn" data-action="saveDapInstallerJson" data-server-id="${server.id}" title="Save">💾 Save</button>
-                                <button class="editor-btn" data-action="resetDapInstallerJson" data-server-id="${server.id}" title="Reset">↻ Reset</button>
-                                <span class="editor-separator"></span>
-                                <button class="editor-btn install-run-btn" data-action="runDapInstaller" data-server-id="${server.id}" data-force="false" title="Install (check first, skip if already installed)">▶ Install</button>
-                                <button class="editor-btn install-force-btn" data-action="runDapInstaller" data-server-id="${server.id}" data-force="true" title="Force Install (skip check, always re-install)">⟳ Force Install</button>
-                            </div>
-                        </div>
-                        <textarea id="dap-installer-json-editor" class="json-editor" spellcheck="false"></textarea>
-                    </div>
-                    <div id="dap-install-output" class="install-output"></div>
-                </div>
-            </div>
         </div>
     `;
 
     document.getElementById('console-area').innerHTML = html;
 
-    // Load installer.json for this DAP server if on Install tab
-    if (currentDapServerTab === 'install') {
-        loadDapInstallerJson(server.id);
-    }
+    restoreInstallOutput(serverId, 'server-install-output');
 }
 
 /**
- * Switch between DAP server tabs (Overview/Install).
+ * Switch between DAP server tabs (Overview/Contributions/Settings).
  */
 export function switchDapServerTab(tab) {
     currentDapServerTab = tab;
     switchServerTabs('dap-server', tab);
 }
 
-async function loadDapInstallerJson(serverId) {
-    loadInstallerJsonEditor(serverId, 'dap-installer-json-editor');
-}
-
-async function saveDapInstallerJson(serverId) {
-    saveInstallerJsonEditor(serverId, 'dap-installer-json-editor');
-}
-
-async function resetDapInstallerJson(serverId) {
-    loadDapInstallerJson(serverId);
-}
-
-async function runDapInstaller(serverId, force) {
+async function installDapServer(serverId) {
+    switchDapServerTab('overview');
     const installUrl = `/api/admin/dap/configs/${serverId}/install`;
-    return runServerInstaller(serverId, force, 'dap-install-output', installUrl);
+    return runServerInstaller(serverId, true, 'server-install-output', installUrl);
 }
+
 
 /**
  * Toggle individual DAP trace item.
@@ -1433,9 +1389,7 @@ registerActions('click', {
     selectDapSession: (el) => selectDapSession(el.dataset.sessionId),
     showDapServerDetails: (el) => showDapServerDetails(el.dataset.serverId),
     switchDapServerTab: (el) => switchDapServerTab(el.dataset.tab),
-    saveDapInstallerJson: (el) => saveDapInstallerJson(el.dataset.serverId),
-    resetDapInstallerJson: (el) => resetDapInstallerJson(el.dataset.serverId),
-    runDapInstaller: (el) => runDapInstaller(el.dataset.serverId, el.dataset.force === 'true'),
+    installDapServer: (el) => installDapServer(el.dataset.serverId),
     toggleAllDapTraces: () => {
         const sessionId = state.currentDapSessionId;
         if (sessionId) toggleAllDapTraces(sessionId);

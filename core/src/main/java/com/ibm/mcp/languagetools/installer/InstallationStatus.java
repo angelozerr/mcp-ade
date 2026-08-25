@@ -23,6 +23,11 @@ public enum InstallationStatus {
     NOT_INSTALLED,
 
     /**
+     * Checking whether the server is installed.
+     */
+    CHECKING,
+
+    /**
      * Installation is in progress.
      */
     INSTALLING,

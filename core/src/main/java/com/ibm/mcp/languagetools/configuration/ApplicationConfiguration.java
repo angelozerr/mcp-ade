@@ -19,6 +19,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
+import com.ibm.mcp.languagetools.runtime.RuntimeSourcePreference;
 import com.ibm.mcp.languagetools.workspace.IdeConfigurationProviderRegistry;
 import com.ibm.mcp.languagetools.workspace.IdeConfigurationStrategy;
 
@@ -239,6 +240,16 @@ public class ApplicationConfiguration extends AbstractConfiguration {
     public void setDapTraceLevel(String serverId, ServerTrace level) {
         dapTraceLevels.put(serverId, level);
         super.setDapTraceLevel(serverId, level);
+    }
+
+    // ========== Runtime source preference ==========
+
+    public RuntimeSourcePreference getRuntimeSourcePreference(String runtimeId) {
+        return RuntimeSourcePreference.fromValue(getString("runtime." + runtimeId + ".source"));
+    }
+
+    public void setRuntimeSourcePreference(String runtimeId, RuntimeSourcePreference pref) {
+        set("runtime." + runtimeId + ".source", pref.name().toLowerCase());
     }
 
     // ========== BSP trace (cached) ==========

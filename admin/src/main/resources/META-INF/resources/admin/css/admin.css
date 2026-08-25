@@ -810,6 +810,11 @@ body {
     margin-right: 0.25rem;
 }
 
+.source-icon {
+    font-size: 0.75rem;
+    cursor: default;
+}
+
 .server-actions {
     display: none;
     position: absolute;
@@ -885,6 +890,7 @@ body {
     padding: 0.1rem 0.4rem;
     font-size: 0.6rem;
     min-width: auto;
+    text-align: center;
     white-space: nowrap;
     flex-shrink: 0;
 }
@@ -1620,10 +1626,12 @@ body {
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0;
-    flex: 0 0 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
     white-space: nowrap;
+}
+
+.console-install-badge {
+    flex-shrink: 0;
 }
 
 .status-indicator {
@@ -1660,6 +1668,14 @@ body {
 .console-controls button:disabled {
     opacity: 0.4;
     cursor: default;
+}
+
+.console-controls button.console-btn-danger {
+    background: var(--color-error);
+}
+
+.console-controls button.console-btn-danger:hover:not(:disabled) {
+    background: var(--color-error-hover);
 }
 
 .console {
@@ -2068,7 +2084,7 @@ body {
     position: fixed;
     bottom: 2rem;
     right: 0;
-    width: 400px;
+    width: min(600px, 50vw);
     max-height: 60vh;
     background: var(--bg-console);
     border: 1px solid var(--border-progress);
@@ -2121,8 +2137,8 @@ body {
     background: var(--bg-panel);
     border: 1px solid var(--border-progress);
     border-radius: 4px;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .progress-task-item:last-child {
@@ -2133,13 +2149,33 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
+    gap: 0.5rem;
+}
+
+.progress-task-toggle {
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-right: 0.35rem;
+    flex-shrink: 0;
+}
+
+.progress-task-toggle:hover {
+    color: var(--text-primary);
 }
 
 .progress-task-title {
     color: var(--text-primary);
     font-size: 0.9rem;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .progress-task-percent {
@@ -2168,12 +2204,15 @@ body {
     font-size: 0.8rem;
 }
 
-/* Step name */
+/* Step name (below progress bar) */
 .progress-step-name {
     color: var(--color-success);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 500;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 0.15rem;
 }
 
 /* Steps list */

@@ -1,13 +1,12 @@
 import { state, getCurrentTheme, setTheme, updateThemeIcon, traceKey,
-    formatStatusClass, formatStatusLabel, updateSearchBoxVisibility,
-    loadLspConfigs, loadDapConfigs, loadBspConfigs, loadRuntimeConfigs } from './shared-state.js';
-import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, renderServerActions, renderBadge } from './shared-ui.js';
+    formatStatusClass, formatStatusLabel, updateSearchBoxVisibility } from './shared-state.js';
+import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, onInstallerTaskCompleted, updateInstallerButtons, updateInstallBadgeInList, renderServerActions, renderBadge } from './shared-ui.js';
 import { escapeHtml, updateTraceControls, clearHighlights, closeSearch } from './trace-renderer.js';
 import { initEventDelegation, registerActions } from './event-delegation.js';
 import { KeyboardShortcuts } from './keyboard-shortcuts.js';
 import { setDiagramCallbacks } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
-import { handleProgressInit, handleProgressUpdate, setInstallProgressCallback, setTaskCompletedCallback, setTaskStartedCallback } from './progress-manager.js';
+import { handleProgressInit, handleProgressUpdate, setInstallProgressCallback, setTaskCompletedCallback, setTaskStartedCallback, setInstallTaskRestoredCallback, setInstallBadgeUpdateCallback } from './progress-manager.js';
 
 import { renderWorkspaces, selectWorkspace, selectServer, selectDapSessionByServerId,
     switchWorkspaceTab, loadConsole, renderConsole, loadServers,
@@ -22,7 +21,7 @@ import { loadAllDapServers, onDapSessionUpdate, renderDapTracesForSession,
     createSessionHTML, changeDapServerTraceLevel,
     setSelectDapSessionByServerIdCallback, setRefreshWorkspaceServersFn } from './admin-dap.js';
 import { loadAllBspServers } from './admin-bsp.js';
-import { loadAllRuntimes, updateRuntimeStatus, appendRuntimeTrace, setSwitchTabCallback as setRuntimeSwitchTabCallback } from './admin-runtimes.js';
+import { loadAllRuntimes, updateRuntimeStatus, setSwitchTabCallback as setRuntimeSwitchTabCallback } from './admin-runtimes.js';
 import { loadAllExtensions, showAddExtensionForm, setSwitchTabCallback } from './admin-extensions.js';
 import { loadAllLanguages } from './admin-languages.js';
 import { getMcpClients, getSelectedMcpClient, getMcpTracesByClient,
@@ -138,10 +137,13 @@ function handleWebSocketMessage(message) {
             handleRuntimeStatusChanged(message);
             break;
         case 'runtime-trace':
-            appendRuntimeTrace(message);
+            storeInstallTrace({...message, serverId: message.runtimeId});
             break;
         case 'file-watcher-status-changed':
             handleFileWatcherStatusChanged(message);
+            break;
+        case 'install-status-changed':
+            handleInstallStatusChanged(message);
             break;
         default:
             console.warn('Unknown WebSocket message type:', message.type);
@@ -168,10 +170,20 @@ function pushTrace(container, key, trace, maxSize = 200) {
     }
 }
 
-function handleLspTrace(trace) {
+function storeInstallTrace(trace) {
     if (state.installOutputServerId === trace.serverId) {
         appendInstallTrace(trace);
+    } else if (state.installingServers.has(trace.serverId) ||
+               trace.messageType === 'INFO' || trace.messageType === 'UPDATE' || trace.messageType === 'ERROR') {
+        if (!state.installTraces[trace.serverId]) {
+            state.installTraces[trace.serverId] = [];
+        }
+        state.installTraces[trace.serverId].push(trace);
     }
+}
+
+function handleLspTrace(trace) {
+    storeInstallTrace(trace);
 
     const tk = traceKey(trace.workspaceUri, trace.serverId);
     pushTrace(state.tracesByServer, tk, trace);
@@ -200,9 +212,7 @@ function handleLspTrace(trace) {
 }
 
 function handleDapTrace(trace) {
-    if (state.installOutputServerId === trace.serverId) {
-        appendInstallTrace(trace);
-    }
+    storeInstallTrace(trace);
 
     if (trace.sessionId) {
         pushTrace(state.dapTracesBySession, trace.sessionId, trace);
@@ -222,9 +232,7 @@ function handleDapTrace(trace) {
 function handleBspTrace(trace) {
     if (!trace.serverId) return;
 
-    if (state.installOutputServerId === trace.serverId) {
-        appendInstallTrace(trace);
-    }
+    storeInstallTrace(trace);
 
     const tk = traceKey(trace.workspaceUri, trace.serverId);
     pushTrace(state.tracesByServer, tk, trace);
@@ -450,7 +458,18 @@ function handleServerEnabledChanged(event) {
 }
 
 function handleRuntimeStatusChanged(message) {
-    updateRuntimeStatus(message.runtimeId, message.status, message.error);
+    updateRuntimeStatus(message.runtimeId, message.status, message.error,
+        message.resolvedPath, message.activeSource, message.fallbackUsed, message.sourcePreference);
+}
+
+function handleInstallStatusChanged(message) {
+    const serverId = message.serverId;
+    const status = message.installationStatus;
+    const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId];
+    if (config) {
+        config.installationStatus = status;
+    }
+    updateInstallBadgeInList(serverId);
 }
 
 function handleFileWatcherStatusChanged(message) {
@@ -671,7 +690,15 @@ setDiagramCallbacks({
 });
 setInstallProgressCallback(updateInstallProgress);
 setTaskStartedCallback((taskId, workspaceUri) => onWorkspaceTaskStarted(taskId, workspaceUri));
-setTaskCompletedCallback((taskId) => onWorkspaceTaskCompleted(taskId));
+setTaskCompletedCallback((taskId, status) => {
+    onWorkspaceTaskCompleted(taskId);
+    onInstallerTaskCompleted(taskId, status);
+});
+setInstallTaskRestoredCallback((serverId) => {
+    updateInstallerButtons(serverId, true);
+    updateInstallBadgeInList(serverId);
+});
+setInstallBadgeUpdateCallback(updateInstallBadgeInList);
 setSelectDapSessionByServerIdCallback(selectDapSessionByServerId);
 setRefreshWorkspaceServersFn(refreshWorkspaceServers);
 setCreateSessionHTMLFn(createSessionHTML);
@@ -713,7 +740,6 @@ registerActions('click', {
 
 (async function init() {
     await connectAdminWebSocket();
-    await Promise.all([loadLspConfigs(), loadDapConfigs(), loadBspConfigs(), loadRuntimeConfigs()]);
 
     KeyboardShortcuts.register({
         getActiveConsole: () => {

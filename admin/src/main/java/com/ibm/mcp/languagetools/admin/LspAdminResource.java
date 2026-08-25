@@ -18,6 +18,7 @@ import com.ibm.mcp.languagetools.admin.dto.LspConfigDTO;
 import com.ibm.mcp.languagetools.admin.dto.ServerDTOBuilder;
 import com.ibm.mcp.languagetools.admin.dto.StatusResponse;
 import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
+import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
@@ -54,6 +55,11 @@ public class LspAdminResource extends AbstractServerAdminResource {
         return "LSP";
     }
 
+    @Override
+    protected TraceCollector getTraceCollector() {
+        return application.getLspTraceCollector();
+    }
+
     // ========== LSP Configs ==========
 
     /**
@@ -62,8 +68,9 @@ public class LspAdminResource extends AbstractServerAdminResource {
     @GET
     @Path("/configs")
     public List<LspConfigDTO> listConfigs() {
-        return application.getLspServerConfigs()
-                .stream()
+        var configs = application.getLspServerConfigs();
+        checkUncheckedServers(configs);
+        return configs.stream()
                 .map(serverDTOBuilder::buildConfig)
                 .toList();
     }
@@ -260,34 +267,6 @@ public class LspAdminResource extends AbstractServerAdminResource {
         } catch (Exception e) {
             return Response.status(500).entity(new ErrorResponse(e.getMessage())).build();
         }
-    }
-
-    // ========== Progress Task Control ==========
-
-    /**
-     * Cancel a progress task (e.g., an installation).
-     * Only works for tasks marked as cancellable (Admin-initiated tasks).
-     */
-    @POST
-    @Path("/progress/{taskId}/cancel")
-    public Response cancelTask(@PathParam("taskId") String taskId) {
-        // Extract serverId from taskId (e.g., "install-jdtls" -> "jdtls", "start-jdtls" -> "jdtls")
-        String serverId = taskId.replaceFirst("^(install|start|restart)-", "");
-
-        var config = application.getLspServerConfig(serverId);
-        if (config == null) {
-            return Response.status(404).entity(new ErrorResponse("Server not found: " + serverId)).build();
-        }
-
-        var sharedProgress = config.getSharedInstallProgress();
-        if (sharedProgress == null) {
-            return Response.status(404).entity(new ErrorResponse("No active task to cancel")).build();
-        }
-
-        LOG.infof("Cancelling task '%s' for server '%s'", taskId, serverId);
-        sharedProgress.cancel(taskId);
-
-        return Response.ok().entity(new StatusResponse("cancelled")).build();
     }
 
 }

@@ -1,6 +1,7 @@
 import { state, getServerApiBase, getServerName, getRuntimeName } from './shared-state.js';
 import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 import { renderServerDiagram } from './diagram.js';
+import { registerActions } from './event-delegation.js';
 
 export function selectListItem(container, itemSelector, previousId, newId, scroll) {
     if (!container) return;
@@ -62,7 +63,12 @@ export function renderBadge(statusClass, label, opts) {
     const classes = ['status-badge', `status-${statusClass}`];
     if (opts?.compact) classes.push('status-badge-compact');
     if (opts?.animate) classes.push('status-checking');
-    return `<span class="${classes.join(' ')}">${label}</span>`;
+    let style = '';
+    if (opts?.progress != null) {
+        const pct = Math.round(opts.progress);
+        style = ` style="background: linear-gradient(90deg, color-mix(in srgb, var(--status-${statusClass}-bg), #000 25%) ${pct}%, var(--status-${statusClass}-bg) ${pct}%)"`;
+    }
+    return `<span class="${classes.join(' ')}"${style}>${label}</span>`;
 }
 
 /**
@@ -74,10 +80,7 @@ export function getRuntimeStatusInfo(status, autoInstallable) {
         return { icon: '🟢', label: 'Installed', cssClass: 'success', badgeClass: 'badge-success', statusClass: 'running', animate: false };
     }
     if (status === 'INSTALLING') {
-        return { icon: '🟡', label: 'Installing...', cssClass: 'warning', badgeClass: 'badge-checking', statusClass: 'installing', animate: true };
-    }
-    if (status === 'CHECKING') {
-        return { icon: '🟡', label: 'Checking...', cssClass: 'warning', badgeClass: 'badge-checking', statusClass: 'installing', animate: true };
+        return { icon: '🟡', label: 'Installing...', cssClass: 'warning', badgeClass: 'badge-checking', statusClass: 'installing', animate: false };
     }
     if (status === 'FAILED' || status === 'ERROR') {
         return { icon: '🔴', label: 'Error', cssClass: 'error', badgeClass: 'badge-error', statusClass: 'error', animate: false };
@@ -85,7 +88,7 @@ export function getRuntimeStatusInfo(status, autoInstallable) {
     if (autoInstallable) {
         return { icon: '🔵', label: 'Auto-installable', cssClass: 'info', badgeClass: 'badge-info', statusClass: 'starting', animate: false };
     }
-    return { icon: '⚪', label: 'Check-only', cssClass: 'dimmed', badgeClass: 'badge-dimmed', statusClass: 'stopped', animate: false };
+    return { icon: '⚪', label: 'Not installed', cssClass: 'dimmed', badgeClass: 'badge-dimmed', statusClass: 'stopped', animate: false };
 }
 
 /**
@@ -193,22 +196,91 @@ export function hideConfirmModal() {
     document.getElementById('confirm-modal').classList.remove('visible');
 }
 
-// ========== Shared Installer Functions (LSP, DAP, BSP) ==========
+// ========== Shared Installer Functions (LSP, DAP, BSP, Runtimes) ==========
+
+export function buildInstallOutputHTML() {
+    return `<div id="server-install-output" class="mt-2xl" style="display:none"></div>`;
+}
+
+export function buildInstallerControlsHTML(serverId, installAction) {
+    const installing = state.installingServers.has(serverId);
+    const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId] || state.runtimeConfigs?.[serverId];
+    const status = config?.installationStatus || config?.status;
+    const isInstalled = status === 'INSTALLED' || status === 'ALREADY_INSTALLED';
+    const installLabel = isInstalled ? '⟳ Reinstall' : '▶ Install';
+    const installTitle = isInstalled ? 'Reinstall this server (force)' : 'Install this server (force)';
+    return `<div class="console-controls" id="installer-controls-${serverId}">
+        <button class="console-btn" data-action="${installAction}" data-server-id="${serverId}" title="${installTitle}" ${installing ? 'disabled' : ''}>${installLabel}</button>
+        <button class="console-btn console-btn-danger" data-action="cancelServerInstall" data-server-id="${serverId}" title="Cancel installation" style="${installing ? '' : 'display:none'}">✕ Cancel</button>
+    </div>`;
+}
+
+export function updateInstallerButtons(serverId, installing) {
+    const container = document.getElementById(`installer-controls-${serverId}`);
+    if (!container) return;
+    container.querySelectorAll('.console-btn:not([data-action="cancelServerInstall"])').forEach(btn => {
+        btn.disabled = installing;
+    });
+    const cancelBtn = container.querySelector('[data-action="cancelServerInstall"]');
+    if (cancelBtn) {
+        cancelBtn.style.display = installing ? '' : 'none';
+    }
+}
+
+export function onInstallerTaskCompleted(taskId, status) {
+    if (!taskId?.startsWith('install-')) return;
+    const serverId = taskId.replace(/^install-/, '');
+    state.installingServers.delete(serverId);
+    updateInstallerButtons(serverId, false);
+    const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId] || state.runtimeConfigs?.[serverId];
+    if (config) {
+        config.installationStatus = status === 'completed' ? 'INSTALLED' : 'FAILED';
+    }
+    updateInstallBadgeInList(serverId);
+}
+
+async function cancelServerInstall(serverId) {
+    const taskId = `install-${serverId}`;
+    let apiPath;
+    if (state.runtimeConfigs?.[serverId]) {
+        apiPath = `/api/admin/runtimes/progress/${encodeURIComponent(taskId)}/cancel`;
+    } else {
+        const apiType = state.bspConfigs?.[serverId] ? 'bsp' : state.dapConfigs?.[serverId] ? 'dap' : 'lsp';
+        apiPath = `/api/admin/${apiType}/progress/${encodeURIComponent(taskId)}/cancel`;
+    }
+    try {
+        const response = await fetch(apiPath, { method: 'POST' });
+        if (!response.ok) {
+            console.error('Failed to cancel install:', await response.json());
+        }
+    } catch (e) {
+        console.error('Failed to cancel install:', e);
+    }
+}
 
 export async function runServerInstaller(serverId, force, outputDivId, installUrl) {
     const outputDiv = document.getElementById(outputDivId);
     if (!outputDiv) return;
 
-    const label = force ? 'Force installing' : 'Installing';
+    state.installingServers.add(serverId);
+    updateInstallerButtons(serverId, true);
+
+    state.installTraces[serverId] = [];
+    state.installStatus[serverId] = 'installing';
+
     outputDiv.innerHTML = `
-        <div class="install-output-header text-success mb-sm">${label} ${serverId}...</div>
+        <div class="install-output-header text-success mb-sm">Installing ${serverId}...</div>
         <div id="install-progress-bar" class="bg-input mb-sm d-none" style="height: 4px; border-radius: 2px;">
             <div id="install-progress-fill" style="height: 100%; background: var(--color-success); border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
         </div>
         <div id="install-traces" class="font-mono bg-card p-sm rounded-sm font-sm overflow-auto" style="max-height: 300px;"></div>
     `;
+    outputDiv.style.display = 'block';
+
+    outputDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     state.installOutputServerId = serverId;
+    updateInstallBadgeInList(serverId);
 
     try {
         const url = force ? `${installUrl}${installUrl.includes('?') ? '&' : '?'}force=true` : installUrl;
@@ -216,16 +288,36 @@ export async function runServerInstaller(serverId, force, outputDivId, installUr
 
         if (!response.ok) {
             state.installOutputServerId = null;
+            state.installingServers.delete(serverId);
+            updateInstallerButtons(serverId, false);
             throw new Error('Installation failed');
         }
     } catch (error) {
         console.error('Failed to run installer:', error);
         state.installOutputServerId = null;
+        state.installingServers.delete(serverId);
+        updateInstallerButtons(serverId, false);
         outputDiv.innerHTML = `<div class="text-error">Installation failed: ${error.message}</div>`;
     }
 }
 
 export function appendInstallTrace(trace) {
+    const serverId = state.installOutputServerId;
+    if (serverId) {
+        if (!state.installTraces[serverId]) {
+            state.installTraces[serverId] = [];
+        }
+        const traces = state.installTraces[serverId];
+        if (trace.messageType === 'UPDATE') {
+            if (traces.length > 0 && traces[traces.length - 1].messageType === 'UPDATE') {
+                traces[traces.length - 1] = trace;
+            } else {
+                traces.push(trace);
+            }
+        } else {
+            traces.push(trace);
+        }
+    }
     appendTraceLine(document.getElementById('install-traces'), trace);
 }
 
@@ -259,26 +351,162 @@ export function updateInstallProgress(msg) {
     const fill = document.getElementById('install-progress-fill');
     const header = document.querySelector('.install-output-header');
 
+    const percent = Math.round((msg.progress || 0) * 100);
     if (bar && fill) {
-        bar.style.display = 'block';
-        fill.style.width = `${Math.round((msg.progress || 0) * 100)}%`;
+        bar.classList.remove('d-none');
+        fill.style.width = `${percent}%`;
+    }
+
+    const sid = state.installOutputServerId;
+    if (sid) {
+        state.installProgress[sid] = percent;
     }
 
     if (msg.status === 'completed') {
+        if (sid) state.installStatus[sid] = 'completed';
         state.installOutputServerId = null;
         if (fill) fill.style.background = 'var(--color-success)';
         if (header) {
             header.style.color = 'var(--color-success)';
             header.textContent = `Installation completed`;
         }
+        if (sid) updateInstallBadgeInList(sid);
     } else if (msg.status === 'failed') {
+        if (sid) state.installStatus[sid] = 'failed';
         state.installOutputServerId = null;
         if (fill) fill.style.background = 'var(--color-error-text)';
         if (header) {
             header.style.color = 'var(--color-error-text)';
             header.textContent = `Installation failed`;
         }
+        if (sid) updateInstallBadgeInList(sid);
     }
+}
+
+export function restoreInstallOutput(serverId, outputDivId) {
+    let status = state.installStatus[serverId];
+    if (!status) {
+        const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] ||
+                       state.bspConfigs?.[serverId] || state.runtimeConfigs?.[serverId];
+        if (config?.installationStatus === 'INSTALLED' || config?.installationStatus === 'ALREADY_INSTALLED') {
+            status = 'completed';
+        } else if (config?.installationStatus === 'FAILED') {
+            status = 'failed';
+        }
+    }
+    const traces = state.installTraces[serverId];
+    if (!status) return;
+    if (status !== 'installing' && (!traces || traces.length === 0)) return;
+    if (!state.installTraces[serverId]) {
+        state.installTraces[serverId] = [];
+    }
+
+    const outputDiv = document.getElementById(outputDivId);
+    if (!outputDiv) return;
+
+    const isInstalling = status === 'installing';
+    const isFailed = status === 'failed';
+    const isCompleted = status === 'completed';
+    const headerText = isInstalling ? `Installing ${serverId}...`
+        : isFailed ? 'Installation failed'
+        : 'Installation completed';
+    const headerColor = isFailed ? 'var(--color-error-text)' : 'var(--color-success)';
+    const barDisplay = isInstalling ? 'block' : 'none';
+    const fillColor = isFailed ? 'var(--color-error-text)' : 'var(--color-success)';
+    const progressPercent = isCompleted ? 100 : (state.installProgress[serverId] || 0);
+
+    outputDiv.innerHTML = `
+        <div class="install-output-header mb-sm" style="color: ${headerColor}">${headerText}</div>
+        <div id="install-progress-bar" class="bg-input mb-sm" style="height: 4px; border-radius: 2px; display: ${barDisplay};">
+            <div id="install-progress-fill" style="height: 100%; background: ${fillColor}; border-radius: 2px; width: ${progressPercent}%;"></div>
+        </div>
+        <div id="install-traces" class="font-mono bg-card p-sm rounded-sm font-sm overflow-auto" style="max-height: 300px;"></div>
+    `;
+    outputDiv.style.display = 'block';
+
+    requestAnimationFrame(() => {
+        const fill = document.getElementById('install-progress-fill');
+        if (fill) fill.style.transition = 'width 0.3s';
+    });
+
+    state.installOutputServerId = isInstalling ? serverId : null;
+
+    const tracesDiv = document.getElementById('install-traces');
+    const savedTraces = state.installTraces[serverId];
+    if (savedTraces) {
+        for (const trace of savedTraces) {
+            appendTraceLine(tracesDiv, trace);
+        }
+    }
+}
+
+export function getInstallStatusBadge(server) {
+    const activeStatus = state.installStatus[server.id];
+    if (activeStatus === 'installing') {
+        const pct = state.installProgress[server.id];
+        return renderBadge('installing', 'Installing...', { compact: true, progress: pct });
+    }
+    if (activeStatus === 'failed') {
+        return renderBadge('error', 'Failed', { compact: true });
+    }
+    if (activeStatus === 'completed') {
+        return renderBadge('running', 'Installed', { compact: true });
+    }
+
+    const dtoStatus = server.installationStatus || server.status;
+    if (!dtoStatus) return '';
+    if (dtoStatus === 'INSTALLED' || dtoStatus === 'ALREADY_INSTALLED') {
+        return renderBadge('running', 'Installed', { compact: true });
+    }
+    if (dtoStatus === 'INSTALLING') {
+        return renderBadge('installing', 'Installing...', { compact: true });
+    }
+    if (dtoStatus === 'FAILED') {
+        return renderBadge('error', 'Failed', { compact: true });
+    }
+    if (dtoStatus === 'NOT_INSTALLED') {
+        return renderBadge('stopped', 'Not installed', { compact: true });
+    }
+    return '';
+}
+
+export function updateInstallBadgeInList(serverId) {
+    const server = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId] || state.runtimeConfigs?.[serverId] || { id: serverId };
+    const badge = getInstallStatusBadge(server);
+
+    document.querySelectorAll(`.server-item[data-server-id="${serverId}"] .install-badge-container, .server-item[data-runtime-id="${serverId}"] .install-badge-container`).forEach(el => {
+        el.innerHTML = badge;
+    });
+
+    document.querySelectorAll(`.console-install-badge[data-server-id="${serverId}"]`).forEach(el => {
+        el.innerHTML = badge;
+    });
+}
+
+export function renderServerNameHeader(server, opts = {}) {
+    const icon = opts.icon || '🚀';
+    const name = opts.name || server.name || server.id;
+    const nameExtra = opts.nameExtra || '';
+    const toggleAction = opts.toggleAction;
+    const installBadgeHTML = server.hasInstaller ? getInstallStatusBadge(server) : '';
+
+    return `
+        <div class="server-name d-flex align-center justify-between">
+            <span${opts.iconTitle ? ` title="${opts.iconTitle}"` : ''}>
+                <span class="server-source-icon">${icon}</span>
+                ${name}${nameExtra}
+            </span>
+            <span class="d-flex align-center gap-sm">
+                <span class="install-badge-container">${installBadgeHTML}</span>
+                ${toggleAction ? `
+                <label class="toggle-switch" onclick="event.stopPropagation()">
+                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="${toggleAction}" data-server-id="${server.id}">
+                    <span class="toggle-slider"></span>
+                </label>
+                ` : ''}
+            </span>
+        </div>
+    `;
 }
 
 export function initModalOverlay() {
@@ -416,3 +644,7 @@ export function renderServerActions(serverId, server) {
     }
     return '';
 }
+
+registerActions('click', {
+    cancelServerInstall: (el) => cancelServerInstall(el.dataset.serverId),
+});

@@ -22,6 +22,7 @@ import com.ibm.mcp.languagetools.installer.TaskRegistryInstaller;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
+import com.ibm.mcp.languagetools.utils.OSUtils;
 import org.jboss.logging.Logger;
 
 import java.io.File;
@@ -45,6 +46,12 @@ public class RuntimeConfig extends InstallableConfig {
     private volatile InstallerContext activeInstallerContext;
 
     private final List<ServerConfigBase> dependentServers = Collections.synchronizedList(new ArrayList<>());
+
+    // Runtime source resolution
+    private volatile RuntimeSourcePreference sourcePreference = RuntimeSourcePreference.AUTO;
+    private volatile String resolvedPath;
+    private volatile RuntimeSourceType activeSource = RuntimeSourceType.UNKNOWN;
+    private volatile boolean fallbackUsed;
 
     public RuntimeConfig(String runtimeId, Path runtimeHome, Extension extension) {
         super(runtimeId, runtimeHome, extension);
@@ -76,6 +83,91 @@ public class RuntimeConfig extends InstallableConfig {
 
     public List<ServerConfigBase> getDependentServers() {
         return new ArrayList<>(dependentServers);
+    }
+
+    // --- Source preference ---
+
+    public RuntimeSourcePreference getSourcePreference() {
+        return sourcePreference;
+    }
+
+    public void setSourcePreference(RuntimeSourcePreference sourcePreference) {
+        this.sourcePreference = sourcePreference;
+    }
+
+    public String getResolvedPath() {
+        return resolvedPath;
+    }
+
+    public RuntimeSourceType getActiveSource() {
+        return activeSource;
+    }
+
+    public boolean isFallbackUsed() {
+        return fallbackUsed;
+    }
+
+    /**
+     * Resolves the actual runtime binary path using which/where,
+     * respecting the user's source preference.
+     */
+    private void resolveRuntimeBinaryPath() {
+        String command = TaskRegistryInstaller.extractCheckCommand(getInstallerConfig());
+        if (command == null) {
+            resolvedPath = null;
+            activeSource = RuntimeSourceType.UNKNOWN;
+            fallbackUsed = false;
+            return;
+        }
+
+        // Reset fallback flag before each resolution
+        fallbackUsed = false;
+
+        if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
+            resolveFromInstaller(command);
+            return;
+        }
+
+        // AUTO or PATH: try system PATH first
+        String pathResult = OSUtils.resolveCommandPath(command);
+        if (pathResult != null) {
+            resolvedPath = pathResult;
+            activeSource = RuntimeSourceType.PATH;
+            fallbackUsed = false;
+            return;
+        }
+
+        // Not found on PATH, try installer
+        resolveFromInstaller(command);
+        if (resolvedPath != null && sourcePreference == RuntimeSourcePreference.PATH) {
+            fallbackUsed = true;
+        }
+    }
+
+    private void resolveFromInstaller(String command) {
+        InstallerContext tempContext = new InstallerContext(this, ProgressMonitor.none());
+        tempContext.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
+        String commandDir = TaskRegistryInstaller.extractCommandDir(getInstallerConfig(), tempContext);
+        if (commandDir == null) {
+            resolvedPath = null;
+            activeSource = RuntimeSourceType.UNKNOWN;
+            fallbackUsed = false;
+            return;
+        }
+
+        // Build env with installer dir on PATH and resolve
+        Map<String, String> env = new HashMap<>();
+        String systemPath = System.getenv("PATH");
+        env.put("PATH", commandDir + File.pathSeparator + (systemPath != null ? systemPath : ""));
+        String installerResult = OSUtils.resolveCommandPath(command, env);
+        if (installerResult != null) {
+            resolvedPath = installerResult;
+            activeSource = RuntimeSourceType.INSTALLER;
+        } else {
+            resolvedPath = null;
+            activeSource = RuntimeSourceType.UNKNOWN;
+            fallbackUsed = false;
+        }
     }
 
     // --- Installation ---
@@ -147,6 +239,10 @@ public class RuntimeConfig extends InstallableConfig {
         if (agentMessage != null) {
             map.put("runtimeMessage", agentMessage);
         }
+        if (resolvedPath != null) {
+            map.put("runtimeResolvedPath", resolvedPath);
+        }
+        map.put("runtimeActiveSource", activeSource.name());
     }
 
     /**
@@ -155,11 +251,14 @@ public class RuntimeConfig extends InstallableConfig {
      */
     public CompletableFuture<InstallResult> checkInstalled(ProgressMonitor progressMonitor) {
         return executeCheck(() -> {
-            InstallerContext context = new InstallerContext(this,
+            InstallerContext context = createInstallerContext(
                     progressMonitor != ProgressMonitor.none() ? progressMonitor : ProgressMonitor.none());
-            context.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
             addInstalledRuntimeToEnv(context);
             return context;
+        }).whenComplete((result, error) -> {
+            if (error == null) {
+                resolveRuntimeBinaryPath();
+            }
         });
     }
 
@@ -185,8 +284,7 @@ public class RuntimeConfig extends InstallableConfig {
         CompletableFuture<InstallResult> future = executeInstallation(
                 progressMonitor, force, true,
                 progress -> {
-                    InstallerContext context = new InstallerContext(this, progress);
-                    context.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
+                    InstallerContext context = createInstallerContext(progress);
                     addInstalledRuntimeToEnv(context);
                     context.addParentTraceTarget(parentServerId, parentTraceCollector);
                     activeInstallerContext = context;
@@ -205,5 +303,6 @@ public class RuntimeConfig extends InstallableConfig {
     @Override
     protected void onInstallSuccess(InstallResult result) {
         activeInstallerContext = null;
+        resolveRuntimeBinaryPath();
     }
 }

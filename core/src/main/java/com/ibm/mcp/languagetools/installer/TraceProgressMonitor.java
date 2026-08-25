@@ -82,6 +82,7 @@ public class TraceProgressMonitor extends AbstractProgressMonitor {
         if (!stepInfos.isEmpty()) {
             broadcaster.initTaskWithSteps(taskId, serverId, title, stepInfos, true);
         }
+        broadcaster.taskRunning(taskId, serverId, title, 0.0, "Starting...", null, null);
     }
 
     @Override

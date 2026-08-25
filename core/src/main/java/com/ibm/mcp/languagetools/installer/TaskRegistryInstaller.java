@@ -336,6 +336,42 @@ public class TaskRegistryInstaller implements ServerInstaller {
     }
 
     /**
+     * Extracts the runtime command name from the check section of installer.json.
+     * For example, extracts "dotnet" from {@code "check": {"exec": {"command": "dotnet --version"}}}.
+     *
+     * @return the command name (first token), or null if not found
+     */
+    public static String extractCheckCommand(JsonElement installerConfig) {
+        if (installerConfig == null || !installerConfig.isJsonObject()) {
+            return null;
+        }
+        JsonObject config = installerConfig.getAsJsonObject();
+        if (!config.has(FIELD_CHECK)) {
+            return null;
+        }
+        JsonElement checkElement = config.get(FIELD_CHECK);
+        if (!checkElement.isJsonObject()) {
+            return null;
+        }
+        JsonObject checkObj = checkElement.getAsJsonObject();
+        if (!checkObj.has("exec")) {
+            return null;
+        }
+        JsonElement execElement = checkObj.get("exec");
+        if (!execElement.isJsonObject()) {
+            return null;
+        }
+        JsonObject execObj = execElement.getAsJsonObject();
+        String command = OSUtils.getStringFromOs(execObj, "command");
+        if (command == null || command.isEmpty()) {
+            return null;
+        }
+        // Take first token (e.g. "dotnet" from "dotnet --version")
+        String[] tokens = command.trim().split("\\s+");
+        return tokens[0];
+    }
+
+    /**
      * Configure progress steps from installer.json task tree.
      * Walks the check and run task nodes (including onSuccess chains)
      * and adds a step for each declared task.

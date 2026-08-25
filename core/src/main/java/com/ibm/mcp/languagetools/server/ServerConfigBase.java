@@ -15,7 +15,6 @@ package com.ibm.mcp.languagetools.server;
 
 import com.google.gson.JsonElement;
 import com.ibm.mcp.languagetools.Application;
-import com.ibm.mcp.languagetools.PathManager;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ServerConfigSource;
@@ -120,13 +119,20 @@ public class ServerConfigBase extends InstallableConfig {
         if (runtimePathAdded || runtimeConfig == null) {
             return;
         }
-        java.nio.file.Path runtimeHome = runtimeConfig.getServerHome();
-        java.nio.file.Path binDir = runtimeHome.resolve("bin");
+
         String runtimeBin;
-        if (java.nio.file.Files.isDirectory(binDir)) {
-            runtimeBin = binDir.toString();
+        // Use the resolved path from which/where if available
+        if (runtimeConfig.getResolvedPath() != null) {
+            java.nio.file.Path resolvedBinDir = java.nio.file.Path.of(runtimeConfig.getResolvedPath()).getParent();
+            runtimeBin = resolvedBinDir != null ? resolvedBinDir.toString() : runtimeConfig.getServerHome().toString();
         } else {
-            runtimeBin = runtimeHome.toString();
+            java.nio.file.Path runtimeHome = runtimeConfig.getServerHome();
+            java.nio.file.Path binDir = runtimeHome.resolve("bin");
+            if (java.nio.file.Files.isDirectory(binDir)) {
+                runtimeBin = binDir.toString();
+            } else {
+                runtimeBin = runtimeHome.toString();
+            }
         }
 
         String existingPath = env.get("PATH");
@@ -388,7 +394,7 @@ public class ServerConfigBase extends InstallableConfig {
             }
             OperationEntry runtimeEntry = operationEntry != null
                     ? operationEntry.addChild("installing " + runtimeConfig.getName()) : null;
-            return runtimeConfig.ensureInstalled(progressMonitor, force, getServerId(), getTraceCollector())
+            return runtimeConfig.ensureInstalled(progressMonitor, false, getServerId(), getTraceCollector())
                     .whenComplete((result, error) -> {
                         if (runtimeEntry != null) {
                             if (error != null) {
@@ -435,13 +441,12 @@ public class ServerConfigBase extends InstallableConfig {
                                                                 ProgressMonitor progressMonitor,
                                                                 boolean force) {
         return executeInstallation(progressMonitor, force, false,
-                progress -> createInstallerContext(workspace, serverStatusCallback, progress, force));
+                progress -> createInstallerContext(workspace, serverStatusCallback, progress));
     }
 
     private InstallerContext createInstallerContext(Workspace workspace,
                                                     Consumer<ServerStatus> serverStatusCallback,
-                                                    ProgressMonitor progress,
-                                                    boolean force) {
+                                                    ProgressMonitor progress) {
         Consumer<InstallationStatus> installStatusCallback = installStatus -> {
             ServerStatus serverStatus = switch (installStatus) {
                 case INSTALLING -> ServerStatus.INSTALLING;
@@ -454,11 +459,10 @@ public class ServerConfigBase extends InstallableConfig {
             }
         };
 
-        InstallerContext context = new InstallerContext(this, progress, installStatusCallback);
-        PathManager pathManager = workspace.getApplication().getPathManager();
-        context.setVariable("MCP_HOME", pathManager.getMcpLangToolsRoot().toString());
-        context.setVariable("WORKSPACE_FOLDER", workspace.getRootPath().toString());
-        context.setForceInstall(force);
+        InstallerContext context = createInstallerContext(progress, installStatusCallback);
+        if (workspace != null) {
+            context.setVariable("WORKSPACE_FOLDER", workspace.getRootPath().toString());
+        }
         if (env != null && !env.isEmpty()) {
             context.setEnv(env);
         }

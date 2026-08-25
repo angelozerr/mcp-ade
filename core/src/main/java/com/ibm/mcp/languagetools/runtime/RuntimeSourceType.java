@@ -13,18 +13,23 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.runtime;
 
-import com.ibm.mcp.languagetools.installer.InstallationStatus;
-
 /**
- * CDI event fired when a runtime installation status changes.
+ * Indicates where the runtime binary was actually found.
  */
-public record RuntimeStatusChangeEvent(
-    String runtimeId,
-    InstallationStatus status,
-    String error,
-    String resolvedPath,
-    String activeSource,
-    boolean fallbackUsed,
-    String sourcePreference
-) {
+public enum RuntimeSourceType {
+
+    /**
+     * Found on the system PATH.
+     */
+    PATH,
+
+    /**
+     * Provided by the MCP installer.
+     */
+    INSTALLER,
+
+    /**
+     * Source not yet determined.
+     */
+    UNKNOWN
 }

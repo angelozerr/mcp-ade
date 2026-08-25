@@ -69,7 +69,10 @@ public class ServerDTOBuilder {
             buildSettings(config),
             config.getRuntime(),
             config.getRuntimeStatusName(),
-            config.getExtensionId()
+            config.getExtensionId(),
+            config.getInstaller() != null,
+            config.getInstaller() != null ? config.getStatus().name() : null,
+            config.getInstaller() != null ? config.getServerHome().toString() : null
         );
     }
 

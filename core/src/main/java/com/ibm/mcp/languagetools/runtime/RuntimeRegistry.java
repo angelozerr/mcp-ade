@@ -13,7 +13,10 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.runtime;
 
+import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
+import com.ibm.mcp.languagetools.installer.InstallableConfig;
 import com.ibm.mcp.languagetools.installer.InstallationStatus;
+import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
@@ -41,6 +44,9 @@ public class RuntimeRegistry {
     @Inject
     Event<RuntimeStatusChangeEvent> runtimeStatusEvent;
 
+    @Inject
+    ApplicationConfiguration applicationConfiguration;
+
     private final Map<String, RuntimeConfig> runtimes = new ConcurrentHashMap<>();
     private volatile TraceCollector traceCollector;
 
@@ -63,8 +69,11 @@ public class RuntimeRegistry {
         if (traceCollector != null && runtime.getTraceCollector() == null) {
             runtime.setTraceCollector(traceCollector);
         }
+        // Load persisted source preference
+        RuntimeSourcePreference pref = applicationConfiguration.getRuntimeSourcePreference(runtime.getRuntimeId());
+        runtime.setSourcePreference(pref);
         runtimes.put(runtime.getRuntimeId(), runtime);
-        LOG.infof("Registered runtime: %s (%s)", runtime.getRuntimeId(), runtime.getName());
+        LOG.infof("Registered runtime: %s (%s), source preference: %s", runtime.getRuntimeId(), runtime.getName(), pref);
     }
 
     /**
@@ -127,16 +136,46 @@ public class RuntimeRegistry {
      * Triggers a forced install for a single runtime and fires status events.
      */
     public void installRuntimeAsync(RuntimeConfig runtime) {
+        installRuntimeAsync(runtime, null);
+    }
+
+    /**
+     * Triggers a forced install for a single runtime with progress monitoring and fires status events.
+     */
+    public void installRuntimeAsync(RuntimeConfig runtime, TraceProgressMonitor progressMonitor) {
         fireStatusChange(runtime, InstallationStatus.INSTALLING);
-        runtime.ensureInstalled(ProgressMonitor.none(), true)
+        runtime.resetInstallState();
+        ProgressMonitor monitor = progressMonitor != null ? progressMonitor : ProgressMonitor.none();
+        runtime.ensureInstalled(monitor, true)
                 .whenComplete((result, error) -> {
                     if (error != null) {
                         LOG.errorf(error, "Failed to install runtime '%s'", runtime.getRuntimeId());
+                        if (progressMonitor != null) {
+                            Throwable cause = error.getCause() != null ? error.getCause() : error;
+                            progressMonitor.setFailed(cause.getMessage());
+                        }
                     } else {
                         LOG.infof("Runtime '%s' installed successfully", runtime.getRuntimeId());
+                        if (progressMonitor != null) {
+                            progressMonitor.setComplete();
+                        }
                     }
                     fireStatusChange(runtime);
                 });
+    }
+
+    /**
+     * Changes the source preference for a runtime, persists it, and triggers a re-check.
+     */
+    public void setSourcePreference(String runtimeId, RuntimeSourcePreference pref) {
+        RuntimeConfig runtime = runtimes.get(runtimeId);
+        if (runtime == null) {
+            return;
+        }
+        runtime.setSourcePreference(pref);
+        applicationConfiguration.setRuntimeSourcePreference(runtimeId, pref);
+        runtime.resetInstallState();
+        checkRuntimeAsync(runtime);
     }
 
     private void fireStatusChange(RuntimeConfig runtime) {
@@ -148,7 +187,11 @@ public class RuntimeRegistry {
             runtimeStatusEvent.fire(new RuntimeStatusChangeEvent(
                     runtime.getRuntimeId(),
                     status,
-                    runtime.getLastInstallError()));
+                    runtime.getLastInstallError(),
+                    runtime.getResolvedPath(),
+                    runtime.getActiveSource() != null ? runtime.getActiveSource().name() : null,
+                    runtime.isFallbackUsed(),
+                    runtime.getSourcePreference().name()));
         } catch (Exception e) {
             LOG.debugf(e, "Failed to fire runtime status event for '%s'", runtime.getRuntimeId());
         }
@@ -170,6 +213,40 @@ public class RuntimeRegistry {
             LOG.debugf("Wired server '%s' to runtime '%s'", server.getServerId(), runtimeId);
         } else {
             LOG.warnf("Server '%s' references unknown runtime '%s'", server.getServerId(), runtimeId);
+        }
+        wireInstallerRuntime(server);
+    }
+
+    /**
+     * Wires all registered runtimes to their installer runtimes.
+     * Must be called after all runtimes are registered.
+     */
+    public void wireAllInstallerRuntimes() {
+        for (RuntimeConfig runtime : runtimes.values()) {
+            wireInstallerRuntime(runtime);
+        }
+    }
+
+    /**
+     * Wires an installable config to the runtime declared in its installer.json.
+     * This is independent of the server runtime — it's the runtime needed to run the installer commands.
+     */
+    public void wireInstallerRuntime(InstallableConfig config) {
+        String installerRuntimeId = config.getInstallerRuntimeId();
+        if (installerRuntimeId == null) {
+            return;
+        }
+        RuntimeConfig runtime = runtimes.get(installerRuntimeId);
+        if (runtime == config) {
+            LOG.warnf("Installer of '%s' references itself as runtime, skipping to avoid circular dependency",
+                    config.getServerId());
+            return;
+        }
+        if (runtime != null) {
+            config.setInstallerRuntimeConfig(runtime);
+            LOG.debugf("Wired installer of '%s' to runtime '%s'", config.getServerId(), installerRuntimeId);
+        } else {
+            LOG.warnf("Installer of '%s' references unknown runtime '%s'", config.getServerId(), installerRuntimeId);
         }
     }
 }

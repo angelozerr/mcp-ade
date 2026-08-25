@@ -22,11 +22,16 @@ import com.ibm.mcp.languagetools.installer.TraceProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
+import com.ibm.mcp.languagetools.installer.InstallableConfig;
+import com.ibm.mcp.languagetools.installer.InstallationStatus;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.workspace.Workspace;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 
 import java.net.URI;
+import java.util.Collection;
+
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -50,6 +55,21 @@ public abstract class AbstractServerAdminResource {
     @Inject
     protected ProgressBroadcaster progressBroadcaster;
 
+    @Inject
+    Event<InstallStatusChangeEvent> installStatusEvent;
+
+    protected void checkUncheckedServers(Collection<? extends InstallableConfig> configs) {
+        for (InstallableConfig config : configs) {
+            if (config.getInstaller() != null && config.getInstaller().getStatus() == InstallationStatus.NOT_INSTALLED && !config.isChecking()) {
+                config.checkInstalled()
+                        .whenComplete((result, error) -> {
+                            String status = config.getStatus().name();
+                            installStatusEvent.fire(new InstallStatusChangeEvent(config.getServerId(), status));
+                        });
+            }
+        }
+    }
+
     /**
      * Get the server configuration by ID.
      *
@@ -62,6 +82,11 @@ public abstract class AbstractServerAdminResource {
      * Get the server type name for error messages (e.g. "LSP" or "DAP").
      */
     protected abstract String getServerType();
+
+    /**
+     * Get the trace collector for this server type from the application.
+     */
+    protected abstract TraceCollector getTraceCollector();
 
     // ========== Installer Operations ==========
 
@@ -140,12 +165,12 @@ public abstract class AbstractServerAdminResource {
                 workspace = workspaces.iterator().next();
             }
         }
-        if (workspace == null) {
-            return Response.status(400).entity(new ErrorResponse("No workspace available for installation")).build();
+        if (config.getTraceCollector() == null) {
+            config.setTraceCollector(getTraceCollector());
         }
 
         String taskId = "install-" + serverId;
-        String title = "Install " + serverId;
+        String title = "Installing " + (config.getName() != null ? config.getName() : serverId);
         TraceProgressMonitor progressMonitor = new TraceProgressMonitor(
                 config.getTraceCollector(), 100.0, progressBroadcaster, taskId, serverId, title);
         TaskRegistryInstaller.configureInstallerSteps(progressMonitor, config.getInstallerConfig(), force);
@@ -164,6 +189,31 @@ public abstract class AbstractServerAdminResource {
                 });
 
         return Response.ok().entity(new StatusResponse("installing")).build();
+    }
+
+    /**
+     * Cancel a progress task (e.g., an installation).
+     * Only works for tasks marked as cancellable (Admin-initiated tasks).
+     */
+    @POST
+    @Path("/progress/{taskId}/cancel")
+    public Response cancelTask(@PathParam("taskId") String taskId) {
+        String serverId = taskId.replaceFirst("^(install|start|restart)-", "");
+
+        var config = getServerConfig(serverId);
+        if (config == null) {
+            return Response.status(404).entity(new ErrorResponse("Server not found: " + serverId)).build();
+        }
+
+        var sharedProgress = config.getSharedInstallProgress();
+        if (sharedProgress == null) {
+            return Response.status(404).entity(new ErrorResponse("No active task to cancel")).build();
+        }
+
+        LOG.infof("Cancelling task '%s' for server '%s'", taskId, serverId);
+        sharedProgress.cancel(taskId);
+
+        return Response.ok().entity(new StatusResponse("cancelled")).build();
     }
 
     /**

@@ -1,5 +1,5 @@
-import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility, loadDapConfigs } from './shared-state.js';
-import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector, runServerInstaller, renderServerActions, renderBadge } from './shared-ui.js';
+import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility, ensureLspConfigs, ensureBspConfigs, ensureDapConfigs } from './shared-state.js';
+import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector, runServerInstaller, renderServerActions, renderBadge, getInstallStatusBadge, renderServerNameHeader, buildInstallerControlsHTML } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
@@ -493,14 +493,10 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 showPlaceholder();
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'debuggers') {
-                const needsConfigs = !state.dapConfigs;
-                const needsSessions = !state.dapSessions;
-                if (needsConfigs || needsSessions) {
-                    await Promise.all([
-                        needsConfigs ? loadDapConfigs() : Promise.resolve(),
-                        needsSessions ? loadDapSessionsForWorkspace() : Promise.resolve()
-                    ]);
-                }
+                await Promise.all([
+                    ensureDapConfigs(),
+                    !state.dapSessions ? loadDapSessionsForWorkspace() : Promise.resolve()
+                ]);
                 dapSessions = state.dapSessions || [];
                 renderServers([], dapSessions, workspace);
             } else if (tab === 'build') {
@@ -514,10 +510,10 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         async function loadLspServersForWorkspace(workspace) {
             try {
+                await ensureLspConfigs();
                 const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/lsp-servers`);
                 if (response.ok) {
                     const servers = await response.json();
-                    // Merge runtime data with configs (for name, description, etc.)
                     workspace.lspServers = servers.map(s => mergeServerData(s));
                 }
             } catch (error) {
@@ -528,6 +524,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
         async function loadBspServersForWorkspace(workspace) {
             try {
+                await ensureBspConfigs();
                 const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspace.rootUri)}/bsp-servers`);
                 if (response.ok) {
                     const servers = await response.json();
@@ -655,16 +652,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                              data-server-id="${server.id}"
                              data-action="selectServerItem"
                              ${tooltipText ? `title="${tooltipText.replace(/"/g, '&quot;')}"` : ''}>
-                            <div class="server-name d-flex align-center justify-between">
-                                <span>
-                                    <span class="server-source-icon" title="${sourceLabel}">${sourceIcon}</span>
-                                    ${server.name}${extensionBadge}
-                                </span>
-                                <label class="toggle-switch" onclick="event.stopPropagation()">
-                                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleWorkspaceLspServerEnabled" data-server-id="${server.id}">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
+                            ${renderServerNameHeader(server, { icon: sourceIcon, iconTitle: sourceLabel, nameExtra: extensionBadge, toggleAction: 'toggleWorkspaceLspServerEnabled' })}
                             <div class="server-id" ${contributedInfo.tooltip ? `title="${contributedInfo.tooltip}"` : ''}>${server.id}${contributedInfo.text}</div>
                             <div class="server-status-badge-container">
                                 ${renderStatusBadge(server)}
@@ -717,16 +705,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
                     return `
                         <div class="server-item ${disabledClass} ${state.selectedServer?.id === server.id ? 'active' : ''} cursor-pointer" data-dap-server="${server.id}" data-action="selectDapServerItem" data-server-id="${server.id}">
-                            <div class="server-name d-flex align-center justify-between">
-                                <span>
-                                    <span class="server-source-icon">🐛</span>
-                                    ${server.name}
-                                </span>
-                                <label class="toggle-switch" onclick="event.stopPropagation()">
-                                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleWorkspaceDapServerEnabled" data-server-id="${server.id}">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
+                            ${renderServerNameHeader(server, { icon: '🐛', toggleAction: 'toggleWorkspaceDapServerEnabled' })}
                             <div class="server-id">${server.id}</div>
                             <div class="server-actions">
                                 ${actions}
@@ -764,16 +743,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
                 return `
                     <div class="server-item ${disabledClass} ${isSelected ? 'active' : ''} cursor-pointer" data-action="selectBspServerItem" data-server-id="${server.id}">
-                        <div class="server-name d-flex align-center justify-between">
-                            <span>
-                                <span class="server-source-icon">🔨</span>
-                                ${server.name}
-                            </span>
-                            <label class="toggle-switch" onclick="event.stopPropagation()">
-                                <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="toggleWorkspaceBspServerEnabled" data-server-id="${server.id}">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                        ${renderServerNameHeader(server, { icon: '🔨', toggleAction: 'toggleWorkspaceBspServerEnabled' })}
                         <div class="server-id">${server.id}</div>
                         <div class="server-status-badge-container">
                             ${renderStatusBadge(server)}
@@ -985,6 +955,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         <div class="console-title">
                             <span class="server-source-icon">${titleIcon}</span>
                             ${server.name}
+                            <span class="console-install-badge" data-server-id="${server.id}">${getInstallStatusBadge(server)}</span>
                             <span class="status-indicator" id="sse-status"></span>
                         </div>
                         <div class="console-tabs">
@@ -994,6 +965,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                             <button class="tab-button ${state.currentConsoleTab === 'settings' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="settings">Settings</button>
                             <button class="tab-button ${state.currentConsoleTab === 'install' ? 'active' : ''}" data-action="switchConsoleTab" data-tab="install">Install</button>
                         </div>
+                        ${server.hasInstaller ? buildInstallerControlsHTML(server.id, 'installWorkspaceServer') : ''}
                         <div class="console-controls">
                             ${renderTraceControls('trace', currentTraceLevel, 'changeTraceLevel', {
                                 foldAction: 'toggleAllTracesWorkspace',
@@ -1041,7 +1013,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                                             <button class="editor-btn" data-action="resetInstallerJson" data-server-id="${server.id}" title="Reset">↻ Reset</button>
                                             <span class="editor-separator"></span>
                                             <button class="editor-btn install-run-btn" data-action="runInstaller" data-server-id="${server.id}" data-force="false" title="Install (check first, skip if already installed)">▶ Install</button>
-                                            <button class="editor-btn install-force-btn" data-action="runInstaller" data-server-id="${server.id}" data-force="true" title="Force Install (skip check, always re-install)">⟳ Force Install</button>
+                                            <button class="editor-btn install-force-btn" data-action="runInstaller" data-server-id="${server.id}" data-force="true" title="Reinstall (skip check, always re-install)">⟳ Reinstall</button>
                                         </div>
                                     </div>
                                     <textarea id="installer-json-editor" class="json-editor" spellcheck="false"></textarea>
@@ -1291,6 +1263,16 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 <div class="details-section">
                     <h4>Initialization Options</h4>
                     <pre class="detail-value">${JSON.stringify(server.initializationOptions, null, 2)}</pre>
+                </div>
+                ` : ''}
+
+                ${server.installDir ? `
+                <div class="details-section">
+                    <h4>Installation</h4>
+                    <div class="detail-item">
+                        <span class="detail-label">Install Path:</span>
+                        <span class="detail-value"><code>${server.installDir}</code></span>
+                    </div>
                 </div>
                 ` : ''}
             `;
@@ -1905,6 +1887,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             },
             resetInstallerJson: (el) => {
                 if (installerCallbacks.resetInstallerJson) installerCallbacks.resetInstallerJson(el.dataset.serverId);
+            },
+            installWorkspaceServer: (el) => {
+                if (installerCallbacks.runInstaller) {
+                    switchConsoleTab('overview');
+                    installerCallbacks.runInstaller(el.dataset.serverId, true, state.selectedWorkspace);
+                }
             },
             runInstaller: (el) => {
                 if (installerCallbacks.runInstaller) installerCallbacks.runInstaller(el.dataset.serverId, el.dataset.force === 'true', state.selectedWorkspace);

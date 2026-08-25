@@ -32,6 +32,9 @@ public record DapConfigDTO(
     boolean enabled,
     String runtime,
     String runtimeStatus,
-    String extensionId
+    String extensionId,
+    boolean hasInstaller,
+    String installationStatus,
+    String installDir
 ) implements ServerConfigDTOBase {
 }

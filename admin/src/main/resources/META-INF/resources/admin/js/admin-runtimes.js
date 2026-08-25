@@ -4,8 +4,10 @@
  * Handles runtime listing with status, dependent servers, and install/check actions.
  */
 
-import { state, updateSearchBoxVisibility } from './shared-state.js';
-import { getRuntimeStatusInfo, appendTraceLine, renderServerLink, renderExtensionLink, selectListItem, renderBadge } from './shared-ui.js';
+import { state, updateSearchBoxVisibility, ensureRuntimeConfigs } from './shared-state.js';
+import { getRuntimeStatusInfo, renderServerLink, renderExtensionLink, selectListItem,
+    buildInstallerControlsHTML, getInstallStatusBadge, updateInstallBadgeInList,
+    buildInstallOutputHTML, runServerInstaller, restoreInstallOutput } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
 
 let selectedRuntime = null;
@@ -18,14 +20,19 @@ function getStatusIconHTML(runtime) {
     return `<span class="server-source-icon${animClass}" title="${info.label}">${info.icon}</span>`;
 }
 
-function getStatusBadge(runtime) {
-    const info = getRuntimeStatusInfo(runtime.status, runtime.autoInstallable);
-    return renderBadge(info.statusClass, info.label, { animate: info.animate });
+function getSourceIcon(runtime) {
+    if (!runtime.activeSource || runtime.activeSource === 'UNKNOWN') return '';
+    if (runtime.activeSource === 'PATH') {
+        return `<span class="source-icon" title="Found on system PATH">💻</span>`;
+    }
+    return `<span class="source-icon" title="Provided by MCP installer">📦</span>`;
 }
 
 function renderRuntimeItem(runtime) {
     const isActive = selectedRuntime === runtime.id ? 'active' : '';
     const dependentCount = countDependents(runtime.dependentServers);
+    const sourceIcon = getSourceIcon(runtime);
+    const installBadge = getInstallStatusBadge(runtime);
     return `
         <div class="server-item ${isActive}" data-action="showRuntimeDetails" data-runtime-id="${runtime.id}">
             <div class="server-name d-flex align-center justify-between">
@@ -33,7 +40,10 @@ function renderRuntimeItem(runtime) {
                     ${getStatusIconHTML(runtime)}
                     ${runtime.name}
                 </span>
-                ${getStatusBadge(runtime)}
+                <span class="d-flex gap-xs align-center">
+                    ${sourceIcon}
+                    <span class="install-badge-container">${installBadge}</span>
+                </span>
             </div>
             <div class="server-id">${runtime.id} &middot; ${dependentCount} server${dependentCount !== 1 ? 's' : ''}</div>
         </div>
@@ -51,7 +61,8 @@ function countDependents(dependentServers) {
     return count;
 }
 
-export function loadAllRuntimes(runtimeIdToSelect) {
+export async function loadAllRuntimes(runtimeIdToSelect) {
+    await ensureRuntimeConfigs();
     const runtimes = Object.values(state.runtimeConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const container = document.getElementById('runtimes-list');
@@ -104,21 +115,29 @@ export async function showRuntimeDetails(runtimeId, scroll) {
             <div class="console-title">
                 ${getStatusIconHTML(runtime)}
                 ${runtime.name || runtime.id}
+                <span class="console-install-badge" data-server-id="${runtime.id}">${getInstallStatusBadge(runtime)}</span>
             </div>
-            <div class="console-controls">
-                ${runtime.autoInstallable ? `
-                    <button class="console-btn" data-action="installRuntime" data-runtime-id="${runtime.id}" title="Install this runtime">▶ Install</button>
-                ` : ''}
-                <button class="console-btn" data-action="checkRuntime" data-runtime-id="${runtime.id}" title="Check if runtime is available">🔍 Check</button>
-            </div>
+            ${runtime.autoInstallable ? buildInstallerControlsHTML(runtime.id, 'installRuntime') : ''}
         </div>
         <div class="details-panel text-primary detail-content">
             ${buildRuntimeDetailsHTML(runtime)}
-            <div id="runtime-install-output" style="display:${runtime.status === 'INSTALLING' ? 'block' : 'none'}"></div>
+            ${buildInstallOutputHTML()}
         </div>
     `;
 
     document.getElementById('console-area').innerHTML = html;
+
+    restoreInstallOutput(runtimeId, 'server-install-output');
+}
+
+function buildSourceHTML(runtime) {
+    if (!runtime.activeSource || runtime.activeSource === 'UNKNOWN') {
+        return '<span class="text-dimmed">Not resolved</span>';
+    }
+    if (runtime.activeSource === 'PATH') {
+        return '<span>💻 System PATH</span>';
+    }
+    return '<span>📦 MCP Installer</span>';
 }
 
 function buildRuntimeDetailsHTML(runtime) {
@@ -135,7 +154,7 @@ function buildRuntimeDetailsHTML(runtime) {
     if (runtime.autoInstallable) {
         typeHTML = '<span class="text-success">Auto-installable</span> — can be downloaded and installed automatically';
     } else {
-        typeHTML = `<span class="text-warning">Manual / Check-only</span> — must be installed manually`;
+        typeHTML = `<span class="text-warning">Manual</span> — must be installed manually`;
     }
 
     let dependentsHTML = '';
@@ -194,6 +213,36 @@ function buildRuntimeDetailsHTML(runtime) {
             <span id="runtime-status-value" class="detail-value">${statusHTML}</span>
         </div>
 
+        ${runtime.resolvedPath ? `
+        <div class="detail-row">
+            <span class="detail-label">Path:</span>
+            <span id="runtime-resolved-path" class="detail-value"><code>${runtime.resolvedPath}</code></span>
+        </div>
+        ` : '<div class="detail-row"><span class="detail-label">Path:</span><span id="runtime-resolved-path" class="detail-value text-dimmed">Not resolved</span></div>'}
+
+        <div class="detail-row">
+            <span class="detail-label">Source:</span>
+            <span id="runtime-active-source" class="detail-value">${buildSourceHTML(runtime)}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Preference:</span>
+            <span class="detail-value">
+                <select class="select-field font-md" data-action="changeRuntimeSourcePreference" data-runtime-id="${runtime.id}" style="padding: 0.2rem 0.4rem;">
+                    <option value="AUTO" ${(runtime.sourcePreference || 'AUTO') === 'AUTO' ? 'selected' : ''}>Auto (PATH first, then installer)</option>
+                    <option value="PATH" ${runtime.sourcePreference === 'PATH' ? 'selected' : ''}>System PATH only</option>
+                    <option value="INSTALLER" ${runtime.sourcePreference === 'INSTALLER' ? 'selected' : ''}>MCP installer only</option>
+                </select>
+            </span>
+        </div>
+
+        ${runtime.fallbackUsed ? `
+        <div id="runtime-fallback-banner" class="p-lg bg-panel rounded mt-lg border-left-warning">
+            <strong>Fallback Active:</strong>
+            <p class="mt-xs mb-0">You selected "System PATH" but the runtime was not found on PATH. Using the MCP-installed version instead.</p>
+        </div>
+        ` : '<div id="runtime-fallback-banner"></div>'}
+
         <div class="detail-row">
             <span class="detail-label">Type:</span>
             <span class="detail-value">${typeHTML}</span>
@@ -225,71 +274,34 @@ function buildRuntimeDetailsHTML(runtime) {
 }
 
 async function installRuntime(runtimeId) {
-    showInstallOutput(runtimeId);
-    try {
-        const response = await fetch(`/api/admin/runtimes/${runtimeId}/install`, { method: 'POST' });
-        const result = await response.json();
-
-        if (!response.ok) {
-            alert(result.error || 'Failed to install runtime');
-        }
-    } catch (error) {
-        console.error('Failed to install runtime:', error);
-    }
-}
-
-function showInstallOutput(runtimeId) {
-    const outputDiv = document.getElementById('runtime-install-output');
-    if (!outputDiv) return;
-    const runtime = state.runtimeConfigs[runtimeId];
-    const isChecking = runtime && (runtime.status === 'CHECKING' || runtime.status === 'NOT_INSTALLED');
-    const label = isChecking ? 'Checking' : 'Installing';
-    outputDiv.innerHTML = `
-        <div class="install-output-header text-success mb-sm">${label} ${runtimeId}...</div>
-        <div id="runtime-install-traces" class="font-mono bg-card p-sm rounded-sm font-sm overflow-auto" style="max-height: 300px;"></div>
-    `;
-    outputDiv.style.display = 'block';
-}
-
-async function checkRuntime(runtimeId) {
-    showInstallOutput(runtimeId);
-    try {
-        const response = await fetch(`/api/admin/runtimes/${runtimeId}/check`, { method: 'POST' });
-        const result = await response.json();
-
-        if (!response.ok) {
-            alert(result.error || 'Failed to check runtime');
-        }
-    } catch (error) {
-        console.error('Failed to check runtime:', error);
-    }
-}
-
-/**
- * Append an install trace message for a runtime.
- * Shows the install output panel if not already visible.
- */
-export function appendRuntimeTrace(message) {
-    if (selectedRuntime !== message.runtimeId) return;
-
-    const outputDiv = document.getElementById('runtime-install-output');
-    if (outputDiv && outputDiv.style.display === 'none') {
-        showInstallOutput(message.runtimeId);
-    }
-
-    appendTraceLine(document.getElementById('runtime-install-traces'), message);
+    const installUrl = `/api/admin/runtimes/${encodeURIComponent(runtimeId)}/install`;
+    return runServerInstaller(runtimeId, true, 'server-install-output', installUrl);
 }
 
 /**
  * Update a runtime's status from a WebSocket message.
  * Updates the cached config and refreshes the UI for that runtime.
  */
-export function updateRuntimeStatus(runtimeId, status, error) {
+export function updateRuntimeStatus(runtimeId, status, error, resolvedPath, activeSource, fallbackUsed, sourcePreference) {
     const runtime = state.runtimeConfigs[runtimeId];
     if (!runtime) return;
 
     runtime.status = status;
     runtime.error = error || null;
+    if (resolvedPath !== undefined) runtime.resolvedPath = resolvedPath;
+    if (activeSource !== undefined) runtime.activeSource = activeSource;
+    if (fallbackUsed !== undefined) runtime.fallbackUsed = fallbackUsed;
+    if (sourcePreference !== undefined) runtime.sourcePreference = sourcePreference;
+
+    if (status === 'INSTALLING') {
+        state.installStatus[runtimeId] = 'installing';
+    } else if (status === 'INSTALLED' || status === 'ALREADY_INSTALLED') {
+        state.installStatus[runtimeId] = 'completed';
+        delete state.installProgress[runtimeId];
+    } else if (status === 'FAILED' || status === 'ERROR') {
+        state.installStatus[runtimeId] = 'failed';
+        delete state.installProgress[runtimeId];
+    }
 
     const container = document.getElementById('runtimes-list');
     if (container) {
@@ -297,20 +309,14 @@ export function updateRuntimeStatus(runtimeId, status, error) {
         if (item) {
             const iconEl = item.querySelector('.server-source-icon');
             if (iconEl) iconEl.outerHTML = getStatusIconHTML(runtime);
-            const badgeEl = item.querySelector('.status-badge');
-            if (badgeEl) badgeEl.outerHTML = getStatusBadge(runtime);
         }
     }
+    updateInstallBadgeInList(runtimeId);
 
     if (selectedRuntime === runtimeId) {
-        if (status === 'INSTALLING') {
-            const outputDiv = document.getElementById('runtime-install-output');
-            if (outputDiv && outputDiv.style.display === 'none') {
-                showInstallOutput(runtimeId);
-            }
-        } else {
-            updateInstallOutputHeader(status, error);
+        if (status !== 'INSTALLING') {
             updateRuntimeDetailsStatus(runtime);
+            updateRuntimeDetailsPath(runtime);
         }
     }
 }
@@ -332,28 +338,60 @@ function updateRuntimeDetailsStatus(runtime) {
     if (headerIcon) headerIcon.outerHTML = getStatusIconHTML(runtime);
 }
 
-function updateInstallOutputHeader(status, error) {
-    const header = document.querySelector('#runtime-install-output .install-output-header');
-    if (!header) return;
+function updateRuntimeDetailsPath(runtime) {
+    const pathEl = document.getElementById('runtime-resolved-path');
+    if (pathEl) {
+        if (runtime.resolvedPath) {
+            pathEl.innerHTML = `<code>${runtime.resolvedPath}</code>`;
+            pathEl.classList.remove('text-dimmed');
+        } else {
+            pathEl.textContent = 'Not resolved';
+            pathEl.classList.add('text-dimmed');
+        }
+    }
 
-    if (status === 'INSTALLED' || status === 'ALREADY_INSTALLED') {
-        header.style.color = 'var(--color-success)';
-        header.textContent = header.textContent.startsWith('Checking') ? 'Check completed — installed' : 'Installation completed';
-    } else if (status === 'NOT_INSTALLED') {
-        header.style.color = 'var(--color-warning)';
-        header.textContent = 'Check completed — not installed';
-    } else if (status === 'FAILED' || status === 'ERROR') {
-        header.style.color = 'var(--color-error-text)';
-        header.textContent = (header.textContent.startsWith('Checking') ? 'Check failed' : 'Installation failed') + (error ? ': ' + error : '');
+    const sourceEl = document.getElementById('runtime-active-source');
+    if (sourceEl) {
+        sourceEl.innerHTML = buildSourceHTML(runtime);
+    }
+
+    const fallbackBanner = document.getElementById('runtime-fallback-banner');
+    if (fallbackBanner) {
+        if (runtime.fallbackUsed) {
+            fallbackBanner.innerHTML = `
+                <div class="p-lg bg-panel rounded border-left-warning">
+                    <strong>Fallback Active:</strong>
+                    <p class="mt-xs mb-0">You selected "System PATH" but the runtime was not found on PATH. Using the MCP-installed version instead.</p>
+                </div>
+            `;
+        } else {
+            fallbackBanner.innerHTML = '';
+        }
     }
 }
 
 registerActions('click', {
     showRuntimeDetails: (el) => showRuntimeDetails(el.dataset.runtimeId),
-    installRuntime: (el) => installRuntime(el.dataset.runtimeId),
-    checkRuntime: (el) => checkRuntime(el.dataset.runtimeId),
+    installRuntime: (el) => installRuntime(el.dataset.serverId || el.dataset.runtimeId),
+
     switchToLspServer: (el) => switchTabCallback?.('lsp-servers', null, {serverId: el.dataset.serverId}),
     switchToDapServer: (el) => switchTabCallback?.('dap-servers', null, {serverId: el.dataset.serverId}),
     switchToBspServer: (el) => switchTabCallback?.('bsp-servers', null, {serverId: el.dataset.serverId}),
     navigateToExtension: (el) => switchTabCallback?.('extensions', null, {extensionId: el.dataset.extensionId}),
+});
+
+registerActions('change', {
+    changeRuntimeSourcePreference: async (el) => {
+        const runtimeId = el.dataset.runtimeId;
+        const value = el.value;
+        try {
+            await fetch(`/api/admin/runtimes/${encodeURIComponent(runtimeId)}/source-preference`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sourcePreference: value })
+            });
+        } catch (error) {
+            console.error('Failed to change source preference:', error);
+        }
+    }
 });

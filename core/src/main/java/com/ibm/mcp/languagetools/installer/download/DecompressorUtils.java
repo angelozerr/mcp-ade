@@ -133,6 +133,10 @@ public class DecompressorUtils {
      * Decompresses a TAR archive (.tar).
      */
     private static Path decompressTar(Path filePath, Path targetDir, ProgressMonitor progress) throws IOException {
+        return decompressTar(filePath, targetDir, progress, 0);
+    }
+
+    private static Path decompressTar(Path filePath, Path targetDir, ProgressMonitor progress, int progressOffset) throws IOException {
         Files.createDirectories(targetDir);
         Set<String> topLevel = new HashSet<>();
         long totalSize = Files.size(filePath);
@@ -173,7 +177,8 @@ public class DecompressorUtils {
                 bytesProcessed += entry.getSize() + 512;
                 fileCount++;
                 if (progress != null && totalSize > 0) {
-                    long currentPercent = Math.min(bytesProcessed * 100 / totalSize, 99);
+                    int progressRange = 100 - progressOffset;
+                    long currentPercent = progressOffset + Math.min(bytesProcessed * progressRange / totalSize, progressRange - 1);
                     if (currentPercent != lastReportedPercent) {
                         lastReportedPercent = currentPercent;
                         progress.reportProgress(currentPercent,
@@ -190,14 +195,30 @@ public class DecompressorUtils {
      * Decompresses a GZIP-compressed TAR archive (.tar.gz or .tgz).
      */
     private static Path decompressTgz(Path filePath, Path targetDir, ProgressMonitor progress) throws IOException {
-        try (InputStream fis = Files.newInputStream(filePath);
-             BufferedInputStream bis = new BufferedInputStream(fis);
+        long compressedSize = Files.size(filePath);
+
+        try (CountingInputStream cis = new CountingInputStream(Files.newInputStream(filePath));
+             BufferedInputStream bis = new BufferedInputStream(cis);
              GZIPInputStream gzipInputStream = new GZIPInputStream(bis)) {
 
             Path tarFilePath = Files.createTempFile("temp", ".tar");
             try {
-                Files.copy(gzipInputStream, tarFilePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                return decompressTar(tarFilePath, targetDir, progress);
+                byte[] buffer = new byte[8192];
+                long lastReportedPercent = -1;
+                try (OutputStream out = Files.newOutputStream(tarFilePath)) {
+                    int bytesRead;
+                    while ((bytesRead = gzipInputStream.read(buffer)) != -1) {
+                        out.write(buffer, 0, bytesRead);
+                        if (progress != null && compressedSize > 0) {
+                            long percent = Math.min(cis.getBytesRead() * 50 / compressedSize, 49);
+                            if (percent != lastReportedPercent) {
+                                lastReportedPercent = percent;
+                                progress.reportProgress(percent, "Decompressing...");
+                            }
+                        }
+                    }
+                }
+                return decompressTar(tarFilePath, targetDir, progress, 50);
             } finally {
                 Files.deleteIfExists(tarFilePath);
             }
@@ -224,14 +245,30 @@ public class DecompressorUtils {
      * Decompresses a XZ-compressed TAR archive (.tar.xz or .txz).
      */
     private static Path decompressTxz(Path filePath, Path targetDir, ProgressMonitor progress) throws IOException {
-        try (InputStream fis = Files.newInputStream(filePath);
-             BufferedInputStream bis = new BufferedInputStream(fis);
+        long compressedSize = Files.size(filePath);
+
+        try (CountingInputStream cis = new CountingInputStream(Files.newInputStream(filePath));
+             BufferedInputStream bis = new BufferedInputStream(cis);
              XZInputStream xzInputStream = new XZInputStream(bis)) {
 
             Path tarFilePath = Files.createTempFile("temp", ".tar");
             try {
-                Files.copy(xzInputStream, tarFilePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                return decompressTar(tarFilePath, targetDir, progress);
+                byte[] buffer = new byte[8192];
+                long lastReportedPercent = -1;
+                try (OutputStream out = Files.newOutputStream(tarFilePath)) {
+                    int bytesRead;
+                    while ((bytesRead = xzInputStream.read(buffer)) != -1) {
+                        out.write(buffer, 0, bytesRead);
+                        if (progress != null && compressedSize > 0) {
+                            long percent = Math.min(cis.getBytesRead() * 50 / compressedSize, 49);
+                            if (percent != lastReportedPercent) {
+                                lastReportedPercent = percent;
+                                progress.reportProgress(percent, "Decompressing...");
+                            }
+                        }
+                    }
+                }
+                return decompressTar(tarFilePath, targetDir, progress, 50);
             } finally {
                 Files.deleteIfExists(tarFilePath);
             }
@@ -245,5 +282,37 @@ public class DecompressorUtils {
         String fileName = path.getFileName().toString();
         int index = fileName.lastIndexOf('.');
         return (index > 0) ? fileName.substring(0, index) : fileName;
+    }
+
+    private static class CountingInputStream extends InputStream {
+        private final InputStream delegate;
+        private long bytesRead;
+
+        CountingInputStream(InputStream delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int b = delegate.read();
+            if (b != -1) bytesRead++;
+            return b;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            int n = delegate.read(b, off, len);
+            if (n > 0) bytesRead += n;
+            return n;
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
+
+        long getBytesRead() {
+            return bytesRead;
+        }
     }
 }

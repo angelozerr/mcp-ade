@@ -1,23 +1,13 @@
 [
   {
-    "id": "ansible",
-    "filenamePatterns": ["**/playbooks/**/*.yml", "**/playbooks/**/*.yaml", "**/roles/**/*.yml", "**/roles/**/*.yaml"],
-    "aliases": ["Ansible", "ansible"]
-  },
-  {
     "id": "ada",
     "extensions": [".ada", ".adb", ".adc", ".ads"],
     "aliases": ["Ada", "ada"]
   },
   {
-    "id": "clojure",
-    "extensions": [".clj", ".cljs", ".cljc", ".cljx", ".clojure", ".edn"],
-    "aliases": ["Clojure", "clojure"]
-  },
-  {
-    "id": "css",
-    "extensions": [".css"],
-    "aliases": ["CSS", "css"]
+    "id": "ansible",
+    "filenamePatterns": ["**/playbooks/**/*.yml", "**/playbooks/**/*.yaml", "**/roles/**/*.yml", "**/roles/**/*.yaml"],
+    "aliases": ["Ansible", "ansible"]
   },
   {
     "id": "arm",
@@ -45,6 +35,11 @@
     "aliases": ["C3", "c3"]
   },
   {
+    "id": "clojure",
+    "extensions": [".clj", ".cljs", ".cljc", ".cljx", ".clojure", ".edn"],
+    "aliases": ["Clojure", "clojure"]
+  },
+  {
     "id": "cpp",
     "extensions": [".cpp", ".cppm", ".cc", ".ccm", ".cxx", ".cxxm", ".c++", ".c++m", ".hpp", ".hh", ".hxx", ".h++", ".h", ".ii", ".ino", ".inl", ".ipp", ".ixx", ".tpp", ".txx", ".hpp.in", ".h.in"],
     "aliases": ["C++", "Cpp", "cpp"]
@@ -53,6 +48,16 @@
     "id": "crystal",
     "extensions": [".cr"],
     "aliases": ["Crystal", "crystal"]
+  },
+  {
+    "id": "csharp",
+    "extensions": [".cs", ".csx", ".cake"],
+    "aliases": ["C#", "csharp"]
+  },
+  {
+    "id": "css",
+    "extensions": [".css"],
+    "aliases": ["CSS", "css"]
   },
   {
     "id": "cuda-cpp",
@@ -68,21 +73,6 @@
     "id": "dart",
     "extensions": [".dart"],
     "aliases": ["Dart"]
-  },
-  {
-    "id": "elixir",
-    "extensions": [".ex", ".exs"],
-    "aliases": ["Elixir", "elixir"]
-  },
-  {
-    "id": "elm",
-    "extensions": [".elm"],
-    "aliases": ["Elm", "elm"]
-  },
-  {
-    "id": "erlang",
-    "extensions": [".erl", ".hrl"],
-    "aliases": ["Erlang", "erlang"]
   },
   {
     "id": "dockercompose",
@@ -102,6 +92,21 @@
     "filenames": ["Dockerfile", "Containerfile"],
     "filenamePatterns": ["Dockerfile.*", "Containerfile.*"],
     "aliases": ["Docker", "Dockerfile", "Containerfile"]
+  },
+  {
+    "id": "elixir",
+    "extensions": [".ex", ".exs"],
+    "aliases": ["Elixir", "elixir"]
+  },
+  {
+    "id": "elm",
+    "extensions": [".elm"],
+    "aliases": ["Elm", "elm"]
+  },
+  {
+    "id": "erlang",
+    "extensions": [".erl", ".hrl"],
+    "aliases": ["Erlang", "erlang"]
   },
   {
     "id": "fortran",
@@ -196,6 +201,11 @@
     "aliases": ["Less", "less"]
   },
   {
+    "id": "lldb.disassembly",
+    "extensions": [".disasm"],
+    "aliases": ["Disassembly"]
+  },
+  {
     "id": "lua",
     "extensions": [".lua"],
     "aliases": ["Lua", "lua"]
@@ -206,19 +216,14 @@
     "aliases": ["Markdown", "markdown"]
   },
   {
-    "id": "lldb.disassembly",
-    "extensions": [".disasm"],
-    "aliases": ["Disassembly"]
+    "id": "nim",
+    "extensions": [".nim", ".nims", "nim.cfg", ".nim.cfg"],
+    "aliases": ["Nim", "nim"]
   },
   {
     "id": "nix",
     "extensions": [".nix"],
     "aliases": ["Nix", "nix"]
-  },
-  {
-    "id": "nim",
-    "extensions": [".nim", ".nims", "nim.cfg", ".nim.cfg"],
-    "aliases": ["Nim", "nim"]
   },
   {
     "id": "objective-c",
@@ -262,14 +267,14 @@
     "firstLine": "^#!.*\\bperl\\b"
   },
   {
-    "id": "properties",
-    "extensions": [".properties"],
-    "aliases": ["Properties"]
-  },
-  {
     "id": "php",
     "extensions": [".php", ".php4", ".php5", ".phtml", ".ctp"],
     "aliases": ["PHP", "php"]
+  },
+  {
+    "id": "properties",
+    "extensions": [".properties"],
+    "aliases": ["Properties"]
   },
   {
     "id": "python",

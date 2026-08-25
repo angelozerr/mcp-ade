@@ -38,6 +38,9 @@ public record LspConfigDTO(
     List<ServerSettingDTO> settings,
     String runtime,
     String runtimeStatus,
-    String extensionId
+    String extensionId,
+    boolean hasInstaller,
+    String installationStatus,
+    String installDir
 ) implements ServerConfigDTOBase {
 }
