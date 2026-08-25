@@ -56,6 +56,7 @@ function toggleTheme() {
 // ========== WebSocket ==========
 
 function connectAdminWebSocket() {
+    return new Promise((resolve) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/api/admin/ws`;
 
@@ -64,6 +65,7 @@ function connectAdminWebSocket() {
 
     adminWebSocket.onopen = () => {
         console.log('WebSocket connected');
+        resolve();
     };
 
     adminWebSocket.onmessage = (event) => {
@@ -85,6 +87,7 @@ function connectAdminWebSocket() {
         console.log('WebSocket closed, reconnecting in 3s...');
         setTimeout(connectAdminWebSocket, 3000);
     };
+    });
 }
 
 function handleWebSocketMessage(message) {
@@ -709,8 +712,8 @@ registerActions('click', {
 // ========== Init ==========
 
 (async function init() {
+    await connectAdminWebSocket();
     await Promise.all([loadLspConfigs(), loadDapConfigs(), loadBspConfigs(), loadRuntimeConfigs()]);
-    connectAdminWebSocket();
 
     KeyboardShortcuts.register({
         getActiveConsole: () => {
