@@ -33,7 +33,7 @@
         <module>extensions/dockerfile</module>
         <module>extensions/liberty</module>
         <module>extensions/jakarta</module>
-        <module>extensions/csharp</module>
+        <module>extensions/dotnet</module>
         <module>extensions/web</module>
         <module>extensions/bash</module>
         <module>extensions/ruby</module>
@@ -49,7 +49,6 @@
         <module>extensions/elixir</module>
         <module>extensions/erlang</module>
         <module>extensions/ocaml</module>
-        <module>extensions/fsharp</module>
         <module>extensions/terraform</module>
         <module>extensions/latex</module>
         <module>extensions/markdown</module>

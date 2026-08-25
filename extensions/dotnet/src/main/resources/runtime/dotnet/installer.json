@@ -1,0 +1,35 @@
+{
+  "id": "dotnet",
+  "name": ".NET SDK",
+  "description": ".NET SDK required by .NET-based language servers",
+  "url": "https://dotnet.microsoft.com",
+  "check": {
+    "exec": {
+      "name": "Check if .NET is available",
+      "command": "dotnet --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download .NET SDK",
+      "dotnet": {
+        "release-type": "lts",
+        "component": "sdk"
+      },
+      "output": {
+        "dir": "$SERVER_HOME$",
+        "stripRootDir": false
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure .NET SDK",
+          "command": {
+            "windows": "$SERVER_HOME$/dotnet.exe",
+            "default": "$SERVER_HOME$/dotnet"
+          }
+        }
+      }
+    }
+  }
+}

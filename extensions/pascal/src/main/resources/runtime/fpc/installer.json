@@ -1,0 +1,13 @@
+{
+  "id": "fpc",
+  "name": "Free Pascal",
+  "description": "Free Pascal compiler required by Pascal language servers",
+  "url": "https://www.freepascal.org",
+  "check": {
+    "exec": {
+      "name": "Check if Free Pascal is available",
+      "command": "fpc -iV",
+      "timeout": 5000
+    }
+  }
+}

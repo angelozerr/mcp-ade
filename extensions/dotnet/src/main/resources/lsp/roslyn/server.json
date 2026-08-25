@@ -1,0 +1,12 @@
+{
+  "id": "roslyn",
+  "name": "Roslyn Language Server (C# Language Server)",
+  "description": "C# language server based on Roslyn",
+  "url": "https://github.com/dotnet/roslyn",
+  "runtime": "dotnet",
+  "documentSelector": [
+    {
+      "language": "csharp"
+    }
+  ]
+}

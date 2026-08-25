@@ -11,11 +11,20 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>fsharp-extension</artifactId>
+    <artifactId>dotnet-extension</artifactId>
     <packaging>jar</packaging>
 
-    <name>F# Extension</name>
-    <description>F# language support via fsautocomplete for MCP Language Tools</description>
+    <name>.NET Extension</name>
+    <description>.NET language servers (Roslyn, FsAutoComplete) and debug adapter (netcoredbg) for MCP Language Tools</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.ibm.mcp</groupId>
+            <artifactId>mcp-language-tools-core</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>

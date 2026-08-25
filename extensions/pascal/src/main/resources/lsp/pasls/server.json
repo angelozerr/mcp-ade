@@ -2,6 +2,7 @@
   "id": "pasls",
   "name": "Pascal Language Server",
   "description": "Language server for Pascal and Object Pascal",
+  "runtime": "fpc",
   "url": "https://github.com/zen010101/pascal-language-server",
   "documentSelector": [
     {

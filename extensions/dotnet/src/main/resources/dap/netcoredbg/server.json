@@ -2,6 +2,7 @@
   "id": "netcoredbg",
   "name": "netcoredbg (C# Debug Adapter)",
   "description": "Debug adapter for C#/.NET based on netcoredbg",
+  "runtime": "dotnet",
   "url": "https://github.com/Samsung/netcoredbg",
   "documentSelector": [
     {

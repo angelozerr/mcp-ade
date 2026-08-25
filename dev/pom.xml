@@ -136,7 +136,7 @@
         </dependency>
         <dependency>
             <groupId>com.ibm.mcp</groupId>
-            <artifactId>csharp-extension</artifactId>
+            <artifactId>dotnet-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
@@ -233,12 +233,6 @@
         <dependency>
             <groupId>com.ibm.mcp</groupId>
             <artifactId>ocaml-extension</artifactId>
-            <version>${project.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.mcp</groupId>
-            <artifactId>fsharp-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
