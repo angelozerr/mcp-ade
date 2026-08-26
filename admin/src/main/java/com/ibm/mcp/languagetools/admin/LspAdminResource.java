@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin;
 
+import com.ibm.mcp.languagetools.admin.dto.ContributionDTOBuilder;
 import com.ibm.mcp.languagetools.admin.dto.ErrorResponse;
 import com.ibm.mcp.languagetools.admin.dto.LspConfigDTO;
 import com.ibm.mcp.languagetools.admin.dto.ServerDTOBuilder;
@@ -30,7 +31,9 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST endpoint for all LSP-related admin operations.
@@ -44,6 +47,9 @@ public class LspAdminResource extends AbstractServerAdminResource {
 
     @Inject
     ServerDTOBuilder serverDTOBuilder;
+
+    @Inject
+    ContributionDTOBuilder contributionBuilder;
 
     @Override
     protected ServerConfigBase getServerConfig(String serverId) {
@@ -71,7 +77,7 @@ public class LspAdminResource extends AbstractServerAdminResource {
         var configs = application.getLspServerConfigs();
         checkUncheckedServers(configs);
         return configs.stream()
-                .map(serverDTOBuilder::buildConfig)
+                .map(serverDTOBuilder::buildConfigSummary)
                 .toList();
     }
 
@@ -88,6 +94,22 @@ public class LspAdminResource extends AbstractServerAdminResource {
         }
 
         return serverDTOBuilder.buildConfig(config);
+    }
+
+    /**
+     * Get contributions for a specific server (both what it contributes to and what contributes to it).
+     */
+    @GET
+    @Path("/configs/{serverId}/contributions")
+    public Map<String, Object> getContributions(@PathParam("serverId") String serverId) {
+        LspServerConfig config = application.getLspServerConfig(serverId);
+        if (config == null) {
+            throw new NotFoundException("LSP server not found: " + serverId);
+        }
+        List<ServerConfigBase> allConfigs = new ArrayList<>();
+        allConfigs.addAll(application.getLspServerConfigs());
+        allConfigs.addAll(application.getDapServerConfigs());
+        return contributionBuilder.buildContributionsView(serverId, config, allConfigs);
     }
 
     // ========== LSP Server Control ==========

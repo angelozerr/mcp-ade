@@ -4,7 +4,7 @@
  * Handles DAP session creation, launching, and management
  */
 
-import { state, updateSearchBoxVisibility, buildGlobalContributedByMap, ensureDapConfigs } from './shared-state.js';
+import { state, updateSearchBoxVisibility, ensureDapConfigs, ensureDapConfigDetail } from './shared-state.js';
 import {
     confirmAction, showAlert, renderLoadingPlaceholder, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
@@ -12,6 +12,7 @@ import {
     getInstallStatusBadge, renderServerNameHeader, restoreInstallOutput
 } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
+import { renderServerDiagram } from './diagram.js';
 import { formatErrorWithFolding } from './error-formatter.js';
 import { LanguageFilter } from './language-filter.js';
 import {
@@ -597,7 +598,7 @@ let dapLanguageFilter = null;
  */
 function renderDapServerItem(server) {
     const isActive = selectedDapServer === server.id ? 'active' : '';
-    const disabledClass = server.enabled === false ? 'server-disabled' : '';
+    const disabledClass = !server.enabled ? 'server-disabled' : '';
     return `
         <div class="server-item ${isActive} ${disabledClass}" data-action="showDapServerDetails" data-server-id="${server.id}">
             ${renderServerNameHeader(server, { icon: '🐛', toggleAction: 'toggleDapServerEnabled' })}
@@ -661,10 +662,7 @@ export async function showDapServerDetails(serverId, scroll) {
     selectedDapServer = serverId;
     state.currentDapServerId = serverId;
 
-    // Clear current DAP session ID (we're viewing server config, not a session)
     state.currentDapSessionId = null;
-
-    // Hide search box when showing server details (not traces)
     updateSearchBoxVisibility(false);
 
     if (dapLanguageFilter) {
@@ -672,45 +670,89 @@ export async function showDapServerDetails(serverId, scroll) {
             '.server-item[data-server-id', previousServer, serverId, scroll);
     }
 
-    const server = dapServerConfigs[serverId];
-    if (!server) {
-        console.error('DAP server not found:', serverId);
-        return;
-    }
-
-    // Show console column
     const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
     consoleColumn.style.display = 'flex';
     contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
-    const docSelectorHTML = renderDocumentSelector(server.documentSelector);
-
-    // Check if server has contributions
-    const lspServers = Object.values(state.lspConfigs || {});
-    const dapServersWithFlag = Object.values(dapServerConfigs).map(s => ({...s, isDap: true}));
-    const allServers = [...lspServers, ...dapServersWithFlag];
-    const hasContributions = (server.contributions && Object.keys(server.contributions).length > 0) ||
-                            buildGlobalContributedByMap(allServers)[server.id]?.length > 0;
-
-    // Prepare contributions HTML and diagram data (only if has contributions)
-    const contributionsHTML = hasContributions ? formatContributionsSection(server, allServers) : '';
-
-    // Store for diagram rendering
-    if (hasContributions) {
-        state.currentDiagramServers = allServers;
-        state.currentDiagramServerId = server.id;
+    const server = dapServerConfigs[serverId];
+    if (!server) {
+        console.error('DAP server not found:', serverId);
+        return;
     }
 
-    const detailsHTML = `
-        <h3 class="text-success mt-0">Debug Adapter Information</h3>
+    renderDapServerDetailsHTML(serverId, server);
 
-        <div class="detail-row">
-            <span class="detail-label">Server ID:</span>
-            <span class="detail-value"><code>${server.id}</code></span>
+    if (!server._detailLoaded) {
+        await ensureDapConfigDetail(serverId);
+        if (selectedDapServer !== serverId) return;
+        const detailSection = document.getElementById('dap-server-detail-section');
+        if (detailSection) {
+            detailSection.innerHTML = buildDapServerDetailHTML(server);
+        }
+        const settingsPanel = document.getElementById('dap-server-settings-content');
+        if (settingsPanel) {
+            settingsPanel.innerHTML = buildDapSettingsHTML(server);
+        }
+    }
+
+    restoreInstallOutput(serverId, 'server-install-output');
+}
+
+function renderDapServerDetailsHTML(serverId, server) {
+    const docSelectorHTML = renderDocumentSelector(server.documentSelector);
+
+    const html = `
+        <div class="console-header">
+            <div class="console-title">
+                <span class="server-source-icon">🐛</span>
+                ${server.name || server.id}
+                <span class="console-install-badge" data-server-id="${server.id}">${getInstallStatusBadge(server)}</span>
+            </div>
+            <div class="console-tabs">
+                <button class="tab-button ${currentDapServerTab === 'overview' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="overview">Overview</button>
+                <button class="tab-button ${currentDapServerTab === 'contributions' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="contributions">Contributions</button>
+                <button class="tab-button ${currentDapServerTab === 'settings' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="settings">Settings</button>
+            </div>
+            ${server.hasInstaller ? buildInstallerControlsHTML(server.id, 'installDapServer') : ''}
         </div>
+        <div class="tab-content">
+            <div id="dap-server-overview-tab" class="tab-panel ${currentDapServerTab === 'overview' ? 'active' : ''}">
+                <div class="details-panel text-primary detail-content">
+                    <h3 class="text-success mt-0">Debug Adapter Information</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Server ID:</span>
+                        <span class="detail-value"><code>${server.id}</code></span>
+                    </div>
+                    <div class="mb-lg">
+                        <strong class="text-label">Supported Languages/Files:</strong>
+                        ${docSelectorHTML}
+                    </div>
+                    <div id="dap-server-detail-section">
+                        ${server._detailLoaded ? buildDapServerDetailHTML(server) : renderLoadingPlaceholder()}
+                    </div>
+                </div>
+            </div>
+            <div id="dap-server-contributions-tab" class="tab-panel ${currentDapServerTab === 'contributions' ? 'active' : ''}">
+                <div id="server-diagram-container" class="w-100 bg-card diagram-container"></div>
+                <div class="diagram-resizer"></div>
+                <div class="details-panel text-primary flex-1 min-h-0 detail-content" id="dap-contributions-content">
+                </div>
+            </div>
+            <div id="dap-server-settings-tab" class="tab-panel ${currentDapServerTab === 'settings' ? 'active' : ''}">
+                <div class="details-panel text-primary overflow-auto p-2xl" id="dap-server-settings-content">
+                    ${server._detailLoaded ? buildDapSettingsHTML(server) : renderLoadingPlaceholder()}
+                </div>
+            </div>
+        </div>
+    `;
 
+    document.getElementById('console-area').innerHTML = html;
+}
+
+function buildDapServerDetailHTML(server) {
+    return `
         ${server.description ? `
         <div class="detail-row">
             <span class="detail-label">Description:</span>
@@ -736,65 +778,63 @@ export async function showDapServerDetails(serverId, scroll) {
         </div>
         ` : ''}
 
-        <div class="mb-lg">
-            <strong class="text-label">Supported Languages/Files:</strong>
-            ${docSelectorHTML}
-        </div>
-
         <div class="p-lg bg-panel rounded mt-2xl border-left-success">
             <strong>Note:</strong> Debuggers are started on-demand during debug sessions. They are not automatically started with workspaces.
         </div>
+        ${buildInstallOutputHTML()}
     `;
-
-    const html = `
-        <div class="console-header">
-            <div class="console-title">
-                <span class="server-source-icon">🐛</span>
-                ${server.name || server.id}
-                <span class="console-install-badge" data-server-id="${server.id}">${getInstallStatusBadge(server)}</span>
-            </div>
-            <div class="console-tabs">
-                <button class="tab-button ${currentDapServerTab === 'overview' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="overview">Overview</button>
-                ${hasContributions ? `<button class="tab-button ${currentDapServerTab === 'contributions' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="contributions">Contributions</button>` : ''}
-                <button class="tab-button ${currentDapServerTab === 'settings' ? 'active' : ''}" data-action="switchDapServerTab" data-tab="settings">Settings</button>
-            </div>
-            ${server.hasInstaller ? buildInstallerControlsHTML(server.id, 'installDapServer') : ''}
-        </div>
-        <div class="tab-content">
-            <div id="dap-server-overview-tab" class="tab-panel ${currentDapServerTab === 'overview' ? 'active' : ''}">
-                <div class="details-panel text-primary detail-content">
-                    ${detailsHTML}
-                    ${buildInstallOutputHTML()}
-                </div>
-            </div>
-            ${hasContributions ? `
-            <div id="dap-server-contributions-tab" class="tab-panel ${currentDapServerTab === 'contributions' ? 'active' : ''}">
-                <div id="server-diagram-container" class="w-100 bg-card diagram-container"></div>
-                <div class="diagram-resizer"></div>
-                <div class="details-panel text-primary flex-1 min-h-0 detail-content" id="dap-contributions-content">
-                    ${contributionsHTML}
-                </div>
-            </div>
-            ` : ''}
-            <div id="dap-server-settings-tab" class="tab-panel ${currentDapServerTab === 'settings' ? 'active' : ''}">
-                <div class="details-panel text-primary overflow-auto p-2xl">
-                    ${buildDapSettingsHTML(server)}
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.getElementById('console-area').innerHTML = html;
-
-    restoreInstallOutput(serverId, 'server-install-output');
 }
 
 /**
  * Switch between DAP server tabs (Overview/Contributions/Settings).
  */
-export function switchDapServerTab(tab) {
+export async function switchDapServerTab(tab) {
     currentDapServerTab = tab;
     switchServerTabs('dap-server', tab);
+
+    if (tab === 'contributions') {
+        await refreshDapContributionsTab();
+    }
+}
+
+async function refreshDapContributionsTab() {
+    const serverId = selectedDapServer;
+    if (!serverId) return;
+
+    const contributionsPanel = document.getElementById('dap-contributions-content');
+    try {
+        const response = await fetch(`/api/admin/dap/configs/${serverId}/contributions`);
+        const data = await response.json();
+
+        if (contributionsPanel) {
+            const contributionsHTML = formatContributionsSection(data);
+            contributionsPanel.innerHTML = contributionsHTML || '<p class="detail-value">No contributions</p>';
+        }
+
+        const diagramServers = buildDiagramServersFromContributions(serverId, data);
+        state.currentDiagramServers = diagramServers;
+        state.currentDiagramServerId = serverId;
+        setTimeout(() => renderServerDiagram(diagramServers, serverId), 100);
+    } catch (error) {
+        console.error('Failed to load DAP contributions:', error);
+        if (contributionsPanel) {
+            contributionsPanel.innerHTML = '<p class="detail-value text-error">Failed to load contributions</p>';
+        }
+    }
+}
+
+function buildDiagramServersFromContributions(serverId, data) {
+    const serversMap = new Map();
+    serversMap.set(serverId, { id: serverId, contributions: data.contributesTo || {} });
+    for (const [contributorId, contribData] of Object.entries(data.contributedBy || {})) {
+        serversMap.set(contributorId, { id: contributorId, contributions: { [serverId]: contribData } });
+    }
+    for (const targetId of Object.keys(data.contributesTo || {})) {
+        if (!serversMap.has(targetId)) {
+            serversMap.set(targetId, { id: targetId });
+        }
+    }
+    return Array.from(serversMap.values());
 }
 
 async function installDapServer(serverId) {

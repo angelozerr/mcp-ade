@@ -4,7 +4,7 @@
  * Handles runtime listing with status, dependent servers, and install/check actions.
  */
 
-import { state, updateSearchBoxVisibility, ensureRuntimeConfigs } from './shared-state.js';
+import { state, updateSearchBoxVisibility, ensureRuntimeConfigs, ensureRuntimeConfigDetail } from './shared-state.js';
 import { getRuntimeStatusInfo, renderLoadingPlaceholder, renderServerLink, renderExtensionLink, selectListItem,
     buildInstallerControlsHTML, getInstallStatusBadge, updateInstallBadgeInList,
     buildInstallOutputHTML, runServerInstaller, restoreInstallOutput } from './shared-ui.js';
@@ -30,7 +30,7 @@ function getSourceIcon(runtime) {
 
 function renderRuntimeItem(runtime) {
     const isActive = selectedRuntime === runtime.id ? 'active' : '';
-    const dependentCount = countDependents(runtime.dependentServers);
+    const dependentCount = runtime.dependentServerCount ?? countDependents(runtime.dependentServers);
     const sourceIcon = getSourceIcon(runtime);
     const installBadge = getInstallStatusBadge(runtime);
     return `
@@ -102,17 +102,36 @@ export async function showRuntimeDetails(runtimeId, scroll) {
     selectListItem(document.getElementById('runtimes-list'),
         '.server-item[data-runtime-id', previousRuntime, runtimeId, scroll);
 
+    const contentArea = document.querySelector('.content-area');
+    const consoleColumn = document.querySelector('.console-container');
+    consoleColumn.style.display = 'flex';
+    contentArea.style.gridTemplateColumns = '400px 1fr';
+    consoleColumn.style.gridColumn = '2';
+
     const runtime = state.runtimeConfigs?.[runtimeId];
     if (!runtime) {
         console.error('Runtime not found:', runtimeId);
         return;
     }
 
-    const contentArea = document.querySelector('.content-area');
-    const consoleColumn = document.querySelector('.console-container');
-    consoleColumn.style.display = 'flex';
-    contentArea.style.gridTemplateColumns = '400px 1fr';
-    consoleColumn.style.gridColumn = '2';
+    renderRuntimeDetailsPage(runtime);
+
+    if (!runtime._detailLoaded) {
+        await ensureRuntimeConfigDetail(runtimeId);
+        if (selectedRuntime !== runtimeId) return;
+        const detailSection = document.getElementById('runtime-detail-section');
+        if (detailSection) {
+            detailSection.innerHTML = buildRuntimeDetailHTML(runtime);
+        }
+    }
+
+    restoreInstallOutput(runtimeId, 'server-install-output');
+}
+
+function renderRuntimeDetailsPage(runtime) {
+    const info = getRuntimeStatusInfo(runtime.status, runtime.autoInstallable);
+    let statusLabel = (runtime.status === 'NOT_INSTALLED' || !runtime.status) ? 'Not checked' : info.label;
+    let statusHTML = `<span class="text-${info.cssClass}">${statusLabel}</span>`;
 
     const html = `
         <div class="console-header">
@@ -124,14 +143,22 @@ export async function showRuntimeDetails(runtimeId, scroll) {
             ${runtime.autoInstallable ? buildInstallerControlsHTML(runtime.id, 'installRuntime') : ''}
         </div>
         <div class="details-panel text-primary detail-content">
-            ${buildRuntimeDetailsHTML(runtime)}
-            ${buildInstallOutputHTML()}
+            <h3 class="text-success mt-0">Runtime Information</h3>
+            <div class="detail-row">
+                <span class="detail-label">Runtime ID:</span>
+                <span class="detail-value"><code>${runtime.id}</code></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Status:</span>
+                <span id="runtime-status-value" class="detail-value">${statusHTML}</span>
+            </div>
+            <div id="runtime-detail-section">
+                ${runtime._detailLoaded ? buildRuntimeDetailHTML(runtime) : renderLoadingPlaceholder()}
+            </div>
         </div>
     `;
 
     document.getElementById('console-area').innerHTML = html;
-
-    restoreInstallOutput(runtimeId, 'server-install-output');
 }
 
 function buildSourceHTML(runtime) {
@@ -144,9 +171,8 @@ function buildSourceHTML(runtime) {
     return '<span>📦 MCP Installer</span>';
 }
 
-function buildRuntimeDetailsHTML(runtime) {
+function buildRuntimeDetailHTML(runtime) {
     const status = runtime.status || 'NOT_INSTALLED';
-
     const info = getRuntimeStatusInfo(status, runtime.autoInstallable);
     let statusLabel = (status === 'NOT_INSTALLED' || !status) ? 'Not checked' : info.label;
     let statusHTML = `<span class="text-${info.cssClass}">${statusLabel}</span>`;
@@ -198,24 +224,12 @@ function buildRuntimeDetailsHTML(runtime) {
     }
 
     return `
-        <h3 class="text-success mt-0">Runtime Information</h3>
-
-        <div class="detail-row">
-            <span class="detail-label">Runtime ID:</span>
-            <span class="detail-value"><code>${runtime.id}</code></span>
-        </div>
-
         ${runtime.description ? `
         <div class="detail-row">
             <span class="detail-label">Description:</span>
             <span class="detail-value">${runtime.description}</span>
         </div>
         ` : ''}
-
-        <div class="detail-row">
-            <span class="detail-label">Status:</span>
-            <span id="runtime-status-value" class="detail-value">${statusHTML}</span>
-        </div>
 
         ${runtime.resolvedPath ? `
         <div class="detail-row">
@@ -274,6 +288,8 @@ function buildRuntimeDetailsHTML(runtime) {
             <p class="mt-xs mb-0">This runtime must be installed manually. ${runtime.url ? `Visit <a href="${runtime.url}" target="_blank" class="link-accent">${runtime.url}</a> for installation instructions.` : ''}</p>
         </div>
         ` : ''}
+
+        ${buildInstallOutputHTML()}
     `;
 }
 

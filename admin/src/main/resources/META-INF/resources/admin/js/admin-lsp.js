@@ -4,7 +4,7 @@
  * Handles global LSP server listing with Overview/Contributions/Settings tabs
  */
 
-import { state, getServerApiBase, ensureLspConfigs, ensureDapConfigs } from './shared-state.js';
+import { state, getServerApiBase, ensureLspConfigs, ensureLspConfigDetail } from './shared-state.js';
 import {
     renderLoadingPlaceholder, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
@@ -23,7 +23,7 @@ let lspLanguageFilter = null;
 function renderLspServerItem(server) {
     const isActive = selectedAllServer === server.id ? 'active' : '';
     const extensionClass = server.isExtension ? 'server-extension' : '';
-    const disabledClass = server.enabled === false ? 'server-disabled' : '';
+    const disabledClass = !server.enabled ? 'server-disabled' : '';
     const extensionBadge = server.isExtension ? ' <span class="text-secondary font-md">(Extension)</span>' : '';
     const serverIcon = server.isExtension ? '🧩' : '🚀';
     return `
@@ -79,7 +79,6 @@ export async function loadAllLspServers(serverIdToSelect) {
  * Show details for a global LSP server with Overview/Contributions/Settings tabs.
  */
 export async function showServerDetails(serverId, scroll) {
-    // Update selected server
     const previousServer = selectedAllServer;
     selectedAllServer = serverId;
 
@@ -88,88 +87,103 @@ export async function showServerDetails(serverId, scroll) {
             '.server-item[data-server-id', previousServer, serverId, scroll);
     }
 
+    const contentArea = document.querySelector('.content-area');
+    const consoleColumn = document.querySelector('.console-container');
+    consoleColumn.style.display = 'flex';
+    contentArea.style.gridTemplateColumns = '400px 1fr';
+    consoleColumn.style.gridColumn = '2';
+
     const details = state.lspConfigs?.[serverId];
     if (!details) {
         console.error('Server not found:', serverId);
         return;
     }
 
-    try {
-        // Show console column
-        const contentArea = document.querySelector('.content-area');
-        const consoleColumn = document.querySelector('.console-container');
-        consoleColumn.style.display = 'flex';
-        contentArea.style.gridTemplateColumns = '400px 1fr';
-        consoleColumn.style.gridColumn = '2';
+    renderServerDetailsHTML(serverId, details);
 
-        const serverIcon = details.isExtension ? '🧩' : '🚀';
-        const detailsHTML = buildServerDetailsHTML(details);
-
-        const html = `
-            <div class="console-header">
-                <div class="console-title">
-                    <span class="server-source-icon">${serverIcon}</span>
-                    ${details.name || details.id}
-                    <span class="console-install-badge" data-server-id="${details.id}">${getInstallStatusBadge(details)}</span>
-                </div>
-                <div class="console-tabs">
-                    <button class="tab-button ${currentServerTab === 'overview' ? 'active' : ''}" data-action="switchServerTab" data-tab="overview">Overview</button>
-                    <button class="tab-button ${currentServerTab === 'contributions' ? 'active' : ''}" data-action="switchServerTab" data-tab="contributions">Contributions</button>
-                    <button class="tab-button ${currentServerTab === 'settings' ? 'active' : ''}" data-action="switchServerTab" data-tab="settings">Settings</button>
-                </div>
-                ${details.hasInstaller ? buildInstallerControlsHTML(details.id, 'installLspServer') : ''}
-            </div>
-            <div class="tab-content">
-                <div id="server-overview-tab" class="tab-panel ${currentServerTab === 'overview' ? 'active' : ''}">
-                    <div class="details-panel text-primary overflow-auto p-2xl">
-                        ${detailsHTML}
-                        <div class="p-lg bg-panel rounded-sm mt-2xl border-left-accent">
-                            <strong>Note:</strong> To run this server, open a workspace using an MCP client.
-                        </div>
-                        ${buildInstallOutputHTML()}
-                    </div>
-                </div>
-                <div id="server-contributions-tab" class="tab-panel ${currentServerTab === 'contributions' ? 'active' : ''}">
-                    <div id="server-diagram-container" class="w-100 bg-card diagram-container"></div>
-                    <div class="diagram-resizer"></div>
-                    <div class="details-panel text-primary flex-1 min-h-0 overflow-auto p-2xl">
-                        <p class="detail-value">Loading...</p>
-                    </div>
-                </div>
-                <div id="server-settings-tab" class="tab-panel ${currentServerTab === 'settings' ? 'active' : ''}">
-                    <div class="details-panel text-primary overflow-auto p-2xl">
-                        ${buildSettingsHTML(details)}
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const consoleArea = document.getElementById('console-area');
-        consoleArea.innerHTML = html;
-
-        restoreInstallOutput(serverId, 'server-install-output');
-
-        if (currentServerTab === 'contributions') {
-            refreshContributionsTab();
+    if (!details._detailLoaded) {
+        await ensureLspConfigDetail(serverId);
+        if (selectedAllServer !== serverId) return;
+        const detailSection = document.getElementById('server-detail-section');
+        if (detailSection) {
+            detailSection.innerHTML = buildServerDetailHTML(details);
         }
+        const settingsPanel = document.getElementById('server-settings-content');
+        if (settingsPanel) {
+            settingsPanel.innerHTML = buildSettingsHTML(details);
+        }
+    }
 
-    } catch (error) {
-        console.error('Failed to load server details:', error);
-        document.getElementById('console-area').innerHTML = `
-            <div class="placeholder text-error-light">
-                Failed to load server details
-            </div>
-        `;
+    restoreInstallOutput(serverId, 'server-install-output');
+
+    if (currentServerTab === 'contributions') {
+        refreshContributionsTab();
     }
 }
 
-/**
- * Build server details HTML for Overview tab.
- */
-function buildServerDetailsHTML(details) {
+function renderServerDetailsHTML(serverId, details) {
+    const serverIcon = details.isExtension ? '🧩' : '🚀';
+
+    const html = `
+        <div class="console-header">
+            <div class="console-title">
+                <span class="server-source-icon">${serverIcon}</span>
+                ${details.name || details.id}
+                <span class="console-install-badge" data-server-id="${details.id}">${getInstallStatusBadge(details)}</span>
+            </div>
+            <div class="console-tabs">
+                <button class="tab-button ${currentServerTab === 'overview' ? 'active' : ''}" data-action="switchServerTab" data-tab="overview">Overview</button>
+                <button class="tab-button ${currentServerTab === 'contributions' ? 'active' : ''}" data-action="switchServerTab" data-tab="contributions">Contributions</button>
+                <button class="tab-button ${currentServerTab === 'settings' ? 'active' : ''}" data-action="switchServerTab" data-tab="settings">Settings</button>
+            </div>
+            ${details.hasInstaller ? buildInstallerControlsHTML(details.id, 'installLspServer') : ''}
+        </div>
+        <div class="tab-content">
+            <div id="server-overview-tab" class="tab-panel ${currentServerTab === 'overview' ? 'active' : ''}">
+                <div class="details-panel text-primary overflow-auto p-2xl">
+                    ${buildServerSummaryHTML(details)}
+                    <div id="server-detail-section">
+                        ${details._detailLoaded ? buildServerDetailHTML(details) : renderLoadingPlaceholder()}
+                    </div>
+                </div>
+            </div>
+            <div id="server-contributions-tab" class="tab-panel ${currentServerTab === 'contributions' ? 'active' : ''}">
+                <div id="server-diagram-container" class="w-100 bg-card diagram-container"></div>
+                <div class="diagram-resizer"></div>
+                <div class="details-panel text-primary flex-1 min-h-0 overflow-auto p-2xl">
+                    <p class="detail-value">Loading...</p>
+                </div>
+            </div>
+            <div id="server-settings-tab" class="tab-panel ${currentServerTab === 'settings' ? 'active' : ''}">
+                <div class="details-panel text-primary overflow-auto p-2xl" id="server-settings-content">
+                    ${details._detailLoaded ? buildSettingsHTML(details) : renderLoadingPlaceholder()}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('console-area').innerHTML = html;
+}
+
+function buildServerSummaryHTML(details) {
     const docSelectorHTML = renderDocumentSelector(details.documentSelector);
 
-    // Command
+    return `
+        <h3 class="text-label mt-0">Server Information</h3>
+
+        <div class="detail-row">
+            <span class="detail-label">Server ID:</span>
+            <span class="detail-value"><code>${details.id}</code></span>
+        </div>
+
+        <div class="mb-lg">
+            <strong class="text-label">Supported Languages/Files:</strong>
+            ${docSelectorHTML}
+        </div>
+    `;
+}
+
+function buildServerDetailHTML(details) {
     let commandHTML = '<p class="text-secondary">None (contribution-only server)</p>';
     if (details.command) {
         if (typeof details.command === 'string') {
@@ -182,13 +196,6 @@ function buildServerDetailsHTML(details) {
     }
 
     return `
-        <h3 class="text-label mt-0">Server Information</h3>
-
-        <div class="detail-row">
-            <span class="detail-label">Server ID:</span>
-            <span class="detail-value"><code>${details.id}</code></span>
-        </div>
-
         ${details.description ? `
         <div class="detail-row">
             <span class="detail-label">Description:</span>
@@ -226,11 +233,10 @@ function buildServerDetailsHTML(details) {
         </div>
         ` : ''}
 
-        <div class="mb-lg">
-            <strong class="text-label">Supported Languages/Files:</strong>
-            ${docSelectorHTML}
+        <div class="p-lg bg-panel rounded-sm mt-2xl border-left-accent">
+            <strong>Note:</strong> To run this server, open a workspace using an MCP client.
         </div>
-
+        ${buildInstallOutputHTML()}
     `;
 }
 
@@ -270,22 +276,43 @@ function updateServerSetting(serverId, settingKey, value) {
 }
 
 async function refreshContributionsTab() {
-    await ensureDapConfigs();
-    const lspServers = Object.values(state.lspConfigs || {});
-    const dapServers = Object.values(state.dapConfigs || {}).map(s => ({...s, isDap: true}));
-    const allServers = [...lspServers, ...dapServers];
-    const details = state.lspConfigs?.[selectedAllServer];
-    if (!details) return;
+    const serverId = selectedAllServer;
+    if (!serverId) return;
 
     const contributionsPanel = document.querySelector('#server-contributions-tab .details-panel');
-    if (contributionsPanel) {
-        const contributionsHTML = formatContributionsSection(details, allServers);
-        contributionsPanel.innerHTML = contributionsHTML || '<p class="detail-value">No contributions</p>';
-    }
+    try {
+        const response = await fetch(`/api/admin/lsp/configs/${serverId}/contributions`);
+        const data = await response.json();
 
-    state.currentDiagramServers = allServers;
-    state.currentDiagramServerId = details.id;
-    setTimeout(() => renderServerDiagram(allServers, details.id), 100);
+        if (contributionsPanel) {
+            const contributionsHTML = formatContributionsSection(data);
+            contributionsPanel.innerHTML = contributionsHTML || '<p class="detail-value">No contributions</p>';
+        }
+
+        const diagramServers = buildDiagramServersFromContributions(serverId, data);
+        state.currentDiagramServers = diagramServers;
+        state.currentDiagramServerId = serverId;
+        setTimeout(() => renderServerDiagram(diagramServers, serverId), 100);
+    } catch (error) {
+        console.error('Failed to load contributions:', error);
+        if (contributionsPanel) {
+            contributionsPanel.innerHTML = '<p class="detail-value text-error">Failed to load contributions</p>';
+        }
+    }
+}
+
+function buildDiagramServersFromContributions(serverId, data) {
+    const serversMap = new Map();
+    serversMap.set(serverId, { id: serverId, contributions: data.contributesTo || {} });
+    for (const [contributorId, contribData] of Object.entries(data.contributedBy || {})) {
+        serversMap.set(contributorId, { id: contributorId, contributions: { [serverId]: contribData } });
+    }
+    for (const targetId of Object.keys(data.contributesTo || {})) {
+        if (!serversMap.has(targetId)) {
+            serversMap.set(targetId, { id: targetId });
+        }
+    }
+    return Array.from(serversMap.values());
 }
 
 /**

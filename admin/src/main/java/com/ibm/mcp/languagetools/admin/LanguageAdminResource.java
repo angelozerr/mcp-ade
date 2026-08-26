@@ -20,10 +20,9 @@ import com.ibm.mcp.languagetools.language.LanguageDefinition;
 import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 import java.util.*;
 
@@ -44,6 +43,50 @@ public class LanguageAdminResource {
 
     @GET
     public List<Map<String, Object>> listLanguages() {
+        Map<String, Map<String, Object>> fullMap = buildFullLanguageMap();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> lang : fullMap.values()) {
+            result.add(buildLanguageSummary(lang));
+        }
+        return result;
+    }
+
+    @GET
+    @Path("/{languageId}")
+    public Response getLanguage(@PathParam("languageId") String languageId) {
+        Map<String, Map<String, Object>> fullMap = buildFullLanguageMap();
+        Map<String, Object> lang = fullMap.get(languageId);
+        if (lang == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(lang).build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildLanguageSummary(Map<String, Object> full) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("id", full.get("id"));
+        List<?> aliases = (List<?>) full.get("aliases");
+        if (aliases != null && !aliases.isEmpty()) {
+            summary.put("aliases", aliases);
+        }
+        List<?> extensions = (List<?>) full.get("extensions");
+        if (extensions != null && !extensions.isEmpty()) {
+            summary.put("extensions", extensions);
+        }
+        summary.put("source", full.get("source"));
+        Map<String, ?> servers = (Map<String, ?>) full.get("servers");
+        if (servers != null && !servers.isEmpty()) {
+            int count = 0;
+            for (Object list : servers.values()) {
+                if (list instanceof List<?> l) count += l.size();
+            }
+            if (count > 0) summary.put("serverCount", count);
+        }
+        return summary;
+    }
+
+    private Map<String, Map<String, Object>> buildFullLanguageMap() {
         Map<String, Map<String, Object>> languageMap = new LinkedHashMap<>();
 
         for (LanguageDefinition lang : languageRegistry.getAllLanguages()) {
@@ -60,7 +103,7 @@ public class LanguageAdminResource {
             addServerAssociation(languageMap, config, "bsp");
         }
 
-        return new ArrayList<>(languageMap.values());
+        return languageMap;
     }
 
     @SuppressWarnings("unchecked")

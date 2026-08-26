@@ -278,6 +278,90 @@ export async function ensureLanguageConfigs() {
     return languageConfigsPromise;
 }
 
+export async function ensureLspConfigDetail(serverId) {
+    const config = state.lspConfigs?.[serverId];
+    if (!config || config._detailLoaded) return config;
+    try {
+        const response = await fetch(`/api/admin/lsp/configs/${serverId}`);
+        const detail = await response.json();
+        Object.assign(config, detail);
+        config._detailLoaded = true;
+    } catch (error) {
+        console.error('Failed to load LSP config detail:', error);
+    }
+    return config;
+}
+
+export async function ensureDapConfigDetail(serverId) {
+    const config = state.dapConfigs?.[serverId];
+    if (!config || config._detailLoaded) return config;
+    try {
+        const response = await fetch(`/api/admin/dap/configs/${serverId}`);
+        const detail = await response.json();
+        Object.assign(config, detail);
+        config._detailLoaded = true;
+    } catch (error) {
+        console.error('Failed to load DAP config detail:', error);
+    }
+    return config;
+}
+
+export async function ensureBspConfigDetail(serverId) {
+    const config = state.bspConfigs?.[serverId];
+    if (!config || config._detailLoaded) return config;
+    try {
+        const response = await fetch(`/api/admin/bsp/configs/${serverId}`);
+        const detail = await response.json();
+        Object.assign(config, detail);
+        config._detailLoaded = true;
+    } catch (error) {
+        console.error('Failed to load BSP config detail:', error);
+    }
+    return config;
+}
+
+export async function ensureRuntimeConfigDetail(runtimeId) {
+    const config = state.runtimeConfigs?.[runtimeId];
+    if (!config || config._detailLoaded) return config;
+    try {
+        const response = await fetch(`/api/admin/runtimes/${runtimeId}`);
+        const detail = await response.json();
+        Object.assign(config, detail);
+        config._detailLoaded = true;
+    } catch (error) {
+        console.error('Failed to load runtime config detail:', error);
+    }
+    return config;
+}
+
+export async function ensureExtensionConfigDetail(extensionId) {
+    const config = state.extensionConfigs?.find(e => e.id === extensionId);
+    if (!config || config._detailLoaded) return config;
+    try {
+        const response = await fetch(`/api/admin/extensions/${encodeURIComponent(extensionId)}`);
+        const detail = await response.json();
+        Object.assign(config, detail);
+        config._detailLoaded = true;
+    } catch (error) {
+        console.error('Failed to load extension config detail:', error);
+    }
+    return config;
+}
+
+export async function ensureLanguageConfigDetail(languageId) {
+    const config = state.languageConfigs?.find(l => l.id === languageId);
+    if (!config || config._detailLoaded) return config;
+    try {
+        const response = await fetch(`/api/admin/languages/${encodeURIComponent(languageId)}`);
+        const detail = await response.json();
+        Object.assign(config, detail);
+        config._detailLoaded = true;
+    } catch (error) {
+        console.error('Failed to load language config detail:', error);
+    }
+    return config;
+}
+
 export function updateSearchBoxVisibility(showSearchBox) {
     const searchBox = document.getElementById('search-box');
     if (searchBox) {
@@ -288,19 +372,6 @@ export function updateSearchBoxVisibility(showSearchBox) {
             searchBox.classList.remove('search-box-available');
         }
     }
-}
-
-export function buildGlobalContributedByMap(servers) {
-    const map = {};
-    servers.forEach(server => {
-        if (server.contributes && server.contributes.contributeServerConfigurations) {
-            server.contributes.contributeServerConfigurations.forEach(targetId => {
-                if (!map[targetId]) map[targetId] = [];
-                map[targetId].push(server.id);
-            });
-        }
-    });
-    return map;
 }
 
 export function buildWorkspaceContributedByMap(servers) {

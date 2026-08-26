@@ -13,6 +13,8 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.language;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.net.URI;
 import java.nio.file.Path;
 
@@ -22,6 +24,7 @@ import java.nio.file.Path;
  *
  * @see <a href="https://code.visualstudio.com/api/references/document-selector">VS Code DocumentSelector</a>
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class DocumentFilter {
 
     private String language;

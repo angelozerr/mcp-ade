@@ -666,7 +666,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                                        (server.status === 'CONNECTED_TO_IDE' || server.status === 'CONNECTING_TO_IDE');
                     const serverClass = isExternal ? 'server-item-external' : 'server-item-managed';
                     const extensionClass = server.isExtension ? 'server-extension' : '';
-                    const disabledClass = server.enabled === false ? 'server-disabled' : '';
+                    const disabledClass = !server.enabled ? 'server-disabled' : '';
                     const extensionBadge = server.isExtension ? ' <span class="text-secondary font-md">(Extension)</span>' : '';
 
                     const actions = server.isExtension ? '' : renderServerActions(server.id, server);
@@ -743,7 +743,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         <button class="server-action-btn" data-action="createNewTestSession" data-server-id="${server.id}" data-stop-propagation title="New Test Launch">+</button>
                     `;
 
-                    const disabledClass = server.enabled === false ? 'server-disabled' : '';
+                    const disabledClass = !server.enabled ? 'server-disabled' : '';
 
                     return `
                         <div class="server-item ${disabledClass} ${state.selectedServer?.id === server.id ? 'active' : ''} cursor-pointer" data-dap-server="${server.id}" data-action="selectDapServerItem" data-server-id="${server.id}">
@@ -778,7 +778,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             }
 
             return servers.map(server => {
-                const disabledClass = server.enabled === false ? 'server-disabled' : '';
+                const disabledClass = !server.enabled ? 'server-disabled' : '';
                 const isSelected = state.selectedServer?.id === server.id && state.selectedServer?.isBsp;
 
                 const actions = renderServerActions(server.id, server);

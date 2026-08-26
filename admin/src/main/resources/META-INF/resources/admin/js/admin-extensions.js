@@ -6,7 +6,7 @@
  */
 
 import { confirmAction, showAlert, renderLoadingPlaceholder, renderServerLink, renderRuntimeLink, selectListItem } from './shared-ui.js';
-import { state, loadLspConfigs, loadDapConfigs, ensureExtensionConfigs } from './shared-state.js';
+import { state, loadLspConfigs, loadDapConfigs, ensureExtensionConfigs, ensureExtensionConfigDetail } from './shared-state.js';
 import { registerActions } from './event-delegation.js';
 
 let switchTabCallback = null;
@@ -35,9 +35,9 @@ function renderExtensionsList() {
         const disabledClass = !ext.enabled ? 'extension-disabled' : '';
         const sourceBadge = `<span class="extension-source-badge ${ext.source.toLowerCase()}">${ext.source}</span>`;
         const counts = [];
-        const lspCount = ext.lspServers?.length || 0;
-        const dapCount = ext.dapServers?.length || 0;
-        const bspCount = ext.bspServers?.length || 0;
+        const lspCount = ext.lspCount ?? ext.lspServers?.length ?? 0;
+        const dapCount = ext.dapCount ?? ext.dapServers?.length ?? 0;
+        const bspCount = ext.bspCount ?? ext.bspServers?.length ?? 0;
         const runtimeCount = Object.values(state.runtimeConfigs || {}).filter(rt => rt.extensionId === ext.id).length;
         if (lspCount > 0) counts.push(`${lspCount} lsp`);
         if (dapCount > 0) counts.push(`${dapCount} dap`);
@@ -94,15 +94,12 @@ export async function loadAllExtensions(extensionIdToSelect) {
 /**
  * Show details for an extension in the console panel.
  */
-export function showExtensionDetails(extensionId, scroll) {
+export async function showExtensionDetails(extensionId, scroll) {
     const previousExtension = selectedExtension;
     selectedExtension = extensionId;
 
     selectListItem(document.getElementById('extensions-list'),
         '.extension-item[data-extension-id', previousExtension, extensionId, scroll);
-
-    const ext = extensionsData.find(e => e.id === extensionId);
-    if (!ext) return;
 
     const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
@@ -110,9 +107,53 @@ export function showExtensionDetails(extensionId, scroll) {
     contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
+    const ext = extensionsData.find(e => e.id === extensionId);
+    if (!ext) return;
+
     const sourceBadge = `<span class="extension-source-badge ${ext.source.toLowerCase()}">${ext.source}</span>`;
 
-    // Build servers list HTML
+    document.getElementById('console-area').innerHTML = `
+        <div class="console-header">
+            <div class="console-title">
+                <span class="server-source-icon">🧩</span>
+                ${ext.id} ${sourceBadge}
+            </div>
+        </div>
+        <div class="details-panel text-primary detail-content">
+            <h3 class="text-label mt-0">Extension Information</h3>
+
+            <div class="detail-row">
+                <span class="detail-label">ID:</span>
+                <span class="detail-value">${ext.id}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Source:</span>
+                <span class="detail-value">${sourceBadge}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Status:</span>
+                <span class="detail-value ${ext.enabled ? 'text-success' : 'text-error'}">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
+            </div>
+
+            <div id="extension-detail-section">
+                ${ext._detailLoaded ? buildExtensionDetailHTML(ext) : renderLoadingPlaceholder()}
+            </div>
+        </div>
+    `;
+
+    if (!ext._detailLoaded) {
+        await ensureExtensionConfigDetail(extensionId);
+        if (selectedExtension !== extensionId) return;
+        const detailSection = document.getElementById('extension-detail-section');
+        if (detailSection) {
+            detailSection.innerHTML = buildExtensionDetailHTML(ext);
+        }
+    }
+}
+
+function buildExtensionDetailHTML(ext) {
     let serversHTML = '';
     if (ext.lspServers && ext.lspServers.length > 0) {
         serversHTML += '<h4 class="text-label mt-xl">LSP Servers</h4>';
@@ -138,14 +179,13 @@ export function showExtensionDetails(extensionId, scroll) {
         }).join('');
     }
 
-    // Build runtimes section from JS state
     const extRuntimes = Object.values(state.runtimeConfigs || {}).filter(rt => rt.extensionId === ext.id);
     let runtimesHTML = '';
     if (extRuntimes.length > 0) {
         runtimesHTML += '<h4 class="text-label mt-xl">Runtimes</h4>';
         runtimesHTML += extRuntimes.map(rt => {
             return `<div class="extension-server-item">
-                <span>${renderRuntimeLink(rt.id)}</span>
+                <span>${renderRuntimeLink(rt.id, rt.name)}</span>
             </div>`;
         }).join('');
     }
@@ -155,7 +195,6 @@ export function showExtensionDetails(extensionId, scroll) {
         serversHTML = '<p class="text-dimmed mt-lg">No servers or runtimes in this extension.</p>';
     }
 
-    // Remove button (only for USER extensions)
     const removeButton = ext.source === 'USER' ? `
         <div class="mt-2xl border-top-subtle" style="padding-top: 1.5rem;">
             <button class="btn-danger" data-action="removeExtension" data-extension-id="${ext.id}">
@@ -164,37 +203,7 @@ export function showExtensionDetails(extensionId, scroll) {
         </div>
     ` : '';
 
-    const consoleArea = document.getElementById('console-area');
-    consoleArea.innerHTML = `
-        <div class="console-header">
-            <div class="console-title">
-                <span class="server-source-icon">🧩</span>
-                ${ext.id} ${sourceBadge}
-            </div>
-        </div>
-        <div class="details-panel text-primary detail-content">
-            <h3 class="text-label mt-0">Extension Information</h3>
-
-            <div class="detail-row">
-                <span class="detail-label">ID:</span>
-                <span class="detail-value">${ext.id}</span>
-            </div>
-
-            <div class="detail-row">
-                <span class="detail-label">Source:</span>
-                <span class="detail-value">${sourceBadge}</span>
-            </div>
-
-            <div class="detail-row">
-                <span class="detail-label">Status:</span>
-                <span class="detail-value ${ext.enabled ? 'text-success' : 'text-error'}">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
-            </div>
-
-            ${serversHTML}
-            ${runtimesHTML}
-            ${removeButton}
-        </div>
-    `;
+    return `${serversHTML}${runtimesHTML}${removeButton}`;
 }
 
 /**

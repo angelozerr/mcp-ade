@@ -23,7 +23,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST endpoint for all DAP-related admin operations.
@@ -65,7 +67,7 @@ public class DapAdminResource extends AbstractServerAdminResource {
         var configs = application.getDapServerConfigs();
         checkUncheckedServers(configs);
         return configs.stream()
-                .map(this::toDTO)
+                .map(this::toDTOSummary)
                 .toList();
     }
 
@@ -84,7 +86,25 @@ public class DapAdminResource extends AbstractServerAdminResource {
         return toDTO(config);
     }
 
+    @GET
+    @Path("/configs/{serverId}/contributions")
+    public Map<String, Object> getContributions(@PathParam("serverId") String serverId) {
+        DapServerConfig config = application.getDapServerConfig(serverId);
+        if (config == null) {
+            throw new NotFoundException("DAP server not found: " + serverId);
+        }
+        List<ServerConfigBase> allConfigs = new ArrayList<>();
+        allConfigs.addAll(application.getLspServerConfigs());
+        allConfigs.addAll(application.getDapServerConfigs());
+        return contributionBuilder.buildContributionsView(serverId, config, allConfigs);
+    }
+
+    private static Boolean trueOrNull(boolean value) {
+        return value ? Boolean.TRUE : null;
+    }
+
     private DapConfigDTO toDTO(DapServerConfig config) {
+        boolean hasInstaller = config.getInstaller() != null;
         return new DapConfigDTO(
             config.getServerId(),
             config.getName(),
@@ -92,13 +112,34 @@ public class DapAdminResource extends AbstractServerAdminResource {
             config.getUrl(),
             config.getDocumentSelector(),
             contributionBuilder.buildContributions(config),
-            extensionRegistry.isServerEnabled(config.getServerId()),
+            trueOrNull(extensionRegistry.isServerEnabled(config.getServerId())),
             config.getRuntime(),
+            config.getRuntimeConfig() != null ? config.getRuntimeConfig().getName() : null,
             config.getRuntimeStatusName(),
             config.getExtensionId(),
-            config.getInstaller() != null,
-            config.getInstaller() != null ? config.getStatus().name() : null,
-            config.getInstaller() != null ? config.getServerHome().toString() : null
+            trueOrNull(hasInstaller),
+            hasInstaller ? config.getStatus().name() : null,
+            hasInstaller ? config.getServerHome().toString() : null
+        );
+    }
+
+    private DapConfigDTO toDTOSummary(DapServerConfig config) {
+        boolean hasInstaller = config.getInstaller() != null;
+        return new DapConfigDTO(
+            config.getServerId(),
+            config.getName(),
+            null,
+            null,
+            config.getDocumentSelector(),
+            null,
+            trueOrNull(extensionRegistry.isServerEnabled(config.getServerId())),
+            null,
+            null,
+            null,
+            null,
+            trueOrNull(hasInstaller),
+            hasInstaller ? config.getStatus().name() : null,
+            null
         );
     }
 

@@ -63,16 +63,12 @@ public class BspAdminResource extends AbstractServerAdminResource {
             Map<String, Object> dto = new LinkedHashMap<>();
             dto.put("id", config.getServerId());
             dto.put("name", config.getName());
-            dto.put("description", config.getDescription());
-            dto.put("url", config.getUrl());
-            dto.put("enabled", application.getExtensionRegistry().isServerEnabled(config.getServerId()));
-            dto.put("hasInstaller", config.getInstaller() != null);
-            if (config.getInstaller() != null) {
-                dto.put("installationStatus", config.getStatus().name());
-                dto.put("installDir", config.getServerHome().toString());
+            if (application.getExtensionRegistry().isServerEnabled(config.getServerId())) {
+                dto.put("enabled", true);
             }
-            if (config.getExtensionId() != null) {
-                dto.put("extensionId", config.getExtensionId());
+            if (config.getInstaller() != null) {
+                dto.put("hasInstaller", true);
+                dto.put("installationStatus", config.getStatus().name());
             }
             result.add(dto);
         }
@@ -89,11 +85,17 @@ public class BspAdminResource extends AbstractServerAdminResource {
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("id", config.getServerId());
         dto.put("name", config.getName());
-        dto.put("description", config.getDescription());
-        dto.put("url", config.getUrl());
-        dto.put("enabled", application.getExtensionRegistry().isServerEnabled(config.getServerId()));
-        dto.put("hasInstaller", config.getInstaller() != null);
+        if (config.getDescription() != null) {
+            dto.put("description", config.getDescription());
+        }
+        if (config.getUrl() != null) {
+            dto.put("url", config.getUrl());
+        }
+        if (application.getExtensionRegistry().isServerEnabled(config.getServerId())) {
+            dto.put("enabled", true);
+        }
         if (config.getInstaller() != null) {
+            dto.put("hasInstaller", true);
             dto.put("installationStatus", config.getStatus().name());
             dto.put("installDir", config.getServerHome().toString());
         }

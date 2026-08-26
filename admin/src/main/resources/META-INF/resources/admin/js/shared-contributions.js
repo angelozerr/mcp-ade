@@ -1,29 +1,54 @@
 import { state, buildWorkspaceContributedByMap } from './shared-state.js';
 import { escapeHtml } from './trace-renderer.js';
 
-export function formatContributionsSection(server, allServers = null) {
-    const contributesTo = server.contributions ? Object.keys(server.contributions) : [];
+/**
+ * Format the contributions section HTML.
+ *
+ * Accepts two formats:
+ * 1. Pre-computed from endpoint: { contributesTo: {...}, contributedBy: {...} }
+ * 2. Legacy (workspace view): (server, allServers) where server.contributions exists
+ */
+export function formatContributionsSection(serverOrData, allServers = null) {
+    let contributesToMap, contributedByData;
 
-    if (!allServers) {
-        const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
-        const dapServersWithFlag = (Object.values(state.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
-        allServers = workspace ? [...(workspace.lspServers || []), ...dapServersWithFlag] : [];
+    if (serverOrData.contributesTo !== undefined || serverOrData.contributedBy !== undefined) {
+        contributesToMap = serverOrData.contributesTo || {};
+        contributedByData = serverOrData.contributedBy || {};
+    } else {
+        contributesToMap = serverOrData.contributions || {};
+
+        if (!allServers) {
+            const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
+            const dapServersWithFlag = (Object.values(state.dapConfigs || {}) || []).map(s => ({...s, isDap: true}));
+            allServers = workspace ? [...(workspace.lspServers || []), ...dapServersWithFlag] : [];
+        }
+        const contributedByMap = buildWorkspaceContributedByMap(allServers);
+        const contributedByIds = contributedByMap[serverOrData.id] || [];
+
+        contributedByData = {};
+        contributedByIds.forEach(contributorServerId => {
+            const contributorServer = allServers.find(s => s.id === contributorServerId);
+            if (contributorServer?.contributions?.[serverOrData.id]) {
+                contributedByData[contributorServerId] = contributorServer.contributions[serverOrData.id];
+            }
+        });
     }
-    const contributedByMap = buildWorkspaceContributedByMap(allServers);
-    const contributedBy = contributedByMap[server.id] || [];
 
-    if (contributesTo.length === 0 && contributedBy.length === 0) {
+    const contributesToKeys = Object.keys(contributesToMap);
+    const contributedByKeys = Object.keys(contributedByData);
+
+    if (contributesToKeys.length === 0 && contributedByKeys.length === 0) {
         return '';
     }
 
     let html = '<div class="details-section"><h4>Contributions</h4>';
 
-    if (contributesTo.length > 0) {
+    if (contributesToKeys.length > 0) {
         html += '<div class="contribution-subsection">';
         html += '<h5 class="text-success mb-sm">→ Contributes To</h5>';
 
-        for (const targetServerId of contributesTo) {
-            const contributionData = server.contributions[targetServerId];
+        for (const targetServerId of contributesToKeys) {
+            const contributionData = contributesToMap[targetServerId];
             html += `<div class="contribution-target mb-lg">`;
             html += `<div class="text-label-alt mb-xs font-bold">${targetServerId}</div>`;
 
@@ -49,18 +74,15 @@ export function formatContributionsSection(server, allServers = null) {
         html += '</div>';
     }
 
-    if (contributedBy.length > 0) {
+    if (contributedByKeys.length > 0) {
         html += '<div class="contribution-subsection mt-lg">';
         html += '<h5 class="text-string mb-sm">← Contributed By</h5>';
 
         const contributionsByType = {};
 
-        contributedBy.forEach(contributorServerId => {
-            const contributorServer = allServers.find(s => s.id === contributorServerId);
-            if (!contributorServer || !contributorServer.contributions) return;
-
-            const contributionData = contributorServer.contributions[server.id];
-            if (!contributionData) return;
+        for (const contributorServerId of contributedByKeys) {
+            const contributionData = contributedByData[contributorServerId];
+            if (!contributionData) continue;
 
             for (const [type, items] of Object.entries(contributionData)) {
                 if (items && items.length > 0) {
@@ -70,7 +92,7 @@ export function formatContributionsSection(server, allServers = null) {
                     });
                 }
             }
-        });
+        }
 
         for (const [type, contributions] of Object.entries(contributionsByType)) {
             html += `<div class="mb-lg">`;

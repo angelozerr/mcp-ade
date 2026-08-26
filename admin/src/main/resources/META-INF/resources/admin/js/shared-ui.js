@@ -32,8 +32,8 @@ export function renderServerLink(serverType, serverId, opts = {}) {
     return `<div class="extension-server-item cursor-pointer ${extraClass}" data-action="${action}" data-server-id="${serverId}"><span><span class="server-source-icon">${icon}</span> <span class="nav-link">${name}</span> <span class="text-dimmed font-sm">(${serverId})</span></span>${extraHTML}</div>`;
 }
 
-export function renderRuntimeLink(runtimeId) {
-    const name = getRuntimeName(runtimeId);
+export function renderRuntimeLink(runtimeId, runtimeName) {
+    const name = runtimeName || getRuntimeName(runtimeId);
     return `<span class="nav-link" data-action="navigateToRuntime" data-runtime-id="${runtimeId}">${name}</span>`;
 }
 
@@ -105,7 +105,7 @@ export function renderRuntimeSection(data) {
         <div class="detail-row">
             <span class="detail-label">Runtime:</span>
             <span class="detail-value">
-                ${renderRuntimeLink(data.runtime)}
+                ${renderRuntimeLink(data.runtime, data.runtimeName)}
                 ${data.runtimeStatus ? ` ${renderBadge(info.statusClass, info.label, { animate: info.animate })}` : ''}
             </span>
         </div>
@@ -504,7 +504,7 @@ export function renderServerNameHeader(server, opts = {}) {
                 <span class="install-badge-container">${installBadgeHTML}</span>
                 ${toggleAction ? `
                 <label class="toggle-switch" onclick="event.stopPropagation()">
-                    <input type="checkbox" ${server.enabled !== false ? 'checked' : ''} data-action="${toggleAction}" data-server-id="${server.id}">
+                    <input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="${toggleAction}" data-server-id="${server.id}">
                     <span class="toggle-slider"></span>
                 </label>
                 ` : ''}

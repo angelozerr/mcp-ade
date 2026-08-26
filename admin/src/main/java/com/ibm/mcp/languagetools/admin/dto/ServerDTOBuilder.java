@@ -49,9 +49,12 @@ public class ServerDTOBuilder {
     /**
      * Build LspConfigDTO from LspServerConfig.
      */
+    private static Boolean trueOrNull(boolean value) {
+        return value ? Boolean.TRUE : null;
+    }
+
     public LspConfigDTO buildConfig(LspServerConfig config) {
-        // Detect if this is an extension (contribution-only, no command)
-        boolean isExtension = config.isContributionOnly();
+        boolean hasInstaller = config.getInstaller() != null;
 
         return new LspConfigDTO(
             config.getServerId(),
@@ -64,15 +67,43 @@ public class ServerDTOBuilder {
             config.getWorkingDirectory(),
             config.getInitializationOptions(),
             contributionBuilder.buildContributions(config),
-            isExtension,
-            extensionRegistry.isServerEnabled(config.getServerId()),
+            trueOrNull(config.isContributionOnly()),
+            trueOrNull(extensionRegistry.isServerEnabled(config.getServerId())),
             buildSettings(config),
             config.getRuntime(),
+            config.getRuntimeConfig() != null ? config.getRuntimeConfig().getName() : null,
             config.getRuntimeStatusName(),
             config.getExtensionId(),
-            config.getInstaller() != null,
-            config.getInstaller() != null ? config.getStatus().name() : null,
-            config.getInstaller() != null ? config.getServerHome().toString() : null
+            trueOrNull(hasInstaller),
+            hasInstaller ? config.getStatus().name() : null,
+            hasInstaller ? config.getServerHome().toString() : null
+        );
+    }
+
+    public LspConfigDTO buildConfigSummary(LspServerConfig config) {
+        boolean hasInstaller = config.getInstaller() != null;
+
+        return new LspConfigDTO(
+            config.getServerId(),
+            config.getName(),
+            null,
+            null,
+            config.getDocumentSelector(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            trueOrNull(config.isContributionOnly()),
+            trueOrNull(extensionRegistry.isServerEnabled(config.getServerId())),
+            null,
+            null,
+            null,
+            null,
+            null,
+            trueOrNull(hasInstaller),
+            hasInstaller ? config.getStatus().name() : null,
+            null
         );
     }
 

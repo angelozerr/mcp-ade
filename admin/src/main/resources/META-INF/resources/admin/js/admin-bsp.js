@@ -4,7 +4,7 @@
  * Handles global BSP server listing with Overview/Settings tabs
  */
 
-import { state, updateSearchBoxVisibility, ensureBspConfigs } from './shared-state.js';
+import { state, updateSearchBoxVisibility, ensureBspConfigs, ensureBspConfigDetail } from './shared-state.js';
 import {
     renderLoadingPlaceholder, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
@@ -21,7 +21,7 @@ let bspLanguageFilter = null;
 
 function renderBspServerItem(server) {
     const isActive = selectedBspServer === server.id ? 'active' : '';
-    const disabledClass = server.enabled === false ? 'server-disabled' : '';
+    const disabledClass = !server.enabled ? 'server-disabled' : '';
     return `
         <div class="server-item ${isActive} ${disabledClass}" data-action="showBspServerDetails" data-server-id="${server.id}">
             ${renderServerNameHeader(server, { icon: '🔨', toggleAction: 'toggleBspServerEnabled' })}
@@ -88,26 +88,76 @@ export async function showBspServerDetails(serverId, scroll) {
             '.server-item[data-server-id', previousServer, serverId, scroll);
     }
 
-    const server = bspServerConfigs[serverId];
-    if (!server) {
-        console.error('BSP server not found:', serverId);
-        return;
-    }
-
     const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
     consoleColumn.style.display = 'flex';
     contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
-    const detailsHTML = `
-        <h3 class="text-success mt-0">Build Server Information</h3>
+    const server = bspServerConfigs[serverId];
+    if (!server) {
+        console.error('BSP server not found:', serverId);
+        return;
+    }
 
-        <div class="detail-row">
-            <span class="detail-label">Server ID:</span>
-            <span class="detail-value"><code>${server.id}</code></span>
+    renderBspServerDetailsHTML(serverId, server);
+
+    if (!server._detailLoaded) {
+        await ensureBspConfigDetail(serverId);
+        if (selectedBspServer !== serverId) return;
+        const detailSection = document.getElementById('bsp-server-detail-section');
+        if (detailSection) {
+            detailSection.innerHTML = buildBspServerDetailHTML(server);
+        }
+        const settingsPanel = document.getElementById('bsp-server-settings-content');
+        if (settingsPanel) {
+            settingsPanel.innerHTML = buildBspSettingsHTML(server);
+        }
+    }
+
+    restoreInstallOutput(serverId, 'server-install-output');
+}
+
+function renderBspServerDetailsHTML(serverId, server) {
+    const html = `
+        <div class="console-header">
+            <div class="console-title">
+                <span class="server-source-icon">🔨</span>
+                ${server.name || server.id}
+                <span class="console-install-badge" data-server-id="${server.id}">${getInstallStatusBadge(server)}</span>
+            </div>
+            <div class="console-tabs">
+                <button class="tab-button ${currentBspServerTab === 'overview' ? 'active' : ''}" data-action="switchBspServerTab" data-tab="overview">Overview</button>
+                <button class="tab-button ${currentBspServerTab === 'settings' ? 'active' : ''}" data-action="switchBspServerTab" data-tab="settings">Settings</button>
+            </div>
+            ${server.hasInstaller ? buildInstallerControlsHTML(server.id, 'installBspServer') : ''}
         </div>
+        <div class="tab-content">
+            <div id="bsp-server-overview-tab" class="tab-panel ${currentBspServerTab === 'overview' ? 'active' : ''}">
+                <div class="details-panel text-primary detail-content">
+                    <h3 class="text-success mt-0">Build Server Information</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Server ID:</span>
+                        <span class="detail-value"><code>${server.id}</code></span>
+                    </div>
+                    <div id="bsp-server-detail-section">
+                        ${server._detailLoaded ? buildBspServerDetailHTML(server) : renderLoadingPlaceholder()}
+                    </div>
+                </div>
+            </div>
+            <div id="bsp-server-settings-tab" class="tab-panel ${currentBspServerTab === 'settings' ? 'active' : ''}">
+                <div class="details-panel text-primary overflow-auto p-2xl" id="bsp-server-settings-content">
+                    ${server._detailLoaded ? buildBspSettingsHTML(server) : renderLoadingPlaceholder()}
+                </div>
+            </div>
+        </div>
+    `;
 
+    document.getElementById('console-area').innerHTML = html;
+}
+
+function buildBspServerDetailHTML(server) {
+    return `
         ${server.description ? `
         <div class="detail-row">
             <span class="detail-label">Description:</span>
@@ -134,39 +184,8 @@ export async function showBspServerDetails(serverId, scroll) {
         <div class="p-lg bg-panel rounded mt-2xl border-left-success">
             <strong>Note:</strong> Build servers are started on-demand when build tools are invoked. They are not automatically started with workspaces.
         </div>
+        ${buildInstallOutputHTML()}
     `;
-
-    const html = `
-        <div class="console-header">
-            <div class="console-title">
-                <span class="server-source-icon">🔨</span>
-                ${server.name || server.id}
-                <span class="console-install-badge" data-server-id="${server.id}">${getInstallStatusBadge(server)}</span>
-            </div>
-            <div class="console-tabs">
-                <button class="tab-button ${currentBspServerTab === 'overview' ? 'active' : ''}" data-action="switchBspServerTab" data-tab="overview">Overview</button>
-                <button class="tab-button ${currentBspServerTab === 'settings' ? 'active' : ''}" data-action="switchBspServerTab" data-tab="settings">Settings</button>
-            </div>
-            ${server.hasInstaller ? buildInstallerControlsHTML(server.id, 'installBspServer') : ''}
-        </div>
-        <div class="tab-content">
-            <div id="bsp-server-overview-tab" class="tab-panel ${currentBspServerTab === 'overview' ? 'active' : ''}">
-                <div class="details-panel text-primary detail-content">
-                    ${detailsHTML}
-                    ${buildInstallOutputHTML()}
-                </div>
-            </div>
-            <div id="bsp-server-settings-tab" class="tab-panel ${currentBspServerTab === 'settings' ? 'active' : ''}">
-                <div class="details-panel text-primary overflow-auto p-2xl">
-                    ${buildBspSettingsHTML(server)}
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.getElementById('console-area').innerHTML = html;
-
-    restoreInstallOutput(serverId, 'server-install-output');
 }
 
 export function switchBspServerTab(tab) {

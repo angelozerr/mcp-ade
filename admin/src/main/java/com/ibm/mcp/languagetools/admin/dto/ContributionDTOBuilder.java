@@ -24,10 +24,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -180,6 +177,38 @@ public class ContributionDTOBuilder {
         }
 
         return resolved;
+    }
+
+    /**
+     * Build the full contributions view for a server: what it contributes to, and what contributes to it.
+     * Scans all provided configs to find cross-server contribution relationships.
+     *
+     * @return Map with "contributesTo" and "contributedBy" keys (only present if non-empty)
+     */
+    public Map<String, Object> buildContributionsView(String serverId,
+                                                       ServerConfigBase targetConfig,
+                                                       Collection<? extends ServerConfigBase> allConfigs) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        Map<String, Map<String, List<?>>> contributesTo = buildContributions(targetConfig);
+        if (!contributesTo.isEmpty()) {
+            result.put("contributesTo", contributesTo);
+        }
+
+        Map<String, Map<String, List<?>>> contributedBy = new LinkedHashMap<>();
+        for (ServerConfigBase config : allConfigs) {
+            if (config.getServerId().equals(serverId)) continue;
+            Map<String, Map<String, List<?>>> theirContributions = buildContributions(config);
+            Map<String, List<?>> toThisServer = theirContributions.get(serverId);
+            if (toThisServer != null && !toThisServer.isEmpty()) {
+                contributedBy.put(config.getServerId(), toThisServer);
+            }
+        }
+        if (!contributedBy.isEmpty()) {
+            result.put("contributedBy", contributedBy);
+        }
+
+        return result;
     }
 
     /**

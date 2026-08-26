@@ -57,7 +57,7 @@ public class RuntimeAdminResource {
         runtimeRegistry.checkUnchecked();
         List<Map<String, Object>> result = new ArrayList<>();
         for (RuntimeConfig runtime : runtimeRegistry.getAll().values()) {
-            result.add(buildRuntimeDto(runtime));
+            result.add(buildRuntimeSummaryDto(runtime));
         }
         return result;
     }
@@ -75,13 +75,50 @@ public class RuntimeAdminResource {
         return Response.ok(buildRuntimeDto(runtime)).build();
     }
 
+    private Map<String, Object> buildRuntimeSummaryDto(RuntimeConfig runtime) {
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("id", runtime.getRuntimeId());
+        dto.put("name", runtime.getName());
+        if (runtime.isAutoInstallable()) {
+            dto.put("autoInstallable", true);
+        }
+        String statusName = runtime.isChecking() ? "CHECKING" : runtime.getStatus().name();
+        dto.put("status", statusName);
+
+        String error = runtime.getLastInstallError();
+        if (error != null) {
+            dto.put("error", error);
+        }
+
+        String activeSource = runtime.getActiveSource() != null ? runtime.getActiveSource().name() : null;
+        if (activeSource != null) {
+            dto.put("activeSource", activeSource);
+        }
+
+        int dependentCount = 0;
+        for (ServerConfigBase server : runtime.getDependentServers()) {
+            dependentCount++;
+        }
+        if (dependentCount > 0) {
+            dto.put("dependentServerCount", dependentCount);
+        }
+
+        return dto;
+    }
+
     private Map<String, Object> buildRuntimeDto(RuntimeConfig runtime) {
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("id", runtime.getRuntimeId());
         dto.put("name", runtime.getName());
-        dto.put("description", runtime.getDescription());
-        dto.put("url", runtime.getUrl());
-        dto.put("autoInstallable", runtime.isAutoInstallable());
+        if (runtime.getDescription() != null) {
+            dto.put("description", runtime.getDescription());
+        }
+        if (runtime.getUrl() != null) {
+            dto.put("url", runtime.getUrl());
+        }
+        if (runtime.isAutoInstallable()) {
+            dto.put("autoInstallable", true);
+        }
         String statusName = runtime.isChecking() ? "CHECKING" : runtime.getStatus().name();
         dto.put("status", statusName);
 
@@ -96,16 +133,25 @@ public class RuntimeAdminResource {
             dependents.computeIfAbsent(type, k -> new ArrayList<>())
                     .add(server.getServerId());
         }
-        dto.put("dependentServers", dependents);
+        if (!dependents.isEmpty()) {
+            dto.put("dependentServers", dependents);
+        }
 
         if (runtime.getExtensionId() != null) {
             dto.put("extensionId", runtime.getExtensionId());
         }
 
-        dto.put("resolvedPath", runtime.getResolvedPath());
-        dto.put("activeSource", runtime.getActiveSource() != null ? runtime.getActiveSource().name() : null);
+        if (runtime.getResolvedPath() != null) {
+            dto.put("resolvedPath", runtime.getResolvedPath());
+        }
+        String activeSource = runtime.getActiveSource() != null ? runtime.getActiveSource().name() : null;
+        if (activeSource != null) {
+            dto.put("activeSource", activeSource);
+        }
         dto.put("sourcePreference", runtime.getSourcePreference().name());
-        dto.put("fallbackUsed", runtime.isFallbackUsed());
+        if (runtime.isFallbackUsed()) {
+            dto.put("fallbackUsed", true);
+        }
 
         return dto;
     }

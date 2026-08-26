@@ -44,11 +44,25 @@ public class ExtensionAdminResource {
 
 
     @GET
-    public List<ExtensionDTO> listExtensions() {
+    public List<Map<String, Object>> listExtensions() {
         ExtensionRegistry registry = application.getExtensionRegistry();
-        return registry.getExtensions().stream()
-                .map(ext -> ExtensionDTO.fromExtension(ext, registry))
-                .toList();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Extension ext : registry.getExtensions()) {
+            Map<String, Object> dto = new LinkedHashMap<>();
+            dto.put("id", ext.getId());
+            dto.put("source", ext.getSource().name());
+            if (registry.isExtensionEnabled(ext.getId())) {
+                dto.put("enabled", true);
+            }
+            int lspCount = ext.getLspServerConfigs().size();
+            int dapCount = ext.getDapServerConfigs().size();
+            int bspCount = ext.getBspServerConfigs().size();
+            if (lspCount > 0) dto.put("lspCount", lspCount);
+            if (dapCount > 0) dto.put("dapCount", dapCount);
+            if (bspCount > 0) dto.put("bspCount", bspCount);
+            result.add(dto);
+        }
+        return result;
     }
 
     @GET

@@ -39,7 +39,7 @@ public interface ServerConfigDTOBase {
 
     Map<String, Map<String, List<?>>> contributions();
 
-    boolean enabled();
+    Boolean enabled();
 
     String runtime();
 
@@ -47,7 +47,7 @@ public interface ServerConfigDTOBase {
 
     String extensionId();
 
-    boolean hasInstaller();
+    Boolean hasInstaller();
 
     String installationStatus();
 

@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.admin.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -20,34 +21,39 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 import java.util.List;
 
 @RegisterForReflection
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public record ExtensionDTO(
         String id,
         String source,
-        boolean enabled,
+        Boolean enabled,
         List<ServerInfo> lspServers,
         List<ServerInfo> dapServers,
         List<ServerInfo> bspServers
 ) {
 
-    public record ServerInfo(String id, String name, boolean enabled) {}
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public record ServerInfo(String id, String name, Boolean enabled) {}
 
     public static ExtensionDTO fromExtension(Extension ext, ExtensionRegistry registry) {
         List<ServerInfo> lspServers = ext.getLspServerConfigs().stream()
-                .map(c -> new ServerInfo(c.getServerId(), c.getName(), registry.isServerEnabled(c.getServerId())))
+                .map(c -> new ServerInfo(c.getServerId(), c.getName(),
+                        registry.isServerEnabled(c.getServerId()) ? Boolean.TRUE : null))
                 .toList();
 
         List<ServerInfo> dapServers = ext.getDapServerConfigs().stream()
-                .map(c -> new ServerInfo(c.getServerId(), c.getName(), registry.isServerEnabled(c.getServerId())))
+                .map(c -> new ServerInfo(c.getServerId(), c.getName(),
+                        registry.isServerEnabled(c.getServerId()) ? Boolean.TRUE : null))
                 .toList();
 
         List<ServerInfo> bspServers = ext.getBspServerConfigs().stream()
-                .map(c -> new ServerInfo(c.getServerId(), c.getName(), registry.isServerEnabled(c.getServerId())))
+                .map(c -> new ServerInfo(c.getServerId(), c.getName(),
+                        registry.isServerEnabled(c.getServerId()) ? Boolean.TRUE : null))
                 .toList();
 
         return new ExtensionDTO(
                 ext.getId(),
                 ext.getSource().name(),
-                registry.isExtensionEnabled(ext.getId()),
+                registry.isExtensionEnabled(ext.getId()) ? Boolean.TRUE : null,
                 lspServers,
                 dapServers,
                 bspServers

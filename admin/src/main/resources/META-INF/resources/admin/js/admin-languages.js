@@ -1,4 +1,4 @@
-import { state, updateSearchBoxVisibility, ensureLanguageConfigs } from './shared-state.js';
+import { state, updateSearchBoxVisibility, ensureLanguageConfigs, ensureLanguageConfigDetail } from './shared-state.js';
 import { renderLoadingPlaceholder, renderServerLink, selectListItem } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
 
@@ -25,7 +25,7 @@ function countServers(lang) {
 function renderLanguageItem(lang) {
     const isActive = selectedLanguage === lang.id ? 'active' : '';
     const displayName = getLanguageDisplayName(lang);
-    const serverCount = countServers(lang);
+    const serverCount = lang.serverCount ?? countServers(lang);
     const sourceIcon = lang.source === 'global' ? '🌐' : '📦';
     const sourceLabel = lang.source === 'global' ? 'global' : 'server';
     const extensionsPreview = lang.extensions && lang.extensions.length > 0
@@ -80,7 +80,7 @@ export async function loadAllLanguages(languageIdToSelect) {
     }
 }
 
-function showLanguageDetails(languageId, scroll) {
+async function showLanguageDetails(languageId, scroll) {
     const previousLanguage = selectedLanguage;
     selectedLanguage = languageId;
 
@@ -89,14 +89,14 @@ function showLanguageDetails(languageId, scroll) {
     selectListItem(document.getElementById('languages-list'),
         '.server-item[data-language-id', previousLanguage, languageId, scroll);
 
-    const lang = languagesData.find(l => l.id === languageId);
-    if (!lang) return;
-
     const contentArea = document.querySelector('.content-area');
     const consoleColumn = document.querySelector('.console-container');
     consoleColumn.style.display = 'flex';
     contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
+
+    const lang = languagesData.find(l => l.id === languageId);
+    if (!lang) return;
 
     const displayName = getLanguageDisplayName(lang);
     const sourceIcon = lang.source === 'global' ? '🌐' : '📦';
@@ -110,12 +110,24 @@ function showLanguageDetails(languageId, scroll) {
             <div class="console-controls"></div>
         </div>
         <div class="details-panel text-primary detail-content">
-            ${buildLanguageDetailsHTML(lang)}
+            ${buildLanguageSummaryHTML(lang)}
+            <div id="language-detail-section">
+                ${lang._detailLoaded ? buildLanguageDetailHTML(lang) : renderLoadingPlaceholder()}
+            </div>
         </div>
     `;
+
+    if (!lang._detailLoaded) {
+        await ensureLanguageConfigDetail(languageId);
+        if (selectedLanguage !== languageId) return;
+        const detailSection = document.getElementById('language-detail-section');
+        if (detailSection) {
+            detailSection.innerHTML = buildLanguageDetailHTML(lang);
+        }
+    }
 }
 
-function buildLanguageDetailsHTML(lang) {
+function buildLanguageSummaryHTML(lang) {
     const sourceLabel = lang.source === 'global'
         ? '<span class="text-success">Global</span> — defined in languages.json'
         : '<span class="text-warning">Server-declared</span> — referenced by server documentSelector only';
@@ -140,6 +152,25 @@ function buildLanguageDetailsHTML(lang) {
         `;
     }
 
+    return `
+        <h3 class="text-success mt-0">Language Information</h3>
+
+        <div class="detail-row">
+            <span class="detail-label">Language ID:</span>
+            <span class="detail-value"><code>${lang.id}</code></span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Source:</span>
+            <span class="detail-value">${sourceLabel}</span>
+        </div>
+
+        ${aliasesHTML}
+        ${extensionsHTML}
+    `;
+}
+
+function buildLanguageDetailHTML(lang) {
     let filenamesHTML = '';
     if (lang.filenames && lang.filenames.length > 0) {
         filenamesHTML = `
@@ -207,20 +238,6 @@ function buildLanguageDetailsHTML(lang) {
     }
 
     return `
-        <h3 class="text-success mt-0">Language Information</h3>
-
-        <div class="detail-row">
-            <span class="detail-label">Language ID:</span>
-            <span class="detail-value"><code>${lang.id}</code></span>
-        </div>
-
-        <div class="detail-row">
-            <span class="detail-label">Source:</span>
-            <span class="detail-value">${sourceLabel}</span>
-        </div>
-
-        ${aliasesHTML}
-        ${extensionsHTML}
         ${filenamesHTML}
         ${filenamePatternsHTML}
         ${firstLineHTML}
