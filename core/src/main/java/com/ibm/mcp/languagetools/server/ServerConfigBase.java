@@ -142,6 +142,7 @@ public class ServerConfigBase extends InstallableConfig {
             String systemPath = System.getenv("PATH");
             env.put("PATH", runtimeBin + java.io.File.pathSeparator + (systemPath != null ? systemPath : ""));
         }
+        env.putAll(runtimeConfig.getResolvedEnv());
         runtimePathAdded = true;
     }
 

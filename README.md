@@ -543,8 +543,7 @@ Language servers and debug adapters often depend on a **runtime** (JDK, Node.js,
 
 - **[Quarkus](https://quarkus.io/)** — Java framework
 - **[Quarkus MCP Server](https://docs.quarkiverse.io/quarkus-mcp-server/dev/index.html)** — MCP implementation
-- **[LSP4J](https://github.com/eclipse-lsp4j/lsp4j)** — LSP implementation
-- **[DAP4J](https://github.com/nicoschl/dap4j)** — DAP implementation
+- **[LSP4J](https://github.com/eclipse-lsp4j/lsp4j)** — LSP and DAP implementation
 
 ## Documentation
 

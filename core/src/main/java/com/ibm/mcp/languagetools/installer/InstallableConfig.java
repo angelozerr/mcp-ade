@@ -358,8 +358,10 @@ public abstract class InstallableConfig {
                                     synchronized (InstallableConfig.this) {
                                         installationFuture = null;
                                     }
+                                } else {
+                                    lastInstallError = null;
+                                    onInstallSuccess(result);
                                 }
-                                lastInstallError = null;
                             });
                     installationFuture = future;
                 }

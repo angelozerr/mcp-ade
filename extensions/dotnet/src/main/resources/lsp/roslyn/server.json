@@ -8,5 +8,30 @@
     {
       "language": "csharp"
     }
-  ]
+  ],
+  "configuration": {
+    "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+    "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "dotnet.completion.showNameCompletionSuggestions": true,
+    "dotnet.completion.provideRegexCompletions": true,
+    "csharp.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "csharp.inlayHints.enableInlayHintsForTypes": false,
+    "csharp.inlayHints.enableInlayHintsForImplicitVariableTypes": false,
+    "csharp.inlayHints.enableInlayHintsForLambdaParameterTypes": false,
+    "csharp.inlayHints.enableInlayHintsForImplicitObjectCreation": false,
+    "dotnet.inlayHints.enableInlayHintsForParameters": false,
+    "dotnet.inlayHints.enableInlayHintsForLiteralParameters": false,
+    "dotnet.inlayHints.enableInlayHintsForIndexerParameters": false,
+    "dotnet.inlayHints.enableInlayHintsForObjectCreationParameters": false,
+    "dotnet.inlayHints.enableInlayHintsForOtherParameters": false,
+    "dotnet.inlayHints.suppressInlayHintsForParametersThatDifferOnlyBySuffix": false,
+    "dotnet.inlayHints.suppressInlayHintsForParametersThatMatchMethodIntent": false,
+    "dotnet.inlayHints.suppressInlayHintsForParametersThatMatchArgumentName": false,
+    "dotnet.codeLens.enableReferencesCodeLens": true,
+    "dotnet.codeLens.enableTestsCodeLens": true,
+    "dotnet.navigation.navigateToDecompiledSources": true,
+    "dotnet.symbolSearch.searchReferenceAssemblies": true,
+    "dotnet.unitTestDebuggingEnabled": true
+  }
 }

@@ -42,6 +42,12 @@ public class LspServerConfig extends ServerConfigBase {
 
     private List<FileWatcherPattern> fileWatchers;
 
+    /**
+     * Default configuration values from server.json, keyed by client-side setting name.
+     * Used as fallback when IDE configuration (e.g., .vscode/settings.json) has no value.
+     */
+    private Map<String, Object> configuration;
+
     public LspServerConfig(String serverId, Extension extension) {
         super(serverId, computeServerHome(serverId, extension), extension);
     }
@@ -108,6 +114,14 @@ public class LspServerConfig extends ServerConfigBase {
 
     public void setFileWatchers(List<FileWatcherPattern> fileWatchers) {
         this.fileWatchers = fileWatchers;
+    }
+
+    public Map<String, Object> getConfiguration() {
+        return configuration;
+    }
+
+    public void setConfiguration(Map<String, Object> configuration) {
+        this.configuration = configuration;
     }
 
     public static class FileWatcherPattern {

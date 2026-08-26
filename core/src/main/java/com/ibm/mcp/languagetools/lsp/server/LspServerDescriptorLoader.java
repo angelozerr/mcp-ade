@@ -35,6 +35,7 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
 
     // JSON field names
     private static final String FIELD_INITIALIZATION_OPTIONS = "initializationOptions";
+    private static final String FIELD_CONFIGURATION = "configuration";
     private static final String FIELD_TOOLS_REQUEST = "toolsRequest";
     private static final String FIELD_SKIP_DID_OPEN = "skipDidOpen";
     private static final String FIELD_FILE_WATCHERS = "fileWatchers";
@@ -67,6 +68,15 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
                     Map.class
             );
             config.setInitializationOptions(initOptions);
+        }
+
+        // Configuration defaults (used as fallback for workspace/configuration)
+        if (jsonObject.has(FIELD_CONFIGURATION)) {
+            Map<String, Object> configuration = gson.fromJson(
+                    jsonObject.get(FIELD_CONFIGURATION),
+                    Map.class
+            );
+            config.setConfiguration(configuration);
         }
 
         // Tools request settings

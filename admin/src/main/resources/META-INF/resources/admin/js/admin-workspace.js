@@ -282,8 +282,16 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             // Find workspace in local data (already received via WebSocket)
             const workspace = state.workspaces.find(w => w.rootUri === uri);
             if (workspace) {
-                // Load LSP servers if not already loaded (lazy loading)
                 if (!workspace.lspServers) {
+                    // Show servers from configs immediately (with NOT_STARTED status)
+                    // so the list appears without waiting for the runtime fetch
+                    if (state.lspConfigs && Object.keys(state.lspConfigs).length > 0) {
+                        const configServers = Object.keys(state.lspConfigs).map(id =>
+                            mergeServerData({ serverId: id, status: 'NOT_STARTED', isReady: false })
+                        );
+                        renderServers(configServers, [], workspace);
+                    }
+                    // Then load actual runtime status in background
                     await loadLspServersForWorkspace(workspace);
                 }
 
@@ -484,15 +492,25 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 state.selectedServer = null;
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'servers') {
-                // Load LSP servers lazy
+                state.selectedServer = null;
                 if (!workspace.lspServers) {
+                    // Show servers from configs immediately
+                    if (state.lspConfigs && Object.keys(state.lspConfigs).length > 0) {
+                        const configServers = Object.keys(state.lspConfigs).map(id =>
+                            mergeServerData({ serverId: id, status: 'NOT_STARTED', isReady: false })
+                        );
+                        renderServers(configServers, [], workspace);
+                    }
                     await loadLspServersForWorkspace(workspace);
                 }
-                state.selectedServer = null;
                 renderWorkspaces();
                 showPlaceholder();
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'debuggers') {
+                // Show DAP sessions from configs immediately if not yet loaded
+                if (!state.dapSessions && state.dapConfigs && Object.keys(state.dapConfigs).length > 0) {
+                    renderServers([], [], workspace);
+                }
                 await Promise.all([
                     ensureDapConfigs(),
                     !state.dapSessions ? loadDapSessionsForWorkspace() : Promise.resolve()
@@ -500,10 +518,17 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 dapSessions = state.dapSessions || [];
                 renderServers([], dapSessions, workspace);
             } else if (tab === 'build') {
+                state.selectedServer = null;
                 if (workspace && !workspace.bspServers) {
+                    // Show BSP servers from configs immediately (with NOT_STARTED status)
+                    if (state.bspConfigs && Object.keys(state.bspConfigs).length > 0) {
+                        workspace.bspServers = Object.keys(state.bspConfigs).map(id =>
+                            mergeBspServerData({ serverId: id, status: 'NOT_STARTED', isReady: false })
+                        );
+                        renderServers([], [], workspace);
+                    }
                     await loadBspServersForWorkspace(workspace);
                 }
-                state.selectedServer = null;
                 renderServers([], [], workspace);
             }
         }

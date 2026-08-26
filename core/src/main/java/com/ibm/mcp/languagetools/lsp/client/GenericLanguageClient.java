@@ -21,6 +21,7 @@ import org.eclipse.lsp4j.jsonrpc.Endpoint;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.jboss.logging.Logger;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -141,7 +142,28 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
     @Override
     public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams) {
         var workspaceConfig = lspServer.getWorkspace().getIdeConfiguration();
-        return CompletableFuture.completedFuture(workspaceConfig.find(configurationParams.getItems()));
+        var serverDefaults = lspServer.getConfig().getConfiguration();
+        List<Object> results = new ArrayList<>();
+        for (ConfigurationItem item : configurationParams.getItems()) {
+            String convertedSection = convertConfigurationSection(item.getSection());
+            ConfigurationItem convertedItem = new ConfigurationItem();
+            convertedItem.setSection(convertedSection);
+            convertedItem.setScopeUri(item.getScopeUri());
+            Object result = workspaceConfig.find(convertedItem);
+            if (result == null && serverDefaults != null) {
+                result = serverDefaults.get(convertedSection);
+            }
+            results.add(result);
+        }
+        return CompletableFuture.completedFuture(results);
+    }
+
+    /**
+     * Converts a server-side configuration section name to the client-side configuration key.
+     * Subclasses can override to handle server-specific naming conventions.
+     */
+    protected String convertConfigurationSection(String section) {
+        return section;
     }
 
     public void shutdown() {

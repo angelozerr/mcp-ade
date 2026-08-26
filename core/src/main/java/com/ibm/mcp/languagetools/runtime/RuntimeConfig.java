@@ -170,6 +170,30 @@ public class RuntimeConfig extends InstallableConfig {
         }
     }
 
+    /**
+     * Returns resolved env vars from installer.json "env" section (e.g. DOTNET_ROOT),
+     * excluding PATH which is handled separately by {@link ServerConfigBase#addRuntimeToPath()}.
+     */
+    public Map<String, String> getResolvedEnv() {
+        var installerConfig = getInstallerConfig();
+        if (installerConfig == null || !installerConfig.isJsonObject()) {
+            return Collections.emptyMap();
+        }
+        var envElement = installerConfig.getAsJsonObject().get("env");
+        if (envElement == null || !envElement.isJsonObject()) {
+            return Collections.emptyMap();
+        }
+        InstallerContext tempCtx = new InstallerContext(this, ProgressMonitor.none());
+        tempCtx.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
+        Map<String, String> result = new HashMap<>();
+        for (var entry : envElement.getAsJsonObject().entrySet()) {
+            if (!"PATH".equals(entry.getKey())) {
+                result.put(entry.getKey(), tempCtx.resolveVariables(entry.getValue().getAsString()));
+            }
+        }
+        return result;
+    }
+
     // --- Installation ---
 
     /**
@@ -182,7 +206,16 @@ public class RuntimeConfig extends InstallableConfig {
             return;
         }
         Path commandDirPath = Path.of(commandDir);
-        if (!Files.isDirectory(commandDirPath)) {
+        boolean dirExists = Files.isDirectory(commandDirPath);
+
+        if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
+            Map<String, String> env = new HashMap<>();
+            env.put("PATH", dirExists ? commandDir : "");
+            context.setEnv(env);
+            return;
+        }
+
+        if (!dirExists) {
             return;
         }
         Map<String, String> env = new HashMap<>();
