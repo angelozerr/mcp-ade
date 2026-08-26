@@ -5,8 +5,8 @@
  * and their individual LSP/DAP servers.
  */
 
-import { confirmAction, showAlert, renderServerLink, renderRuntimeLink, selectListItem } from './shared-ui.js';
-import { state, loadLspConfigs, loadDapConfigs } from './shared-state.js';
+import { confirmAction, showAlert, renderLoadingPlaceholder, renderServerLink, renderRuntimeLink, selectListItem } from './shared-ui.js';
+import { state, loadLspConfigs, loadDapConfigs, ensureExtensionConfigs } from './shared-state.js';
 import { registerActions } from './event-delegation.js';
 
 let switchTabCallback = null;
@@ -66,9 +66,13 @@ function renderExtensionsList() {
  */
 export async function loadAllExtensions(extensionIdToSelect) {
     try {
-        const response = await fetch('/api/admin/extensions');
-        if (!response.ok) throw new Error('Failed to load extensions');
-        extensionsData = (await response.json()).sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+        const container = document.getElementById('extensions-list');
+        if (!state.extensionConfigs) {
+            if (container) container.innerHTML = renderLoadingPlaceholder();
+        }
+
+        await ensureExtensionConfigs();
+        extensionsData = state.extensionConfigs || [];
 
         if (extensionIdToSelect) {
             selectedExtension = extensionIdToSelect;
@@ -76,7 +80,6 @@ export async function loadAllExtensions(extensionIdToSelect) {
 
         renderExtensionsList();
 
-        // Auto-select
         if (extensionsData.length > 0) {
             const toSelect = extensionIdToSelect
                 || (selectedExtension && extensionsData.find(e => e.id === selectedExtension) ? selectedExtension : null)
@@ -356,6 +359,8 @@ async function addExtension() {
         if (response.ok) {
             if (resultDiv) resultDiv.innerHTML = '<div class="text-success">Extension added successfully.</div>';
             selectedFile = null;
+            state.extensionConfigs = null;
+            state.languageConfigs = null;
             await loadLspConfigs();
             await loadDapConfigs();
             loadAllExtensions(extensionId);
@@ -386,6 +391,8 @@ async function removeExtension(extensionId) {
 
         if (response.ok) {
             selectedExtension = null;
+            state.extensionConfigs = null;
+            state.languageConfigs = null;
             await loadLspConfigs();
             await loadDapConfigs();
             loadAllExtensions();

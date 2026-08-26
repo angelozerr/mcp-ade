@@ -5,7 +5,7 @@
  */
 
 import { state, updateSearchBoxVisibility, ensureRuntimeConfigs } from './shared-state.js';
-import { getRuntimeStatusInfo, renderServerLink, renderExtensionLink, selectListItem,
+import { getRuntimeStatusInfo, renderLoadingPlaceholder, renderServerLink, renderExtensionLink, selectListItem,
     buildInstallerControlsHTML, getInstallStatusBadge, updateInstallBadgeInList,
     buildInstallOutputHTML, runServerInstaller, restoreInstallOutput } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
@@ -62,14 +62,18 @@ function countDependents(dependentServers) {
 }
 
 export async function loadAllRuntimes(runtimeIdToSelect) {
-    await ensureRuntimeConfigs();
-    const runtimes = Object.values(state.runtimeConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
     const container = document.getElementById('runtimes-list');
     if (!container) {
         console.error('runtimes-list container not found');
         return;
     }
+
+    if (!state.runtimeConfigs) {
+        container.innerHTML = renderLoadingPlaceholder();
+    }
+
+    await ensureRuntimeConfigs();
+    const runtimes = Object.values(state.runtimeConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     if (runtimes.length === 0) {
         container.innerHTML = '<div class="servers-placeholder">No runtimes registered</div>';
@@ -98,7 +102,7 @@ export async function showRuntimeDetails(runtimeId, scroll) {
     selectListItem(document.getElementById('runtimes-list'),
         '.server-item[data-runtime-id', previousRuntime, runtimeId, scroll);
 
-    const runtime = state.runtimeConfigs[runtimeId];
+    const runtime = state.runtimeConfigs?.[runtimeId];
     if (!runtime) {
         console.error('Runtime not found:', runtimeId);
         return;
@@ -283,7 +287,7 @@ async function installRuntime(runtimeId) {
  * Updates the cached config and refreshes the UI for that runtime.
  */
 export function updateRuntimeStatus(runtimeId, status, error, resolvedPath, activeSource, fallbackUsed, sourcePreference) {
-    const runtime = state.runtimeConfigs[runtimeId];
+    const runtime = state.runtimeConfigs?.[runtimeId];
     if (!runtime) return;
 
     runtime.status = status;

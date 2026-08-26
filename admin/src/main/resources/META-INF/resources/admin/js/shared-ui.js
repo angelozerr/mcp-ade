@@ -3,6 +3,10 @@ import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 import { renderServerDiagram } from './diagram.js';
 import { registerActions } from './event-delegation.js';
 
+export function renderLoadingPlaceholder() {
+    return '<div class="servers-placeholder"><div class="spinner"></div>Loading...</div>';
+}
+
 export function selectListItem(container, itemSelector, previousId, newId, scroll) {
     if (!container) return;
     if (previousId) {

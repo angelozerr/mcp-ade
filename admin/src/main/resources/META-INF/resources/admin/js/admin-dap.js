@@ -6,7 +6,7 @@
 
 import { state, updateSearchBoxVisibility, buildGlobalContributedByMap, ensureDapConfigs } from './shared-state.js';
 import {
-    confirmAction, showAlert, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
+    confirmAction, showAlert, renderLoadingPlaceholder, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
     selectListItem, buildInstallOutputHTML, buildInstallerControlsHTML,
     getInstallStatusBadge, renderServerNameHeader, restoreInstallOutput
@@ -608,20 +608,19 @@ function renderDapServerItem(server) {
 
 export async function loadAllDapServers(serverIdToSelect) {
     try {
-        await ensureDapConfigs();
-        const dapServers = Object.values(state.dapConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-        dapServerConfigs = {};
-        dapServers.forEach(server => {
-            dapServerConfigs[server.id] = server;
-        });
-        state.dapConfigs = dapServerConfigs;
-
         const container = document.getElementById('dap-servers-list');
         if (!container) {
             console.error('dap-servers-list container not found');
             return;
         }
+
+        if (!state.dapConfigs) {
+            container.innerHTML = renderLoadingPlaceholder();
+        }
+
+        await ensureDapConfigs();
+        dapServerConfigs = state.dapConfigs || {};
+        const dapServers = Object.values(dapServerConfigs).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
         if (!dapLanguageFilter) {
             dapLanguageFilter = new LanguageFilter(container, () => dapServerConfigs, () => loadAllDapServers(selectedDapServer));

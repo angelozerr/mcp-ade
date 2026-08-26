@@ -1,5 +1,5 @@
 import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility, ensureLspConfigs, ensureBspConfigs, ensureDapConfigs } from './shared-state.js';
-import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderDocumentSelector, runServerInstaller, renderServerActions, renderBadge, getInstallStatusBadge, renderServerNameHeader, buildInstallerControlsHTML } from './shared-ui.js';
+import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderLoadingPlaceholder, renderDocumentSelector, runServerInstaller, renderServerActions, renderBadge, getInstallStatusBadge, renderServerNameHeader, buildInstallerControlsHTML } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
 import { renderProgressBadge } from './progress-renderer.js';
@@ -283,15 +283,14 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             const workspace = state.workspaces.find(w => w.rootUri === uri);
             if (workspace) {
                 if (!workspace.lspServers) {
-                    // Show servers from configs immediately (with NOT_STARTED status)
-                    // so the list appears without waiting for the runtime fetch
                     if (state.lspConfigs && Object.keys(state.lspConfigs).length > 0) {
                         const configServers = Object.keys(state.lspConfigs).map(id =>
                             mergeServerData({ serverId: id, status: 'NOT_STARTED', isReady: false })
                         );
                         renderServers(configServers, [], workspace);
+                    } else {
+                        showWorkspaceTabLoading('servers');
                     }
-                    // Then load actual runtime status in background
                     await loadLspServersForWorkspace(workspace);
                 }
 
@@ -483,6 +482,21 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             `;
         }
 
+        function showWorkspaceTabLoading(tab) {
+            const container = document.getElementById('servers-list');
+            if (!container) return;
+            const tabsHTML = `
+                <div class="tabs bg-panel" style="border-bottom: 1px solid var(--bg-card);">
+                    <div class="tab flex-1 text-center ${tab === 'servers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="servers">Servers</div>
+                    <div class="tab flex-1 text-center ${tab === 'debuggers' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="debuggers">Debuggers</div>
+                    <div class="tab flex-1 text-center ${tab === 'build' ? 'active' : ''}" data-action="switchWorkspaceTab" data-tab="build">Build</div>
+                </div>
+            `;
+            container.innerHTML =
+                '<div class="workspace-servers-header">' + tabsHTML + '</div>' +
+                '<div class="workspace-servers-content">' + renderLoadingPlaceholder() + '</div>';
+        }
+
         export async function switchWorkspaceTab(tab) {
             state.currentWorkspaceTab = tab;
             const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
@@ -494,12 +508,13 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             } else if (tab === 'servers') {
                 state.selectedServer = null;
                 if (!workspace.lspServers) {
-                    // Show servers from configs immediately
                     if (state.lspConfigs && Object.keys(state.lspConfigs).length > 0) {
                         const configServers = Object.keys(state.lspConfigs).map(id =>
                             mergeServerData({ serverId: id, status: 'NOT_STARTED', isReady: false })
                         );
                         renderServers(configServers, [], workspace);
+                    } else {
+                        showWorkspaceTabLoading(tab);
                     }
                     await loadLspServersForWorkspace(workspace);
                 }
@@ -507,9 +522,10 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 showPlaceholder();
                 renderServers(workspace.lspServers || [], [], workspace);
             } else if (tab === 'debuggers') {
-                // Show DAP sessions from configs immediately if not yet loaded
                 if (!state.dapSessions && state.dapConfigs && Object.keys(state.dapConfigs).length > 0) {
                     renderServers([], [], workspace);
+                } else if (!state.dapConfigs) {
+                    showWorkspaceTabLoading(tab);
                 }
                 await Promise.all([
                     ensureDapConfigs(),
@@ -520,12 +536,13 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             } else if (tab === 'build') {
                 state.selectedServer = null;
                 if (workspace && !workspace.bspServers) {
-                    // Show BSP servers from configs immediately (with NOT_STARTED status)
                     if (state.bspConfigs && Object.keys(state.bspConfigs).length > 0) {
                         workspace.bspServers = Object.keys(state.bspConfigs).map(id =>
                             mergeBspServerData({ serverId: id, status: 'NOT_STARTED', isReady: false })
                         );
                         renderServers([], [], workspace);
+                    } else {
+                        showWorkspaceTabLoading(tab);
                     }
                     await loadBspServersForWorkspace(workspace);
                 }

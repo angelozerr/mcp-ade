@@ -6,7 +6,7 @@
 
 import { state, updateSearchBoxVisibility, ensureBspConfigs } from './shared-state.js';
 import {
-    renderExtensionSection, runServerInstaller,
+    renderLoadingPlaceholder, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
     selectListItem, buildInstallOutputHTML, buildInstallerControlsHTML,
     getInstallStatusBadge, renderServerNameHeader, restoreInstallOutput
@@ -32,20 +32,19 @@ function renderBspServerItem(server) {
 
 export async function loadAllBspServers(serverIdToSelect) {
     try {
-        await ensureBspConfigs();
-        const bspServers = Object.values(state.bspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-        bspServerConfigs = {};
-        bspServers.forEach(server => {
-            bspServerConfigs[server.id] = server;
-        });
-        state.bspConfigs = bspServerConfigs;
-
         const container = document.getElementById('bsp-servers-list');
         if (!container) {
             console.error('bsp-servers-list container not found');
             return;
         }
+
+        if (!state.bspConfigs) {
+            container.innerHTML = renderLoadingPlaceholder();
+        }
+
+        await ensureBspConfigs();
+        bspServerConfigs = state.bspConfigs || {};
+        const bspServers = Object.values(bspServerConfigs).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
         if (!bspLanguageFilter) {
             bspLanguageFilter = new LanguageFilter(container, () => bspServerConfigs, () => loadAllBspServers(selectedBspServer));

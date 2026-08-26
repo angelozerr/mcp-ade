@@ -4,9 +4,9 @@
  * Handles global LSP server listing with Overview/Contributions/Settings tabs
  */
 
-import { state, getServerApiBase, buildGlobalContributedByMap, ensureLspConfigs, ensureDapConfigs } from './shared-state.js';
+import { state, getServerApiBase, ensureLspConfigs, ensureDapConfigs } from './shared-state.js';
 import {
-    showAlert, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
+    renderLoadingPlaceholder, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
     selectListItem, buildInstallOutputHTML, buildInstallerControlsHTML, loadInstallerJsonEditor, saveInstallerJsonEditor,
     getInstallStatusBadge, renderServerNameHeader, restoreInstallOutput
@@ -14,57 +14,50 @@ import {
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { LanguageFilter } from './language-filter.js';
-import { escapeHtml } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
 
 let selectedAllServer = null; // Track selected server in global Servers tab
 let currentServerTab = 'overview'; // Track current tab: overview, contributions, settings
-let allServersLoaded = false;
 let lspLanguageFilter = null;
 
-/**
- * Load all global LSP servers.
- */
-function renderLspServerItem(server, contributedByMap) {
+function renderLspServerItem(server) {
     const isActive = selectedAllServer === server.id ? 'active' : '';
     const extensionClass = server.isExtension ? 'server-extension' : '';
     const disabledClass = server.enabled === false ? 'server-disabled' : '';
     const extensionBadge = server.isExtension ? ' <span class="text-secondary font-md">(Extension)</span>' : '';
     const serverIcon = server.isExtension ? '🧩' : '🚀';
-    const contributeInfo = formatGlobalContributeInfo(server, contributedByMap);
     return `
         <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" data-action="showServerDetails" data-server-id="${server.id}">
             ${renderServerNameHeader(server, { icon: serverIcon, nameExtra: extensionBadge, toggleAction: 'toggleLspServerEnabled' })}
-            <div class="server-id" ${contributeInfo.tooltip ? `title="${contributeInfo.tooltip}"` : ''}>${server.id}${contributeInfo.text}</div>
+            <div class="server-id">${server.id}</div>
         </div>
     `;
 }
 
 export async function loadAllLspServers(serverIdToSelect) {
     try {
-        await Promise.all([ensureLspConfigs(), ensureDapConfigs()]);
-        const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        const dapServers = Object.values(state.dapConfigs || {}).map(s => ({...s, isDap: true}));
-        const allServers = [...lspServers, ...dapServers];
-
         const container = document.getElementById('lsp-servers-list');
         if (!container) {
             console.error('lsp-servers-list container not found');
             return;
         }
 
+        if (!state.lspConfigs) {
+            container.innerHTML = renderLoadingPlaceholder();
+        }
+
+        await ensureLspConfigs();
+        const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
         if (!lspLanguageFilter) {
             lspLanguageFilter = new LanguageFilter(container, () => state.lspConfigs, () => loadAllLspServers(selectedAllServer));
         }
 
-        const contributedByMap = buildGlobalContributedByMap(allServers);
         const filteredServers = lspLanguageFilter.filterServers(lspServers);
 
         lspLanguageFilter.getItemsContainer().innerHTML = filteredServers.map(server =>
-            renderLspServerItem(server, contributedByMap)
+            renderLspServerItem(server)
         ).join('');
-
-        allServersLoaded = true;
 
         if (filteredServers.length > 0) {
             let serverToShow;
@@ -95,11 +88,7 @@ export async function showServerDetails(serverId, scroll) {
             '.server-item[data-server-id', previousServer, serverId, scroll);
     }
 
-    const lspServers = Object.values(state.lspConfigs || {}).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    const dapServers = Object.values(state.dapConfigs || {}).map(s => ({...s, isDap: true}));
-    const allServers = [...lspServers, ...dapServers];
-
-    const details = state.lspConfigs[serverId];
+    const details = state.lspConfigs?.[serverId];
     if (!details) {
         console.error('Server not found:', serverId);
         return;
@@ -113,14 +102,8 @@ export async function showServerDetails(serverId, scroll) {
         contentArea.style.gridTemplateColumns = '400px 1fr';
         consoleColumn.style.gridColumn = '2';
 
-        // Build details HTML
         const serverIcon = details.isExtension ? '🧩' : '🚀';
-
-        // Overview tab content (pass allServers for contribution detection)
-        const detailsHTML = buildServerDetailsHTML(details, allServers);
-
-        // Contributions tab content (use same function as workspace, pass allServers)
-        const contributionsHTML = formatContributionsSection(details, allServers);
+        const detailsHTML = buildServerDetailsHTML(details);
 
         const html = `
             <div class="console-header">
@@ -150,7 +133,7 @@ export async function showServerDetails(serverId, scroll) {
                     <div id="server-diagram-container" class="w-100 bg-card diagram-container"></div>
                     <div class="diagram-resizer"></div>
                     <div class="details-panel text-primary flex-1 min-h-0 overflow-auto p-2xl">
-                        ${contributionsHTML || '<p class="detail-value">No contributions</p>'}
+                        <p class="detail-value">Loading...</p>
                     </div>
                 </div>
                 <div id="server-settings-tab" class="tab-panel ${currentServerTab === 'settings' ? 'active' : ''}">
@@ -166,14 +149,8 @@ export async function showServerDetails(serverId, scroll) {
 
         restoreInstallOutput(serverId, 'server-install-output');
 
-        // Render diagram (will be called when switching to diagram tab)
-        // Store servers data for diagram rendering (include both LSP and DAP)
-        state.currentDiagramServers = allServers;
-        state.currentDiagramServerId = details.id;
-
-        // If contributions tab is active, render diagram immediately
         if (currentServerTab === 'contributions') {
-            setTimeout(() => renderServerDiagram(allServers, details.id), 100);
+            refreshContributionsTab();
         }
 
     } catch (error) {
@@ -189,7 +166,7 @@ export async function showServerDetails(serverId, scroll) {
 /**
  * Build server details HTML for Overview tab.
  */
-function buildServerDetailsHTML(details, allServers) {
+function buildServerDetailsHTML(details) {
     const docSelectorHTML = renderDocumentSelector(details.documentSelector);
 
     // Command
@@ -292,12 +269,35 @@ function updateServerSetting(serverId, settingKey, value) {
     }).catch(err => console.error('Error updating setting:', err));
 }
 
+async function refreshContributionsTab() {
+    await ensureDapConfigs();
+    const lspServers = Object.values(state.lspConfigs || {});
+    const dapServers = Object.values(state.dapConfigs || {}).map(s => ({...s, isDap: true}));
+    const allServers = [...lspServers, ...dapServers];
+    const details = state.lspConfigs?.[selectedAllServer];
+    if (!details) return;
+
+    const contributionsPanel = document.querySelector('#server-contributions-tab .details-panel');
+    if (contributionsPanel) {
+        const contributionsHTML = formatContributionsSection(details, allServers);
+        contributionsPanel.innerHTML = contributionsHTML || '<p class="detail-value">No contributions</p>';
+    }
+
+    state.currentDiagramServers = allServers;
+    state.currentDiagramServerId = details.id;
+    setTimeout(() => renderServerDiagram(allServers, details.id), 100);
+}
+
 /**
  * Switch between LSP server tabs (Overview/Contributions/Settings).
  */
-export function switchServerTab(tabName) {
+export async function switchServerTab(tabName) {
     currentServerTab = tabName;
     switchServerTabs('server', tabName);
+
+    if (tabName === 'contributions') {
+        await refreshContributionsTab();
+    }
 }
 
 /**
@@ -318,18 +318,6 @@ export async function runInstaller(serverId, force, workspaceUri) {
         installUrl += `?workspaceUri=${encodeURIComponent(workspaceUri)}`;
     }
     return runServerInstaller(serverId, force, 'server-install-output', installUrl);
-}
-
-/**
- * Helper: Format contribute info for server list.
- */
-function formatGlobalContributeInfo(server, contributedByMap) {
-    const contributors = contributedByMap[server.id] || [];
-    if (contributors.length === 0) return { text: '', tooltip: '' };
-
-    const text = ` ← ${contributors.length}`;
-    const tooltip = `Contributions from: ${contributors.join(', ')}`;
-    return { text, tooltip };
 }
 
 async function changeLspServerTraceLevel(serverId, level) {

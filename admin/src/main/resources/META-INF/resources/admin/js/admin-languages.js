@@ -1,5 +1,5 @@
-import { updateSearchBoxVisibility } from './shared-state.js';
-import { renderServerLink, selectListItem } from './shared-ui.js';
+import { state, updateSearchBoxVisibility, ensureLanguageConfigs } from './shared-state.js';
+import { renderLoadingPlaceholder, renderServerLink, selectListItem } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
 
 let selectedLanguage = null;
@@ -48,11 +48,15 @@ function renderLanguageItem(lang) {
 
 export async function loadAllLanguages(languageIdToSelect) {
     try {
-        const response = await fetch('/api/admin/languages');
-        languagesData = await response.json();
+        const container = document.getElementById('languages-list');
+        if (!state.languageConfigs) {
+            if (container) container.innerHTML = renderLoadingPlaceholder();
+        }
+
+        await ensureLanguageConfigs();
+        languagesData = state.languageConfigs || [];
         languagesData.sort((a, b) => getLanguageDisplayName(a).localeCompare(getLanguageDisplayName(b)));
 
-        const container = document.getElementById('languages-list');
         if (!container) return;
 
         if (languagesData.length === 0) {

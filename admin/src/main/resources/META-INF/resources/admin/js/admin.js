@@ -1,6 +1,5 @@
 import { state, getCurrentTheme, setTheme, updateThemeIcon, traceKey,
-    formatStatusClass, formatStatusLabel, updateSearchBoxVisibility,
-    ensureLspConfigs, ensureBspConfigs, ensureDapConfigs } from './shared-state.js';
+    formatStatusClass, formatStatusLabel, updateSearchBoxVisibility } from './shared-state.js';
 import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, onInstallerTaskCompleted, updateInstallerButtons, updateInstallBadgeInList, renderServerActions, renderBadge } from './shared-ui.js';
 import { escapeHtml, updateTraceControls, clearHighlights, closeSearch } from './trace-renderer.js';
 import { initEventDelegation, registerActions } from './event-delegation.js';
@@ -740,14 +739,7 @@ registerActions('click', {
 // ========== Init ==========
 
 (async function init() {
-    // Pre-load server configs in parallel with WebSocket connection
-    // so they're ready when the first workspace is selected
-    await Promise.all([
-        connectAdminWebSocket(),
-        ensureLspConfigs(),
-        ensureBspConfigs(),
-        ensureDapConfigs()
-    ]);
+    await connectAdminWebSocket();
 
     KeyboardShortcuts.register({
         getActiveConsole: () => {
