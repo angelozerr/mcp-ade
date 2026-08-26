@@ -13,24 +13,8 @@
   "run": {
     "download": {
       "name": "Download Node.js",
-      "github": {
-        "owner": "nodejs",
-        "repository": "node",
-        "prerelease": false,
-        "asset": {
-          "windows": {
-            "x86_64": "node-*-win-x64.zip",
-            "arm64": "node-*-win-arm64.zip"
-          },
-          "unix": {
-            "x86_64": "node-*-linux-x64.tar.gz",
-            "arm64": "node-*-linux-arm64.tar.gz"
-          },
-          "mac": {
-            "x86_64": "node-*-darwin-x64.tar.gz",
-            "arm64": "node-*-darwin-arm64.tar.gz"
-          }
-        }
+      "nodejs": {
+        "release-type": "lts"
       },
       "output": {
         "dir": "$SERVER_HOME$",

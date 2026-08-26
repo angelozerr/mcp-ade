@@ -17,6 +17,15 @@
     <name>JavaScript Extension</name>
     <description>JavaScript/TypeScript language server (LSP) and debug adapter (DAP) for MCP Language Tools</description>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.ibm.mcp</groupId>
+            <artifactId>mcp-language-tools-core</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
