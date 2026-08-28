@@ -24,7 +24,8 @@ import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.server.ServerType;
-import com.ibm.mcp.languagetools.server.ServerVariables;
+import com.ibm.mcp.languagetools.variable.VariableContext;
+import com.ibm.mcp.languagetools.variable.VariableResolverRegistry;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -536,13 +537,16 @@ public class DapServer extends ServerBase<DapServerConfig> {
         if (cmd == null) {
             throw new IOException("No launch command configured for current OS");
         }
-        cmd = ServerVariables.resolve(cmd, config);
+        VariableContext.Builder ctxBuilder = new VariableContext.Builder()
+                .serverConfig(config);
 
         if (cmd.contains("${port}")) {
             int port = getAvailablePort();
-            cmd = cmd.replace("${port}", String.valueOf(port));
+            ctxBuilder.extraVariable("port", String.valueOf(port));
             allocatedPort = port;
         }
+
+        cmd = VariableResolverRegistry.getInstance().resolve(cmd, ctxBuilder.build());
 
         return parseCommandLine(cmd);
     }

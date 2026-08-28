@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if haskell-language-server-wrapper is installed",
       "file": {
-        "windows": "$SERVER_HOME$/haskell-language-server-wrapper.exe",
-        "default": "$SERVER_HOME$/haskell-language-server-wrapper"
+        "windows": "${serverHome}/haskell-language-server-wrapper.exe",
+        "default": "${serverHome}/haskell-language-server-wrapper"
       }
     }
   },
@@ -32,7 +32,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "haskell-language-server-wrapper.exe",
@@ -45,8 +45,8 @@
         "configureServer": {
           "name": "Configure haskell-language-server command",
           "command": {
-            "windows": "$SERVER_HOME$/haskell-language-server-wrapper.exe --lsp",
-            "default": "$SERVER_HOME$/haskell-language-server-wrapper --lsp"
+            "windows": "${serverHome}/haskell-language-server-wrapper.exe --lsp",
+            "default": "${serverHome}/haskell-language-server-wrapper --lsp"
           }
         }
       }

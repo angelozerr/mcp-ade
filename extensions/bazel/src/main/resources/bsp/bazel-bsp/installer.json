@@ -1,7 +1,7 @@
 {
   "check": {
     "fileExists": {
-      "file": "$SERVER_HOME$/bazel-bsp"
+      "file": "${serverHome}/bazel-bsp"
     }
   },
   "run": {
@@ -13,8 +13,8 @@
       "onSuccess": {
         "configureServer": {
           "command": {
-            "windows": "java -cp \"$SERVER_HOME$/lib/*\" org.jetbrains.bsp.bazel.BazelBspServer",
-            "default": "java -cp \"$SERVER_HOME$/lib/*\" org.jetbrains.bsp.bazel.BazelBspServer"
+            "windows": "java -cp \"${serverHome}/lib/*\" org.jetbrains.bsp.bazel.BazelBspServer",
+            "default": "java -cp \"${serverHome}/lib/*\" org.jetbrains.bsp.bazel.BazelBspServer"
           }
         }
       }

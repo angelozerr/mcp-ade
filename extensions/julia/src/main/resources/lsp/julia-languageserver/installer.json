@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if LanguageServer.jl is installed",
-      "file": "$USER_HOME$/.julia/packages/LanguageServer/*"
+      "file": "${userHome}/.julia/packages/LanguageServer/*"
     }
   },
   "run": {

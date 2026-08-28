@@ -4,11 +4,11 @@
   "check": {
     "fileExists": {
       "name": "Check if run_server.jl exists",
-      "file": "$SERVER_HOME$/run_server.jl",
+      "file": "${serverHome}/run_server.jl",
       "onSuccess": {
         "fileExists": {
           "name": "Check if DebugAdapter.jl is installed",
-          "file": "$USER_HOME$/.julia/packages/DebugAdapter/*"
+          "file": "${userHome}/.julia/packages/DebugAdapter/*"
         }
       }
     }

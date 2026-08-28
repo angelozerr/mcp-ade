@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if Terraform Language Server is installed",
       "file": {
-        "windows": "$SERVER_HOME$/terraform-ls.exe",
-        "default": "$SERVER_HOME$/terraform-ls"
+        "windows": "${serverHome}/terraform-ls.exe",
+        "default": "${serverHome}/terraform-ls"
       }
     }
   },
@@ -30,7 +30,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "terraform-ls.exe",

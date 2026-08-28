@@ -4,7 +4,7 @@
 	"check": {
 		"fileExists": {
 			"name": "Check if Qute is installed",
-			"file": "$SERVER_HOME$/lib/com.redhat.qute.ls-uber.jar"
+			"file": "${serverHome}/lib/com.redhat.qute.ls-uber.jar"
 		}
 	},
 	"run": {
@@ -17,7 +17,7 @@
 				"asset": "com.redhat.qute.ls-uber.jar"
 			},
 			"output": {
-				"dir": "$SERVER_HOME$/lib",
+				"dir": "${serverHome}/lib",
 				"file": { "name": "com.redhat.qute.ls-uber.jar" }
 			},
 			"onSuccess": {
@@ -30,13 +30,13 @@
 						"asset": "com.redhat.qute.jdt_*.jar"
 					},
 					"output": {
-						"dir": "$SERVER_HOME$/plugins",
+						"dir": "${serverHome}/plugins",
 						"file": { "name": "com.redhat.qute.jdt.jar" }
 					},
 					"onSuccess": {
 						"configureServer": {
 							"name": "Configure Qute server command",
-							"command": "java -jar \"$SERVER_HOME$/lib/com.redhat.qute.ls-uber.jar\""
+							"command": "java -jar \"${serverHome}/lib/com.redhat.qute.ls-uber.jar\""
 						}
 					}
 				}

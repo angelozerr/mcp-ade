@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if marksman is installed",
       "file": {
-        "windows": "$SERVER_HOME$/marksman.exe",
-        "default": "$SERVER_HOME$/marksman"
+        "windows": "${serverHome}/marksman.exe",
+        "default": "${serverHome}/marksman"
       }
     }
   },
@@ -32,7 +32,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "marksman.exe",
@@ -45,8 +45,8 @@
         "configureServer": {
           "name": "Configure marksman command",
           "command": {
-            "windows": "$SERVER_HOME$/marksman.exe server",
-            "default": "$SERVER_HOME$/marksman server"
+            "windows": "${serverHome}/marksman.exe server",
+            "default": "${serverHome}/marksman server"
           }
         }
       }

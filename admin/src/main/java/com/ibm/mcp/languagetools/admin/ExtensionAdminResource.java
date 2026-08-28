@@ -17,6 +17,8 @@ import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.admin.dto.ExtensionDTO;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
+import com.ibm.mcp.languagetools.variable.VariableContext;
+import com.ibm.mcp.languagetools.variable.VariableResolverRegistry;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -41,6 +43,9 @@ public class ExtensionAdminResource {
 
     @Inject
     Application application;
+
+    @Inject
+    VariableResolverRegistry variableResolverRegistry;
 
 
     @GET
@@ -150,6 +155,54 @@ public class ExtensionAdminResource {
             } catch (IOException ignored) {
             }
         }
+    }
+
+    @POST
+    @Path("/server/json")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response addServerFromJson(Map<String, String> body) {
+        String serverType = body.get("serverType");
+        String serverJson = body.get("serverJson");
+        String extensionId = body.get("extensionId");
+
+        if (serverType == null || serverJson == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "serverType and serverJson are required"))
+                    .build();
+        }
+
+        if (!List.of("lsp", "dap", "bsp").contains(serverType)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "serverType must be lsp, dap, or bsp"))
+                    .build();
+        }
+
+        try {
+            ExtensionRegistry registry = application.getExtensionRegistry();
+            Extension ext = registry.addServerFromJson(serverType, serverJson, extensionId, application);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("success", true);
+            result.put("extension", ExtensionDTO.fromExtension(ext, registry));
+            return Response.status(Response.Status.CREATED).entity(result).build();
+        } catch (Exception e) {
+            LOG.error("Failed to add server from JSON", e);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/resolve-variables")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response resolveVariables(Map<String, String> body) {
+        Map<String, String> resolved = new LinkedHashMap<>();
+        VariableContext ctx = VariableContext.empty();
+        for (Map.Entry<String, String> entry : body.entrySet()) {
+            resolved.put(entry.getKey(), variableResolverRegistry.resolve(entry.getValue(), ctx));
+        }
+        return Response.ok(resolved).build();
     }
 
     @DELETE

@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if JDT.LS is installed",
-      "file": "$SERVER_HOME$/bin/jdtls"
+      "file": "${serverHome}/bin/jdtls"
     }
   },
   "run": {
@@ -12,7 +12,7 @@
       "name": "Download JDT.LS",
       "url": "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz",
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "bin/jdtls.bat",
@@ -24,7 +24,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure JDT.LS server command",
-          "command": "\"$SERVER_HOME$/${output.file.name}\" -configuration \"$MCP_HOME$/.cache/jdtls\" -data \"$PROJECT_DIR$/jdtls-data\""
+          "command": "\"${serverHome}/${output.file.name}\" -configuration \"${mcpHome}/.cache/jdtls\" -data \"${workspaceFolder}/jdtls-data\""
         }
       }
     }

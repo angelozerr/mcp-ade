@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if netcoredbg is installed",
       "file": {
-        "windows": "$SERVER_HOME$/netcoredbg/netcoredbg.exe",
-        "default": "$SERVER_HOME$/netcoredbg/netcoredbg"
+        "windows": "${serverHome}/netcoredbg/netcoredbg.exe",
+        "default": "${serverHome}/netcoredbg/netcoredbg"
       }
     }
   },
@@ -33,7 +33,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "netcoredbg/netcoredbg.exe",
@@ -46,8 +46,8 @@
         "configureServer": {
           "name": "Configure netcoredbg server command",
           "command": {
-            "windows": "$SERVER_HOME$/netcoredbg/netcoredbg.exe --interpreter=vscode",
-            "default": "$SERVER_HOME$/netcoredbg/netcoredbg --interpreter=vscode"
+            "windows": "${serverHome}/netcoredbg/netcoredbg.exe --interpreter=vscode",
+            "default": "${serverHome}/netcoredbg/netcoredbg --interpreter=vscode"
           }
         }
       }

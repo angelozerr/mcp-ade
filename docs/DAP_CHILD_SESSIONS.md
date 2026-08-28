@@ -172,7 +172,7 @@ public CompletableFuture<Void> terminate() {
   "name": "JavaScript Debug",
   "transport": "STDIO",
   "launch": {
-    "default": "node $SERVER_HOME$/js-debug/src/dapDebugServer.js"
+    "default": "node ${serverHome}/js-debug/src/dapDebugServer.js"
   },
   "debugServerWaitStrategy": "TIMEOUT",
   "connectTimeout": 1000

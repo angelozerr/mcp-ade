@@ -20,6 +20,8 @@ import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.trace.TracingMessageConsumer;
 import com.ibm.mcp.languagetools.utils.OSUtils;
+import com.ibm.mcp.languagetools.variable.VariableContext;
+import com.ibm.mcp.languagetools.variable.VariableResolverRegistry;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.jboss.logging.Logger;
 
@@ -192,7 +194,10 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
 
         String workingDir = getWorkingDirectory();
         if (workingDir != null) {
-            String resolvedWorkingDir = ServerVariables.resolve(workingDir, config);
+            VariableContext varCtx = new VariableContext.Builder()
+                    .serverConfig(config)
+                    .build();
+            String resolvedWorkingDir = VariableResolverRegistry.getInstance().resolve(workingDir, varCtx);
             pb.directory(Paths.get(resolvedWorkingDir).toFile());
             addTrace(String.format("Working directory: %s", resolvedWorkingDir));
         }
@@ -221,7 +226,10 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         if (cmd == null) {
             throw new IOException("No command configured for current OS");
         }
-        cmd = ServerVariables.resolve(cmd, getConfig());
+        VariableContext varCtx = new VariableContext.Builder()
+                .serverConfig(getConfig())
+                .build();
+        cmd = VariableResolverRegistry.getInstance().resolve(cmd, varCtx);
         List<String> args = parseCommandLine(cmd);
         if (OSUtils.isWindows() && !args.isEmpty()) {
             String exe = args.get(0).toLowerCase();

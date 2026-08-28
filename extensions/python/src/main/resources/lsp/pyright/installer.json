@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if Pyright is installed",
-      "file": "$SERVER_HOME$/node_modules/.bin/pyright-langserver*"
+      "file": "${serverHome}/node_modules/.bin/pyright-langserver*"
     }
   },
   "run": {
     "exec": {
       "name": "Install Pyright",
-      "workingDir": "$SERVER_HOME$/node_modules",
+      "workingDir": "${serverHome}/node_modules",
       "command": {
         "windows": "npm.cmd install pyright --force",
         "default": "npm install pyright --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure Pyright command",
           "command": {
-            "windows": "$SERVER_HOME$/node_modules/.bin/pyright-langserver.cmd --stdio",
-            "default": "$SERVER_HOME$/node_modules/.bin/pyright-langserver --stdio"
+            "windows": "${serverHome}/node_modules/.bin/pyright-langserver.cmd --stdio",
+            "default": "${serverHome}/node_modules/.bin/pyright-langserver --stdio"
           }
         }
       }

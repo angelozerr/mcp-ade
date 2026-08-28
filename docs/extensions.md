@@ -75,13 +75,13 @@ Defines how to auto-install the server:
   "check": {
     "fileExists": {
       "name": "Check if Pyright is installed",
-      "file": "$SERVER_HOME$/node_modules/.bin/pyright-langserver*"
+      "file": "${serverHome}/node_modules/.bin/pyright-langserver*"
     }
   },
   "run": {
     "exec": {
       "name": "Install Pyright",
-      "workingDir": "$SERVER_HOME$/node_modules",
+      "workingDir": "${serverHome}/node_modules",
       "command": {
         "windows": "npm.cmd install pyright --force",
         "default": "npm install pyright --force"
@@ -90,8 +90,8 @@ Defines how to auto-install the server:
         "configureServer": {
           "name": "Configure Pyright command",
           "command": {
-            "windows": "$SERVER_HOME$/node_modules/.bin/pyright-langserver.cmd --stdio",
-            "default": "$SERVER_HOME$/node_modules/.bin/pyright-langserver --stdio"
+            "windows": "${serverHome}/node_modules/.bin/pyright-langserver.cmd --stdio",
+            "default": "${serverHome}/node_modules/.bin/pyright-langserver --stdio"
           }
         }
       }
@@ -105,7 +105,7 @@ The installer:
 2. **Runs** the installation command if not found (`run` section)
 3. **Configures** the server command after installation (`onSuccess.configureServer`)
 
-`$SERVER_HOME$` is automatically resolved to the server's installation directory.
+`${serverHome}` is automatically resolved to the server's installation directory. See [Variables Reference](variables.md) for all available variables.
 
 ## Creating a Bundled Extension Module
 

@@ -15,7 +15,7 @@
     },
     "properties": {
       "type": "object",
-      "description": "Key-value properties with variable interpolation (e.g. {\"serverJar\": \"$SERVER_HOME$/server.jar\"})",
+      "description": "Key-value properties with variable interpolation (e.g. {\"serverJar\": \"${serverHome}/server.jar\"})",
       "additionalProperties": { "type": "string" }
     },
     "check": {
@@ -33,7 +33,7 @@
             },
             "file": {
               "$ref": "#/$defs/platformString",
-              "description": "Path to check. Supports $SERVER_HOME$ variable and glob patterns."
+              "description": "Path to check. Supports ${serverHome} variable and glob patterns."
             }
           }
         },
@@ -113,7 +113,7 @@
               "properties": {
                 "dir": {
                   "type": "string",
-                  "description": "Target directory (typically '$SERVER_HOME$')"
+                  "description": "Target directory (typically '${serverHome}')"
                 },
                 "stripRootDir": {
                   "type": "boolean",
@@ -249,9 +249,10 @@
     }
   },
   "variables": {
-    "$SERVER_HOME$": "Root installation directory for the server",
-    "$USER_HOME$": "User's home directory",
-    "$PROJECT_DIR$": "Current project/workspace directory",
+    "${serverHome}": "Root installation directory for the server",
+    "${userHome}": "User's home directory",
+    "${mcpHome}": "Root directory of the MCP Language Tools installation",
+    "${workspaceFolder}": "Current project/workspace directory",
     "${output.file.name}": "Output filename from the download step",
     "${output.dir}": "Output directory from the download step",
     "${port}": "DAP server port"

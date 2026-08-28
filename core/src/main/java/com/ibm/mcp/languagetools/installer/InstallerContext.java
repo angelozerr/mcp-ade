@@ -14,8 +14,9 @@
 package com.ibm.mcp.languagetools.installer;
 
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
-import com.ibm.mcp.languagetools.server.ServerVariables;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
+import com.ibm.mcp.languagetools.variable.VariableContext;
+import com.ibm.mcp.languagetools.variable.VariableResolverRegistry;
 
 import java.nio.file.Path;
 import java.time.Instant;
@@ -26,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Context for installation tasks.
@@ -44,7 +43,6 @@ public class InstallerContext {
     private Map<String, String> env;
     private final List<ParentTraceTarget> parentTraceTargets = new CopyOnWriteArrayList<>();
 
-    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{([^}]+)}|\\$([A-Z_]+)\\$");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss")
             .withZone(ZoneId.systemDefault());
 
@@ -60,8 +58,6 @@ public class InstallerContext {
         this.progress = progress;
         this.statusChangeCallback = statusChangeCallback;
         this.variables = new HashMap<>();
-
-        ServerVariables.populate(config, variables);
     }
 
     /**
@@ -100,31 +96,17 @@ public class InstallerContext {
     }
 
     /**
-     * Resolves variables in a template string.
-     * Supports: ${variable} and $VARIABLE$
+     * Resolves variables in a template string using the {@link VariableResolverRegistry}.
      */
     public String resolveVariables(String template) {
         if (template == null) {
             return null;
         }
-
-        Matcher matcher = VARIABLE_PATTERN.matcher(template);
-        StringBuffer result = new StringBuffer();
-
-        while (matcher.find()) {
-            String varName = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
-            String value = variables.get(varName);
-
-            if (value != null) {
-                matcher.appendReplacement(result, Matcher.quoteReplacement(value));
-            } else {
-                // Keep original if variable not found
-                matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
-            }
-        }
-        matcher.appendTail(result);
-
-        return result.toString();
+        VariableContext ctx = new VariableContext.Builder()
+                .serverConfig(config)
+                .extraVariables(variables)
+                .build();
+        return VariableResolverRegistry.getInstance().resolve(template, ctx);
     }
 
     public Map<String, String> getEnv() {

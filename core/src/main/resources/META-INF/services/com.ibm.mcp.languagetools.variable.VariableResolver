@@ -1,0 +1,2 @@
+com.ibm.mcp.languagetools.variable.ServerVariableResolver
+com.ibm.mcp.languagetools.variable.VscodeVariableResolver

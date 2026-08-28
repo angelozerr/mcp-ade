@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if clojure-lsp is installed",
       "file": {
-        "windows": "$SERVER_HOME$/clojure-lsp.exe",
-        "default": "$SERVER_HOME$/clojure-lsp"
+        "windows": "${serverHome}/clojure-lsp.exe",
+        "default": "${serverHome}/clojure-lsp"
       }
     }
   },
@@ -32,7 +32,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "clojure-lsp.exe",
@@ -45,8 +45,8 @@
         "configureServer": {
           "name": "Configure clojure-lsp command",
           "command": {
-            "windows": "$SERVER_HOME$/clojure-lsp.exe",
-            "default": "$SERVER_HOME$/clojure-lsp"
+            "windows": "${serverHome}/clojure-lsp.exe",
+            "default": "${serverHome}/clojure-lsp"
           }
         }
       }

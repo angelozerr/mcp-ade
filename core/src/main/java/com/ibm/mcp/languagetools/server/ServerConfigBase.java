@@ -462,7 +462,7 @@ public class ServerConfigBase extends InstallableConfig {
 
         InstallerContext context = createInstallerContext(progress, installStatusCallback);
         if (workspace != null) {
-            context.setVariable("WORKSPACE_FOLDER", workspace.getRootPath().toString());
+            context.setVariable("workspaceFolder", workspace.getRootPath().toString());
         }
         if (env != null && !env.isEmpty()) {
             context.setEnv(env);

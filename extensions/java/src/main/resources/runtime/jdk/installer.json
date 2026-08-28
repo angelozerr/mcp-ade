@@ -32,15 +32,15 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "stripRootDir": true
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure JDK",
           "command": {
-            "windows": "$SERVER_HOME$/bin/java.exe",
-            "default": "$SERVER_HOME$/bin/java"
+            "windows": "${serverHome}/bin/java.exe",
+            "default": "${serverHome}/bin/java"
           }
         }
       }

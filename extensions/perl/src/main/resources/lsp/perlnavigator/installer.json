@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if PerlNavigator is installed",
       "file": {
-        "windows": "$SERVER_HOME$/perlnavigator.exe",
-        "default": "$SERVER_HOME$/perlnavigator"
+        "windows": "${serverHome}/perlnavigator.exe",
+        "default": "${serverHome}/perlnavigator"
       }
     }
   },
@@ -30,7 +30,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "perlnavigator.exe",
@@ -43,8 +43,8 @@
         "configureServer": {
           "name": "Configure PerlNavigator command",
           "command": {
-            "windows": "$SERVER_HOME$/perlnavigator.exe --stdio",
-            "default": "$SERVER_HOME$/perlnavigator --stdio"
+            "windows": "${serverHome}/perlnavigator.exe --stdio",
+            "default": "${serverHome}/perlnavigator --stdio"
           }
         }
       }

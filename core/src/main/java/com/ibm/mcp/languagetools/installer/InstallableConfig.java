@@ -224,9 +224,7 @@ public abstract class InstallableConfig {
 
     protected InstallerContext createInstallerContext(ProgressMonitor progress,
                                                       Consumer<InstallationStatus> statusChangeCallback) {
-        InstallerContext context = new InstallerContext(this, progress, statusChangeCallback);
-        context.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
-        return context;
+        return new InstallerContext(this, progress, statusChangeCallback);
     }
 
     // --- Installation lifecycle ---
@@ -424,8 +422,6 @@ public abstract class InstallableConfig {
     }
 
     private static InstallerContext createRuntimeInstallerContext(RuntimeConfig installerRuntime) {
-        InstallerContext ctx = new InstallerContext(installerRuntime, ProgressMonitor.none());
-        ctx.setVariable("MCP_HOME", installerRuntime.getServerHome().getParent().getParent().toString());
-        return ctx;
+        return new InstallerContext(installerRuntime, ProgressMonitor.none());
     }
 }

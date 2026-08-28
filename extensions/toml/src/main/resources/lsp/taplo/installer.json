@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if taplo is installed",
       "file": {
-        "windows": "$SERVER_HOME$/taplo.exe",
-        "default": "$SERVER_HOME$/taplo"
+        "windows": "${serverHome}/taplo.exe",
+        "default": "${serverHome}/taplo"
       }
     }
   },
@@ -34,7 +34,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "taplo.exe",
@@ -47,8 +47,8 @@
         "configureServer": {
           "name": "Configure taplo command",
           "command": {
-            "windows": "$SERVER_HOME$/taplo.exe lsp stdio",
-            "default": "$SERVER_HOME$/taplo lsp stdio"
+            "windows": "${serverHome}/taplo.exe lsp stdio",
+            "default": "${serverHome}/taplo lsp stdio"
           }
         }
       }

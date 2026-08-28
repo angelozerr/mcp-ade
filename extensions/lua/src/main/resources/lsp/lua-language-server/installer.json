@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if lua-language-server is installed",
       "file": {
-        "windows": "$SERVER_HOME$/bin/lua-language-server.exe",
-        "default": "$SERVER_HOME$/bin/lua-language-server"
+        "windows": "${serverHome}/bin/lua-language-server.exe",
+        "default": "${serverHome}/bin/lua-language-server"
       }
     }
   },
@@ -32,7 +32,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "bin/lua-language-server.exe",
@@ -45,8 +45,8 @@
         "configureServer": {
           "name": "Configure lua-language-server command",
           "command": {
-            "windows": "$SERVER_HOME$/bin/lua-language-server.exe",
-            "default": "$SERVER_HOME$/bin/lua-language-server"
+            "windows": "${serverHome}/bin/lua-language-server.exe",
+            "default": "${serverHome}/bin/lua-language-server"
           }
         }
       }

@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if ELP is installed",
       "file": {
-        "windows": "$SERVER_HOME$/elp.exe",
-        "default": "$SERVER_HOME$/elp"
+        "windows": "${serverHome}/elp.exe",
+        "default": "${serverHome}/elp"
       }
     }
   },
@@ -30,7 +30,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "elp.exe",

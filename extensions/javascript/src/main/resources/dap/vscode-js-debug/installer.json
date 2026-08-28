@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if vscode-js-debug is installed",
-      "file": "$SERVER_HOME$/js-debug/src/dapDebugServer.js"
+      "file": "${serverHome}/js-debug/src/dapDebugServer.js"
     }
   },
   "run": {
@@ -18,12 +18,12 @@
       },
       "url": "https://github.com/microsoft/vscode-js-debug/releases/download/v1.100.1/js-debug-dap-v1.100.1.tar.gz",
       "output": {
-        "dir": "$SERVER_HOME$"
+        "dir": "${serverHome}"
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure vscode-js-debug command",
-          "command": "node $SERVER_HOME$/js-debug/src/dapDebugServer.js ${port} 127.0.0.1"
+          "command": "node ${serverHome}/js-debug/src/dapDebugServer.js ${port} 127.0.0.1"
         }
       }
     }

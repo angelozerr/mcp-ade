@@ -6,21 +6,21 @@
     "fileExists": {
       "name": "Check if Roslyn Language Server is installed",
       "file": {
-        "windows": "$SERVER_HOME$/roslyn-language-server.cmd",
-        "default": "$SERVER_HOME$/roslyn-language-server"
+        "windows": "${serverHome}/roslyn-language-server.cmd",
+        "default": "${serverHome}/roslyn-language-server"
       }
     }
   },
   "run": {
     "exec": {
       "name": "Install Roslyn Language Server",
-      "command": "dotnet tool install roslyn-language-server --tool-path $SERVER_HOME$ --prerelease",
+      "command": "dotnet tool install roslyn-language-server --tool-path ${serverHome} --prerelease",
       "onSuccess": {
         "configureServer": {
           "name": "Configure Roslyn Language Server command",
           "command": {
-            "windows": "$SERVER_HOME$/roslyn-language-server.cmd --stdio",
-            "default": "$SERVER_HOME$/roslyn-language-server --stdio"
+            "windows": "${serverHome}/roslyn-language-server.cmd --stdio",
+            "default": "${serverHome}/roslyn-language-server --stdio"
           }
         }
       }

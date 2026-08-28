@@ -146,7 +146,6 @@ public class RuntimeConfig extends InstallableConfig {
 
     private void resolveFromInstaller(String command) {
         InstallerContext tempContext = new InstallerContext(this, ProgressMonitor.none());
-        tempContext.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
         String commandDir = TaskRegistryInstaller.extractCommandDir(getInstallerConfig(), tempContext);
         if (commandDir == null) {
             resolvedPath = null;
@@ -184,7 +183,6 @@ public class RuntimeConfig extends InstallableConfig {
             return Collections.emptyMap();
         }
         InstallerContext tempCtx = new InstallerContext(this, ProgressMonitor.none());
-        tempCtx.setVariable("MCP_HOME", getServerHome().getParent().getParent().toString());
         Map<String, String> result = new HashMap<>();
         for (var entry : envElement.getAsJsonObject().entrySet()) {
             if (!"PATH".equals(entry.getKey())) {

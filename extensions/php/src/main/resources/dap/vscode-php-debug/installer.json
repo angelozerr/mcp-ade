@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if vscode-php-debug is installed",
-      "file": "$SERVER_HOME$/extension/out/phpDebug.js"
+      "file": "${serverHome}/extension/out/phpDebug.js"
     }
   },
   "run": {
@@ -17,12 +17,12 @@
         "asset": "php-debug-*.vsix"
       },
       "output": {
-        "dir": "$SERVER_HOME$"
+        "dir": "${serverHome}"
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure vscode-php-debug command",
-          "command": "node $SERVER_HOME$/extension/out/phpDebug.js"
+          "command": "node ${serverHome}/extension/out/phpDebug.js"
         }
       }
     }

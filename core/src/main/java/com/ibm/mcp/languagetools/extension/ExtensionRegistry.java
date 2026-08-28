@@ -321,6 +321,55 @@ public class ExtensionRegistry {
         return extension;
     }
 
+    // ========== Add server from JSON content ==========
+
+    /**
+     * Add a server from inline JSON content (server.json body).
+     *
+     * @param serverType  "lsp", "dap", or "bsp"
+     * @param jsonContent the server.json content as a string
+     * @param extensionId optional extension ID; defaults to the server's "id" field
+     * @param application the application instance
+     * @return the extension the server was added to
+     */
+    public Extension addServerFromJson(String serverType, String jsonContent, String extensionId,
+                                       Application application) throws IOException {
+        JsonObject json = JsonParser.parseString(jsonContent).getAsJsonObject();
+        if (!json.has("id") || json.get("id").getAsString().isBlank()) {
+            throw new IOException("server.json must contain an \"id\" field");
+        }
+        String serverId = json.get("id").getAsString();
+
+        if (extensionId == null || extensionId.isBlank()) {
+            extensionId = serverId;
+        }
+
+        checkServerIdUnique(serverId, extensionId);
+
+        var loader = serverDescriptorRegistry.getLoader(serverType);
+        if (loader == null) {
+            throw new IOException("Unknown server type: " + serverType);
+        }
+
+        Path targetDir = pathManager.getExtensionServerHome(extensionId, serverType, serverId);
+        Files.createDirectories(targetDir);
+        Files.writeString(targetDir.resolve("server.json"), jsonContent, java.nio.charset.StandardCharsets.UTF_8);
+
+        Extension extension = getOrCreateExtension(extensionId, ServerConfigSource.USER, application);
+        ServerConfigBase config = loader.load(targetDir, extension);
+
+        if (config instanceof LspServerConfig lspConfig) {
+            extension.addLspServerConfig(lspConfig);
+        } else if (config instanceof DapServerConfig dapConfig) {
+            extension.addDapServerConfig(dapConfig);
+        } else if (config instanceof BspServerConfig bspConfig) {
+            extension.addBspServerConfig(bspConfig);
+        }
+
+        fireOnAdded(extension);
+        return extension;
+    }
+
     // ========== Add individual servers ==========
 
     /**

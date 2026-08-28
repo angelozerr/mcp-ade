@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if CodeLLDB is installed",
       "file": {
-        "windows": "$SERVER_HOME$/extension/adapter/codelldb.exe",
-        "default": "$SERVER_HOME$/extension/adapter/codelldb"
+        "windows": "${serverHome}/extension/adapter/codelldb.exe",
+        "default": "${serverHome}/extension/adapter/codelldb"
       }
     }
   },
@@ -30,7 +30,7 @@
         }
       },
       "output": {
-        "dir": "$SERVER_HOME$",
+        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "extension/adapter/codelldb.exe",
@@ -43,8 +43,8 @@
         "configureServer": {
           "name": "Configure CodeLLDB server command",
           "command": {
-            "windows": "$SERVER_HOME$/extension/adapter/codelldb.exe",
-            "default": "$SERVER_HOME$/extension/adapter/codelldb"
+            "windows": "${serverHome}/extension/adapter/codelldb.exe",
+            "default": "${serverHome}/extension/adapter/codelldb"
           }
         }
       }

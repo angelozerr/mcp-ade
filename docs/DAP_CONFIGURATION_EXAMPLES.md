@@ -180,8 +180,8 @@ Matches: `Debug adapter started on localhost:4711 (ready)`
   "description": "Go debugger using Delve",
   "transport": "SOCKET",
   "launch": {
-    "windows": "$SERVER_HOME$/dlv.exe dap --listen=127.0.0.1:${port}",
-    "default": "$SERVER_HOME$/dlv dap --listen=127.0.0.1:${port}"
+    "windows": "${serverHome}/dlv.exe dap --listen=127.0.0.1:${port}",
+    "default": "${serverHome}/dlv dap --listen=127.0.0.1:${port}"
   },
   "debugServerWaitStrategy": "TRACE",
   "debugServerReadyPattern": "DAP server listening at: ${address}:${port}",
@@ -215,10 +215,15 @@ Matches: `Debug adapter started on localhost:4711 (ready)`
 
 ## Variables Available
 
-- `${port}` - Auto-allocated port number
-- `${address}` - Extracted address from server output
-- `$SERVER_HOME$` - Path to the server installation directory
-- `${workspaceFolder}` - Path to the workspace root (in env vars)
+- `${serverHome}` - Path to the server installation directory
+- `${userHome}` - User's home directory
+- `${mcpHome}` - Root directory of the MCP Language Tools installation
+- `${workspaceFolder}` - Path to the workspace root
+- `${port}` - Auto-allocated port number (DAP only)
+- `${address}` - Extracted address from server output (DAP only)
+- `${vscodeExtension:id}` - Path to a VS Code extension directory
+
+See [Variables Reference](variables.md) for full documentation.
 
 ## Transport Type Selection Guide
 

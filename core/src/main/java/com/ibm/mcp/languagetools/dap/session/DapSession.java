@@ -26,6 +26,8 @@ import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.progress.ProgressStep;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
+import com.ibm.mcp.languagetools.variable.VariableContext;
+import com.ibm.mcp.languagetools.variable.VariableResolverRegistry;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.eclipse.lsp4j.debug.*;
 import org.eclipse.lsp4j.debug.Thread;
@@ -409,8 +411,7 @@ public class DapSession implements DapEventListener {
 
             // Add workspace folder as cwd if not present
             if (!resolvedConfig.containsKey("cwd")) {
-                String workspaceFolder = getWorkspaceFolderPath();
-                resolvedConfig.put("cwd", workspaceFolder);
+                resolvedConfig.put("cwd", getWorkspaceFolderPath().toString());
             }
 
             // For launch requests, add noDebug if running without debugging (like lsp4ij)
@@ -703,8 +704,7 @@ public class DapSession implements DapEventListener {
 
         // Resolve against workspace root
         try {
-            String workspaceFolder = getWorkspaceFolderPath();
-            java.nio.file.Path absolutePath = java.nio.file.Paths.get(workspaceFolder, file);
+            java.nio.file.Path absolutePath = getWorkspaceFolderPath().resolve(file);
             String resolved = absolutePath.toString();
             LOG.infof("Resolved relative path '%s' to absolute: '%s'", file, resolved);
             return resolved;
@@ -1405,57 +1405,19 @@ public class DapSession implements DapEventListener {
 
     // ========== Variable Resolution ==========
 
-    /**
-     * Resolve variables in DAP configuration (like lsp4ij).
-     * Supports: ${workspaceFolder}, ${file}, ${fileBasename}, etc.
-     */
     private Map<String, Object> resolveVariables(Map<String, Object> config) {
-        Map<String, Object> resolved = new HashMap<>();
-        String workspaceFolder = getWorkspaceFolderPath();
-
-        for (Map.Entry<String, Object> entry : config.entrySet()) {
-            Object value = entry.getValue();
-            if (value instanceof String str) {
-                // Resolve ${workspaceFolder}
-                str = str.replace("${workspaceFolder}", workspaceFolder);
-                // Resolve ${workspaceRoot} (deprecated alias)
-                str = str.replace("${workspaceRoot}", workspaceFolder);
-                resolved.put(entry.getKey(), str);
-            } else if (value instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<Object> list = (List<Object>) value;
-                List<Object> resolvedList = new ArrayList<>();
-                for (Object item : list) {
-                    if (item instanceof String str) {
-                        str = str.replace("${workspaceFolder}", workspaceFolder);
-                        str = str.replace("${workspaceRoot}", workspaceFolder);
-                        resolvedList.add(str);
-                    } else {
-                        resolvedList.add(item);
-                    }
-                }
-                resolved.put(entry.getKey(), resolvedList);
-            } else {
-                resolved.put(entry.getKey(), value);
-            }
-        }
-
-        return resolved;
+        VariableContext varCtx = new VariableContext.Builder()
+                .workspaceFolder(getWorkspaceFolderPath())
+                .build();
+        return VariableResolverRegistry.getInstance().resolve(config, varCtx);
     }
 
-    /**
-     * Get workspace folder path as a proper file system path (not URI).
-     * On Windows: "C:\path\to\workspace" (not "file:/C:/path/to/workspace")
-     */
-    private String getWorkspaceFolderPath() {
+    private java.nio.file.Path getWorkspaceFolderPath() {
         try {
-            // Convert URI to Path to get proper file system path
-            java.nio.file.Path path = java.nio.file.Paths.get(workspace.getRootUri());
-            return path.toString();
+            return java.nio.file.Paths.get(workspace.getRootUri());
         } catch (Exception e) {
             LOG.errorf(e, "Failed to convert workspace URI to path: %s", workspace.getRootUri());
-            // Fallback to normalized URI
-            return workspace.getNormalizedUri();
+            return java.nio.file.Path.of(workspace.getNormalizedUri());
         }
     }
 
