@@ -21,6 +21,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.lsp.tools.params.FileUriRequestParams;
 import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import org.eclipse.lsp4j.Diagnostic;
 
 import java.util.Collections;
@@ -72,7 +73,7 @@ public class DiagnosticsStrategy
 
     @Override
     protected CompletableFuture<List<Diagnostic>> executeAfterDiagnostics(LspServer server, String lspParams) {
-        List<Diagnostic> cached = server.getDiagnosticsCache().get(lspParams);
+        List<Diagnostic> cached = server.getDiagnosticsCache().get(UriUtils.normalizeUri(lspParams));
         return CompletableFuture.completedFuture(cached != null ? cached : Collections.emptyList());
     }
 

@@ -276,9 +276,9 @@ public class JdtLsServer extends LspServer implements InstallerListener {
      * Falls back to standard didOpen when the delegate command is not available.
      */
     @Override
-    public CompletableFuture<List<Diagnostic>> getDiagnostics(String uri, String languageId, boolean autoClose) {
+    protected CompletableFuture<List<Diagnostic>> doGetDiagnostics(String uri, String languageId, boolean autoClose) {
         if (!hasDiagnosticsCommand()) {
-            return super.getDiagnostics(uri, languageId, autoClose);
+            return super.doGetDiagnostics(uri, languageId, autoClose);
         }
 
         List<Diagnostic> cached = getDiagnosticsCache().get(uri);
@@ -298,7 +298,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                 })
                 .exceptionallyCompose(ex -> {
                     LOG.warnf(ex, "Delegate diagnostics failed for %s, falling back to didOpen", uri);
-                    return super.getDiagnostics(uri, languageId, autoClose);
+                    return super.doGetDiagnostics(uri, languageId, autoClose);
                 });
     }
 

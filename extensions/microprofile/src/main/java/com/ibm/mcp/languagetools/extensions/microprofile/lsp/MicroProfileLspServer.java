@@ -34,6 +34,8 @@ public class MicroProfileLspServer extends ClasspathExtensibleLspServer {
 
     private static final Logger LOG = Logger.getLogger(MicroProfileLspServer.class);
 
+    private static final String JAVA_LANGUAGE_ID = "java";
+
     // Delegate command handlers for Java files
     private static final String DIAGNOSTICS_COMMAND = "microprofile/java/diagnostics";
     private static final String CODEACTION_COMMAND = "microprofile/java/codeAction";
@@ -51,12 +53,10 @@ public class MicroProfileLspServer extends ClasspathExtensibleLspServer {
      * </ul>
      */
     @Override
-    public CompletableFuture<List<Diagnostic>> getDiagnostics(String uri, String languageId, boolean autoClose) {
-        if (!"java".equals(languageId)) {
-            // Non-Java files (e.g. application.properties): didOpen + publishDiagnostics
-            return super.getDiagnostics(uri, languageId, autoClose);
+    protected CompletableFuture<List<Diagnostic>> doGetDiagnostics(String uri, String languageId, boolean autoClose) {
+        if (!JAVA_LANGUAGE_ID.equals(languageId)) {
+            return super.doGetDiagnostics(uri, languageId, autoClose);
         }
-        // Java files: "microprofile/java/diagnostics" delegate command handler
         List<Diagnostic> cached = getDiagnosticsCache().get(uri);
         if (cached != null) {
             return CompletableFuture.completedFuture(cached);
@@ -93,7 +93,7 @@ public class MicroProfileLspServer extends ClasspathExtensibleLspServer {
      */
     @Override
     public CompletableFuture<List<Either<Command, CodeAction>>> getCodeActions(CodeActionParams params, String languageId) {
-        if (!"java".equals(languageId)) {
+        if (!JAVA_LANGUAGE_ID.equals(languageId)) {
             // Non-Java files: standard textDocument/codeAction
             return super.getCodeActions(params, languageId);
         }

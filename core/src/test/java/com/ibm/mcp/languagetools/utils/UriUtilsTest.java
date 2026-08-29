@@ -98,6 +98,29 @@ class UriUtilsTest {
                 UriUtils.normalizeUri("file:///C%3A/a%20b/c%20d/e%20f.txt"));
     }
 
+    // --- lowercase drive letter ---
+
+    @Test
+    void normalizeUri_uppercasesLowercaseDriveLetter() {
+        assertEquals(
+                "file:///C:/Users/test/file.java",
+                UriUtils.normalizeUri("file:///c:/Users/test/file.java"));
+    }
+
+    @Test
+    void normalizeUri_uppercasesLowercaseDriveLetterWithEncodedColon() {
+        assertEquals(
+                "file:///C:/Users/AngeloZerr/file.java",
+                UriUtils.normalizeUri("file:///c%3A/Users/AngeloZerr/file.java"));
+    }
+
+    @Test
+    void normalizeUri_preservesUppercaseDriveLetter() {
+        assertEquals(
+                "file:///D:/projects/app.java",
+                UriUtils.normalizeUri("file:///D:/projects/app.java"));
+    }
+
     // --- already normalized (no-op) ---
 
     @Test

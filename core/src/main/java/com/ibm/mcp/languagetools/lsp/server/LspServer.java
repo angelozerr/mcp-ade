@@ -27,6 +27,7 @@ import com.ibm.mcp.languagetools.server.ServerType;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
 import com.ibm.mcp.languagetools.utils.JsonUtils;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Endpoint;
@@ -404,16 +405,24 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
     /**
      * Get diagnostics for a file URI.
+     * Normalizes the URI before delegating to {@link #doGetDiagnostics}.
+     * Subclasses should override {@link #doGetDiagnostics} instead of this method.
+     */
+    public final CompletableFuture<List<Diagnostic>> getDiagnostics(String uri, String languageId, boolean autoClose) {
+        return doGetDiagnostics(UriUtils.normalizeUri(uri), languageId, autoClose);
+    }
+
+    /**
+     * Get diagnostics for a file URI (already normalized).
      * Uses pull diagnostics (textDocument/diagnostic) when supported,
      * otherwise falls back to didOpen + waitForDiagnostics.
      *
-     * @param uri        file URI
+     * @param uri        normalized file URI
      * @param languageId language identifier for didOpen
      * @param autoClose  if true, sends didClose after diagnostics are received
      */
-    public CompletableFuture<List<Diagnostic>> getDiagnostics(String uri, String languageId, boolean autoClose) {
+    protected CompletableFuture<List<Diagnostic>> doGetDiagnostics(String uri, String languageId, boolean autoClose) {
         if (isFileOpened(uri)) {
-            // File is actively tracked by the server, cache is up-to-date
             List<Diagnostic> cached = diagnosticsCache.get(uri);
             return CompletableFuture.completedFuture(cached != null ? cached : Collections.emptyList());
         }
@@ -429,21 +438,28 @@ public class LspServer extends ServerBase<LspServerConfig> {
         if (languageServer == null) {
             return CompletableFuture.completedFuture(Collections.emptyList());
         }
-        if (!autoClose) {
-            ensureFileOpened(uri, languageId);
-        }
+
+        ensureFileOpened(uri, languageId);
+
         DocumentDiagnosticParams params = new DocumentDiagnosticParams(new TextDocumentIdentifier(uri));
         return languageServer.getTextDocumentService().diagnostic(params)
                 .thenApply(report -> {
                     if (report != null && report.isLeft()) {
                         RelatedFullDocumentDiagnosticReport full = report.getLeft();
-                        List<Diagnostic> diagnostics = full.getItems() != null ? full.getItems() : Collections.emptyList();
-                        diagnosticsCache.put(uri, diagnostics);
-                        return diagnostics;
+                        List<Diagnostic> items = full.getItems();
+                        if (items != null && !items.isEmpty()) {
+                            diagnosticsCache.put(uri, items);
+                            return items;
+                        }
                     }
-                    // Unchanged report: return cached diagnostics
+                    // Pull empty — return whatever publishDiagnostics already put in cache
                     List<Diagnostic> cached = diagnosticsCache.get(uri);
-                    return cached != null ? cached : Collections.emptyList();
+                    return cached != null ? cached : Collections.<Diagnostic>emptyList();
+                })
+                .whenComplete((diags, ex) -> {
+                    if (autoClose) {
+                        closeFile(uri);
+                    }
                 });
     }
 
@@ -720,21 +736,21 @@ public class LspServer extends ServerBase<LspServerConfig> {
      * Check if a file is currently opened in this server.
      */
     public boolean isFileOpened(String uri) {
-        return openedFiles.contains(uri);
+        return openedFiles.contains(UriUtils.normalizeUri(uri));
     }
 
     /**
      * Mark a file as opened.
      */
     public void markFileOpened(String uri) {
-        openedFiles.add(uri);
+        openedFiles.add(UriUtils.normalizeUri(uri));
     }
 
     /**
      * Mark a file as closed.
      */
     public void markFileClosed(String uri) {
-        openedFiles.remove(uri);
+        openedFiles.remove(UriUtils.normalizeUri(uri));
     }
 
     /**

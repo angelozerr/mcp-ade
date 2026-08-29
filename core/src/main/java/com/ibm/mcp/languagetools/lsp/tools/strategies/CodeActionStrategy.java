@@ -21,6 +21,7 @@ import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.lsp.tools.params.FilePositionRequestParams;
 import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
@@ -88,7 +89,7 @@ public class CodeActionStrategy
             LspServer server, CodeActionParams lspParams) {
         String fileUri = lspParams.getTextDocument().getUri();
         Position pos = lspParams.getRange().getStart();
-        List<Diagnostic> cachedDiagnostics = server.getDiagnosticsCache().get(fileUri);
+        List<Diagnostic> cachedDiagnostics = server.getDiagnosticsCache().get(UriUtils.normalizeUri(fileUri));
         List<Diagnostic> relevantDiagnostics = filterDiagnosticsAtPosition(cachedDiagnostics, pos);
 
         Range range = relevantDiagnostics.isEmpty()

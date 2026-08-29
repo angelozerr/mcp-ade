@@ -48,24 +48,40 @@ public final class UriUtils {
     }
 
     /**
-     * Normalize a URI by decoding percent-encoded characters in the path.
-     * Some language servers encode the colon in Windows drive letters (C%3A instead of C:).
+     * Normalize a URI by decoding percent-encoded characters in the path
+     * and uppercasing the Windows drive letter for consistent cache lookups.
+     * Some language servers encode the colon in Windows drive letters (C%3A instead of C:)
+     * or return a lowercase drive letter (c: instead of C:).
      */
     public static String normalizeUri(String uri) {
-        if (uri == null || uri.indexOf('%') < 0) {
-            return uri;
+        if (uri == null) {
+            return null;
         }
-        try {
-            URI parsed = URI.create(uri);
-            String rawPath = parsed.getRawPath();
-            String decodedPath = parsed.getPath();
-            if (rawPath == null || decodedPath == null || rawPath.equals(decodedPath)) {
-                return uri;
+
+        String result = uri;
+
+        if (result.indexOf('%') >= 0) {
+            try {
+                URI parsed = URI.create(result);
+                String rawPath = parsed.getRawPath();
+                String decodedPath = parsed.getPath();
+                if (rawPath != null && decodedPath != null && !rawPath.equals(decodedPath)) {
+                    result = result.replace(rawPath, decodedPath);
+                }
+            } catch (Exception e) {
+                // keep as-is
             }
-            return uri.replace(rawPath, decodedPath);
-        } catch (Exception e) {
-            return uri;
         }
+
+        // Normalize Windows drive letter to uppercase (file:///c:/ -> file:///C:/)
+        if (result.length() > 9 && result.startsWith("file:///")) {
+            char driveLetter = result.charAt(8);
+            if (driveLetter >= 'a' && driveLetter <= 'z' && result.charAt(9) == ':') {
+                result = result.substring(0, 8) + Character.toUpperCase(driveLetter) + result.substring(9);
+            }
+        }
+
+        return result;
     }
 
     public static URI toUri(String path) {

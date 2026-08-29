@@ -95,10 +95,11 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
     }
 
     public CompletableFuture<List<Diagnostic>> waitForDiagnostics(String uri, long initialTimeoutMs) {
+        String normalizedUri = UriUtils.normalizeUri(uri);
         DiagnosticsWait wait = new DiagnosticsWait();
-        diagnosticsWaiters.put(uri, wait);
+        diagnosticsWaiters.put(normalizedUri, wait);
         wait.timeoutHandle = diagnosticsScheduler.schedule(
-                () -> completeDiagnosticsWait(uri), initialTimeoutMs, TimeUnit.MILLISECONDS);
+                () -> completeDiagnosticsWait(normalizedUri), initialTimeoutMs, TimeUnit.MILLISECONDS);
         return wait.future;
     }
 
