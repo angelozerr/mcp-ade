@@ -55,6 +55,9 @@ public class ExtensionAdminResource {
         for (Extension ext : registry.getExtensions()) {
             Map<String, Object> dto = new LinkedHashMap<>();
             dto.put("id", ext.getId());
+            if (ext.getName() != null) {
+                dto.put("name", ext.getName());
+            }
             dto.put("source", ext.getSource().name());
             if (registry.isExtensionEnabled(ext.getId())) {
                 dto.put("enabled", true);

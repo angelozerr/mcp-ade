@@ -140,15 +140,21 @@ public class ExtensionRegistry {
         }
     }
 
+    private final Map<String, String> bundledExtensionNames = new ConcurrentHashMap<>();
+
     private void deployBundledExtension(URL descriptorUrl) {
         try {
-            String extensionId = readExtensionId(descriptorUrl);
+            ExtensionDescriptor descriptor = readExtensionDescriptor(descriptorUrl);
+            String extensionId = descriptor.id();
             if (extensionId == null || extensionId.isBlank()) {
                 LOG.warnf("mcp-extension.json has no 'id' field: %s", descriptorUrl);
                 return;
             }
 
             bundledExtensionIds.add(extensionId);
+            if (descriptor.name() != null) {
+                bundledExtensionNames.put(extensionId, descriptor.name());
+            }
             Path basePath = resolveBasePath(descriptorUrl);
 
             for (String root : List.of(RuntimeDescriptorLoader.ROOT, PathConfig.getLspDirName(), PathConfig.getDapDirName(), PathConfig.getBspDirName())) {
@@ -172,11 +178,30 @@ public class ExtensionRegistry {
         }
     }
 
-    private String readExtensionId(URL descriptorUrl) throws IOException {
+    private record ExtensionDescriptor(String id, String name) {}
+
+    private ExtensionDescriptor readExtensionDescriptor(URL descriptorUrl) throws IOException {
         try (InputStream is = descriptorUrl.openStream();
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-            return json.has("id") ? json.get("id").getAsString() : null;
+            String id = json.has("id") ? json.get("id").getAsString() : null;
+            String name = json.has("name") ? json.get("name").getAsString() : null;
+            return new ExtensionDescriptor(id, name);
+        }
+    }
+
+    private String readExtensionNameFromDir(Path extensionDir) {
+        Path descriptor = extensionDir.resolve(MCP_EXTENSION_JSON);
+        if (!Files.exists(descriptor)) {
+            return null;
+        }
+        try (InputStream is = Files.newInputStream(descriptor);
+             InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
+            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+            return json.has("name") ? json.get("name").getAsString() : null;
+        } catch (IOException e) {
+            LOG.warnf(e, "Failed to read extension name from %s", descriptor);
+            return null;
         }
     }
 
@@ -271,6 +296,13 @@ public class ExtensionRegistry {
      */
     private Extension loadExtension(String extensionId, ServerConfigSource source, Application application) {
         Extension extension = new Extension(extensionId, source, application);
+        String extensionName = bundledExtensionNames.get(extensionId);
+        if (extensionName == null) {
+            extensionName = readExtensionNameFromDir(pathManager.getExtensionDir(extensionId));
+        }
+        if (extensionName != null) {
+            extension.setName(extensionName);
+        }
         Path extensionDir = pathManager.getExtensionDir(extensionId);
 
         Map<String, ServerConfigBase> configs = serverDescriptorRegistry.loadFromExtensionDir(extensionDir, extension);

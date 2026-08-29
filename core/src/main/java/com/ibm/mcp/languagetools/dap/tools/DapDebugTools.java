@@ -154,6 +154,9 @@ public class DapDebugTools {
                     String extensionId = config.getExtensionId();
                     if (extensionId != null) {
                         adapter.put("extensionId", extensionId);
+                        if (config.getExtensionName() != null) {
+                            adapter.put("extensionName", config.getExtensionName());
+                        }
                     }
                     adapter.put("enabled", serverResolver.isEnabled(config));
 

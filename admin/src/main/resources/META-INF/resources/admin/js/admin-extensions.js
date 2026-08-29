@@ -47,7 +47,7 @@ function renderExtensionsList() {
         return `
             <div class="extension-item ${isActive} ${disabledClass}" data-action="showExtensionDetails" data-extension-id="${ext.id}">
                 <div class="d-flex align-center justify-between">
-                    <span class="extension-name">${ext.id}${sourceBadge}</span>
+                    <span class="extension-name">${ext.name || ext.id}${sourceBadge}</span>
                     <label class="toggle-switch" onclick="event.stopPropagation()">
                         <input type="checkbox" ${ext.enabled ? 'checked' : ''} data-action="toggleExtensionEnabled" data-extension-id="${ext.id}">
                         <span class="toggle-slider"></span>
@@ -116,7 +116,7 @@ export async function showExtensionDetails(extensionId, scroll) {
         <div class="console-header">
             <div class="console-title">
                 <span class="server-source-icon">🧩</span>
-                ${ext.id} ${sourceBadge}
+                ${ext.name || ext.id} ${sourceBadge}
             </div>
         </div>
         <div class="details-panel text-primary detail-content">

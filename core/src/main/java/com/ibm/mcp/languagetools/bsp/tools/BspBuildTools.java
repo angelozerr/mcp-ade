@@ -80,6 +80,9 @@ public class BspBuildTools {
                 String extensionId = config.getExtensionId();
                 if (extensionId != null) {
                     server.put("extensionId", extensionId);
+                    if (config.getExtensionName() != null) {
+                        server.put("extensionName", config.getExtensionName());
+                    }
                 }
                 server.put("enabled", serverResolver.isEnabled(config));
 

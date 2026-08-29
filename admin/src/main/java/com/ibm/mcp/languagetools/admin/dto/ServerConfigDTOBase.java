@@ -47,6 +47,8 @@ public interface ServerConfigDTOBase {
 
     String extensionId();
 
+    String extensionName();
+
     Boolean hasInstaller();
 
     String installationStatus();

@@ -139,6 +139,9 @@ public class RuntimeAdminResource {
 
         if (runtime.getExtensionId() != null) {
             dto.put("extensionId", runtime.getExtensionId());
+            if (runtime.getExtensionName() != null) {
+                dto.put("extensionName", runtime.getExtensionName());
+            }
         }
 
         if (runtime.getResolvedPath() != null) {

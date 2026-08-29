@@ -53,6 +53,10 @@ public class ServerDTOBuilder {
         return value ? Boolean.TRUE : null;
     }
 
+    private static String extensionName(com.ibm.mcp.languagetools.server.ServerConfigBase config) {
+        return config.getExtensionName();
+    }
+
     public LspConfigDTO buildConfig(LspServerConfig config) {
         boolean hasInstaller = config.getInstaller() != null;
 
@@ -74,6 +78,7 @@ public class ServerDTOBuilder {
             config.getRuntimeConfig() != null ? config.getRuntimeConfig().getName() : null,
             config.getRuntimeStatusName(),
             config.getExtensionId(),
+            extensionName(config),
             trueOrNull(hasInstaller),
             hasInstaller ? config.getStatus().name() : null,
             hasInstaller ? config.getServerHome().toString() : null
@@ -96,6 +101,7 @@ public class ServerDTOBuilder {
             null,
             trueOrNull(config.isContributionOnly()),
             trueOrNull(extensionRegistry.isServerEnabled(config.getServerId())),
+            null,
             null,
             null,
             null,

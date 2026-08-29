@@ -58,6 +58,9 @@ public class ExtensionTools {
             for (Extension ext : registry.getExtensions()) {
                 Map<String, Object> entry = new LinkedHashMap<>();
                 entry.put("id", ext.getId());
+                if (ext.getName() != null) {
+                    entry.put("name", ext.getName());
+                }
                 entry.put("source", ext.getSource().name());
                 entry.put("enabled", registry.isExtensionEnabled(ext.getId()));
 

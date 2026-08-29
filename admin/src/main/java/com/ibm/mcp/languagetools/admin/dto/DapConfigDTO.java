@@ -36,6 +36,7 @@ public record DapConfigDTO(
     String runtimeName,
     String runtimeStatus,
     String extensionId,
+    String extensionName,
     Boolean hasInstaller,
     String installationStatus,
     String installDir

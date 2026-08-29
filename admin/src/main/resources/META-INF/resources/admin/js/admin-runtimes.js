@@ -276,7 +276,7 @@ function buildRuntimeDetailHTML(runtime) {
         ${runtime.extensionId ? `
         <div class="detail-row">
             <span class="detail-label">Extension:</span>
-            <span class="detail-value">${renderExtensionLink(runtime.extensionId)}</span>
+            <span class="detail-value">${renderExtensionLink(runtime.extensionId, runtime.extensionName)}</span>
         </div>
         ` : ''}
 

@@ -86,6 +86,10 @@ public abstract class InstallableConfig {
         return extension != null ? extension.getId() : null;
     }
 
+    public String getExtensionName() {
+        return extension != null ? extension.getName() : null;
+    }
+
     // --- Metadata getters / setters ---
 
     public String getName() {

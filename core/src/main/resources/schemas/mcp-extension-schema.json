@@ -8,6 +8,10 @@
     "id": {
       "type": "string",
       "description": "Unique extension identifier (e.g. 'csharp', 'rust', 'python')"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name (e.g. 'C#', 'Rust', 'Python')"
     }
   },
   "extensionStructure": {

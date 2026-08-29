@@ -24,6 +24,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public record ExtensionDTO(
         String id,
+        String name,
         String source,
         Boolean enabled,
         List<ServerInfo> lspServers,
@@ -52,6 +53,7 @@ public record ExtensionDTO(
 
         return new ExtensionDTO(
                 ext.getId(),
+                ext.getName(),
                 ext.getSource().name(),
                 registry.isExtensionEnabled(ext.getId()) ? Boolean.TRUE : null,
                 lspServers,

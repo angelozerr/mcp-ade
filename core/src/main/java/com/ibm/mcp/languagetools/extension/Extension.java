@@ -29,6 +29,7 @@ import java.util.List;
 public class Extension {
 
     private final String id;
+    private String name;
     private final ServerConfigSource source;
     private final Application application;
     private final List<LspServerConfig> lspServerConfigs;
@@ -46,6 +47,14 @@ public class Extension {
 
     public String getId() {
         return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public ServerConfigSource getSource() {

@@ -37,8 +37,9 @@ export function renderRuntimeLink(runtimeId, runtimeName) {
     return `<span class="nav-link" data-action="navigateToRuntime" data-runtime-id="${runtimeId}">${name}</span>`;
 }
 
-export function renderExtensionLink(extensionId) {
-    return `<span class="nav-link" data-action="navigateToExtension" data-extension-id="${extensionId}">${extensionId}</span>`;
+export function renderExtensionLink(extensionId, extensionName) {
+    const label = extensionName || extensionId;
+    return `<span class="nav-link" data-action="navigateToExtension" data-extension-id="${extensionId}">${label}</span>`;
 }
 
 export function renderDocumentSelector(selectors) {
@@ -120,7 +121,7 @@ export function renderExtensionSection(data) {
     return `
         <div class="detail-row">
             <span class="detail-label">Extension:</span>
-            <span class="detail-value">${renderExtensionLink(data.extensionId)}</span>
+            <span class="detail-value">${renderExtensionLink(data.extensionId, data.extensionName)}</span>
         </div>
     `;
 }
