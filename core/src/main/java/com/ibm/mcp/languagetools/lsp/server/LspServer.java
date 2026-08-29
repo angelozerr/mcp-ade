@@ -946,16 +946,6 @@ public class LspServer extends ServerBase<LspServerConfig> {
     }
 
     /**
-     * Check if the language server is enabled.
-     * Can be controlled by user configuration.
-     *
-     * @return true if the server is enabled
-     */
-    public boolean isEnabled() {
-        return clientFeatures.isEnabled();
-    }
-
-    /**
      * Check if the server supports a given capability for a file.
      *
      * @param capability the LSP capability to check

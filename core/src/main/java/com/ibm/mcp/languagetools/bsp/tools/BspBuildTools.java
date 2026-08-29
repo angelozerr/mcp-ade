@@ -16,8 +16,7 @@ package com.ibm.mcp.languagetools.bsp.tools;
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.bsp.server.BspServer;
 import com.ibm.mcp.languagetools.bsp.server.BspServerConfig;
-import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
-import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import com.ibm.mcp.languagetools.bsp.server.BspServerResolver;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.tools.ToolArgDescriptions;
 import com.ibm.mcp.languagetools.tools.ToolException;
@@ -48,6 +47,9 @@ public class BspBuildTools {
     @Inject
     Application application;
 
+    @Inject
+    BspServerResolver serverResolver;
+
     // ========== Server Management ==========
 
     @Tool(
@@ -75,14 +77,11 @@ public class BspBuildTools {
                     server.put("url", config.getUrl());
                 }
 
-                ExtensionRegistry extRegistry = application.getExtensionRegistry();
                 String extensionId = config.getExtensionId();
                 if (extensionId != null) {
                     server.put("extensionId", extensionId);
                 }
-                boolean enabled = extRegistry.isExtensionEnabled(extensionId != null ? extensionId : config.getServerId())
-                        && extRegistry.isServerEnabled(config.getServerId());
-                server.put("enabled", enabled);
+                server.put("enabled", serverResolver.isEnabled(config));
 
                 if (workspace != null) {
                     BspServer bspServer = workspace.getBspServer(config.getServerId());
@@ -246,36 +245,8 @@ public class BspBuildTools {
 
     // ========== Internal helpers ==========
 
-    /**
-     * Find and ensure a BSP server is ready for the given workspace path.
-     * Returns a CompletableFuture that completes with the ready BSP server.
-     *
-     * @param cwd the workspace root path
-     * @return a future completing with the BSP server instance
-     */
     private CompletableFuture<BspServer> ensureBspServerReady(String cwd) {
-        Workspace workspace = application.getWorkspaceForPath(cwd);
-        if (workspace == null) {
-            return CompletableFuture.failedFuture(new ToolException("No workspace found for: " + cwd));
-        }
-
-        // Find first matching enabled BSP server config
-        for (BspServerConfig config : application.getBspServerConfigs()) {
-            ExtensionRegistry extRegistry = application.getExtensionRegistry();
-            String extensionId = config.getExtensionId();
-            boolean enabled = extRegistry.isExtensionEnabled(extensionId != null ? extensionId : config.getServerId())
-                    && extRegistry.isServerEnabled(config.getServerId());
-            if (!enabled) {
-                continue;
-            }
-
-            // Check if the server can handle this workspace
-            if (config.canHandle(workspace.getRootUri().toASCIIString(), workspace.getRootPath())) {
-                return workspace.ensureBspServerReady(config.getServerId(), ProgressMonitor.none());
-            }
-        }
-
-        return CompletableFuture.failedFuture(new ToolException("No BSP build server available for workspace: " + cwd));
+        return serverResolver.getBspServerForWorkspace(cwd);
     }
 
     // ========== Formatters ==========

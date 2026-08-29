@@ -677,6 +677,17 @@ public class ExtensionRegistry {
         return !disabledServers.contains(serverId);
     }
 
+    /**
+     * Check if a server config is enabled (both its extension and the server itself).
+     */
+    public boolean isServerConfigEnabled(ServerConfigBase config) {
+        String extensionId = config.getExtensionId();
+        if (extensionId != null && !isExtensionEnabled(extensionId)) {
+            return false;
+        }
+        return isServerEnabled(config.getServerId());
+    }
+
     // ========== Disabled state persistence ==========
 
     public Set<String> getDisabledExtensions() {
@@ -720,10 +731,9 @@ public class ExtensionRegistry {
      * Only enabled LSP server configs — for ensureServerForFile().
      */
     public Collection<LspServerConfig> getEnabledLspServerConfigs() {
-        return extensions.entrySet().stream()
-                .filter(e -> isExtensionEnabled(e.getKey()))
-                .flatMap(e -> e.getValue().getLspServerConfigs().stream())
-                .filter(c -> isServerEnabled(c.getServerId()))
+        return extensions.values().stream()
+                .flatMap(ext -> ext.getLspServerConfigs().stream())
+                .filter(this::isServerConfigEnabled)
                 .toList();
     }
 
@@ -740,10 +750,9 @@ public class ExtensionRegistry {
      * Only enabled DAP server configs — for workspace matching.
      */
     public Collection<DapServerConfig> getEnabledDapServerConfigs() {
-        return extensions.entrySet().stream()
-                .filter(e -> isExtensionEnabled(e.getKey()))
-                .flatMap(e -> e.getValue().getDapServerConfigs().stream())
-                .filter(c -> isServerEnabled(c.getServerId()))
+        return extensions.values().stream()
+                .flatMap(ext -> ext.getDapServerConfigs().stream())
+                .filter(this::isServerConfigEnabled)
                 .toList();
     }
 
@@ -780,10 +789,9 @@ public class ExtensionRegistry {
      * Only enabled BSP server configs — for workspace matching.
      */
     public Collection<BspServerConfig> getEnabledBspServerConfigs() {
-        return extensions.entrySet().stream()
-                .filter(e -> isExtensionEnabled(e.getKey()))
-                .flatMap(e -> e.getValue().getBspServerConfigs().stream())
-                .filter(c -> isServerEnabled(c.getServerId()))
+        return extensions.values().stream()
+                .flatMap(ext -> ext.getBspServerConfigs().stream())
+                .filter(this::isServerConfigEnabled)
                 .toList();
     }
 

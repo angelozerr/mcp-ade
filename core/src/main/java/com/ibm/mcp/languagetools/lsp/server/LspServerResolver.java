@@ -13,13 +13,12 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.server;
 
-import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.language.LanguageDocument;
 import com.ibm.mcp.languagetools.operation.OperationContext;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import com.ibm.mcp.languagetools.server.ServerResolverBase;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.net.URI;
 import java.util.List;
@@ -31,21 +30,8 @@ import java.util.function.Predicate;
  * Centralizes the logic for finding appropriate language servers.
  */
 @ApplicationScoped
-public class LspServerResolver {
+public class LspServerResolver extends ServerResolverBase {
 
-    @Inject
-    Application application;
-
-    /**
-     * Get all LSP servers that can handle the given file and match the filter.
-     * Ensures matching servers are started if not already running.
-     *
-     * @param document        the language document
-     * @param cwd             the current working directory (used for workspace detection)
-     * @param filter          predicate to filter servers (e.g., by capability, enabled status)
-     * @param progressMonitor
-     * @return completable future with list of matching servers
-     */
     public CompletableFuture<List<LspServer>> getLspServersForFile(
             LanguageDocument document,
             String cwd,
@@ -61,7 +47,7 @@ public class LspServerResolver {
             ProgressMonitor progressMonitor,
             OperationContext operationContext) {
 
-        Workspace workspace = application.getWorkspaceForPath(cwd);
+        Workspace workspace = resolveWorkspace(cwd);
         return application.ensureServersForFile(document.getUri(), workspace, progressMonitor, operationContext)
                 .thenApply(v -> {
                     var allServers = workspace.getLspServers();
@@ -79,19 +65,12 @@ public class LspServerResolver {
     /**
      * Get all LSP servers for a workspace (without specific file).
      * Used for workspace-level operations like workspace/symbol.
-     * <p>
-     * Ensures all applicable servers are started before returning,
-     * so this method works even when called as the first operation on a workspace.
-     *
-     * @param cwd    the current working directory path (not URI)
-     * @param filter predicate to filter servers (e.g., by enabled status)
-     * @return completable future with list of matching servers
      */
     public CompletableFuture<List<LspServer>> getLspServersForWorkspace(
             String cwd,
             Predicate<LspServer> filter) {
 
-        Workspace workspace = application.getWorkspaceForPath(cwd);
+        Workspace workspace = resolveWorkspace(cwd);
         return application.ensureServersForWorkspace(workspace, ProgressMonitor.none())
                 .thenApply(v -> workspace.getLspServers()
                         .stream()

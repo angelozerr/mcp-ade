@@ -14,8 +14,8 @@
 package com.ibm.mcp.languagetools.tools;
 
 import com.ibm.mcp.languagetools.Application;
-import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
+import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.tools.ToolException;
 import com.ibm.mcp.languagetools.workspace.Workspace;
@@ -41,6 +41,9 @@ public class WorkspaceTools {
 
     @Inject
     Application application;
+
+    @Inject
+    LspServerResolver serverResolver;
 
     @Tool(
             name="list_workspaces",
@@ -152,14 +155,11 @@ public class WorkspaceTools {
                     }
                 }
 
-                ExtensionRegistry extRegistry = application.getExtensionRegistry();
                 String extensionId = config.getExtensionId();
                 if (extensionId != null) {
                     server.put("extensionId", extensionId);
                 }
-                boolean enabled = extRegistry.isExtensionEnabled(extensionId != null ? extensionId : config.getServerId())
-                        && extRegistry.isServerEnabled(config.getServerId());
-                server.put("enabled", enabled);
+                server.put("enabled", serverResolver.isEnabled(config));
 
                 if (workspace != null) {
                     LspServer lspServer = workspace.getLspServer(config.getServerId());

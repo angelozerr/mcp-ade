@@ -762,6 +762,14 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
     }
 
     /**
+     * Check if the server is enabled.
+     * Checks both the extension and server enabled state in the extension registry.
+     */
+    public boolean isEnabled() {
+        return workspace.getApplication().getExtensionRegistry().isServerConfigEnabled(config);
+    }
+
+    /**
      * Check if server can start and prepare for starting.
      * Returns true if can proceed, false if should skip (already running).
      * Common logic for both LSP and DAP servers.

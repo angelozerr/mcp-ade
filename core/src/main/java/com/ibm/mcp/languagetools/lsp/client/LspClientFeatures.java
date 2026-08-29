@@ -85,13 +85,6 @@ public class LspClientFeatures {
     }
 
     /**
-     * Check if the language server is enabled.
-     */
-    public boolean isEnabled() {
-        return true;
-    }
-
-    /**
      * Check if the server supports a given capability for a file.
      */
     public boolean supportsCapability(LspCapability capability, LanguageDocument document) {

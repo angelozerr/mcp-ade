@@ -16,7 +16,7 @@ package com.ibm.mcp.languagetools.dap.tools;
 import com.ibm.mcp.languagetools.Application;
 import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.server.DapConfigurationTemplate;
-import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
+import com.ibm.mcp.languagetools.dap.server.DapServerResolver;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
 import com.ibm.mcp.languagetools.operation.OperationActor;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
@@ -70,6 +70,9 @@ public class DapDebugTools {
 
     @Inject
     Application application;
+
+    @Inject
+    DapServerResolver serverResolver;
 
     @Inject
     ProgressMonitorManager progressMonitorManager;
@@ -144,7 +147,6 @@ public class DapDebugTools {
                 adapters = sessionManager.listDebugAdapters();
             }
 
-            ExtensionRegistry extRegistry = application.getExtensionRegistry();
             for (Map<String, Object> adapter : adapters) {
                 String id = (String) adapter.get("id");
                 DapServerConfig config = application.getDapServerConfig(id);
@@ -153,9 +155,7 @@ public class DapDebugTools {
                     if (extensionId != null) {
                         adapter.put("extensionId", extensionId);
                     }
-                    boolean enabled = extRegistry.isExtensionEnabled(extensionId != null ? extensionId : id)
-                            && extRegistry.isServerEnabled(id);
-                    adapter.put("enabled", enabled);
+                    adapter.put("enabled", serverResolver.isEnabled(config));
 
                     if (config.getRuntime() != null) {
                         adapter.put("runtime", config.getRuntime());
@@ -407,9 +407,11 @@ public class DapDebugTools {
         ProgressMonitor progressMonitor = progressMonitorManager.createProgressMonitor(
                 progress, cancellation, ProgressContext.forOperation("start_debugging", "Start debugging"));
 
+        // Check if the debug adapter exists and is enabled
+        DapServerConfig dapConfig = serverResolver.getEnabledDapConfig(debuggerId);
+
         // Define steps for DAP operations (with separate runtime/server install steps)
-        DapServerConfig dapConfig = application.getDapServerConfig(debuggerId);
-        boolean hasRuntime = dapConfig != null && dapConfig.getRuntimeConfig() != null;
+        boolean hasRuntime = dapConfig.getRuntimeConfig() != null;
         String serverInstallStep = "Installing " + debuggerId;
 
         if (hasRuntime) {
