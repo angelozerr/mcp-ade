@@ -204,8 +204,9 @@ function handleLspTrace(trace) {
         }
     }
 
-    if (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
-        (trace.workspaceUri == null && trace.serverId === state.currentServerId)) {
+    if (state.currentTab === 'workspaces' &&
+        (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
+        (trace.workspaceUri == null && trace.serverId === state.currentServerId))) {
         console.log('Refreshing console for current server');
         renderConsole();
     }
@@ -237,8 +238,9 @@ function handleBspTrace(trace) {
     const tk = traceKey(trace.workspaceUri, trace.serverId);
     pushTrace(state.tracesByServer, tk, trace);
 
-    if (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
-        (trace.workspaceUri == null && trace.serverId === state.currentServerId)) {
+    if (state.currentTab === 'workspaces' &&
+        (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
+        (trace.workspaceUri == null && trace.serverId === state.currentServerId))) {
         renderConsole();
     }
 
