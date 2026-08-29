@@ -90,6 +90,9 @@ export function getRuntimeStatusInfo(status, autoInstallable) {
     if (status === 'FAILED' || status === 'ERROR') {
         return { icon: '🔴', label: 'Error', cssClass: 'error', badgeClass: 'badge-error', statusClass: 'error', animate: false };
     }
+    if (status === 'CHECKING') {
+        return { icon: '🔵', label: 'Checking...', cssClass: 'info', badgeClass: 'badge-info', statusClass: 'starting', animate: true };
+    }
     if (autoInstallable) {
         return { icon: '🔵', label: 'Auto-installable', cssClass: 'info', badgeClass: 'badge-info', statusClass: 'starting', animate: false };
     }
@@ -468,6 +471,9 @@ export function getInstallStatusBadge(server) {
     }
     if (dtoStatus === 'FAILED') {
         return renderBadge('error', 'Failed', { compact: true });
+    }
+    if (dtoStatus === 'CHECKING') {
+        return renderBadge('installing', 'Checking...', { compact: true });
     }
     if (dtoStatus === 'NOT_INSTALLED') {
         return renderBadge('stopped', 'Not installed', { compact: true });

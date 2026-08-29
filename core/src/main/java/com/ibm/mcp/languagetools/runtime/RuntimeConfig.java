@@ -64,6 +64,15 @@ public class RuntimeConfig extends InstallableConfig {
         return getServerId();
     }
 
+    @Override
+    public InstallationStatus getStatus() {
+        InstallationStatus status = super.getStatus();
+        if (status == InstallationStatus.NOT_INSTALLED && resolvedPath != null) {
+            return InstallationStatus.ALREADY_INSTALLED;
+        }
+        return status;
+    }
+
     /**
      * Returns true if this runtime has an auto-installer (not check-only).
      */
