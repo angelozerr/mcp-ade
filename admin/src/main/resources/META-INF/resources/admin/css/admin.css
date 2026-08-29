@@ -2492,6 +2492,108 @@ body {
     font-size: 0.8rem;
 }
 
+/* ── Server entry list (Add Extension wizard) ── */
+.server-entry-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+}
+
+.server-entry-item:last-child {
+    border-bottom: none;
+}
+
+.server-entry-item:hover {
+    background: var(--bg-server-hover);
+}
+
+.server-entry-item.active {
+    background: var(--bg-active-item, var(--bg-server-hover));
+    border-left-color: var(--accent-primary);
+}
+
+.server-entry-item .entry-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+.server-entry-item .entry-remove {
+    opacity: 0;
+    cursor: pointer;
+    color: var(--text-dimmed);
+    font-size: 1.1rem;
+    transition: opacity 0.15s, color 0.15s;
+    padding: 0 0.25rem;
+    line-height: 1;
+}
+
+.server-entry-item:hover .entry-remove {
+    opacity: 1;
+}
+
+.server-entry-item .entry-remove:hover {
+    color: var(--color-error);
+}
+
+.server-type-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.server-type-badge.lsp {
+    background: rgba(79, 140, 255, 0.15);
+    color: var(--color-info);
+}
+
+.server-type-badge.dap {
+    background: rgba(76, 175, 80, 0.15);
+    color: var(--color-success);
+}
+
+.server-type-badge.bsp {
+    background: rgba(171, 71, 188, 0.15);
+    color: #ab47bc;
+}
+
+.add-server-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.add-server-btn {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    border: 1px dashed var(--border-subtle);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+}
+
+.add-server-btn:hover {
+    border-color: var(--accent-primary);
+    border-style: solid;
+    color: var(--accent-primary);
+}
+
 /* ── Theme toggle button ── */
 .theme-toggle-btn {
     background: transparent;

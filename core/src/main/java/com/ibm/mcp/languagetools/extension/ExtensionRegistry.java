@@ -106,6 +106,8 @@ public class ExtensionRegistry {
      * Deploy bundled server configs from classpath to extensions/ directory,
      * then scan extensions/ to load all configs.
      */
+    private final Set<String> bundledExtensionIds = ConcurrentHashMap.newKeySet();
+
     public void initialize(Application application) {
         deployBundledConfigs(application);
         scanExtensions(application);
@@ -146,6 +148,7 @@ public class ExtensionRegistry {
                 return;
             }
 
+            bundledExtensionIds.add(extensionId);
             Path basePath = resolveBasePath(descriptorUrl);
 
             for (String root : List.of(RuntimeDescriptorLoader.ROOT, PathConfig.getLspDirName(), PathConfig.getDapDirName(), PathConfig.getBspDirName())) {
@@ -249,8 +252,11 @@ public class ExtensionRegistry {
             extensionDirs.filter(Files::isDirectory)
                     .forEach(extDir -> {
                         String extensionId = extDir.getFileName().toString();
+                        ServerConfigSource source = bundledExtensionIds.contains(extensionId)
+                                ? ServerConfigSource.BUNDLED
+                                : ServerConfigSource.USER;
                         try {
-                            loadExtension(extensionId, ServerConfigSource.BUNDLED, application);
+                            loadExtension(extensionId, source, application);
                         } catch (Exception e) {
                             LOG.errorf(e, "Failed to load extension: %s", extensionId);
                         }
