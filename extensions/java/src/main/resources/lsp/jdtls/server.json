@@ -4,6 +4,14 @@
   "description": "Java language server based on Eclipse JDT",
   "url": "https://github.com/eclipse-jdtls/eclipse.jdt.ls",
   "runtime": "jdk",
+  "readyNotification": {
+    "language/status": {
+      "type": "ServiceReady"
+    }
+  },
+  "statusNotification": {
+    "language/status": "message"
+  },
   "toolsRequest": {
     "skipDidOpen": true
   },

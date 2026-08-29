@@ -105,14 +105,6 @@ public class JdtLsLanguageClient extends GenericLanguageClient {
     @JsonNotification("language/status")
     public void languageStatus(StatusReport status) {
         LOG.infof("JDT.LS status [%s]: %s", status.getType(), status.getMessage());
-
-        server.setStatusMessage(status.getMessage());
-
-        if ("ServiceReady".equals(status.getType()) ||
-            (status.getMessage() != null && status.getMessage().contains("Ready"))) {
-            LOG.info("JDT.LS is ready!");
-            server.onServiceReady();
-        }
     }
 
     /**

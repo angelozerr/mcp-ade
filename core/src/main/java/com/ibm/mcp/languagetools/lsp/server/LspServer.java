@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Endpoint;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.jsonrpc.messages.NotificationMessage;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.jboss.logging.Logger;
@@ -252,6 +253,20 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 .setExecutorService(getExecutorService())
                 .configureGson(JsonUtils::configureGson)
                 .wrapMessages(consumer -> message -> {
+                    if (message instanceof NotificationMessage nm) {
+                        var cfg = getConfig();
+                        LspServerConfig.ReadyNotification rn = cfg.getReadyNotification();
+                        if (rn != null && rn.matches(nm.getMethod(), nm.getParams())) {
+                            onReadyNotification();
+                        }
+                        LspServerConfig.StatusNotification sn = cfg.getStatusNotification();
+                        if (sn != null) {
+                            String statusMsg = sn.extractMessage(nm.getMethod(), nm.getParams());
+                            if (statusMsg != null) {
+                                setStatusMessage(statusMsg);
+                            }
+                        }
+                    }
                     if (getServerTrace() != ServerTrace.off) {
                         getTracing().log(message, consumer);
                     }
@@ -321,10 +336,15 @@ public class LspServer extends ServerBase<LspServerConfig> {
                         clientFeatures.setServerCapabilities(initResult.getCapabilities());
                     }
                     languageServer.initialized(new InitializedParams());
-                    setStatus(ServerStatus.RUNNING);
                     setStarted(true);
-                    setReady(true);
-                    setStatusMessage(error != null ? "Ready (initialize error)" : "Ready");
+                    if (config.getReadyNotification() != null) {
+                        setStatus(ServerStatus.INDEXING);
+                        setStatusMessage("Initializing...");
+                    } else {
+                        setStatus(ServerStatus.RUNNING);
+                        setReady(true);
+                        setStatusMessage(error != null ? "Ready (initialize error)" : "Ready");
+                    }
                     return (Void) null;
                 });
     }
@@ -913,6 +933,17 @@ public class LspServer extends ServerBase<LspServerConfig> {
      */
     protected LanguageClient createLanguageClient() {
         return new GenericLanguageClient(this);
+    }
+
+    /**
+     * Called when the configured {@code readyNotification} is received.
+     * Subclasses can override to add custom logic before marking the server as ready
+     * (e.g., fast-mode module setup in JDT.LS).
+     */
+    protected void onReadyNotification() {
+        setStatus(ServerStatus.RUNNING);
+        setReady(true);
+        setStatusMessage("Ready");
     }
 
     /**

@@ -13,6 +13,9 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.server;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
@@ -47,6 +50,17 @@ public class LspServerConfig extends ServerConfigBase {
      * Used as fallback when IDE configuration (e.g., .vscode/settings.json) has no value.
      */
     private Map<String, Object> configuration;
+
+    /**
+     * Notification that signals the server is fully ready (e.g., after project import).
+     * When set, the server is not marked ready until this notification is received.
+     */
+    private ReadyNotification readyNotification;
+
+    /**
+     * Notification from which to extract the server status message (e.g., import progress).
+     */
+    private StatusNotification statusNotification;
 
     public LspServerConfig(String serverId, Extension extension) {
         super(serverId, computeServerHome(serverId, extension), extension);
@@ -124,6 +138,42 @@ public class LspServerConfig extends ServerConfigBase {
         this.configuration = configuration;
     }
 
+    /**
+     * Returns the ready notification descriptor, or {@code null} if the server
+     * is considered ready immediately after the LSP {@code initialize} handshake.
+     */
+    public ReadyNotification getReadyNotification() {
+        return readyNotification;
+    }
+
+    /**
+     * Sets the ready notification descriptor.
+     *
+     * @param readyNotification the notification that signals server readiness,
+     *                          or {@code null} to mark the server ready on {@code initialize}
+     */
+    public void setReadyNotification(ReadyNotification readyNotification) {
+        this.readyNotification = readyNotification;
+    }
+
+    /**
+     * Returns the status notification descriptor, or {@code null} if the server
+     * does not report progress via a custom notification.
+     */
+    public StatusNotification getStatusNotification() {
+        return statusNotification;
+    }
+
+    /**
+     * Sets the status notification descriptor.
+     *
+     * @param statusNotification the notification from which to extract the server
+     *                           status message, or {@code null} to disable
+     */
+    public void setStatusNotification(StatusNotification statusNotification) {
+        this.statusNotification = statusNotification;
+    }
+
     public static class FileWatcherPattern {
 
         private final String globPattern;
@@ -134,6 +184,134 @@ public class LspServerConfig extends ServerConfigBase {
 
         public String getGlobPattern() {
             return globPattern;
+        }
+    }
+
+    private static final Gson GSON = new Gson();
+
+    static JsonObject toJsonObject(Object params) {
+        if (params instanceof JsonObject jo) {
+            return jo;
+        }
+        if (params instanceof JsonElement je) {
+            return je.isJsonObject() ? je.getAsJsonObject() : null;
+        }
+        JsonElement tree = GSON.toJsonTree(params);
+        return tree.isJsonObject() ? tree.getAsJsonObject() : null;
+    }
+
+    static JsonElement resolveField(JsonObject obj, String path) {
+        String[] parts = path.split("\\.");
+        JsonElement current = obj;
+        for (String part : parts) {
+            if (current == null || !current.isJsonObject()) {
+                return null;
+            }
+            current = current.getAsJsonObject().get(part);
+        }
+        return current;
+    }
+
+    /**
+     * Describes a notification the server sends when it is fully ready.
+     *
+     * <p>Declared in server.json as either:
+     * <ul>
+     *   <li>A string (method only): {@code "readyNotification": "intellij/ready-for-test"}</li>
+     *   <li>An object (method + param matching): {@code "readyNotification": { "language/status": { "type": "ServiceReady" } }}</li>
+     * </ul>
+     *
+     * <p>Match keys support dot notation for nested fields (e.g. {@code "status.state"}).
+     */
+    public static class ReadyNotification {
+
+        private final String method;
+        private final Map<String, String> match;
+
+        public ReadyNotification(String method) {
+            this(method, null);
+        }
+
+        public ReadyNotification(String method, Map<String, String> match) {
+            this.method = method;
+            this.match = match;
+        }
+
+        public String getMethod() {
+            return method;
+        }
+
+        public Map<String, String> getMatch() {
+            return match;
+        }
+
+        public boolean matches(String notificationMethod, Object params) {
+            if (!method.equals(notificationMethod)) {
+                return false;
+            }
+            if (match == null || match.isEmpty()) {
+                return true;
+            }
+            if (params == null) {
+                return false;
+            }
+            JsonObject obj = toJsonObject(params);
+            if (obj == null) {
+                return false;
+            }
+            for (var entry : match.entrySet()) {
+                JsonElement el = resolveField(obj, entry.getKey());
+                if (el == null || !el.isJsonPrimitive() || !entry.getValue().equals(el.getAsString())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    /**
+     * Describes a notification from which to extract the server status message.
+     *
+     * <p>Declared in server.json as:
+     * {@code "statusNotification": { "language/status": "message" }}
+     *
+     * <p>The key is the notification method, the value is the field path
+     * (dot notation supported) to extract the message text from the params.
+     */
+    public static class StatusNotification {
+
+        private final String method;
+        private final String fieldPath;
+
+        public StatusNotification(String method, String fieldPath) {
+            this.method = method;
+            this.fieldPath = fieldPath;
+        }
+
+        public String getMethod() {
+            return method;
+        }
+
+        public String getFieldPath() {
+            return fieldPath;
+        }
+
+        public String extractMessage(String notificationMethod, Object params) {
+            if (!method.equals(notificationMethod)) {
+                return null;
+            }
+            if (params == null) {
+                return null;
+            }
+            JsonObject obj = toJsonObject(params);
+            if (obj == null) {
+                return null;
+            }
+            JsonElement el = resolveField(obj, fieldPath);
+            if (el == null || !el.isJsonPrimitive()) {
+                return null;
+            }
+            return el.getAsString();
         }
     }
 

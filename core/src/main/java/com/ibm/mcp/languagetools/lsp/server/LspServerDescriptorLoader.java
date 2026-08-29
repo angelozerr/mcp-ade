@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.server;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.extension.Extension;
 import com.ibm.mcp.languagetools.server.ServerDescriptorLoaderBase;
@@ -22,6 +23,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +42,8 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
     private static final String FIELD_SKIP_DID_OPEN = "skipDidOpen";
     private static final String FIELD_FILE_WATCHERS = "fileWatchers";
     private static final String FIELD_GLOB_PATTERN = "globPattern";
+    private static final String FIELD_READY_NOTIFICATION = "readyNotification";
+    private static final String FIELD_STATUS_NOTIFICATION = "statusNotification";
 
     @Override
     public String getRoot() {
@@ -85,6 +89,34 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
             if (toolsRequest.has(FIELD_SKIP_DID_OPEN)) {
                 config.setSkipDidOpen(toolsRequest.get(FIELD_SKIP_DID_OPEN).getAsBoolean());
             }
+        }
+
+        // Ready notification
+        if (jsonObject.has(FIELD_READY_NOTIFICATION)) {
+            JsonElement rnElement = jsonObject.get(FIELD_READY_NOTIFICATION);
+            if (rnElement.isJsonPrimitive()) {
+                config.setReadyNotification(
+                        new LspServerConfig.ReadyNotification(rnElement.getAsString()));
+            } else if (rnElement.isJsonObject()) {
+                JsonObject rnObj = rnElement.getAsJsonObject();
+                var entry = rnObj.entrySet().iterator().next();
+                String method = entry.getKey();
+                Map<String, String> match = new HashMap<>();
+                if (entry.getValue().isJsonObject()) {
+                    entry.getValue().getAsJsonObject().entrySet().forEach(e ->
+                            match.put(e.getKey(), e.getValue().getAsString()));
+                }
+                config.setReadyNotification(
+                        new LspServerConfig.ReadyNotification(method, match));
+            }
+        }
+
+        // Status notification
+        if (jsonObject.has(FIELD_STATUS_NOTIFICATION)) {
+            JsonObject snObj = jsonObject.getAsJsonObject(FIELD_STATUS_NOTIFICATION);
+            var entry = snObj.entrySet().iterator().next();
+            config.setStatusNotification(
+                    new LspServerConfig.StatusNotification(entry.getKey(), entry.getValue().getAsString()));
         }
 
         // Static file watcher patterns

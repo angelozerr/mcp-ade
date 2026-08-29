@@ -41,7 +41,7 @@ function renderRuntimeItem(runtime) {
                     ${runtime.name}
                 </span>
                 <span class="d-flex gap-xs align-center">
-                    ${sourceIcon}
+                    <span class="source-icon-container">${sourceIcon}</span>
                     <span class="install-badge-container">${installBadge}</span>
                 </span>
             </div>
@@ -329,6 +329,8 @@ export function updateRuntimeStatus(runtimeId, status, error, resolvedPath, acti
         if (item) {
             const iconEl = item.querySelector('.server-source-icon');
             if (iconEl) iconEl.outerHTML = getStatusIconHTML(runtime);
+            const sourceEl = item.querySelector('.source-icon-container');
+            if (sourceEl) sourceEl.innerHTML = getSourceIcon(runtime);
         }
     }
     updateInstallBadgeInList(runtimeId);

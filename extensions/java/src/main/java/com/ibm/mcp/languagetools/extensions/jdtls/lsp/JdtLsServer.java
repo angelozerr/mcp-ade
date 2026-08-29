@@ -251,9 +251,10 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         return new JdtLsLanguageClient(this);
     }
 
-    void onServiceReady() {
-        setStatus(ServerStatus.RUNNING);
+    @Override
+    protected void onReadyNotification() {
         if (isFastMode()) {
+            setStatus(ServerStatus.RUNNING);
             ensureModuleSetupIfFastMode(null)
                     .whenComplete((v, ex) -> {
                         if (ex != null) {
@@ -262,7 +263,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                         setReady(true);
                     });
         } else {
-            setReady(true);
+            super.onReadyNotification();
         }
     }
 
@@ -449,12 +450,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
         if (isFastMode()) {
             writeClasspathDescriptorsFromCache();
         }
-        return super.initialize()
-                .thenRun(() -> {
-                    setReady(false);
-                    setStatus(ServerStatus.INDEXING);
-                    LOG.infof("JDT.LS initialized for workspace: %s (waiting for ServiceReady notification)", getWorkspaceRoot());
-                });
+        return super.initialize();
     }
 
     /**
