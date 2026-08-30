@@ -86,13 +86,17 @@ public class LspClientFeatures {
 
     /**
      * Check if the server supports a given capability for a file.
+     * Checks in order: initialize response, dynamic registrations, server.json declaration.
      */
     public boolean supportsCapability(LspCapability capability, LanguageDocument document) {
         if (capability == LspCapability.WORKSPACE_SYMBOL) {
             return workspaceSymbolRegistry.isWorkspaceSymbolSupported();
         }
         var registry = capabilityRegistries.get(capability);
-        return registry != null && registry.isSupported(document);
+        if (registry != null && registry.isSupported(document)) {
+            return true;
+        }
+        return config.hasCapability(capability.getCapabilityKey());
     }
 
     public boolean supportsCapability(LspCapability capability) {

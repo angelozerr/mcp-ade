@@ -23,6 +23,7 @@ import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -152,11 +153,41 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
             convertedItem.setScopeUri(item.getScopeUri());
             Object result = workspaceConfig.find(convertedItem);
             if (result == null && serverDefaults != null) {
-                result = serverDefaults.get(convertedSection);
+                result = findInDefaults(serverDefaults, convertedSection);
             }
             results.add(result);
         }
         return CompletableFuture.completedFuture(results);
+    }
+
+    /**
+     * Finds a value in the server defaults map using direct key match
+     * or flat key prefix matching (same logic as AbstractConfiguration.find()).
+     */
+    static Object findInDefaults(Map<String, Object> defaults, String section) {
+        if (defaults.containsKey(section)) {
+            return defaults.get(section);
+        }
+        String[] sectionParts = section.split("\\.");
+        Map<String, Object> matched = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : defaults.entrySet()) {
+            String key = entry.getKey();
+            String[] keyParts = key.split("\\.");
+            if (sectionParts.length > keyParts.length) {
+                continue;
+            }
+            boolean prefixMatch = true;
+            for (int i = 0; i < sectionParts.length; i++) {
+                if (!sectionParts[i].equals(keyParts[i])) {
+                    prefixMatch = false;
+                    break;
+                }
+            }
+            if (prefixMatch) {
+                matched.put(key, entry.getValue());
+            }
+        }
+        return matched.isEmpty() ? null : matched;
     }
 
     /**
@@ -165,6 +196,39 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
      */
     protected String convertConfigurationSection(String section) {
         return section;
+    }
+
+    @Override
+    public CompletableFuture<Void> refreshDiagnostics() {
+        LOG.infof("[%s] workspace/diagnostic/refresh received, re-pulling diagnostics for opened files",
+                lspServer.getConfig().getServerId());
+        lspServer.onDiagnosticRefresh();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> createProgress(WorkDoneProgressCreateParams params) {
+        LOG.debugf("[%s] window/workDoneProgress/create received (token=%s)",
+                lspServer.getConfig().getServerId(), params.getToken());
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> refreshCodeLenses() {
+        LOG.debugf("[%s] workspace/codeLens/refresh received", lspServer.getConfig().getServerId());
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> refreshInlayHints() {
+        LOG.debugf("[%s] workspace/inlayHint/refresh received", lspServer.getConfig().getServerId());
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> refreshSemanticTokens() {
+        LOG.debugf("[%s] workspace/semanticTokens/refresh received", lspServer.getConfig().getServerId());
+        return CompletableFuture.completedFuture(null);
     }
 
     public void shutdown() {

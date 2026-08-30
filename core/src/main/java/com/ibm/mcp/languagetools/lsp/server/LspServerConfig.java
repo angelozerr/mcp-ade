@@ -52,6 +52,13 @@ public class LspServerConfig extends ServerConfigBase {
     private Map<String, Object> configuration;
 
     /**
+     * Server capabilities declared in server.json.
+     * Used as a pre-registration hint when the server registers capabilities dynamically
+     * (via client/registerCapability) after initialization, avoiding race conditions.
+     */
+    private Map<String, Object> capabilities;
+
+    /**
      * Notification that signals the server is fully ready (e.g., after project import).
      * When set, the server is not marked ready until this notification is received.
      */
@@ -136,6 +143,18 @@ public class LspServerConfig extends ServerConfigBase {
 
     public void setConfiguration(Map<String, Object> configuration) {
         this.configuration = configuration;
+    }
+
+    public Map<String, Object> getCapabilities() {
+        return capabilities;
+    }
+
+    public void setCapabilities(Map<String, Object> capabilities) {
+        this.capabilities = capabilities;
+    }
+
+    public boolean hasCapability(String capabilityName) {
+        return capabilities != null && capabilities.containsKey(capabilityName);
     }
 
     /**

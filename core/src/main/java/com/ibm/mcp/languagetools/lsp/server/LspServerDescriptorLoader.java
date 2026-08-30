@@ -38,6 +38,7 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
     // JSON field names
     private static final String FIELD_INITIALIZATION_OPTIONS = "initializationOptions";
     private static final String FIELD_CONFIGURATION = "configuration";
+    private static final String FIELD_CAPABILITIES = "capabilities";
     private static final String FIELD_TOOLS_REQUEST = "toolsRequest";
     private static final String FIELD_SKIP_DID_OPEN = "skipDidOpen";
     private static final String FIELD_FILE_WATCHERS = "fileWatchers";
@@ -81,6 +82,15 @@ public class LspServerDescriptorLoader extends ServerDescriptorLoaderBase<LspSer
                     Map.class
             );
             config.setConfiguration(configuration);
+        }
+
+        // Server capabilities declared in server.json (pre-registration hints)
+        if (jsonObject.has(FIELD_CAPABILITIES)) {
+            Map<String, Object> capabilities = gson.fromJson(
+                    jsonObject.get(FIELD_CAPABILITIES),
+                    Map.class
+            );
+            config.setCapabilities(capabilities);
         }
 
         // Tools request settings

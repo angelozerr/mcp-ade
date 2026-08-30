@@ -19,6 +19,7 @@ import com.ibm.mcp.languagetools.lsp.LspInstanceRegistry;
 import com.ibm.mcp.languagetools.lsp.client.GenericLanguageClient;
 import com.ibm.mcp.languagetools.lsp.client.LspCapability;
 import com.ibm.mcp.languagetools.lsp.client.LspClientFeatures;
+import com.ibm.mcp.languagetools.lsp.client.capabilities.TextDocumentServerCapabilityRegistry;
 import com.ibm.mcp.languagetools.operation.OperationEntry;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerBase;
@@ -523,13 +524,21 @@ public class LspServer extends ServerBase<LspServerConfig> {
      * @param autoClose  if true, sends didClose after diagnostics are received
      */
     protected CompletableFuture<List<Diagnostic>> doGetDiagnostics(String uri, String languageId, boolean autoClose) {
+        LanguageDocument document = new LanguageDocument(URI.create(uri), languageId);
+        boolean supportsPull = supportsCapability(LspCapability.DIAGNOSTIC, document);
+
         if (isFileOpened(uri)) {
             List<Diagnostic> cached = diagnosticsCache.get(uri);
-            return CompletableFuture.completedFuture(cached != null ? cached : Collections.emptyList());
+            if (cached != null && !cached.isEmpty()) {
+                return CompletableFuture.completedFuture(cached);
+            }
+            if (supportsPull) {
+                return getDiagnosticsWithPull(uri, languageId, false);
+            }
+            return CompletableFuture.completedFuture(Collections.emptyList());
         }
 
-        LanguageDocument document = new LanguageDocument(URI.create(uri), languageId);
-        if (supportsCapability(LspCapability.DIAGNOSTIC, document)) {
+        if (supportsPull) {
             return getDiagnosticsWithPull(uri, languageId, autoClose);
         }
         return getDiagnosticsWithDidOpen(uri, languageId, autoClose);
@@ -542,30 +551,74 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
         ensureFileOpened(uri, languageId);
 
+        List<String> identifiers = getDiagnosticIdentifiers();
+
+        CompletableFuture<List<Diagnostic>> pullFuture = identifiers.isEmpty()
+                ? pullDiagnostics(uri, null)
+                : pullAllIdentifiers(uri, identifiers);
+
+        return pullFuture;
+    }
+
+    private CompletableFuture<List<Diagnostic>> pullAllIdentifiers(String uri, List<String> identifiers) {
+        @SuppressWarnings("unchecked")
+        CompletableFuture<List<Diagnostic>>[] futures = identifiers.stream()
+                .map(id -> pullDiagnostics(uri, id))
+                .toArray(CompletableFuture[]::new);
+
+        return CompletableFuture.allOf(futures)
+                .thenApply(v -> {
+                    List<Diagnostic> merged = new ArrayList<>();
+                    for (CompletableFuture<List<Diagnostic>> f : futures) {
+                        merged.addAll(f.join());
+                    }
+                    if (!merged.isEmpty()) {
+                        diagnosticsCache.put(uri, merged);
+                    }
+                    return merged;
+                });
+    }
+
+    private List<String> getDiagnosticIdentifiers() {
+        TextDocumentServerCapabilityRegistry<DiagnosticRegistrationOptions> registry =
+                clientFeatures.getRegistry(LspCapability.DIAGNOSTIC);
+        if (registry == null) {
+            return Collections.emptyList();
+        }
+        List<String> identifiers = new ArrayList<>();
+        for (DiagnosticRegistrationOptions options : registry.getOptions()) {
+            String id = options.getIdentifier();
+            if (id != null && !id.isEmpty()) {
+                identifiers.add(id);
+            }
+        }
+        return identifiers;
+    }
+
+    private CompletableFuture<List<Diagnostic>> pullDiagnostics(String uri, String identifier) {
         DocumentDiagnosticParams params = new DocumentDiagnosticParams(new TextDocumentIdentifier(uri));
+        if (identifier != null) {
+            params.setIdentifier(identifier);
+        }
         return languageServer.getTextDocumentService().diagnostic(params)
                 .thenApply(report -> {
                     if (report != null && report.isLeft()) {
                         RelatedFullDocumentDiagnosticReport full = report.getLeft();
                         List<Diagnostic> items = full.getItems();
                         if (items != null && !items.isEmpty()) {
-                            diagnosticsCache.put(uri, items);
                             return items;
                         }
                     }
-                    // Pull empty — return whatever publishDiagnostics already put in cache
-                    List<Diagnostic> cached = diagnosticsCache.get(uri);
-                    return cached != null ? cached : Collections.<Diagnostic>emptyList();
+                    return Collections.<Diagnostic>emptyList();
                 })
-                .whenComplete((diags, ex) -> {
-                    if (autoClose) {
-                        closeFile(uri);
-                    }
+                .exceptionally(ex -> {
+                    LOG.debugf(ex, "Pull diagnostics failed for %s (identifier=%s)", uri, identifier);
+                    return Collections.emptyList();
                 });
     }
 
     private void ensureFileOpened(String uri, String languageId) {
-        if (languageServer == null) {
+        if (languageServer == null || isFileOpened(uri)) {
             return;
         }
         try {
@@ -808,6 +861,29 @@ public class LspServer extends ServerBase<LspServerConfig> {
      */
     public Map<String, List<Diagnostic>> getDiagnosticsCache() {
         return diagnosticsCache;
+    }
+
+    /**
+     * Called when the server sends {@code workspace/diagnostic/refresh}.
+     * Clears the cache and re-pulls diagnostics for all currently opened files.
+     */
+    public void onDiagnosticRefresh() {
+        diagnosticsCache.clear();
+        List<String> identifiers = getDiagnosticIdentifiers();
+        if (identifiers.isEmpty() || languageServer == null) {
+            return;
+        }
+        Set<String> uris = new HashSet<>(openedFiles);
+        for (String uri : uris) {
+            pullAllIdentifiers(uri, identifiers);
+        }
+    }
+
+    /**
+     * Returns the set of currently opened file URIs.
+     */
+    public Set<String> getOpenedFiles() {
+        return Collections.unmodifiableSet(openedFiles);
     }
 
     /**
