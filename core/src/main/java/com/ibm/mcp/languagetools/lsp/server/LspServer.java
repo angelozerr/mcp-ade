@@ -305,13 +305,11 @@ public class LspServer extends ServerBase<LspServerConfig> {
         // Client capabilities
         ClientCapabilities capabilities = new ClientCapabilities();
 
-        WorkspaceClientCapabilities workspace = new WorkspaceClientCapabilities();
-        workspace.setWorkspaceFolders(true);
-        workspace.setConfiguration(true);
-        DidChangeWatchedFilesCapabilities didChangeWatchedFiles = new DidChangeWatchedFilesCapabilities();
-        didChangeWatchedFiles.setDynamicRegistration(true);
-        workspace.setDidChangeWatchedFiles(didChangeWatchedFiles);
+        WorkspaceClientCapabilities workspace = createWorkspaceClientCapabilities();
         capabilities.setWorkspace(workspace);
+
+        WindowClientCapabilities window = createWindowClientCapabilities();
+        capabilities.setWindow(window);
 
         TextDocumentClientCapabilities textDocument = createTextDocumentClientCapabilities();
         capabilities.setTextDocument(textDocument);
@@ -350,28 +348,131 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 });
     }
 
+    private static WorkspaceClientCapabilities createWorkspaceClientCapabilities() {
+        WorkspaceClientCapabilities workspace = new WorkspaceClientCapabilities();
+        workspace.setWorkspaceFolders(Boolean.TRUE);
+        workspace.setConfiguration(Boolean.TRUE);
+        workspace.setApplyEdit(Boolean.TRUE);
+        workspace.setExecuteCommand(new ExecuteCommandCapabilities(Boolean.TRUE));
+
+        WorkspaceEditCapabilities editCapabilities = new WorkspaceEditCapabilities();
+        editCapabilities.setDocumentChanges(Boolean.TRUE);
+        editCapabilities.setResourceOperations(List.of(
+                ResourceOperationKind.Create,
+                ResourceOperationKind.Delete,
+                ResourceOperationKind.Rename));
+        workspace.setWorkspaceEdit(editCapabilities);
+
+        workspace.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities(Boolean.TRUE));
+        workspace.setDidChangeConfiguration(new DidChangeConfigurationCapabilities(Boolean.TRUE));
+        workspace.setSymbol(new SymbolCapabilities(Boolean.TRUE));
+        workspace.setCodeLens(new CodeLensWorkspaceCapabilities(Boolean.TRUE));
+        workspace.setInlayHint(new InlayHintWorkspaceCapabilities(Boolean.TRUE));
+        workspace.setDiagnostics(new DiagnosticWorkspaceCapabilities(Boolean.TRUE));
+        return workspace;
+    }
+
+    private static WindowClientCapabilities createWindowClientCapabilities() {
+        WindowClientCapabilities window = new WindowClientCapabilities();
+        window.setWorkDoneProgress(Boolean.TRUE);
+        window.setShowDocument(new ShowDocumentCapabilities(Boolean.TRUE));
+        return window;
+    }
+
     private static TextDocumentClientCapabilities createTextDocumentClientCapabilities() {
         TextDocumentClientCapabilities textDocument = new TextDocumentClientCapabilities();
-        textDocument.setPublishDiagnostics(new PublishDiagnosticsCapabilities());
-        textDocument.setCodeAction(new CodeActionCapabilities());
-        textDocument.setHover(new HoverCapabilities());
-        textDocument.setDefinition(new DefinitionCapabilities());
-        textDocument.setDeclaration(new DeclarationCapabilities());
-        textDocument.setReferences(new ReferencesCapabilities());
-        DocumentSymbolCapabilities documentSymbolCapabilities = new DocumentSymbolCapabilities();
-        documentSymbolCapabilities.setHierarchicalDocumentSymbolSupport(true);
-        textDocument.setDocumentSymbol(documentSymbolCapabilities);
-        textDocument.setRename(new RenameCapabilities());
-        textDocument.setImplementation(new ImplementationCapabilities());
-        textDocument.setTypeDefinition(new TypeDefinitionCapabilities());
-        textDocument.setCompletion(new CompletionCapabilities());
-        textDocument.setSignatureHelp(new SignatureHelpCapabilities());
-        textDocument.setFormatting(new FormattingCapabilities());
-        textDocument.setRangeFormatting(new RangeFormattingCapabilities());
-        textDocument.setCodeLens(new CodeLensCapabilities());
-        textDocument.setInlayHint(new InlayHintCapabilities());
-        textDocument.setCallHierarchy(new CallHierarchyCapabilities());
-        textDocument.setTypeHierarchy(new TypeHierarchyCapabilities());
+        textDocument.setSynchronization(new SynchronizationCapabilities(Boolean.TRUE, Boolean.TRUE, Boolean.TRUE));
+
+        // publishDiagnostics (push model)
+        PublishDiagnosticsCapabilities publishDiagnostics = new PublishDiagnosticsCapabilities();
+        publishDiagnostics.setRelatedInformation(Boolean.TRUE);
+        publishDiagnostics.setTagSupport(new DiagnosticsTagSupport(
+                List.of(DiagnosticTag.Unnecessary, DiagnosticTag.Deprecated)));
+        publishDiagnostics.setCodeDescriptionSupport(Boolean.TRUE);
+        publishDiagnostics.setDataSupport(Boolean.TRUE);
+        textDocument.setPublishDiagnostics(publishDiagnostics);
+
+        // diagnostic (pull model)
+        DiagnosticCapabilities diagnosticCapabilities = new DiagnosticCapabilities();
+        diagnosticCapabilities.setDynamicRegistration(Boolean.TRUE);
+        diagnosticCapabilities.setRelatedDocumentSupport(Boolean.TRUE);
+        textDocument.setDiagnostic(diagnosticCapabilities);
+
+        // codeAction
+        CodeActionCapabilities codeAction = new CodeActionCapabilities(new CodeActionLiteralSupportCapabilities(
+                new CodeActionKindCapabilities(List.of(
+                        CodeActionKind.QuickFix,
+                        CodeActionKind.Refactor,
+                        CodeActionKind.RefactorExtract,
+                        CodeActionKind.RefactorInline,
+                        CodeActionKind.RefactorRewrite,
+                        CodeActionKind.Source,
+                        CodeActionKind.SourceOrganizeImports))),
+                Boolean.TRUE);
+        codeAction.setDataSupport(Boolean.TRUE);
+        codeAction.setResolveSupport(new CodeActionResolveSupportCapabilities(List.of("edit")));
+        textDocument.setCodeAction(codeAction);
+
+        // hover
+        HoverCapabilities hover = new HoverCapabilities(Boolean.TRUE);
+        hover.setContentFormat(List.of(MarkupKind.MARKDOWN, MarkupKind.PLAINTEXT));
+        textDocument.setHover(hover);
+
+        // navigation
+        DefinitionCapabilities definition = new DefinitionCapabilities(Boolean.TRUE);
+        definition.setLinkSupport(Boolean.TRUE);
+        textDocument.setDefinition(definition);
+
+        DeclarationCapabilities declaration = new DeclarationCapabilities(Boolean.TRUE);
+        declaration.setLinkSupport(Boolean.TRUE);
+        textDocument.setDeclaration(declaration);
+
+        ImplementationCapabilities implementation = new ImplementationCapabilities(Boolean.TRUE);
+        implementation.setLinkSupport(Boolean.TRUE);
+        textDocument.setImplementation(implementation);
+
+        TypeDefinitionCapabilities typeDefinition = new TypeDefinitionCapabilities(Boolean.TRUE);
+        typeDefinition.setLinkSupport(Boolean.TRUE);
+        textDocument.setTypeDefinition(typeDefinition);
+
+        textDocument.setReferences(new ReferencesCapabilities(Boolean.TRUE));
+
+        // documentSymbol
+        DocumentSymbolCapabilities documentSymbol = new DocumentSymbolCapabilities(Boolean.TRUE);
+        documentSymbol.setHierarchicalDocumentSymbolSupport(true);
+        textDocument.setDocumentSymbol(documentSymbol);
+
+        // rename
+        RenameCapabilities rename = new RenameCapabilities(Boolean.TRUE);
+        rename.setPrepareSupport(true);
+        textDocument.setRename(rename);
+
+        // completion
+        CompletionItemCapabilities completionItem = new CompletionItemCapabilities(Boolean.TRUE);
+        completionItem.setDocumentationFormat(List.of(MarkupKind.MARKDOWN, MarkupKind.PLAINTEXT));
+        completionItem.setDeprecatedSupport(Boolean.TRUE);
+        completionItem.setLabelDetailsSupport(Boolean.TRUE);
+        completionItem.setResolveSupport(new CompletionItemResolveSupportCapabilities(
+                List.of("documentation", "detail", "additionalTextEdits")));
+        CompletionCapabilities completion = new CompletionCapabilities(completionItem);
+        completion.setDynamicRegistration(Boolean.TRUE);
+        textDocument.setCompletion(completion);
+
+        // signatureHelp
+        SignatureHelpCapabilities signatureHelp = new SignatureHelpCapabilities(Boolean.TRUE);
+        SignatureInformationCapabilities signatureInfo = new SignatureInformationCapabilities();
+        ParameterInformationCapabilities parameterInfo = new ParameterInformationCapabilities();
+        parameterInfo.setLabelOffsetSupport(Boolean.TRUE);
+        signatureInfo.setParameterInformation(parameterInfo);
+        signatureHelp.setSignatureInformation(signatureInfo);
+        textDocument.setSignatureHelp(signatureHelp);
+
+        textDocument.setFormatting(new FormattingCapabilities(Boolean.TRUE));
+        textDocument.setRangeFormatting(new RangeFormattingCapabilities(Boolean.TRUE));
+        textDocument.setCodeLens(new CodeLensCapabilities(Boolean.TRUE));
+        textDocument.setInlayHint(new InlayHintCapabilities(Boolean.TRUE));
+        textDocument.setCallHierarchy(new CallHierarchyCapabilities(Boolean.TRUE));
+        textDocument.setTypeHierarchy(new TypeHierarchyCapabilities(Boolean.TRUE));
         return textDocument;
     }
 
