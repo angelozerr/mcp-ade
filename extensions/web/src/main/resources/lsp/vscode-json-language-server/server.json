@@ -11,5 +11,13 @@
     {
       "language": "jsonc"
     }
-  ]
+  ],
+  "configuration": {
+    "json.validate.enable": true,
+    "json.format.enable": true,
+    "json.format.keepLines": false,
+    "json.colorDecorators.enable": true,
+    "json.maxItemsComputed": 5000,
+    "json.schemaDownload.enable": true
+  }
 }

@@ -7,5 +7,16 @@
     {
       "language": "elixir"
     }
-  ]
+  ],
+  "configuration": {
+    "elixirLS.autoBuild": true,
+    "elixirLS.dialyzerEnabled": true,
+    "elixirLS.dialyzerFormat": "dialyxir_long",
+    "elixirLS.mixEnv": "test",
+    "elixirLS.fetchDeps": false,
+    "elixirLS.suggestSpecs": true,
+    "elixirLS.autoInsertRequiredAlias": true,
+    "elixirLS.signatureAfterComplete": true,
+    "elixirLS.enableTestLenses": false
+  }
 }

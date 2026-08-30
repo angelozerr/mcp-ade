@@ -8,5 +8,18 @@
     {
       "language": "ocaml"
     }
-  ]
+  ],
+  "configuration": {
+    "ocaml.server.extendedHover": false,
+    "ocaml.server.codelens.enable": true,
+    "ocaml.server.codelens.forNestedBindings": false,
+    "ocaml.server.duneDiagnostics": true,
+    "ocaml.server.inlayHints.hintPatternVariables": false,
+    "ocaml.server.inlayHints.hintLetBindings": false,
+    "ocaml.server.inlayHints.hintFunctionParams": false,
+    "ocaml.server.syntaxDocumentation": false,
+    "ocaml.server.shortenMerlinDiagnostics": false,
+    "ocaml.dune.autoDetect": true,
+    "ocaml.repl.useUtop": true
+  }
 }

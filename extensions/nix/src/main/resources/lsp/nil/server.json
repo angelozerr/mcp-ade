@@ -8,5 +8,9 @@
     {
       "language": "nix"
     }
-  ]
+  ],
+  "configuration": {
+    "nix.enableLanguageServer": false,
+    "nix.serverSettings": {}
+  }
 }

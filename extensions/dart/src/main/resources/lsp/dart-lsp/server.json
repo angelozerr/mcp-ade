@@ -8,5 +8,30 @@
     {
       "language": "dart"
     }
-  ]
+  ],
+  "configuration": {
+    "dart.analysisExcludedFolders": [],
+    "dart.includeDependenciesInWorkspaceSymbols": true,
+    "dart.showTodos": true,
+    "dart.autoImportCompletions": true,
+    "dart.automaticCommentSlashes": "tripleSlash",
+    "dart.closingLabels": true,
+    "dart.closingLabelsPrefix": " // ",
+    "dart.completeFunctionCalls": true,
+    "dart.documentation": null,
+    "dart.enableServerSnippets": true,
+    "dart.enableCompletionCommitCharacters": false,
+    "dart.enableSdkFormatter": true,
+    "dart.enableSnippets": true,
+    "dart.inlayHints": true,
+    "dart.insertArgumentPlaceholders": true,
+    "dart.lspSnippetTextEdits": true,
+    "dart.renameFilesWithClasses": "never",
+    "dart.showDartPadSampleCodeLens": true,
+    "dart.showMainCodeLens": true,
+    "dart.showTestCodeLens": true,
+    "dart.updateImportsOnRename": true,
+    "dart.warnWhenEditingFilesOutsideWorkspace": true,
+    "dart.warnWhenEditingFilesInPubCache": true
+  }
 }

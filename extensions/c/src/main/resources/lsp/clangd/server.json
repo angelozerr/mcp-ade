@@ -19,5 +19,19 @@
     {
       "language": "objective-cpp"
     }
-  ]
+  ],
+  "configuration": {
+    "clangd.arguments": [],
+    "clangd.semanticHighlighting": true,
+    "clangd.fallbackFlags": [],
+    "clangd.serverCompletionRanking": true,
+    "clangd.restartAfterCrash": true,
+    "clangd.onConfigChanged": "prompt",
+    "clangd.detectExtensionConflicts": true,
+    "clangd.inactiveRegions.useBackgroundHighlight": false,
+    "clangd.inactiveRegions.opacity": 0.55,
+    "clangd.enableCodeCompletion": true,
+    "clangd.enableHover": true,
+    "clangd.enable": true
+  }
 }

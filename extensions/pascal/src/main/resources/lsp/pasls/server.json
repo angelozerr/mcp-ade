@@ -11,5 +11,20 @@
     {
       "language": "objectpascal"
     }
-  ]
+  ],
+  "configuration": {
+    "pascalLanguageServer.initializationOptions.overloadPolicy": 3,
+    "pascalLanguageServer.initializationOptions.maximumCompletions": 100,
+    "pascalLanguageServer.initializationOptions.insertCompletionsAsSnippets": true,
+    "pascalLanguageServer.initializationOptions.insertCompletionProcedureBrackets": false,
+    "pascalLanguageServer.initializationOptions.includeWorkspaceFoldersAsUnitPaths": true,
+    "pascalLanguageServer.initializationOptions.includeWorkspaceFoldersAsIncludePaths": true,
+    "pascalLanguageServer.initializationOptions.checkSyntax": false,
+    "pascalLanguageServer.initializationOptions.checkInactiveRegions": true,
+    "pascalLanguageServer.initializationOptions.publishDiagnostics": false,
+    "pascalLanguageServer.initializationOptions.workspaceSymbols": false,
+    "pascalLanguageServer.initializationOptions.documentSymbols": true,
+    "pascalLanguageServer.initializationOptions.minimalisticCompletions": false,
+    "pascalLanguageServer.initializationOptions.showSyntaxErrors": true
+  }
 }

@@ -8,5 +8,13 @@
     {
       "language": "swift"
     }
-  ]
+  ],
+  "configuration": {
+    "swift.diagnosticsCollection": "keepSourceKit",
+    "swift.diagnosticsStyle": "default",
+    "swift.backgroundCompilation": false,
+    "swift.showTestCodeLenses": true,
+    "swift.sourcekit-lsp.backgroundIndexing": "auto",
+    "swift.sourcekit-lsp.supported-languages": ["swift", "objective-c", "objective-cpp", "c", "cpp"]
+  }
 }

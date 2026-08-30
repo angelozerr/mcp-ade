@@ -8,5 +8,22 @@
     {
       "language": "kotlin"
     }
-  ]
+  ],
+  "configuration": {
+    "kotlin.compiler.jvm.target": "default",
+    "kotlin.diagnostics.enabled": true,
+    "kotlin.diagnostics.level": "hint",
+    "kotlin.diagnostics.debounceTime": 250,
+    "kotlin.linting.debounceTime": 250,
+    "kotlin.scripts.enabled": false,
+    "kotlin.scripts.buildScriptsEnabled": false,
+    "kotlin.indexing.enabled": true,
+    "kotlin.completion.snippets.enabled": true,
+    "kotlin.externalSources.useKlsScheme": true,
+    "kotlin.externalSources.autoConvertToKotlin": false,
+    "kotlin.snippetsEnabled": true,
+    "kotlin.inlayHints.typeHints": false,
+    "kotlin.inlayHints.parameterHints": false,
+    "kotlin.inlayHints.chainedHints": false
+  }
 }

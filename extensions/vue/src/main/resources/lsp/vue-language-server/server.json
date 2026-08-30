@@ -8,5 +8,26 @@
     {
       "language": "vue"
     }
-  ]
+  ],
+  "configuration": {
+    "vue.codeActions.askNewComponentName": true,
+    "vue.suggest.componentNameCasing": "preferPascalCase",
+    "vue.suggest.propNameCasing": "preferKebabCase",
+    "vue.suggest.defineAssignment": true,
+    "vue.autoInsert.dotValue": false,
+    "vue.autoInsert.bracketSpacing": true,
+    "vue.inlayHints.destructuredProps": false,
+    "vue.inlayHints.missingProps": false,
+    "vue.inlayHints.inlineHandlerLeading": false,
+    "vue.inlayHints.optionsWrapper": false,
+    "vue.inlayHints.vBindShorthand": false,
+    "vue.format.template.initialIndent": true,
+    "vue.format.script.initialIndent": false,
+    "vue.format.style.initialIndent": false,
+    "vue.format.script.enabled": true,
+    "vue.format.template.enabled": true,
+    "vue.format.style.enabled": true,
+    "vue.format.wrapAttributes": "auto",
+    "vue.hover.rich": false
+  }
 }

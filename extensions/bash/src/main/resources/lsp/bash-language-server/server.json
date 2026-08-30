@@ -8,5 +8,20 @@
     {
       "language": "shellscript"
     }
-  ]
+  ],
+  "configuration": {
+    "bashIde.backgroundAnalysisMaxFiles": 500,
+    "bashIde.enableSourceErrorDiagnostics": false,
+    "bashIde.includeAllWorkspaceSymbols": false,
+    "bashIde.shellcheckExternalSources": true,
+    "bashIde.shellcheckArguments": "",
+    "bashIde.shfmt.ignoreEditorconfig": false,
+    "bashIde.shfmt.languageDialect": "auto",
+    "bashIde.shfmt.binaryNextLine": false,
+    "bashIde.shfmt.caseIndent": false,
+    "bashIde.shfmt.funcNextLine": false,
+    "bashIde.shfmt.keepPadding": false,
+    "bashIde.shfmt.simplifyCode": false,
+    "bashIde.shfmt.spaceRedirects": false
+  }
 }

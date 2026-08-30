@@ -7,5 +7,30 @@
     {
       "language": "latex"
     }
-  ]
+  ],
+  "configuration": {
+    "texlab.build.executable": "latexmk",
+    "texlab.build.args": ["-pdf", "-interaction=nonstopmode", "-synctex=1", "%f"],
+    "texlab.build.forwardSearchAfter": false,
+    "texlab.build.onSave": false,
+    "texlab.build.useFileList": false,
+    "texlab.build.auxDirectory": ".",
+    "texlab.build.logDirectory": ".",
+    "texlab.build.pdfDirectory": ".",
+    "texlab.chktex.onOpenAndSave": true,
+    "texlab.chktex.onEdit": false,
+    "texlab.bibtexFormatter": "texlab",
+    "texlab.formatterLineLength": 80,
+    "texlab.latexFormatter": "latexindent",
+    "texlab.latexindent.modifyLineBreaks": false,
+    "texlab.diagnostics.allowedPatterns": [],
+    "texlab.diagnostics.ignoredPatterns": [],
+    "texlab.symbols.allowedPatterns": [],
+    "texlab.symbols.ignoredPatterns": [],
+    "texlab.hover.symbols": "image",
+    "texlab.completion.matcher": "fuzzy-ignore-case",
+    "texlab.inlayHints.labelDefinitions": true,
+    "texlab.inlayHints.labelReferences": true,
+    "texlab.experimental.followPackageLinks": true
+  }
 }

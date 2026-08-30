@@ -4,7 +4,8 @@
   "description": ".NET SDK required by .NET-based language servers",
   "url": "https://dotnet.microsoft.com",
   "env": {
-    "DOTNET_ROOT": "${serverHome}"
+    "DOTNET_ROOT": "${serverHome}",
+    "DOTNET_MULTILEVEL_LOOKUP": "0"
   },
   "check": {
     "exec": {

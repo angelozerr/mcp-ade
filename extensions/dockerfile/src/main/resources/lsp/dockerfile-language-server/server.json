@@ -8,5 +8,16 @@
     {
       "language": "dockerfile"
     }
-  ]
+  ],
+  "configuration": {
+    "docker.languageserver.diagnostics.deprecatedMaintainer": "warning",
+    "docker.languageserver.diagnostics.directiveCasing": "warning",
+    "docker.languageserver.diagnostics.emptyContinuationLine": "warning",
+    "docker.languageserver.diagnostics.instructionCasing": "warning",
+    "docker.languageserver.diagnostics.instructionCmdMultiple": "warning",
+    "docker.languageserver.diagnostics.instructionEntrypointMultiple": "warning",
+    "docker.languageserver.diagnostics.instructionHealthcheckMultiple": "warning",
+    "docker.languageserver.diagnostics.instructionJSONInSingleQuotes": "warning",
+    "docker.languageserver.formatter.ignoreMultilineInstructions": false
+  }
 }

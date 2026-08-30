@@ -18,6 +18,20 @@
       "language": "qute-txt"
     }
   ],
+  "configuration": {
+    "qute.codeLens.enabled": true,
+    "qute.inlayHint.enabled": true,
+    "qute.inlayHint.showSectionParameterType": true,
+    "qute.inlayHint.showSectionParameterDefaultValue": true,
+    "qute.inlayHint.showMessages": true,
+    "qute.native.enabled": false,
+    "qute.validation.enabled": false,
+    "qute.validation.undefinedObject.severity": "warning",
+    "qute.validation.undefinedNamespace.severity": "warning",
+    "qute.validation.undefinedSectionTag.severity": "warning",
+    "qute.format.splitSectionParameters": "preserve",
+    "qute.format.splitSectionParametersIndentSize": 2
+  },
   "contributes": {
     "jdtls": {
       "bundles": ["plugins/*.jar"],

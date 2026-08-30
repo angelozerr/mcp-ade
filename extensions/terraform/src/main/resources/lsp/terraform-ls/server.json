@@ -7,5 +7,14 @@
     {
       "language": "terraform"
     }
-  ]
+  ],
+  "configuration": {
+    "terraform.codelens.referenceCount": false,
+    "terraform.validation.enableEnhancedValidation": true,
+    "terraform.languageServer.ignoreSingleFileWarning": false,
+    "terraform.languageServer.indexing.ignorePaths": [],
+    "terraform.languageServer.indexing.ignoreDirectoryNames": [],
+    "terraform.experimentalFeatures.validateOnSave": false,
+    "terraform.experimentalFeatures.prefillRequiredFields": false
+  }
 }

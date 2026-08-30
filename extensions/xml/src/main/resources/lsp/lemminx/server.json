@@ -9,5 +9,53 @@
     {
       "language": "xml"
     }
-  ]
+  ],
+  "configuration": {
+    "xml.format.enabled": true,
+    "xml.format.emptyElements": "ignore",
+    "xml.format.enforceQuoteStyle": "ignore",
+    "xml.format.grammarAwareFormatting": true,
+    "xml.format.joinCDATALines": false,
+    "xml.format.joinCommentLines": false,
+    "xml.format.joinContentLines": false,
+    "xml.format.maxLineWidth": 100,
+    "xml.format.preserveAttributeLineBreaks": true,
+    "xml.format.preserveEmptyContent": false,
+    "xml.format.preservedNewlines": 2,
+    "xml.format.preserveSpace": [
+      "xsl:text",
+      "xsl:comment",
+      "xsl:processing-instruction",
+      "literallayout",
+      "programlisting",
+      "screen",
+      "synopsis",
+      "pre",
+      "xd:pre",
+      "style",
+      "script"
+    ],
+    "xml.format.spaceBeforeEmptyCloseTag": true,
+    "xml.format.xsiSchemaLocationSplit": "onPair",
+    "xml.format.splitAttributes": "preserve",
+    "xml.format.splitAttributesIndentSize": 2,
+    "xml.format.closingBracketNewLine": false,
+    "xml.format.legacy": false,
+    "xml.foldings.includeClosingTagInFold": false,
+    "xml.completion.autoCloseTags": true,
+    "xml.completion.autoCloseRemovesContent": true,
+    "xml.codeLens.enabled": false,
+    "xml.preferences.quoteStyle": "double",
+    "xml.preferences.showSchemaDocumentationType": "all",
+    "xml.validation.enabled": true,
+    "xml.validation.namespaces.enabled": "always",
+    "xml.validation.schema.enabled": "always",
+    "xml.validation.disallowDocTypeDecl": false,
+    "xml.validation.xInclude.enabled": false,
+    "xml.validation.noGrammar": "hint",
+    "xml.symbols.enabled": true,
+    "xml.symbols.maxItemsComputed": 5000,
+    "xml.symbols.showReferencedGrammars": true,
+    "xml.downloadExternalResources.enabled": true
+  }
 }

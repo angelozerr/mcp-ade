@@ -8,5 +8,11 @@
     {
       "language": "elm"
     }
-  ]
+  ],
+  "configuration": {
+    "elmLS.elmReviewDiagnostics": "off",
+    "elmLS.disableElmLSDiagnostics": false,
+    "elmLS.skipInstallPackageConfirmation": false,
+    "elmLS.onlyUpdateDiagnosticsOnSave": false
+  }
 }

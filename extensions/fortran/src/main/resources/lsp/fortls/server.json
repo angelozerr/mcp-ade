@@ -11,5 +11,27 @@
     {
       "language": "fortran-modern"
     }
-  ]
+  ],
+  "configuration": {
+    "fortran.provide.autocomplete": "fortls",
+    "fortran.provide.hover": "fortls",
+    "fortran.provide.symbols": "fortls",
+    "fortran.preferredCase": "lowercase",
+    "fortran.linter.compiler": "gfortran",
+    "fortran.linter.initialize": false,
+    "fortran.linter.includePaths": [],
+    "fortran.linter.extraArgs": [],
+    "fortran.formatting.formatter": "findent",
+    "fortran.formatting.findentArgs": [],
+    "fortran.formatting.fprettifyArgs": [],
+    "fortran.fortls.notifyInit": false,
+    "fortran.fortls.incrementalSync": true,
+    "fortran.fortls.nthreads": 4,
+    "fortran.fortls.sortKeywords": false,
+    "fortran.fortls.symbolTypes": true,
+    "fortran.fortls.disableDiagnostics": false,
+    "fortran.fortls.maxLineLength": -1,
+    "fortran.fortls.maxCommentLineLength": -1,
+    "fortran.experimental.keepInitDiagnostics": true
+  }
 }

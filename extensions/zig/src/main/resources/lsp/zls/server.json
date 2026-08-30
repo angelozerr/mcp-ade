@@ -7,5 +7,22 @@
     {
       "language": "zig"
     }
-  ]
+  ],
+  "configuration": {
+    "zig.zls.enableSnippets": true,
+    "zig.zls.enableArgumentPlaceholders": true,
+    "zig.zls.completionLabelDetails": true,
+    "zig.zls.semanticTokens": "partial",
+    "zig.zls.inlayHintsShowVariableTypeHints": true,
+    "zig.zls.inlayHintsShowStructLiteralFieldType": true,
+    "zig.zls.inlayHintsShowParameterName": true,
+    "zig.zls.inlayHintsShowBuiltin": true,
+    "zig.zls.inlayHintsExcludeSingleArgument": true,
+    "zig.zls.inlayHintsHideRedundantParamNames": false,
+    "zig.zls.inlayHintsHideRedundantParamNamesLastToken": false,
+    "zig.zls.warnStyle": false,
+    "zig.zls.highlightGlobalVarDeclarations": false,
+    "zig.zls.skipStdReferences": false,
+    "zig.zls.preferAstCheckAsChildProcess": true
+  }
 }

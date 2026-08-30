@@ -11,5 +11,13 @@
     {
       "language": "python"
     }
-  ]
+  ],
+  "configuration": {
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.analysis.logLevel": "Information"
+  }
 }

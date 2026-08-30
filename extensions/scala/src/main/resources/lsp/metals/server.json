@@ -8,5 +8,27 @@
     {
       "language": "scala"
     }
-  ]
+  ],
+  "configuration": {
+    "metals.enableBestEffort": false,
+    "metals.excludedPackages": [],
+    "metals.inlayHints.inferredTypes.enable": null,
+    "metals.inlayHints.implicitArguments.enable": null,
+    "metals.inlayHints.implicitConversions.enable": null,
+    "metals.inlayHints.typeParameters.enable": null,
+    "metals.inlayHints.hintsInPatternMatch.enable": null,
+    "metals.inlayHints.byNameParameters.enable": null,
+    "metals.inlayHints.namedParameters.enable": null,
+    "metals.inlayHints.hintsXRayMode.enable": null,
+    "metals.inlayHints.closingLabels.enable": null,
+    "metals.superMethodLensesEnabled": true,
+    "metals.enableStripMarginOnTypeFormatting": true,
+    "metals.enableIndentOnPaste": false,
+    "metals.verboseCompilation": false,
+    "metals.enableSemanticHighlighting": true,
+    "metals.fallbackScalaVersion": "automatic",
+    "metals.autoImportBuilds": "off",
+    "metals.defaultBspToBuildTool": false,
+    "metals.javaVersion": "17"
+  }
 }

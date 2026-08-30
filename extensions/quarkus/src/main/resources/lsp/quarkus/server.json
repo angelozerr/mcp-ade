@@ -15,6 +15,9 @@
 			"pattern": "**/application.yml"
 		}
 	],
+	"configuration": {
+		"quarkus.tools.propertiesLanguageMismatch": "force"
+	},
 	"contributes": {
 		"jdtls": {
 			"bundles": [

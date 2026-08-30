@@ -10,5 +10,11 @@
   ],
   "activateWhen": {
     "fileExists": "angular.json"
+  },
+  "configuration": {
+    "angular.suggest.includeAutomaticOptionalChainCompletions": true,
+    "angular.suggest.includeCompletionsWithSnippetText": true,
+    "angular.suggest.autoImports": true,
+    "angular.forceStrictTemplates": false
   }
 }

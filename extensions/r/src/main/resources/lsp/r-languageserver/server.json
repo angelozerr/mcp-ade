@@ -8,5 +8,8 @@
     {
       "language": "r"
     }
-  ]
+  ],
+  "configuration": {
+    "r.lsp.diagnostics": true
+  }
 }

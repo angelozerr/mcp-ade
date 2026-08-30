@@ -7,5 +7,20 @@
     {
       "language": "perl"
     }
-  ]
+  ],
+  "configuration": {
+    "perlnavigator.enableWarnings": true,
+    "perlnavigator.perlimportsLintEnabled": false,
+    "perlnavigator.perlimportsTidyEnabled": false,
+    "perlnavigator.perltidyEnabled": true,
+    "perlnavigator.perlcriticEnabled": true,
+    "perlnavigator.perlcriticMessageFormat": "%m",
+    "perlnavigator.perlCompileEnabled": true,
+    "perlnavigator.severity5": "warning",
+    "perlnavigator.severity4": "info",
+    "perlnavigator.severity3": "hint",
+    "perlnavigator.severity2": "hint",
+    "perlnavigator.severity1": "hint",
+    "perlnavigator.includeLib": true
+  }
 }

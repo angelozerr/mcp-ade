@@ -7,5 +7,26 @@
     {
       "language": "ada"
     }
-  ]
+  ],
+  "configuration": {
+    "ada.onTypeFormatting.indentOnly": null,
+    "ada.rangeFormattingFallback": null,
+    "ada.rangeFormatting.formatChoice": null,
+    "ada.documentationStyle": null,
+    "ada.displayMethodAncestryOnNavigation": null,
+    "ada.foldComments": null,
+    "ada.namedNotationThreshold": 3,
+    "ada.useCompletionSnippets": null,
+    "ada.insertWithClauses": null,
+    "ada.renameInComments": null,
+    "ada.projectDiagnostics": null,
+    "ada.alireDiagnostics": null,
+    "ada.sourceInfoDiagnostics": null,
+    "ada.adaFileDiagnostics": null,
+    "ada.semanticDiagnostics": null,
+    "ada.gprFileDiagnostics": null,
+    "ada.workspaceSearch": "fuzzy",
+    "ada.enableIndexing": null,
+    "ada.followSymlinks": null
+  }
 }

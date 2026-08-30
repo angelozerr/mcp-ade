@@ -9,5 +9,22 @@
     {
       "language": "julia"
     }
-  ]
+  ],
+  "configuration": {
+    "julia.useCodeLens": true,
+    "julia.cellCodeLens.run": true,
+    "julia.cellCodeLens.above": true,
+    "julia.cellCodeLens.below": true,
+    "julia.cellCodeLens.debug": true,
+    "julia.showRuntimeDiagnostics": true,
+    "julia.inlayHints.runtime.enabled": true,
+    "julia.inlayHints.static.enabled": false,
+    "julia.inlayHints.static.variableTypes.enabled": true,
+    "julia.inlayHints.static.parameterNames.enabled": "literals",
+    "julia.enableDynamicIndexing": true,
+    "julia.maxConcurrentIndexingProcesses": 4,
+    "julia.enableWorkspaceEnvironmentResolution": true,
+    "julia.completionmode": "qualify",
+    "julia.runtimeCompletions": false
+  }
 }

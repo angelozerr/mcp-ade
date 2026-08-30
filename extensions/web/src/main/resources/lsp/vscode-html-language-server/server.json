@@ -8,5 +8,27 @@
     {
       "language": "html"
     }
-  ]
+  ],
+  "configuration": {
+    "html.completion.attributeDefaultValue": "doublequotes",
+    "html.format.enable": true,
+    "html.format.wrapLineLength": 120,
+    "html.format.unformatted": "wbr",
+    "html.format.contentUnformatted": "pre,code,textarea",
+    "html.format.indentInnerHtml": false,
+    "html.format.preserveNewLines": true,
+    "html.format.indentHandlebars": false,
+    "html.format.extraLiners": "head, body, /html",
+    "html.format.wrapAttributes": "auto",
+    "html.format.templating": false,
+    "html.format.unformattedContentDelimiter": "",
+    "html.suggest.html5": true,
+    "html.validate.scripts": true,
+    "html.validate.styles": true,
+    "html.autoCreateQuotes": true,
+    "html.autoClosingTags": true,
+    "html.hover.documentation": true,
+    "html.hover.references": true,
+    "html.mirrorCursorOnMatchingTag": false
+  }
 }

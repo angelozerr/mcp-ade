@@ -7,5 +7,16 @@
     {
       "language": "toml"
     }
-  ]
+  ],
+  "configuration": {
+    "evenBetterToml.semanticTokens": false,
+    "evenBetterToml.schema.enabled": true,
+    "evenBetterToml.schema.links": false,
+    "evenBetterToml.schema.catalogs": ["https://www.schemastore.org/api/json/catalog.json"],
+    "evenBetterToml.schema.cache.memoryExpiration": 60,
+    "evenBetterToml.schema.cache.diskExpiration": 600,
+    "evenBetterToml.completion.maxKeys": 5,
+    "evenBetterToml.syntax.semanticTokens": true,
+    "evenBetterToml.taplo.configFile.enabled": true
+  }
 }
