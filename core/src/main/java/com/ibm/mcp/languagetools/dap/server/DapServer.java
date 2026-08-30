@@ -143,6 +143,12 @@ public class DapServer extends ServerBase<DapServerConfig> {
                 .thenCompose(this::waitForServerReady)
                 .thenCompose(this::createLauncher);
         }
+        if (getConfig().getLaunchMethod() != null) {
+            LOG.infof("Embedded mode (launchMethod=%s) - no process to launch", getConfig().getLaunchMethod());
+            setStatus(ServerStatus.RUNNING);
+            setReady(true);
+            return CompletableFuture.completedFuture(null);
+        }
         return CompletableFuture.completedFuture(null);
     }
 
@@ -182,7 +188,39 @@ public class DapServer extends ServerBase<DapServerConfig> {
                 }
             }
         }
+
+        // Embedded mode: call launchMethod to start the debug session and get a DAP port
+        String launchMethod = getConfig().getLaunchMethod();
+        if (launchMethod != null) {
+            return startEmbeddedDebugSession(launchMethod, launchConfig);
+        }
+
         return CompletableFuture.completedFuture(launchConfig);
+    }
+
+    /**
+     * Start an embedded debug session by calling the launchMethod via the bind mechanism.
+     * The launchMethod is expected to return a port number where the debug adapter is listening.
+     */
+    protected CompletableFuture<Map<String, Object>> startEmbeddedDebugSession(
+            String launchMethod, Map<String, Object> launchConfig) {
+        addTrace("Starting embedded debug session via " + launchMethod);
+
+        return routeRequest(launchMethod, List.of())
+                .thenCompose(result -> {
+                    if (!(result instanceof Number)) {
+                        return CompletableFuture.<Map<String, Object>>failedFuture(
+                                new IllegalStateException(launchMethod + " returned non-numeric result: " + result));
+                    }
+                    int port = ((Number) result).intValue();
+                    addTrace(String.format("Debug adapter listening on port: %d", port));
+
+                    return connectToSocket("localhost", port)
+                            .thenApply(v -> {
+                                addTrace(String.format("Connected to debug adapter on port %d", port));
+                                return launchConfig;
+                            });
+                });
     }
 
     /**

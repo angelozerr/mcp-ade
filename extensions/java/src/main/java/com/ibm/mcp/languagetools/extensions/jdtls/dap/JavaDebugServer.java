@@ -19,7 +19,6 @@ import com.ibm.mcp.languagetools.dap.server.DapServerConfig;
 import com.ibm.mcp.languagetools.dap.session.DapSession;
 import com.ibm.mcp.languagetools.extensions.jdtls.lsp.JdtLsServer;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
-import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.jboss.logging.Logger;
 
@@ -50,7 +49,6 @@ public class JavaDebugServer extends DapServer {
     private static final String CMD_BUILD_WORKSPACE = "vscode.java.buildWorkspace";
     private static final String CMD_RESOLVE_CLASSPATH = "vscode.java.resolveClasspath";
     private static final String CMD_RESOLVE_JAVA_EXECUTABLE = "vscode.java.resolveJavaExecutable";
-    private static final String CMD_START_DEBUG_SESSION = "vscode.java.startDebugSession";
 
     public JavaDebugServer(DapSession session, DapServerConfig config, Workspace workspace) {
         super(session, config, workspace);
@@ -71,15 +69,6 @@ public class JavaDebugServer extends DapServer {
     public DapClient createDapClient(DapClient parentClient) {
         return new JavaDebugClient(parentClient);
     }
-
-    @Override
-    protected CompletableFuture<Void> doStart() {
-        LOG.infof("Starting Java Debug Server (embedded mode via JDTLS)");
-        setStatus(ServerStatus.RUNNING);
-        setReady(true);
-        return CompletableFuture.completedFuture(null);
-    }
-
 
     /**
      * Override enrichLaunchConfiguration to add Java-specific resolution.
@@ -108,11 +97,7 @@ public class JavaDebugServer extends DapServer {
                 .thenCompose(enrichedConfig -> {
                     progressMonitor.reportProgress("Connecting to debug adapter...");
                     addTrace("Connecting to debug adapter...");
-                    if ("attach".equals(request)) {
-                        return handleAttachRequest(enrichedConfig, sessionId);
-                    } else {
-                        return handleLaunchRequest(enrichedConfig, sessionId);
-                    }
+                    return startEmbeddedDebugSession(getConfig().getLaunchMethod(), enrichedConfig);
                 });
     }
 
@@ -152,55 +137,6 @@ public class JavaDebugServer extends DapServer {
                 .exceptionally(ex -> {
                     LOG.warnf(ex, "Module setup for debug CWD failed, proceeding anyway");
                     return null;
-                });
-    }
-
-    /**
-     * Handle "launch" request: start debug session in JDTLS, then connect to it.
-     */
-    private CompletableFuture<Map<String, Object>> handleLaunchRequest(
-            Map<String, Object> enrichedConfig,
-            String sessionId) {
-
-        // Start debug session (loads java-debug bundle in JDTLS and returns port)
-        return startDebugSession(sessionId)
-                .thenCompose(port -> {
-                    addTrace(String.format("Connecting to DAP server on port %d...", port));
-
-                    // Use DapServer's connectToSocket() - much simpler!
-                    return connectToSocket("localhost", port)
-                            .thenApply(v -> {
-                                addTrace(String.format("Connected to DAP server on port %d", port));
-                                return enrichedConfig;
-                            });
-                });
-    }
-
-    /**
-     * Handle "attach" request: start debug session in JDTLS to load java-debug bundle,
-     * then the DAP session will use the hostName/port from the config to attach.
-     */
-    private CompletableFuture<Map<String, Object>> handleAttachRequest(
-            Map<String, Object> enrichedConfig,
-            String sessionId) {
-
-        // For attach, we still need to start the debug session in JDTLS
-        // to load the java-debug bundle, but we won't use its port.
-        // Instead, the DAP protocol will use hostName/port from enrichedConfig
-        // to attach to the target application.
-        return startDebugSession(sessionId)
-                .thenCompose(jdtlsPort -> {
-                    addTrace(String.format("Connecting to DAP server on port %d (JDTLS debug adapter)...", jdtlsPort));
-
-                    // Connect to JDTLS debug adapter
-                    return connectToSocket("localhost", jdtlsPort)
-                            .thenApply(v -> {
-                                addTrace(String.format("Connected to DAP server on port %d. Will attach to target at %s:%s",
-                                        jdtlsPort,
-                                        enrichedConfig.get("hostName"),
-                                        enrichedConfig.get("port")));
-                                return enrichedConfig;
-                            });
                 });
     }
 
@@ -338,32 +274,6 @@ public class JavaDebugServer extends DapServer {
         LOG.error(error);
         addTrace("ERROR: " + error);
         return CompletableFuture.failedFuture(new IllegalArgumentException(error));
-    }
-
-    /**
-     * Start the debug session by calling vscode.java.startDebugSession.
-     * This loads the java-debug bundle in JDTLS and returns the port.
-     *
-     * @param sessionId The session ID for tracing
-     * @return The port where the debug adapter is listening
-     */
-    public CompletableFuture<Integer> startDebugSession(String sessionId) {
-        // Call vscode.java.startDebugSession via bindRequest mechanism
-        return routeRequest(CMD_START_DEBUG_SESSION, List.of())
-                .thenApply(result -> {
-                    if (!(result instanceof Number)) {
-                        String error = String.format("%s returned non-numeric result: %s", CMD_START_DEBUG_SESSION, result);
-                        LOG.error(error);
-                        throw new IllegalStateException(error);
-                    }
-
-                    int port = ((Number) result).intValue();
-                    LOG.infof("Debug adapter listening on port: %d", port);
-
-                    addTrace(String.format("Debug adapter listening on port: %d", port));
-
-                    return port;
-                });
     }
 
     // ===== Private helper methods for JDTLS commands =====

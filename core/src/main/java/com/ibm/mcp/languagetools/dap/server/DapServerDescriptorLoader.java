@@ -34,6 +34,7 @@ public class DapServerDescriptorLoader extends ServerDescriptorLoaderBase<DapSer
     private static final Logger LOG = Logger.getLogger(DapServerDescriptorLoader.class);
 
     // JSON field names
+    private static final String FIELD_LAUNCH_METHOD = "launchMethod";
     private static final String FIELD_ATTACH = "attach";
     private static final String FIELD_DEBUG_SERVER_READY_PATTERN = "debugServerReadyPattern";
     private static final String FIELD_CONNECT_TIMEOUT = "connectTimeout";
@@ -60,6 +61,11 @@ public class DapServerDescriptorLoader extends ServerDescriptorLoaderBase<DapSer
     @Override
     protected JsonObject loadServer(String serverId, Path serverDir, DapServerConfig config) throws IOException {
         JsonObject jsonObject =  super.loadServer(serverId, serverDir, config);
+
+        // Launch method (embedded mode)
+        if (jsonObject.has(FIELD_LAUNCH_METHOD)) {
+            config.setLaunchMethod(jsonObject.get(FIELD_LAUNCH_METHOD).getAsString());
+        }
 
         // Attach configuration
         if (jsonObject.has(FIELD_ATTACH)) {

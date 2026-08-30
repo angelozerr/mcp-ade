@@ -45,6 +45,13 @@ public class DapServerConfig extends ServerConfigBase {
     private static final Gson GSON = new Gson();
 
     /**
+     * For embedded mode: LSP request method to start the debug session
+     * (e.g., "vscode.java.startDebugSession", "start_debug_server").
+     * When set and no command is configured, the server operates in embedded mode.
+     */
+    private String launchMethod;
+
+    /**
      * Attach configuration for DAP servers.
      */
     private Map<String, Object> attach;
@@ -69,6 +76,14 @@ public class DapServerConfig extends ServerConfigBase {
 
     public Map<String, Object> getAttach() {
         return attach;
+    }
+
+    public String getLaunchMethod() {
+        return launchMethod;
+    }
+
+    public void setLaunchMethod(String launchMethod) {
+        this.launchMethod = launchMethod;
     }
 
     public void setAttach(Map<String, Object> attach) {
