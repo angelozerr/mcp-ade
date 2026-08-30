@@ -166,7 +166,12 @@ export async function loadLspConfigs() {
         const response = await fetch('/api/admin/lsp/configs');
         const configs = await response.json();
         state.lspConfigs = {};
-        configs.forEach(config => { state.lspConfigs[config.id] = config; });
+        configs.forEach(config => {
+            if (state.installStatus[config.id]) {
+                config.installationStatus = state.installStatus[config.id];
+            }
+            state.lspConfigs[config.id] = config;
+        });
         console.log('Loaded', configs.length, 'LSP configs');
     } catch (error) {
         console.error('Failed to load LSP configs:', error);
@@ -186,7 +191,12 @@ export async function loadDapConfigs() {
         const response = await fetch('/api/admin/dap/configs');
         const configs = await response.json();
         state.dapConfigs = {};
-        configs.forEach(config => { state.dapConfigs[config.id] = config; });
+        configs.forEach(config => {
+            if (state.installStatus[config.id]) {
+                config.installationStatus = state.installStatus[config.id];
+            }
+            state.dapConfigs[config.id] = config;
+        });
         console.log('Loaded', configs.length, 'DAP configs');
     } catch (error) {
         console.error('Failed to load DAP configs:', error);
@@ -206,7 +216,12 @@ export async function loadBspConfigs() {
         const response = await fetch('/api/admin/bsp/configs');
         const configs = await response.json();
         state.bspConfigs = {};
-        configs.forEach(config => { state.bspConfigs[config.id] = config; });
+        configs.forEach(config => {
+            if (state.installStatus[config.id]) {
+                config.installationStatus = state.installStatus[config.id];
+            }
+            state.bspConfigs[config.id] = config;
+        });
         console.log('Loaded', configs.length, 'BSP configs');
     } catch (error) {
         console.error('Failed to load BSP configs:', error);

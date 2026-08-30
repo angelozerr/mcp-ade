@@ -360,6 +360,10 @@ public abstract class InstallableConfig {
                                     synchronized (InstallableConfig.this) {
                                         installationFuture = null;
                                     }
+                                } else if (result != null && result.getStatus() == InstallationStatus.NOT_INSTALLED) {
+                                    synchronized (InstallableConfig.this) {
+                                        installationFuture = null;
+                                    }
                                 } else {
                                     lastInstallError = null;
                                     onInstallSuccess(result);

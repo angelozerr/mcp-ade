@@ -467,6 +467,7 @@ function handleRuntimeStatusChanged(message) {
 function handleInstallStatusChanged(message) {
     const serverId = message.serverId;
     const status = message.installationStatus;
+    state.installStatus[serverId] = status;
     const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId];
     if (config) {
         config.installationStatus = status;
