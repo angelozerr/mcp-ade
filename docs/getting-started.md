@@ -383,6 +383,7 @@ Let's trace the complete flow in the Admin UI.
 📖 **[Admin UI Complete Guide](./admin-ui.md)** - All features, workflows, and tips  
 📖 **[Bind Mechanism](./bind-mechanism.md)** - How servers collaborate (deep dive)  
 📖 **[Extension Guide](./extensions.md)** - Add your own language servers and debug adapters  
+📖 **[Getting Started (JetBrains)](./getting-started-jetbrains.md)** - Use IntelliJ Language Server instead of JDT.LS  
 📖 **[Getting Started (DAP)](./getting-started-dap.md)** - Debug your code with breakpoints and stepping  
 
 ### Try More Examples
