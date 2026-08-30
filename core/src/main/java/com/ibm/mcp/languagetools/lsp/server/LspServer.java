@@ -553,11 +553,17 @@ public class LspServer extends ServerBase<LspServerConfig> {
 
         List<String> identifiers = getDiagnosticIdentifiers();
 
-        CompletableFuture<List<Diagnostic>> pullFuture = identifiers.isEmpty()
-                ? pullDiagnostics(uri, null)
-                : pullAllIdentifiers(uri, identifiers);
+        if (!identifiers.isEmpty()) {
+            return pullAllIdentifiers(uri, identifiers);
+        }
 
-        return pullFuture;
+        return pullDiagnostics(uri, null)
+                .thenApply(diags -> {
+                    if (!diags.isEmpty()) {
+                        diagnosticsCache.put(uri, diags);
+                    }
+                    return diags;
+                });
     }
 
     private CompletableFuture<List<Diagnostic>> pullAllIdentifiers(String uri, List<String> identifiers) {
@@ -869,13 +875,27 @@ public class LspServer extends ServerBase<LspServerConfig> {
      */
     public void onDiagnosticRefresh() {
         diagnosticsCache.clear();
-        List<String> identifiers = getDiagnosticIdentifiers();
-        if (identifiers.isEmpty() || languageServer == null) {
+        if (languageServer == null) {
             return;
         }
         Set<String> uris = new HashSet<>(openedFiles);
-        for (String uri : uris) {
-            pullAllIdentifiers(uri, identifiers);
+        if (uris.isEmpty()) {
+            return;
+        }
+        List<String> identifiers = getDiagnosticIdentifiers();
+        if (identifiers.isEmpty()) {
+            for (String uri : uris) {
+                pullDiagnostics(uri, null)
+                        .thenAccept(diags -> {
+                            if (!diags.isEmpty()) {
+                                diagnosticsCache.put(uri, diags);
+                            }
+                        });
+            }
+        } else {
+            for (String uri : uris) {
+                pullAllIdentifiers(uri, identifiers);
+            }
         }
     }
 
