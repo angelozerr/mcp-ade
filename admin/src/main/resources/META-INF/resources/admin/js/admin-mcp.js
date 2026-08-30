@@ -284,12 +284,12 @@ function switchMcpConsoleTab(tab, clickedBtn) {
 
 export function renderMcpConsole() {
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
-    renderTracesInContainer('mcp-console-output', clientTraces, mcpTraceLevel, '');
+    renderTracesInContainer('mcp-console-output', clientTraces, mcpTraceLevel, '', undefined, 'mcp-trace');
 }
 
 export function renderMcpConsoleWithHighlights() {
     const clientTraces = mcpTracesByClient[selectedMcpClient] || [];
-    renderTracesInContainer('mcp-console-output', clientTraces, mcpTraceLevel, getCurrentSearchQuery());
+    renderTracesInContainer('mcp-console-output', clientTraces, mcpTraceLevel, getCurrentSearchQuery(), undefined, 'mcp-trace');
 }
 
 async function clearMcpConsole() {

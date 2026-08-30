@@ -579,7 +579,7 @@ export function renderDapTracesForSession(sessionId) {
     const sessionTraces = state.dapTracesBySession?.[sessionId] || [];
     const traces = [...serverTraces, ...sessionTraces];
 
-    renderTracesInContainer(containerId, traces, getDapTraceLevel(), getCurrentSearchQuery());
+    renderTracesInContainer(containerId, traces, getDapTraceLevel(), getCurrentSearchQuery(), undefined, 'dap-trace-' + sessionId);
 }
 
 /**

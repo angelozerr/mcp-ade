@@ -386,7 +386,7 @@ export function restoreExpandedState(container, expandedIds) {
 
 // ========== Render Traces in Container ==========
 
-export function renderTracesInContainer(containerId, traces, traceLevel, searchQuery, emptyMessage) {
+export function renderTracesInContainer(containerId, traces, traceLevel, searchQuery, emptyMessage, enableTraceControlId) {
     hideActiveTooltip();
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -396,9 +396,15 @@ export function renderTracesInContainer(containerId, traces, traceLevel, searchQ
         : traces;
 
     if (filteredTraces.length === 0) {
-        const msg = traceLevel === 'off'
-            ? 'Traces are disabled (level: off)'
-            : (emptyMessage || 'No traces yet.');
+        let msg;
+        if (traceLevel === 'off') {
+            const enableLink = enableTraceControlId
+                ? ` <a class="nav-link" data-action="enableVerboseTrace" data-control-id="${enableTraceControlId}">Enable verbose trace</a>`
+                : '';
+            msg = 'Traces are disabled.' + enableLink;
+        } else {
+            msg = emptyMessage || 'No traces yet.';
+        }
         container.innerHTML = `<div class="text-secondary text-center p-2xl">${msg}</div>`;
         return;
     }
@@ -475,4 +481,13 @@ registerActions('click', {
     closeSearch: () => closeSearch(),
     searchNext: () => searchNext(),
     searchPrev: () => searchPrev(),
+    enableVerboseTrace: (el) => {
+        const controlId = el.dataset.controlId;
+        if (!controlId) return;
+        const select = document.getElementById(controlId + '-level');
+        if (select) {
+            select.value = 'verbose';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    },
 });

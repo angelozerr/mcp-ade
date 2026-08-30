@@ -1434,7 +1434,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         export function renderConsole() {
-            renderTracesInContainer('lsp-console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
+            renderTracesInContainer('lsp-console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery(), undefined, 'trace');
             initTraceContainer('lsp-console-output');
         }
 
@@ -1670,7 +1670,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         });
 
         function renderConsoleWithHighlights() {
-            renderTracesInContainer('lsp-console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
+            renderTracesInContainer('lsp-console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery(), undefined, 'trace');
         }
 
         async function toggleFileWatcherFromListAction(uri) {
