@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.it;
 
 import com.ibm.mcp.languagetools.extension.ExtensionRegistry;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.it.trace.LspTraceData;
 import com.ibm.mcp.languagetools.it.trace.McpTraceData;
 import com.ibm.mcp.languagetools.it.trace.ReplayLspServerFactory;
@@ -139,7 +140,7 @@ class TraceReplayTest {
             // 3. Resolve workspace root for ${workspaceRoot} replacement.
             String cwd = testWorkspaceCwd;
             // Build proper file URI prefix for the workspace (forward slashes)
-            String cwdUriPrefix = Path.of(cwd).toUri().toString();
+            String cwdUriPrefix = UriUtils.toFileUriString(Path.of(cwd).toUri());
             if (cwdUriPrefix.endsWith("/")) {
                 cwdUriPrefix = cwdUriPrefix.substring(0, cwdUriPrefix.length() - 1);
             }

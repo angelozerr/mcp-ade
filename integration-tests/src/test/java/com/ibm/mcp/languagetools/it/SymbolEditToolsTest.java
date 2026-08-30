@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.it;
 
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusTest;
 import org.awaitility.Awaitility;
@@ -44,7 +45,7 @@ class SymbolEditToolsTest {
         Path workspacePath = Path.of(url.toURI());
         cwd = workspacePath.toString();
         testFilePath = workspacePath.resolve("test-symbol-edit.xml");
-        testFileUri = testFilePath.toUri().toString();
+        testFileUri = UriUtils.toFileUriString(testFilePath.toUri());
         originalContent = Files.readString(testFilePath);
     }
 

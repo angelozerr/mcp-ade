@@ -90,10 +90,23 @@ public final class UriUtils {
         String normalized = path.replace("\\", "/");
         if (!normalized.startsWith("/")) normalized = "/" + normalized;
         try {
-            return new URI("file", null, normalized, null);
+            return new URI("file", "", normalized, null);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException("Invalid path: " + path, e);
         }
+    }
+
+    /**
+     * Return a properly formatted {@code file:///} URI string from a {@link URI}.
+     * Java's {@code URI.toString()} may produce {@code file:/C:/path} (single slash)
+     * when the authority is null; LSP requires {@code file:///C:/path} (RFC 8089).
+     */
+    public static String toFileUriString(URI uri) {
+        String s = uri.toString();
+        if (s.startsWith("file:/") && !s.startsWith("file:///")) {
+            s = "file:///" + s.substring(6);
+        }
+        return s;
     }
 
     public static String cwdToUriPrefix(String cwd) {

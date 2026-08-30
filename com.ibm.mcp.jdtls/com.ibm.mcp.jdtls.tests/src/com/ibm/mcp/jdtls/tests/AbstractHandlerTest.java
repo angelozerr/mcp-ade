@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.ibm.mcp.jdtls.JdtUtils;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspace;
@@ -112,7 +113,7 @@ public abstract class AbstractHandlerTest {
         waitForBuild();
 
         // Compute base URI for files
-        projectUri = project.getLocation().toFile().toURI().toString();
+        projectUri = JdtUtils.toFileUri(project);
         if (projectUri.endsWith("/")) {
             projectUri = projectUri.substring(0, projectUri.length() - 1);
         }

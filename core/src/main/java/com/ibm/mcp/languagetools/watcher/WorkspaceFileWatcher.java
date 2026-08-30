@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.watcher;
 
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import io.methvin.watcher.DirectoryChangeEvent;
 import io.methvin.watcher.DirectoryWatcher;
 import io.methvin.watcher.visitor.FileTreeVisitor;
@@ -146,7 +147,7 @@ public class WorkspaceFileWatcher {
                 if (!recentFiles.isEmpty()) {
                     LOG.infof("Found %d files created during scan, firing synthetic events", recentFiles.size());
                     for (Path file : recentFiles) {
-                        String uri = file.toUri().toString();
+                        String uri = UriUtils.toFileUriString(file.toUri());
                         pendingBatch.add(new FileEvent(uri, FileChangeType.Created));
                     }
                     scheduleBatchFlush();
@@ -247,7 +248,7 @@ public class WorkspaceFileWatcher {
                 return;
         }
 
-        String uri = path.toUri().toString();
+        String uri = UriUtils.toFileUriString(path.toUri());
         pendingBatch.add(new FileEvent(uri, changeType));
         scheduleBatchFlush();
     }

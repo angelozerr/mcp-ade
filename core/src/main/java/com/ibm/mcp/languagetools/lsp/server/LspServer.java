@@ -293,13 +293,13 @@ public class LspServer extends ServerBase<LspServerConfig> {
         LOG.infof("Initializing %s for workspace: %s", config.getServerId(), workspaceRoot);
 
         InitializeParams params = new InitializeParams();
-        params.setRootUri(workspaceRoot.toString());
+        params.setRootUri(UriUtils.toFileUriString(workspaceRoot));
 
         // Set process ID
         params.setProcessId((int) ProcessHandle.current().pid());
 
         WorkspaceFolder workspaceFolder = new WorkspaceFolder();
-        workspaceFolder.setUri(workspaceRoot.toString());
+        workspaceFolder.setUri(UriUtils.toFileUriString(workspaceRoot));
         workspaceFolder.setName(Paths.get(workspaceRoot).getFileName().toString());
         params.setWorkspaceFolders(List.of(workspaceFolder));
 
@@ -501,6 +501,23 @@ public class LspServer extends ServerBase<LspServerConfig> {
         return CompletableFuture.failedFuture(
                 new UnsupportedOperationException("Server does not support direct requests")
         );
+    }
+
+    /**
+     * Cancel an LSP progress by sending window/workDoneProgress/cancel to the server.
+     *
+     * @param token the progress token (as string)
+     */
+    public void cancelLspProgress(String token) {
+        if (languageServer == null) {
+            return;
+        }
+        if (languageServer instanceof Endpoint endpoint) {
+            WorkDoneProgressCancelParams params = new WorkDoneProgressCancelParams();
+            params.setToken(Either.forLeft(token));
+            endpoint.notify("window/workDoneProgress/cancel", params);
+            LOG.infof("[%s] Sent window/workDoneProgress/cancel for token=%s", getConfig().getServerId(), token);
+        }
     }
 
     private static final long DIAGNOSTICS_TIMEOUT_MS = 3_000;

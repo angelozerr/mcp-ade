@@ -222,6 +222,23 @@ public class LspAdminResource extends AbstractServerAdminResource {
     }
 
     /**
+     * Cancel an LSP progress task by sending window/workDoneProgress/cancel to the server.
+     */
+    @POST
+    @Path("/progress/cancel-lsp-progress/{serverId}/{token}")
+    public Response cancelLspProgress(@PathParam("serverId") String serverId,
+                                       @PathParam("token") String token) {
+        for (Workspace workspace : application.getWorkspaces()) {
+            LspServer server = workspace.getLspServer(serverId);
+            if (server != null && server.getLanguageServer() != null) {
+                server.cancelLspProgress(token);
+                return Response.ok().entity(new StatusResponse("cancelled")).build();
+            }
+        }
+        return Response.status(404).entity(new ErrorResponse("Server not found: " + serverId)).build();
+    }
+
+    /**
      * Disconnect from IDE instance.
      */
     @POST

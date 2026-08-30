@@ -36,6 +36,7 @@ import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerConfigBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
 import com.ibm.mcp.languagetools.trace.TraceCollector;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.watcher.WorkspaceFileWatcher;
 import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.FileSystemWatcher;
@@ -112,7 +113,7 @@ public class Workspace {
         this.rootUri = rootUri;
         this.rootPath = Paths.get(rootUri);
         // Cache normalized URI string (remove trailing slash for consistency across the app)
-        this.normalizedRootUriString = rootUri.toString();
+        this.normalizedRootUriString = UriUtils.toFileUriString(rootUri);
         this.application = application;
         this.lspTraceCollector = application.getLspTraceCollector();
         this.ideConfiguration = new IdeConfiguration(rootPath,

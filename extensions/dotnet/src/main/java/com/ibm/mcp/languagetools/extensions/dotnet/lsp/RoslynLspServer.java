@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.extensions.dotnet.lsp;
 
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.lsp.server.LspServerConfig;
 import com.ibm.mcp.languagetools.workspace.Workspace;
 import org.eclipse.lsp4j.jsonrpc.Endpoint;
@@ -68,7 +69,7 @@ public class RoslynLspServer extends LspServer {
         if (!slnFiles.isEmpty()) {
             URI slnUri = slnFiles.get(0).toUri();
             Map<String, Object> params = new HashMap<>();
-            params.put("solution", slnUri.toString());
+            params.put("solution", UriUtils.toFileUriString(slnUri));
             LOG.infof("[roslyn] Sending solution/open: %s", slnUri);
             endpoint.notify("solution/open", params);
             return;
@@ -79,7 +80,7 @@ public class RoslynLspServer extends LspServer {
         if (!csprojFiles.isEmpty()) {
             List<String> projectUris = new ArrayList<>();
             for (Path csproj : csprojFiles) {
-                projectUris.add(csproj.toUri().toString());
+                projectUris.add(UriUtils.toFileUriString(csproj.toUri()));
             }
             Map<String, Object> params = new HashMap<>();
             params.put("projects", projectUris);

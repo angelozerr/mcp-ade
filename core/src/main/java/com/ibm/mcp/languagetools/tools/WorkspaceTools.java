@@ -14,6 +14,7 @@
 package com.ibm.mcp.languagetools.tools;
 
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.lsp.server.LspServerResolver;
 import com.ibm.mcp.languagetools.server.ServerStatus;
@@ -225,7 +226,7 @@ public class WorkspaceTools {
                     continue;
                 }
 
-                String uri = workspace.getRootPath().resolve(filePath).toUri().toString();
+                String uri = UriUtils.toFileUriString(workspace.getRootPath().resolve(filePath).toUri());
                 events.add(new FileEvent(uri, changeType));
             }
 

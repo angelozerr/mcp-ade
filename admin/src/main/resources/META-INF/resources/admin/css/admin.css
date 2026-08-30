@@ -2178,6 +2178,64 @@ body {
     white-space: nowrap;
 }
 
+.progress-group {
+    border: 1px solid var(--border-progress);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.progress-group:last-child {
+    margin-bottom: 0;
+}
+
+.progress-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--bg-input);
+    cursor: pointer;
+    user-select: none;
+}
+
+.progress-group-header:hover {
+    background: var(--bg-panel);
+}
+
+.progress-group-toggle {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.progress-group-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.progress-group-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+.progress-group-tasks {
+    padding: 0.4rem;
+}
+
+.progress-group-tasks .progress-task-item {
+    border: none;
+    border-top: 1px solid var(--border-progress);
+    border-radius: 0;
+    margin-bottom: 0;
+    padding: 0.4rem 0.5rem;
+}
+
+.progress-group-tasks .progress-task-item:first-child {
+    border-top: 1px solid var(--border-progress);
+}
+
 .progress-task-percent {
     color: var(--color-success);
     font-size: 0.85rem;

@@ -5,6 +5,7 @@ import { registerActions } from './event-delegation.js';
 const activeTasks = new Map();
 const taskSteps = new Map();
 const taskDetailExpanded = new Set();
+const groupCollapsed = new Set();
 
 let installProgressCallback = null;
 let taskCompletedCallback = null;
@@ -67,6 +68,7 @@ export function clearAllTasks() {
     activeTasks.clear();
     taskSteps.clear();
     taskDetailExpanded.clear();
+    groupCollapsed.clear();
     scheduleRefresh();
 }
 
@@ -153,7 +155,7 @@ function renderTaskContent(task) {
         stepsHtml = `<div class="progress-steps-list">${stepsListHtml}</div>`;
     }
 
-    const cancellable = hasSteps && stepDefs.cancellable;
+    const cancellable = stepDefs?.cancellable || false;
     const cancelBtn = cancellable
         ? `<button class="progress-task-cancel" data-action="cancelProgressTask" data-task-id="${task.id}" title="Cancel this task">Cancel</button>`
         : '';
@@ -272,60 +274,129 @@ function refreshProgressPanel() {
         return;
     }
 
-    // Sort by creation time for stable order
-    const sortedTasks = Array.from(activeTasks.values())
-        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    // Group tasks by serverId
+    const groups = new Map();
+    const ungrouped = [];
 
-    const currentTaskIds = new Set(sortedTasks.map(t => t.id));
+    for (const task of activeTasks.values()) {
+        if (task.serverId) {
+            if (!groups.has(task.serverId)) {
+                groups.set(task.serverId, []);
+            }
+            groups.get(task.serverId).push(task);
+        } else {
+            ungrouped.push(task);
+        }
+    }
 
+    // Sort tasks within each group by creation time
+    for (const tasks of groups.values()) {
+        tasks.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    }
+    ungrouped.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+    // Track which groups/tasks are still active
+    const activeGroupIds = new Set(groups.keys());
+    const activeUngroupedIds = new Set(ungrouped.map(t => t.id));
+
+    // Remove stale elements
     for (const child of [...content.children]) {
-        const tid = child.dataset?.taskId;
-        if (!tid || !currentTaskIds.has(tid)) {
+        const groupId = child.dataset?.groupId;
+        const taskId = child.dataset?.taskId;
+        if (groupId && !activeGroupIds.has(groupId)) {
+            child.remove();
+        } else if (taskId && !child.closest('[data-group-id]') && !activeUngroupedIds.has(taskId)) {
             child.remove();
         }
     }
 
-    for (const task of sortedTasks) {
-        let el = null;
-        for (const child of content.children) {
-            if (child.dataset?.taskId === task.id) {
-                el = child;
-                break;
+    // Render groups
+    for (const [serverId, tasks] of groups) {
+        let groupEl = content.querySelector(`[data-group-id="${serverId}"]`);
+
+        if (!groupEl) {
+            groupEl = document.createElement('div');
+            groupEl.className = 'progress-group';
+            groupEl.dataset.groupId = serverId;
+            content.appendChild(groupEl);
+        }
+
+        const collapsed = groupCollapsed.has(serverId);
+        const serverName = getServerName(serverId);
+        const taskCount = tasks.length;
+
+        // Update group header
+        let headerEl = groupEl.querySelector('.progress-group-header');
+        if (!headerEl) {
+            headerEl = document.createElement('div');
+            headerEl.className = 'progress-group-header';
+            headerEl.dataset.action = 'toggleGroup';
+            headerEl.dataset.serverId = serverId;
+            groupEl.prepend(headerEl);
+        }
+        headerEl.innerHTML = `
+            <span class="progress-group-toggle">${collapsed ? '▶' : '▼'}</span>
+            <span class="progress-group-name">${escapeHtml(serverName)}</span>
+            <span class="progress-group-count">${taskCount}</span>
+        `;
+
+        // Tasks container
+        let tasksEl = groupEl.querySelector('.progress-group-tasks');
+        if (!tasksEl) {
+            tasksEl = document.createElement('div');
+            tasksEl.className = 'progress-group-tasks';
+            groupEl.appendChild(tasksEl);
+        }
+        tasksEl.style.display = collapsed ? 'none' : '';
+
+        // Remove stale tasks in this group
+        const activeTaskIds = new Set(tasks.map(t => t.id));
+        for (const child of [...tasksEl.children]) {
+            if (!activeTaskIds.has(child.dataset?.taskId)) {
+                child.remove();
             }
         }
 
-        const newFingerprint = getTaskFingerprint(task);
+        // Render tasks in group
+        for (const task of tasks) {
+            renderTaskElement(tasksEl, task);
+        }
+    }
 
-        if (el) {
-            if (el.dataset.fingerprint !== newFingerprint) {
-                el.innerHTML = renderTaskContent(task);
-                el.dataset.fingerprint = newFingerprint;
-            } else {
-                updateTaskInPlace(el, task);
-            }
-        } else {
-            el = document.createElement('div');
-            el.className = 'progress-task-item';
-            el.dataset.taskId = task.id;
-            el.dataset.fingerprint = newFingerprint;
+    // Render ungrouped tasks
+    for (const task of ungrouped) {
+        renderTaskElement(content, task);
+    }
+}
+
+function renderTaskElement(container, task) {
+    let el = container.querySelector(`:scope > [data-task-id="${task.id}"]`);
+    const newFingerprint = getTaskFingerprint(task);
+
+    if (el) {
+        if (el.dataset.fingerprint !== newFingerprint) {
             el.innerHTML = renderTaskContent(task);
-            content.appendChild(el);
+            el.dataset.fingerprint = newFingerprint;
+        } else {
+            updateTaskInPlace(el, task);
         }
+    } else {
+        el = document.createElement('div');
+        el.className = 'progress-task-item';
+        el.dataset.taskId = task.id;
+        el.dataset.fingerprint = newFingerprint;
+        el.innerHTML = renderTaskContent(task);
+        container.appendChild(el);
     }
+}
 
-    // Ensure DOM order matches sorted order
-    for (let i = 0; i < sortedTasks.length; i++) {
-        const expected = sortedTasks[i].id;
-        const actual = content.children[i]?.dataset?.taskId;
-        if (actual !== expected) {
-            for (const child of content.children) {
-                if (child.dataset?.taskId === expected) {
-                    content.insertBefore(child, content.children[i]);
-                    break;
-                }
-            }
-        }
+function toggleGroup(serverId) {
+    if (groupCollapsed.has(serverId)) {
+        groupCollapsed.delete(serverId);
+    } else {
+        groupCollapsed.add(serverId);
     }
+    scheduleRefresh();
 }
 
 function toggleTaskDetail(taskId) {
@@ -424,14 +495,29 @@ export function handleProgressUpdate(msg) {
 }
 
 export async function cancelProgressTask(taskId) {
-    const serverId = taskId.replace(/^(install|start|restart)-/, '');
     let apiPath;
-    if (state.runtimeConfigs?.[serverId]) {
-        apiPath = `/api/admin/runtimes/progress/${encodeURIComponent(taskId)}/cancel`;
+
+    if (taskId.startsWith('lsp-progress-')) {
+        // LSP progress task: extract serverId and token from "lsp-progress-{serverId}-{token}"
+        const task = activeTasks.get(taskId);
+        if (task?.serverId) {
+            const prefix = 'lsp-progress-' + task.serverId + '-';
+            const token = taskId.substring(prefix.length);
+            apiPath = `/api/admin/lsp/progress/cancel-lsp-progress/${encodeURIComponent(task.serverId)}/${encodeURIComponent(token)}`;
+        } else {
+            console.error('Cannot cancel LSP progress: task not found', taskId);
+            return;
+        }
     } else {
-        const apiType = state.bspConfigs?.[serverId] ? 'bsp' : state.dapConfigs?.[serverId] ? 'dap' : 'lsp';
-        apiPath = `/api/admin/${apiType}/progress/${encodeURIComponent(taskId)}/cancel`;
+        const serverId = taskId.replace(/^(install|start|restart)-/, '');
+        if (state.runtimeConfigs?.[serverId]) {
+            apiPath = `/api/admin/runtimes/progress/${encodeURIComponent(taskId)}/cancel`;
+        } else {
+            const apiType = state.bspConfigs?.[serverId] ? 'bsp' : state.dapConfigs?.[serverId] ? 'dap' : 'lsp';
+            apiPath = `/api/admin/${apiType}/progress/${encodeURIComponent(taskId)}/cancel`;
+        }
     }
+
     try {
         const response = await fetch(apiPath, { method: 'POST' });
         if (!response.ok) {
@@ -447,4 +533,5 @@ registerActions('click', {
     cancelProgressTask: (el) => cancelProgressTask(el.dataset.taskId),
     toggleProgressPanel: () => toggleProgressPanel(),
     toggleTaskDetail: (el) => toggleTaskDetail(el.dataset.taskId),
+    toggleGroup: (el) => toggleGroup(el.dataset.serverId),
 });

@@ -27,6 +27,7 @@ import ch.epfl.scala.bsp4j.TaskFinishParams;
 import ch.epfl.scala.bsp4j.TaskProgressParams;
 import ch.epfl.scala.bsp4j.TaskStartParams;
 import com.ibm.mcp.languagetools.configuration.ServerTrace;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
 import com.ibm.mcp.languagetools.server.ServerBase;
 import com.ibm.mcp.languagetools.server.ServerStatus;
@@ -151,7 +152,7 @@ public class BspServer extends ServerBase<BspServerConfig> {
      * @return future that completes when the initialization handshake is done
      */
     public CompletableFuture<Void> initialize() {
-        String rootUri = getWorkspace().getRootUri().toString();
+        String rootUri = UriUtils.toFileUriString(getWorkspace().getRootUri());
 
         BuildClientCapabilities capabilities = new BuildClientCapabilities(
                 List.of("java", "scala", "kotlin")

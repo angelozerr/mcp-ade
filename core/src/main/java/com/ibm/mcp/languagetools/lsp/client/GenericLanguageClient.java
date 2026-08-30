@@ -13,11 +13,13 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.lsp.client;
 
+import com.ibm.mcp.languagetools.progress.ProgressBroadcaster;
 import com.ibm.mcp.languagetools.server.ServerRequestRouter;
 import com.ibm.mcp.languagetools.lsp.server.LspServer;
 import com.ibm.mcp.languagetools.utils.UriUtils;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Endpoint;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.jboss.logging.Logger;
 
@@ -55,6 +57,8 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
         t.setDaemon(true);
         return t;
     });
+
+    private final Map<String, LspProgressTask> activeProgresses = new ConcurrentHashMap<>();
 
     private static class DiagnosticsWait {
         final CompletableFuture<List<Diagnostic>> future = new CompletableFuture<>();
@@ -208,9 +212,111 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
 
     @Override
     public CompletableFuture<Void> createProgress(WorkDoneProgressCreateParams params) {
+        String token = tokenToString(params.getToken());
         LOG.debugf("[%s] window/workDoneProgress/create received (token=%s)",
-                lspServer.getConfig().getServerId(), params.getToken());
+                lspServer.getConfig().getServerId(), token);
+        activeProgresses.putIfAbsent(token, new LspProgressTask(token));
         return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public void notifyProgress(ProgressParams params) {
+        if (params.getValue() == null || !params.getValue().isLeft()) {
+            return;
+        }
+
+        String token = tokenToString(params.getToken());
+        WorkDoneProgressNotification notification = params.getValue().getLeft();
+        String serverId = lspServer.getConfig().getServerId();
+
+        if (notification instanceof WorkDoneProgressBegin begin) {
+            LspProgressTask task = activeProgresses.computeIfAbsent(token, LspProgressTask::new);
+            task.title = begin.getTitle();
+            task.cancellable = Boolean.TRUE.equals(begin.getCancellable());
+            String taskId = task.getTaskId(serverId);
+
+            LOG.debugf("[%s] $/progress begin: %s (token=%s, cancellable=%s)",
+                    serverId, begin.getTitle(), token, task.cancellable);
+
+            ProgressBroadcaster broadcaster = getBroadcaster();
+            if (broadcaster != null) {
+                if (task.cancellable) {
+                    broadcaster.initTaskWithSteps(taskId, serverId, begin.getTitle(),
+                            Collections.emptyList(), true);
+                }
+                double progress = begin.getPercentage() != null ? begin.getPercentage() / 100.0 : 0.0;
+                broadcaster.taskRunning(taskId, serverId, begin.getTitle(), progress, begin.getMessage());
+            }
+
+        } else if (notification instanceof WorkDoneProgressReport report) {
+            LspProgressTask task = activeProgresses.get(token);
+            if (task == null) {
+                return;
+            }
+            String taskId = task.getTaskId(serverId);
+
+            if (report.getCancellable() != null) {
+                boolean wasCancellable = task.cancellable;
+                task.cancellable = report.getCancellable();
+                ProgressBroadcaster broadcaster = getBroadcaster();
+                if (broadcaster != null && task.cancellable != wasCancellable) {
+                    broadcaster.initTaskWithSteps(taskId, serverId, task.title,
+                            Collections.emptyList(), task.cancellable);
+                }
+            }
+
+            LOG.debugf("[%s] $/progress report: %s %s%% (token=%s)",
+                    serverId, report.getMessage(), report.getPercentage(), token);
+
+            ProgressBroadcaster broadcaster = getBroadcaster();
+            if (broadcaster != null) {
+                double progress = report.getPercentage() != null ? report.getPercentage() / 100.0 : 0.0;
+                broadcaster.taskRunning(taskId, serverId, task.title, progress, report.getMessage());
+            }
+
+        } else if (notification instanceof WorkDoneProgressEnd end) {
+            LspProgressTask task = activeProgresses.remove(token);
+            if (task == null) {
+                return;
+            }
+            String taskId = task.getTaskId(serverId);
+
+            LOG.debugf("[%s] $/progress end: %s (token=%s)", serverId, end.getMessage(), token);
+
+            ProgressBroadcaster broadcaster = getBroadcaster();
+            if (broadcaster != null) {
+                broadcaster.taskCompleted(taskId, serverId, task.title);
+            }
+        }
+    }
+
+    private ProgressBroadcaster getBroadcaster() {
+        return lspServer.getWorkspace().getApplication().getProgressBroadcaster();
+    }
+
+    private static String tokenToString(Either<String, Integer> token) {
+        return token.isLeft() ? token.getLeft() : String.valueOf(token.getRight());
+    }
+
+    /**
+     * Returns a snapshot of active LSP progress tasks for this server.
+     */
+    public Map<String, LspProgressTask> getActiveProgresses() {
+        return Collections.unmodifiableMap(activeProgresses);
+    }
+
+    static class LspProgressTask {
+        final String token;
+        volatile String title;
+        volatile boolean cancellable;
+
+        LspProgressTask(String token) {
+            this.token = token;
+        }
+
+        String getTaskId(String serverId) {
+            return "lsp-progress-" + serverId + "-" + token;
+        }
     }
 
     @Override
@@ -233,6 +339,21 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
 
     public void shutdown() {
         diagnosticsScheduler.shutdownNow();
+        cancelActiveProgresses();
+    }
+
+    private void cancelActiveProgresses() {
+        if (activeProgresses.isEmpty()) {
+            return;
+        }
+        ProgressBroadcaster broadcaster = getBroadcaster();
+        String serverId = lspServer.getConfig().getServerId();
+        for (LspProgressTask task : activeProgresses.values()) {
+            if (broadcaster != null && task.title != null) {
+                broadcaster.taskCompleted(task.getTaskId(serverId), serverId, task.title);
+            }
+        }
+        activeProgresses.clear();
     }
 
     // -- Endpoint implementation (delegates to ServerRequestRouter) --

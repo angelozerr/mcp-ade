@@ -17,6 +17,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.ibm.mcp.languagetools.Application;
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import com.ibm.mcp.languagetools.configuration.ApplicationConfiguration;
 import com.ibm.mcp.languagetools.language.LanguageRegistry;
 import com.ibm.mcp.languagetools.operation.OperationContext;
@@ -349,7 +350,7 @@ public class TraceExportResource {
 
     private String pathToUriPrefix(String workspacePath) {
         try {
-            return java.nio.file.Path.of(workspacePath).toUri().toString();
+            return UriUtils.toFileUriString(java.nio.file.Path.of(workspacePath).toUri());
         } catch (Exception e) {
             return null;
         }

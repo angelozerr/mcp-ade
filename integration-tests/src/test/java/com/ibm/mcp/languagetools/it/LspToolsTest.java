@@ -13,6 +13,7 @@
  *******************************************************************************/
 package com.ibm.mcp.languagetools.it;
 
+import com.ibm.mcp.languagetools.utils.UriUtils;
 import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusTest;
 import org.awaitility.Awaitility;
@@ -44,9 +45,9 @@ class LspToolsTest {
         assertNotNull(url, "test-workspace directory not found on classpath");
         Path workspacePath = Path.of(url.toURI());
         cwd = workspacePath.toString();
-        testFileUri = workspacePath.resolve("test.xml").toUri().toString();
-        testErrorFileUri = workspacePath.resolve("test-error.xml").toUri().toString();
-        testTxtFileUri = workspacePath.resolve("test.txt").toUri().toString();
+        testFileUri = UriUtils.toFileUriString(workspacePath.resolve("test.xml").toUri());
+        testErrorFileUri = UriUtils.toFileUriString(workspacePath.resolve("test-error.xml").toUri());
+        testTxtFileUri = UriUtils.toFileUriString(workspacePath.resolve("test.txt").toUri());
     }
 
     @Test
