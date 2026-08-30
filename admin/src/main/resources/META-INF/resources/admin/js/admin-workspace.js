@@ -7,7 +7,7 @@ import { getWorkspaceDisplayName } from './trace-renderer.js';
 import {
     renderTraceControls, updateTraceControls, renderTracesInContainer,
     getCurrentSearchQuery, toggleAllTraces, highlightText, escapeHtml,
-    initSearchListeners, initTraceContainer, toggleTrace, showTooltip, hideTooltip
+    initSearchListeners, initTraceContainer
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
 import { renderSettingsPanel, renderToggleSetting, renderServerSetting, renderActionItem, resetWorkspaceSetting, setWorkspaceSetting } from './admin-settings.js';
@@ -1019,7 +1019,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     </div>
                     <div class="tab-content">
                         <div id="traces-tab" class="tab-panel ${state.currentConsoleTab === 'traces' ? 'active' : ''}">
-                            <div class="console" id="console-output" tabindex="0"></div>
+                            <div class="console" id="lsp-console-output" tabindex="0"></div>
                         </div>
                         <div id="overview-tab" class="tab-panel ${state.currentConsoleTab === 'overview' ? 'active' : ''}">
                             <div class="details-panel" id="overview-content">
@@ -1434,32 +1434,11 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         export function renderConsole() {
-            renderTracesInContainer('console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
-            initTraceContainer('console-output');
+            renderTracesInContainer('lsp-console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
+            initTraceContainer('lsp-console-output');
         }
 
-        let mouseDownTime = 0;
-        let mouseDownIndex = -1;
-
-        function onHeaderMouseDown(index) {
-            mouseDownTime = Date.now();
-            mouseDownIndex = index;
-        }
-
-        function onHeaderMouseUp(index) {
-            // Si c'est un click rapide (< 200ms) et au même endroit, toggle
-            const timeDiff = Date.now() - mouseDownTime;
-            if (timeDiff < 200 && mouseDownIndex === index) {
-                // Vérifier si du texte a été sélectionné
-                const selection = window.getSelection();
-                if (!selection || selection.toString().length === 0) {
-                    toggleTrace(index);
-                }
-            }
-            mouseDownIndex = -1;
-        }
-
-        let allFolded = true; // Par défaut: tout plié
+        let allFolded = true;
 
         // Generic function for toggling all traces (LSP or MCP)
         function toggleAllTracesGeneric(outputId, bodyClass, toggleClass, buttonId, foldedStateRef) {
@@ -1496,7 +1475,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         }
 
         function toggleAllTracesWorkspace() {
-            toggleAllTracesGeneric('console-output', 'trace-body', 'trace-toggle', 'trace-fold-button', {
+            toggleAllTracesGeneric('lsp-console-output', 'trace-body', 'trace-toggle', 'trace-fold-button', {
                 get value() { return allFolded; },
                 set value(v) { allFolded = v; }
             });
@@ -1691,7 +1670,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         });
 
         function renderConsoleWithHighlights() {
-            renderTracesInContainer('console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
+            renderTracesInContainer('lsp-console-output', getServerTraces(), currentTraceLevel, getCurrentSearchQuery());
         }
 
         async function toggleFileWatcherFromListAction(uri) {

@@ -757,13 +757,13 @@ registerActions('click', {
                 };
             }
 
-            const consoleOutput = document.getElementById('console-output');
+            const consoleOutput = document.getElementById('lsp-console-output');
             if (consoleOutput && state.selectedServer) {
                 const globalTraces = state.tracesByServer[traceKey(null, state.currentServerId)] || [];
                 const workspaceTraces = state.tracesByServer[traceKey(state.selectedWorkspace, state.currentServerId)] || [];
                 return {
                     type: 'lsp',
-                    containerId: 'console-output',
+                    containerId: 'lsp-console-output',
                     data: globalTraces.length > 0 ? [...globalTraces, ...workspaceTraces] : workspaceTraces
                 };
             }
@@ -780,7 +780,7 @@ registerActions('click', {
             return null;
         },
         onSearch: () => {
-            const consoleOutput = document.getElementById('console-output');
+            const consoleOutput = document.getElementById('lsp-console-output');
             const mcpConsoleOutput = document.getElementById('mcp-console-output');
             const dapTracesContainer = document.getElementById(`dap-traces-container-${state.currentDapSessionId}`);
 

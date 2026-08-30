@@ -12,11 +12,12 @@ function getTraceColorClass(trace) {
     return '';
 }
 
-export function renderTrace(trace, index, traceLevel, searchQuery) {
+export function renderTrace(trace, index, traceLevel, searchQuery, prefix) {
     const content = trace.content;
     const firstNewline = content.indexOf('\n');
     const colorClass = getTraceColorClass(trace);
     const lineClass = 'trace-line' + (colorClass ? ' ' + colorClass : '');
+    const key = prefix ? prefix + '-' + index : '' + index;
 
     if (firstNewline === -1) {
         return `
@@ -53,22 +54,22 @@ export function renderTrace(trace, index, traceLevel, searchQuery) {
     const fullContent = headerLine + '\n' + body;
 
     return `
-        <div class="${lineClass}" data-trace-tooltip="${index}" data-folded="${!hasMatch}">
-            <div class="${headerClass} p-xs font-mono-sm" id="header-${index}"
-                 data-trace-toggle="${index}">
-                <span class="trace-toggle mr-sm" id="toggle-${index}">${toggleIcon}</span>
+        <div class="${lineClass}" data-trace-tooltip="${key}" data-folded="${!hasMatch}">
+            <div class="${headerClass} p-xs font-mono-sm" id="header-${key}"
+                 data-trace-toggle="${key}">
+                <span class="trace-toggle mr-sm" id="toggle-${key}">${toggleIcon}</span>
                 <span class="trace-header-text text-primary">${highlightText(headerLine, searchQuery)}</span>
             </div>
-            <div class="trace-body ${foldState} text-primary font-mono-sm text-pre-wrap" id="body-${index}">${highlightText(body, searchQuery)}</div>
-            <div class="trace-tooltip" id="tooltip-${index}">${escapeHtml(fullContent)}</div>
+            <div class="trace-body ${foldState} text-primary font-mono-sm text-pre-wrap" id="body-${key}">${highlightText(body, searchQuery)}</div>
+            <div class="trace-tooltip" id="tooltip-${key}">${escapeHtml(fullContent)}</div>
         </div>
     `;
 }
 
-export function toggleTrace(index) {
-    const body = document.getElementById('body-' + index);
-    const toggle = document.getElementById('toggle-' + index);
-    const header = document.getElementById('header-' + index);
+export function toggleTrace(key) {
+    const body = document.getElementById('body-' + key);
+    const toggle = document.getElementById('toggle-' + key);
+    const header = document.getElementById('header-' + key);
 
     if (!header || !body || !toggle) return;
 
@@ -88,7 +89,7 @@ export function toggleTrace(index) {
 
             const tooltip = document.createElement('div');
             tooltip.className = 'trace-tooltip';
-            tooltip.id = 'tooltip-' + index;
+            tooltip.id = 'tooltip-' + key;
             tooltip.textContent = fullContent;
             traceLine.appendChild(tooltip);
         }
@@ -98,7 +99,7 @@ export function toggleTrace(index) {
         toggle.textContent = '▼';
         header.classList.remove('folded');
         if (traceLine) traceLine.dataset.folded = 'false';
-        hideTooltip(index);
+        hideTooltip(key);
     }
 }
 
@@ -107,9 +108,9 @@ export function toggleAllTraces(containerId, expand) {
     if (!container) return;
 
     container.querySelectorAll('.trace-body').forEach(body => {
-        const id = body.id.replace('body-', '');
-        const toggle = document.getElementById('toggle-' + id);
-        const header = document.getElementById('header-' + id);
+        const key = body.id.replace('body-', '');
+        const toggle = document.getElementById('toggle-' + key);
+        const header = document.getElementById('header-' + key);
 
         if (!toggle || !header) return;
 
@@ -127,37 +128,37 @@ export function toggleAllTraces(containerId, expand) {
     });
 }
 
-let activeTooltipIndex = null;
+let activeTooltipKey = null;
 
-export function showTooltip(event, index, isFolded) {
+export function showTooltip(event, key, isFolded) {
     if (!isFolded) return;
 
-    const body = document.getElementById('body-' + index);
+    const body = document.getElementById('body-' + key);
     if (!body || !body.classList.contains('collapsed')) return;
 
-    const tooltip = document.getElementById('tooltip-' + index);
+    const tooltip = document.getElementById('tooltip-' + key);
     if (!tooltip) return;
 
     hideActiveTooltip();
-    activeTooltipIndex = index;
+    activeTooltipKey = key;
     tooltip.style.display = 'block';
     tooltip.style.left = event.clientX + 'px';
     tooltip.style.top = (event.clientY + 20) + 'px';
 }
 
-export function hideTooltip(index) {
-    const tooltip = document.getElementById('tooltip-' + index);
+export function hideTooltip(key) {
+    const tooltip = document.getElementById('tooltip-' + key);
     if (tooltip) {
         tooltip.style.display = 'none';
     }
-    if (activeTooltipIndex === index) {
-        activeTooltipIndex = null;
+    if (activeTooltipKey === key) {
+        activeTooltipKey = null;
     }
 }
 
 function hideActiveTooltip() {
-    if (activeTooltipIndex != null) {
-        hideTooltip(activeTooltipIndex);
+    if (activeTooltipKey != null) {
+        hideTooltip(activeTooltipKey);
     }
 }
 
@@ -375,10 +376,10 @@ export function restoreExpandedState(container, expandedIds) {
         if (!body) return;
         body.classList.remove('collapsed');
         body.classList.add('expanded');
-        const idx = bodyId.replace('body-', '');
-        const toggle = document.getElementById('toggle-' + idx);
+        const key = bodyId.replace('body-', '');
+        const toggle = document.getElementById('toggle-' + key);
         if (toggle) toggle.textContent = '▼';
-        const header = document.getElementById('header-' + idx);
+        const header = document.getElementById('header-' + key);
         if (header) header.classList.remove('folded');
     });
 }
@@ -406,7 +407,7 @@ export function renderTracesInContainer(containerId, traces, traceLevel, searchQ
     const expandedIds = saveExpandedState(container);
 
     container.innerHTML = filteredTraces.map((trace, index) =>
-        renderTrace(trace, index, traceLevel === 'off' ? 'verbose' : traceLevel, searchQuery)
+        renderTrace(trace, index, traceLevel === 'off' ? 'verbose' : traceLevel, searchQuery, containerId)
     ).join('');
 
     restoreExpandedState(container, expandedIds);
@@ -429,18 +430,18 @@ export function initTraceContainer(containerId) {
     container.addEventListener('mousedown', (e) => {
         const header = e.target.closest('[data-trace-toggle]');
         if (header) {
-            mouseDownData = { index: parseInt(header.dataset.traceToggle), x: e.clientX, y: e.clientY };
+            mouseDownData = { key: header.dataset.traceToggle, x: e.clientX, y: e.clientY };
         }
     });
 
     container.addEventListener('mouseup', (e) => {
         if (!mouseDownData) return;
         const header = e.target.closest('[data-trace-toggle]');
-        if (header && parseInt(header.dataset.traceToggle) === mouseDownData.index) {
+        if (header && header.dataset.traceToggle === mouseDownData.key) {
             const dx = Math.abs(e.clientX - mouseDownData.x);
             const dy = Math.abs(e.clientY - mouseDownData.y);
             if (dx < 5 && dy < 5) {
-                toggleTrace(mouseDownData.index);
+                toggleTrace(mouseDownData.key);
             }
         }
         mouseDownData = null;
@@ -450,11 +451,11 @@ export function initTraceContainer(containerId) {
         const el = e.target.closest('[data-trace-tooltip]');
         if (!el || el._tooltipActive) return;
         el._tooltipActive = true;
-        const index = parseInt(el.dataset.traceTooltip);
+        const key = el.dataset.traceTooltip;
         const isFolded = el.dataset.folded === 'true';
         el._tooltipTimer = setTimeout(() => {
             if (el._tooltipActive) {
-                showTooltip(e, index, isFolded);
+                showTooltip(e, key, isFolded);
             }
         }, 800);
     });
@@ -465,7 +466,7 @@ export function initTraceContainer(containerId) {
         if (el.contains(e.relatedTarget)) return;
         el._tooltipActive = false;
         clearTimeout(el._tooltipTimer);
-        hideTooltip(parseInt(el.dataset.traceTooltip));
+        hideTooltip(el.dataset.traceTooltip);
     });
 }
 
