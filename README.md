@@ -1,17 +1,22 @@
-# MCP ADE
+# mcp-ade
 
-**A**gent **D**evelopment **E**nvironment — like an IDE, but the **I** is replaced by **A**gent. No IDE required.
+**Agent Development Environment**
+Code editing, debugging, and building — for AI agents, no IDE required.
 
-An [MCP](https://modelcontextprotocol.io/) server that gives AI agents full development capabilities:
+`mcp-ade` is an [MCP](https://modelcontextprotocol.io/) server that gives AI agents full development capabilities:
 
-- **Code Editing** — diagnostics, code navigation, refactoring, completions, powered by [LSP](https://microsoft.github.io/language-server-protocol/)
+- **Code Editing** — diagnostics, navigation, refactoring, completions, powered by [LSP](https://microsoft.github.io/language-server-protocol/)
 - **Debugging** — breakpoints, stepping, variable inspection, powered by [DAP](https://microsoft.github.io/debug-adapter-protocol/)
 - **Building** — compile, test, dependencies, powered by [BSP](https://build-server-protocol.github.io/)
+
+Any language your editor supports, your agent now supports too.
+
+---
 
 *— What! Yet another MCP Server for LSP?*
 
 Not just LSP. Also **DAP** — debugging. And not just a server — a **standalone platform**.
-No IDE required. MCP LT manages multiple language servers and debug adapters, handles their lifecycle,
+No IDE required. MCP ADE manages multiple language servers and debug adapters, handles their lifecycle,
 and exposes all their capabilities as MCP tools to any AI assistant.
 
 *— OK but what can it actually do?*
