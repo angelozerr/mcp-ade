@@ -30,6 +30,7 @@ public class GitHubAssetFetcherProvider implements AssetFetcherProvider {
     private static final String GITHUB_REPOSITORY_JSON_PROPERTY = "repository";
     private static final String GITHUB_ASSET_JSON_PROPERTY = "asset";
     private static final String GITHUB_PRERELEASE_JSON_PROPERTY = "prerelease";
+    private static final String GITHUB_TAG_PATTERN_JSON_PROPERTY = "tagPattern";
 
     @Override
     public AssetFetcherInfo getAssetFetcher(JsonObject downloadJson) {
@@ -41,21 +42,22 @@ public class GitHubAssetFetcherProvider implements AssetFetcherProvider {
             return null;
         }
         JsonObject githubObj = githubElement.getAsJsonObject();
-        if (!githubObj.has(GITHUB_OWNER_JSON_PROPERTY) || !githubObj.has(GITHUB_REPOSITORY_JSON_PROPERTY)) {
+        String owner = OSUtils.getStringFromOs(githubObj, GITHUB_OWNER_JSON_PROPERTY);
+        String repository = OSUtils.getStringFromOs(githubObj, GITHUB_REPOSITORY_JSON_PROPERTY);
+        if (owner == null || repository == null) {
             return null;
         }
-        String owner = githubObj.get(GITHUB_OWNER_JSON_PROPERTY).getAsString();
-        String repository = githubObj.get(GITHUB_REPOSITORY_JSON_PROPERTY).getAsString();
         String assetPattern = OSUtils.getStringFromOs(githubObj, GITHUB_ASSET_JSON_PROPERTY);
         if (assetPattern == null) {
             return null;
         }
         boolean prerelease = githubObj.has(GITHUB_PRERELEASE_JSON_PROPERTY)
                 && githubObj.get(GITHUB_PRERELEASE_JSON_PROPERTY).getAsBoolean();
+        String tagPattern = OSUtils.getStringFromOs(githubObj, GITHUB_TAG_PATTERN_JSON_PROPERTY);
 
         var assetFetcher = GitHubAssetFetcherManager.getInstance().getAssetFetcher(owner, repository);
         return new AssetFetcherInfo(assetFetcher,
-                new GitHubAssetFetcher.ReleaseMatcher(prerelease),
+                new GitHubAssetFetcher.ReleaseMatcher(prerelease, tagPattern),
                 new GitHubAssetFetcher.AssetMatcher(assetPattern));
     }
 }

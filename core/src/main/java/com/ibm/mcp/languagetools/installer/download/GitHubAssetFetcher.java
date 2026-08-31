@@ -49,25 +49,34 @@ public class GitHubAssetFetcher implements AssetFetcher {
     public static class ReleaseMatcher implements Function<JsonObject, Boolean> {
 
         private final boolean prerelease;
+        private final Pattern tagPattern;
 
-        /**
-         * Creates a release filter that accepts releases based on the prerelease flag.
-         *
-         * @param prerelease true to accept only prerelease releases, false otherwise
-         */
         public ReleaseMatcher(boolean prerelease) {
-            this.prerelease = prerelease;
+            this(prerelease, null);
         }
 
-        /**
-         * Applies the filter to a given release JSON object.
-         *
-         * @param release the JSON object representing a release
-         * @return true if the release matches the prerelease criteria, false otherwise
-         */
+        public ReleaseMatcher(boolean prerelease, String tagGlob) {
+            this.prerelease = prerelease;
+            this.tagPattern = tagGlob != null ? compileGlobToRegex(tagGlob) : null;
+        }
+
         @Override
         public Boolean apply(JsonObject release) {
-            return prerelease == getBoolean(release, "prerelease");
+            if (prerelease != getBoolean(release, "prerelease")) {
+                return false;
+            }
+            if (tagPattern != null) {
+                String tagName = release.has("tag_name") ? release.get("tag_name").getAsString() : "";
+                return tagPattern.matcher(tagName).matches();
+            }
+            return true;
+        }
+
+        private static Pattern compileGlobToRegex(String glob) {
+            String regex = glob
+                    .replace(".", "\\.")
+                    .replace("*", ".*");
+            return Pattern.compile(regex);
         }
     }
 

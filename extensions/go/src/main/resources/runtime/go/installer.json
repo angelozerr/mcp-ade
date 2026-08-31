@@ -3,11 +3,34 @@
   "name": "Go",
   "description": "Go runtime required by Go-based language servers",
   "url": "https://go.dev",
+  "env": {
+    "GOROOT": "${serverHome}",
+    "GOPATH": "${serverHome}/gopath"
+  },
   "check": {
     "exec": {
       "name": "Check if Go is available",
       "command": "go version",
       "timeout": 5000
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download Go",
+      "go": {},
+      "output": {
+        "dir": "${serverHome}",
+        "stripRootDir": true
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Go",
+          "command": {
+            "windows": "${serverHome}/bin/go.exe",
+            "default": "${serverHome}/bin/go"
+          }
+        }
+      }
     }
   }
 }

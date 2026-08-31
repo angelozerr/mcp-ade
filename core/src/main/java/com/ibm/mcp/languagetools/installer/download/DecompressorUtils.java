@@ -14,6 +14,8 @@
 package com.ibm.mcp.languagetools.installer.download;
 
 import com.ibm.mcp.languagetools.progress.ProgressMonitor;
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.jboss.logging.Logger;
@@ -35,7 +37,7 @@ import java.util.zip.ZipFile;
 
 /**
  * Utility class for decompressing archives.
- * Supports: .zip, .vsix, .tar, .tar.gz, .tgz, .gz, .tar.xz, .txz
+ * Supports: .zip, .vsix, .tar, .tar.gz, .tgz, .gz, .tar.xz, .txz, .7z
  * Inspired by lsp4ij's DownloadUtils.
  */
 public class DecompressorUtils {
@@ -74,6 +76,8 @@ public class DecompressorUtils {
             return DecompressorUtils::decompressGz;
         } else if (fileName.endsWith("tar.xz") || fileName.endsWith(".txz")) {
             return DecompressorUtils::decompressTxz;
+        } else if (fileName.endsWith(".7z")) {
+            return DecompressorUtils::decompress7z;
         }
 
         return null;
@@ -122,6 +126,52 @@ public class DecompressorUtils {
                     double pct = (double) processed / totalEntries * 100.0;
                     progress.reportProgress(pct,
                             "Extracting (" + processed + "/" + totalEntries + " files)");
+                }
+            }
+        }
+
+        return topLevel.size() == 1 ? targetDir.resolve(topLevel.iterator().next()) : null;
+    }
+
+    /**
+     * Decompresses a 7z archive (.7z).
+     */
+    private static Path decompress7z(Path filePath, Path targetDir, ProgressMonitor progress) throws IOException {
+        Files.createDirectories(targetDir);
+        Set<String> topLevel = new HashSet<>();
+
+        try (SevenZFile sevenZFile = SevenZFile.builder().setPath(filePath).get()) {
+            int fileCount = 0;
+            SevenZArchiveEntry entry;
+            while ((entry = sevenZFile.getNextEntry()) != null) {
+                String entryName = entry.getName().replace("\\", "/");
+
+                String[] parts = entryName.split("/");
+                if (parts.length > 0 && !parts[0].isEmpty()) {
+                    topLevel.add(parts[0]);
+                }
+
+                Path entryPath = targetDir.resolve(entryName).normalize();
+                if (!entryPath.startsWith(targetDir.normalize())) {
+                    throw new IOException("Zip slip: " + entryName);
+                }
+
+                if (entry.isDirectory()) {
+                    Files.createDirectories(entryPath);
+                } else {
+                    Files.createDirectories(entryPath.getParent());
+                    try (OutputStream out = Files.newOutputStream(entryPath)) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        while ((bytesRead = sevenZFile.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                    }
+                }
+
+                fileCount++;
+                if (progress != null && fileCount % 50 == 0) {
+                    progress.reportProgress("Extracting (" + fileCount + " files)");
                 }
             }
         }

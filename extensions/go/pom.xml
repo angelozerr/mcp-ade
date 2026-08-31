@@ -17,6 +17,15 @@
     <name>Go Extension</name>
     <description>Go language support via gopls (LSP) and Delve (DAP) for MCP Language Tools</description>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.ibm.mcp</groupId>
+            <artifactId>mcp-language-tools-core</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
