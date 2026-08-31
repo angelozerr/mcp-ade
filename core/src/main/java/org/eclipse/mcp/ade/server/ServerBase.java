@@ -198,9 +198,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
 
         String workingDir = getWorkingDirectory();
         if (workingDir != null) {
-            VariableContext varCtx = new VariableContext.Builder()
-                    .serverConfig(config)
-                    .build();
+            VariableContext varCtx = buildVariableContext();
             String resolvedWorkingDir = VariableResolverRegistry.getInstance().resolve(workingDir, varCtx);
             pb.directory(Paths.get(resolvedWorkingDir).toFile());
             addTrace(String.format("Working directory: %s", resolvedWorkingDir));
@@ -230,9 +228,7 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         if (cmd == null) {
             throw new IOException("No command configured for current OS");
         }
-        VariableContext varCtx = new VariableContext.Builder()
-                .serverConfig(getConfig())
-                .build();
+        VariableContext varCtx = buildVariableContext();
         cmd = VariableResolverRegistry.getInstance().resolve(cmd, varCtx);
         List<String> args = parseCommandLine(cmd);
         if (OSUtils.isWindows() && !args.isEmpty()) {
@@ -243,6 +239,28 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
             }
         }
         return args;
+    }
+
+    protected VariableContext buildVariableContext() {
+        VariableContext.Builder builder = new VariableContext.Builder()
+                .serverConfig(getConfig());
+        Workspace ws = getWorkspace();
+        if (ws != null) {
+            if (ws.getRootPath() != null) {
+                builder.workspaceFolder(ws.getRootPath());
+            }
+            builder.mcpAdeRoot(ws.getApplication().getPathManager().getMcpAdeRoot());
+        }
+        return builder.build();
+    }
+
+    public Path getServerWorkspaceDir() {
+        VariableContext ctx = buildVariableContext();
+        String resolved = VariableResolverRegistry.getInstance().resolve("${serverWorkspaceDir}", ctx);
+        if (resolved != null && !resolved.equals("${serverWorkspaceDir}")) {
+            return Path.of(resolved);
+        }
+        throw new RuntimeException("Failed to resolve serverWorkspaceDir for " + getConfig().getServerId());
     }
 
     /**

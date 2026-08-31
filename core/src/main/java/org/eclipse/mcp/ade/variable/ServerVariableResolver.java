@@ -16,11 +16,14 @@ package org.eclipse.mcp.ade.variable;
 import org.eclipse.mcp.ade.installer.InstallableConfig;
 import jakarta.inject.Singleton;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
  * Resolves server-related variables: {@code serverHome}, {@code userHome},
- * {@code mcpHome}, {@code workspaceFolder}, {@code workspaceRoot}.
+ * {@code mcpHome}, {@code workspaceFolder}, {@code workspaceRoot},
+ * {@code serverWorkspaceDir}.
  */
 @Singleton
 public class ServerVariableResolver implements VariableResolver {
@@ -35,6 +38,7 @@ public class ServerVariableResolver implements VariableResolver {
             case "userHome" -> System.getProperty("user.home");
             case "mcpHome" -> resolveMcpHome(context);
             case "workspaceFolder", "workspaceRoot" -> resolveWorkspaceFolder(context);
+            case "serverWorkspaceDir" -> resolveServerWorkspaceDir(context);
             default -> null;
         };
     }
@@ -49,6 +53,11 @@ public class ServerVariableResolver implements VariableResolver {
     }
 
     private static String resolveMcpHome(VariableContext context) {
+        Path mcpAdeRoot = context.getMcpAdeRoot();
+        if (mcpAdeRoot != null) {
+            return mcpAdeRoot.toString();
+        }
+        // Fallback: derive from serverHome (<mcpHome>/<type>/<serverId>)
         InstallableConfig config = context.getServerConfig();
         if (config == null) {
             return null;
@@ -57,7 +66,6 @@ public class ServerVariableResolver implements VariableResolver {
         if (serverHome == null) {
             return null;
         }
-        // MCP_HOME is two levels up from serverHome: <mcpHome>/<type>/<serverId>
         Path parent = serverHome.getParent();
         return parent != null && parent.getParent() != null
                 ? parent.getParent().toString()
@@ -67,5 +75,32 @@ public class ServerVariableResolver implements VariableResolver {
     private static String resolveWorkspaceFolder(VariableContext context) {
         Path folder = context.getWorkspaceFolder();
         return folder != null ? folder.toString() : null;
+    }
+
+    private static String resolveServerWorkspaceDir(VariableContext context) {
+        String mcpHome = resolveMcpHome(context);
+        if (mcpHome == null) {
+            return null;
+        }
+        InstallableConfig config = context.getServerConfig();
+        if (config == null) {
+            return null;
+        }
+        Path workspaceFolder = context.getWorkspaceFolder();
+        if (workspaceFolder == null) {
+            return null;
+        }
+        String serverId = config.getServerId();
+        String workspaceName = workspaceFolder.getFileName().toString();
+        int hash = workspaceFolder.toUri().hashCode() & 0x7FFFFFFF;
+        Path dir = Path.of(mcpHome)
+                .resolve(serverId + "-workspaces")
+                .resolve(workspaceName + "-" + hash);
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            return dir.toString();
+        }
+        return dir.toString();
     }
 }

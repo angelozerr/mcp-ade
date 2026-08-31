@@ -47,8 +47,8 @@ After [starting the MCP ADE (Agent Development Environment) server](./getting-st
     }
   ],
   "command": {
-    "windows": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server.exe --stdio --eula YOUR_EULA_KEY",
-    "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server --stdio --eula YOUR_EULA_KEY"
+    "windows": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server.exe --stdio --system-path \"${serverWorkspaceDir}\" --eula YOUR_EULA_KEY",
+    "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\" --eula YOUR_EULA_KEY"
   }
 }
 ```

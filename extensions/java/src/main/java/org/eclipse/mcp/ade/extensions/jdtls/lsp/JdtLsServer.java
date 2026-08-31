@@ -668,15 +668,6 @@ public class JdtLsServer extends LspServer implements InstallerListener {
     }
 
     public Path getJdtlsDataDir() {
-        URI rootUri = getWorkspace().getRootUri();
-        String workspaceName = Path.of(rootUri).getFileName().toString();
-        Path baseDir = getWorkspace().getApplication().getPathManager().getMcpAdeRoot().resolve("jdtls-workspaces");
-        Path dir = baseDir.resolve(workspaceName + "-" + (rootUri.hashCode() & 0x7FFFFFFF));
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create JDT.LS data directory", e);
-        }
-        return dir;
+        return getServerWorkspaceDir();
     }
 }

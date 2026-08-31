@@ -30,11 +30,13 @@ public class VariableContext {
 
     private final InstallableConfig serverConfig;
     private final Path workspaceFolder;
+    private final Path mcpAdeRoot;
     private final Map<String, String> extraVariables;
 
     private VariableContext(Builder builder) {
         this.serverConfig = builder.serverConfig;
         this.workspaceFolder = builder.workspaceFolder;
+        this.mcpAdeRoot = builder.mcpAdeRoot;
         this.extraVariables = builder.extraVariables.isEmpty()
                 ? Collections.emptyMap()
                 : Collections.unmodifiableMap(new LinkedHashMap<>(builder.extraVariables));
@@ -52,6 +54,10 @@ public class VariableContext {
         return workspaceFolder;
     }
 
+    public Path getMcpAdeRoot() {
+        return mcpAdeRoot;
+    }
+
     public String getExtraVariable(String name) {
         return extraVariables.get(name);
     }
@@ -63,6 +69,7 @@ public class VariableContext {
     public static class Builder {
         private InstallableConfig serverConfig;
         private Path workspaceFolder;
+        private Path mcpAdeRoot;
         private final Map<String, String> extraVariables = new LinkedHashMap<>();
 
         public Builder serverConfig(InstallableConfig serverConfig) {
@@ -72,6 +79,11 @@ public class VariableContext {
 
         public Builder workspaceFolder(Path workspaceFolder) {
             this.workspaceFolder = workspaceFolder;
+            return this;
+        }
+
+        public Builder mcpAdeRoot(Path mcpAdeRoot) {
+            this.mcpAdeRoot = mcpAdeRoot;
             return this;
         }
 
