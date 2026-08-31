@@ -1,4 +1,4 @@
-# Getting Started with MCP Language Tools
+# Getting Started with MCP ADE (Agent Development Environment)
 
 ## Quick Start (5 minutes)
 
@@ -29,7 +29,7 @@ Get AI-powered code validation with language servers in 4 steps.
 
 ---
 
-## Step 1: Build & Launch MCP Language Tools
+## Step 1: Build & Launch MCP ADE (Agent Development Environment)
 
 ### First time: build the project
 
@@ -78,7 +78,7 @@ Listening on: http://localhost:7654
 
 ## Step 2: Configure Claude, Bob
 
-### Add MCP Language Tools to Claude, Bob
+### Add MCP ADE (Agent Development Environment) to Claude, Bob
 
 See doc at Claude/Bob to register MCP Server.
 
@@ -282,7 +282,7 @@ Check `extensions/` folder for available extensions:
 ### File Watcher & Workspace Refresh
 
 When an AI agent creates, modifies, or deletes files, language servers need to be notified.
-MCP Language Tools provides two mechanisms:
+MCP ADE (Agent Development Environment) provides two mechanisms:
 
 **1. File Watcher (automatic, local workspaces)**
 
@@ -405,13 +405,13 @@ Let's trace the complete flow in the Admin UI.
 ## Summary
 
 You've learned:
-✅ How to start MCP Language Tools  
+✅ How to start MCP ADE (Agent Development Environment)  
 ✅ How to connect Claude Desktop  
 ✅ How to get AI-powered validation  
 ✅ **How it all works under the hood** (MCP + LSP traces)  
 ✅ How to debug and understand with Admin UI  
 
-**MCP Language Tools makes the invisible visible** - that's the difference! 🔍
+**MCP ADE (Agent Development Environment) makes the invisible visible** - that's the difference! 🔍
 
 **Now try it with your own projects!** 🚀
 

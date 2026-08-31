@@ -1,10 +1,10 @@
 # Getting Started with Debugging (DAP)
 
-MCP Language Tools provides debugging capabilities through the Debug Adapter Protocol (DAP). Your AI assistant can set breakpoints, step through code, inspect variables, and evaluate expressions — just like an IDE debugger.
+MCP ADE (Agent Development Environment) provides debugging capabilities through the Debug Adapter Protocol (DAP). Your AI assistant can set breakpoints, step through code, inspect variables, and evaluate expressions — just like an IDE debugger.
 
 ## Prerequisites
 
-- MCP Language Tools is running (see [Getting Started](getting-started.md))
+- MCP ADE (Agent Development Environment) is running (see [Getting Started](getting-started.md))
 - Your MCP client is connected
 
 ## Example: Finding a Bug the AI Can't See by Reading Code

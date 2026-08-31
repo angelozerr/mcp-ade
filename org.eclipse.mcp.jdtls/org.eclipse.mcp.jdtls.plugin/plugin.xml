@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+    <extension point="org.eclipse.jdt.ls.core.importers">
+        <importer
+            id="mcpProjectImporter"
+            order="10"
+            class="org.eclipse.mcp.jdtls.build.McpProjectImporter" />
+    </extension>
+    <extension point="org.eclipse.jdt.ls.core.buildSupport">
+        <buildSupport
+            id="mcpBuildSupport"
+            order="50"
+            class="org.eclipse.mcp.jdtls.build.McpBuildSupport" />
+    </extension>
+    <extension point="org.eclipse.jdt.ls.core.delegateCommandHandler">
+        <delegateCommandHandler class="org.eclipse.mcp.jdtls.McpDelegateCommandHandler">
+            <!-- Existing -->
+            <command id="mcp.jdtls.diagnostics"/>
+            <command id="mcp.jdtls.typeHierarchy"/>
+            <command id="mcp.jdtls.callHierarchyIncoming"/>
+            <command id="mcp.jdtls.callHierarchyOutgoing"/>
+            <command id="mcp.jdtls.findAnnotationUsages"/>
+            <command id="mcp.jdtls.findTypeInstantiations"/>
+            <command id="mcp.jdtls.getComplexityMetrics"/>
+            <!-- Fine-grained reference search -->
+            <command id="mcp.jdtls.findCasts"/>
+            <command id="mcp.jdtls.findCatchBlocks"/>
+            <command id="mcp.jdtls.findInstanceofChecks"/>
+            <command id="mcp.jdtls.findThrowsDeclarations"/>
+            <command id="mcp.jdtls.findTypeArguments"/>
+            <command id="mcp.jdtls.findMethodReferences"/>
+            <!-- Code search -->
+            <command id="mcp.jdtls.findFieldWrites"/>
+            <command id="mcp.jdtls.findTests"/>
+            <command id="mcp.jdtls.findAffectedTests"/>
+            <command id="mcp.jdtls.findUnusedCode"/>
+            <command id="mcp.jdtls.findUnreachableCode"/>
+            <command id="mcp.jdtls.findReflectionUsage"/>
+            <command id="mcp.jdtls.suggestImports"/>
+            <command id="mcp.jdtls.getTypeUsageSummary"/>
+            <command id="mcp.jdtls.searchSymbols"/>
+            <command id="mcp.jdtls.findReferences"/>
+            <command id="mcp.jdtls.findImplementations"/>
+            <!-- Navigation -->
+            <command id="mcp.jdtls.goToDefinition"/>
+            <command id="mcp.jdtls.getHoverInfo"/>
+            <command id="mcp.jdtls.getJavadoc"/>
+            <command id="mcp.jdtls.getSymbolInfo"/>
+            <command id="mcp.jdtls.getEnclosingElement"/>
+            <command id="mcp.jdtls.getFieldAtPosition"/>
+            <command id="mcp.jdtls.getMethodAtPosition"/>
+            <command id="mcp.jdtls.getTypeAtPosition"/>
+            <command id="mcp.jdtls.getSignatureHelp"/>
+            <command id="mcp.jdtls.getSuperMethod"/>
+            <command id="mcp.jdtls.getDocumentSymbols"/>
+            <command id="mcp.jdtls.getTypeMembers"/>
+            <!-- Analysis -->
+            <command id="mcp.jdtls.getDependencyGraph"/>
+            <command id="mcp.jdtls.analyzeChangeImpact"/>
+            <command id="mcp.jdtls.analyzeControlFlow"/>
+            <command id="mcp.jdtls.analyzeDataFlow"/>
+            <command id="mcp.jdtls.analyzeFile"/>
+            <command id="mcp.jdtls.analyzeMethod"/>
+            <command id="mcp.jdtls.analyzeType"/>
+            <!-- Code quality -->
+            <command id="mcp.jdtls.findLargeClasses"/>
+            <command id="mcp.jdtls.findNamingViolations"/>
+            <command id="mcp.jdtls.findPossibleBugs"/>
+            <command id="mcp.jdtls.findCircularDependencies"/>
+            <!-- Diagnostics & quick fixes -->
+            <command id="mcp.jdtls.validateSyntax"/>
+            <command id="mcp.jdtls.getQuickFixes"/>
+            <command id="mcp.jdtls.applyQuickFix"/>
+            <command id="mcp.jdtls.diagnoseAndFix"/>
+            <command id="mcp.jdtls.applyCleanup"/>
+            <!-- Framework-specific -->
+            <command id="mcp.jdtls.getHttpEndpoints"/>
+            <command id="mcp.jdtls.getJpaModel"/>
+            <command id="mcp.jdtls.getDiRegistrations"/>
+            <!-- Refactoring -->
+            <command id="mcp.jdtls.renameSymbol"/>
+            <command id="mcp.jdtls.organizeImports"/>
+            <command id="mcp.jdtls.extractMethod"/>
+            <command id="mcp.jdtls.extractVariable"/>
+            <command id="mcp.jdtls.extractConstant"/>
+            <command id="mcp.jdtls.extractInterface"/>
+            <command id="mcp.jdtls.extractSuperclass"/>
+            <command id="mcp.jdtls.inlineMethod"/>
+            <command id="mcp.jdtls.inlineVariable"/>
+            <command id="mcp.jdtls.changeMethodSignature"/>
+            <command id="mcp.jdtls.convertAnonymousToLambda"/>
+            <command id="mcp.jdtls.encapsulateField"/>
+            <command id="mcp.jdtls.introduceParameterObject"/>
+            <command id="mcp.jdtls.moveTypeToNewFile"/>
+            <command id="mcp.jdtls.pullUp"/>
+            <command id="mcp.jdtls.pushDown"/>
+            <command id="mcp.jdtls.convertToRecord"/>
+            <command id="mcp.jdtls.moveTypeToPackage"/>
+            <!-- Code generation -->
+            <command id="mcp.jdtls.generateGettersSetters"/>
+            <command id="mcp.jdtls.generateConstructor"/>
+            <command id="mcp.jdtls.generateToString"/>
+            <command id="mcp.jdtls.generateEqualsHashCode"/>
+            <command id="mcp.jdtls.generateDelegateMethods"/>
+            <!-- Project -->
+            <command id="mcp.jdtls.getProjectStructure"/>
+            <command id="mcp.jdtls.getClasspathInfo"/>
+            <command id="mcp.jdtls.getIndexingStatus"/>
+            <command id="mcp.jdtls.refreshProject"/>
+        </delegateCommandHandler>
+    </extension>
+</plugin>

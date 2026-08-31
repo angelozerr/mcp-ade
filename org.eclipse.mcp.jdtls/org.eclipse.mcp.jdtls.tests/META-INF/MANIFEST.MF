@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: MCP JDT.LS Tests
+Bundle-SymbolicName: org.eclipse.mcp.jdtls.tests
+Bundle-Version: 0.1.0.qualifier
+Bundle-Vendor: IBM
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Fragment-Host: org.eclipse.mcp.jdtls.plugin
+Import-Package: org.junit.jupiter.api,
+ org.junit.jupiter.api.function,
+ org.junit.jupiter.api.io

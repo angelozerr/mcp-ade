@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.eclipse.mcp</groupId>
+    <artifactId>org.eclipse.mcp.jdtls.parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>MCP JDT.LS Extensions :: Parent</name>
+    <description>JDT.LS delegate command handlers for MCP ADE (Agent Development Environment)</description>
+
+    <licenses>
+        <license>
+            <name>Eclipse Public License 2.0</name>
+            <url>https://www.eclipse.org/legal/epl-2.0/</url>
+        </license>
+    </licenses>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <tycho.version>4.0.9</tycho.version>
+        <tycho.test.platformArgs/>
+    </properties>
+
+    <modules>
+        <module>org.eclipse.mcp.jdtls.target</module>
+        <module>org.eclipse.mcp.jdtls.plugin</module>
+        <module>org.eclipse.mcp.jdtls.tests</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-maven-plugin</artifactId>
+                <version>${tycho.version}</version>
+                <extensions>true</extensions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>target-platform-configuration</artifactId>
+                <version>${tycho.version}</version>
+                <configuration>
+                    <target>
+                        <artifact>
+                            <groupId>org.eclipse.mcp</groupId>
+                            <artifactId>org.eclipse.mcp.jdtls.target</artifactId>
+                            <version>${project.version}</version>
+                        </artifact>
+                    </target>
+                    <environments>
+                        <environment>
+                            <os>win32</os>
+                            <ws>win32</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>linux</os>
+                            <ws>gtk</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>linux</os>
+                            <ws>gtk</ws>
+                            <arch>aarch64</arch>
+                        </environment>
+                        <environment>
+                            <os>macosx</os>
+                            <ws>cocoa</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>macosx</os>
+                            <ws>cocoa</ws>
+                            <arch>aarch64</arch>
+                        </environment>
+                    </environments>
+                    <executionEnvironment>JavaSE-21</executionEnvironment>
+                </configuration>
+            </plugin>
+        </plugins>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-compiler-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                    <configuration>
+                        <useProjectSettings>false</useProjectSettings>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-surefire-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                    <configuration>
+                        <useUIHarness>false</useUIHarness>
+                        <argLine>-Xmx4G -DDetectVMInstallationsJob.disabled=true ${tycho.test.platformArgs}</argLine>
+                        <forkedProcessTimeoutInSeconds>900</forkedProcessTimeoutInSeconds>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>macosx</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <tycho.test.platformArgs>-XstartOnFirstThread</tycho.test.platformArgs>
+            </properties>
+        </profile>
+    </profiles>
+
+</project>

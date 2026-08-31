@@ -5,22 +5,22 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.ibm.mcp</groupId>
-        <artifactId>mcp-language-tools-parent</artifactId>
+        <groupId>org.eclipse.mcp</groupId>
+        <artifactId>mcp-ade-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>mcp-language-tools-admin</artifactId>
+    <artifactId>mcp-ade-admin</artifactId>
     <packaging>jar</packaging>
 
-    <name>MCP Language Tools Admin</name>
-    <description>Admin UI console for MCP Language Tools</description>
+    <name>MCP ADE (Agent Development Environment) Admin</name>
+    <description>Admin UI console for MCP ADE (Agent Development Environment)</description>
 
     <dependencies>
         <!-- Core (provided - supplied by the runtime) -->
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
-            <artifactId>mcp-language-tools-core</artifactId>
+            <groupId>org.eclipse.mcp</groupId>
+            <artifactId>mcp-ade-core</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>

@@ -15,7 +15,7 @@ let historyIndex = -1;
 let activeView = null;
 
 async function ensureEnvironmentData() {
-    if (environmentData) return true;
+    if (environmentData && terminalEnabled !== null) return true;
 
     const consoleArea = document.getElementById('console-area');
     if (!consoleArea) return false;
@@ -24,11 +24,11 @@ async function ensureEnvironmentData() {
 
     try {
         const [envRes, termRes] = await Promise.all([
-            fetch('/api/admin/environment'),
+            environmentData ? Promise.resolve(null) : fetch('/api/admin/environment'),
             terminalEnabled === null ? fetch('/api/admin/environment/terminal-enabled') : Promise.resolve(null)
         ]);
 
-        environmentData = await envRes.json();
+        if (envRes) environmentData = await envRes.json();
         if (termRes) {
             const termData = await termRes.json();
             terminalEnabled = termData.enabled;

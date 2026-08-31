@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "mcp-extension.json",
-  "description": "Root descriptor for an mcp-languagetools extension. Must be placed at the root of the extension directory.",
+  "description": "Root descriptor for an mcp-ade extension. Must be placed at the root of the extension directory.",
   "type": "object",
   "required": ["id"],
   "properties": {
@@ -15,7 +15,7 @@
     }
   },
   "extensionStructure": {
-    "description": "Expected directory layout for an mcp-languagetools extension",
+    "description": "Expected directory layout for an mcp-ade extension",
     "layout": [
       "mcp-extension.json",
       "lsp/<server-id>/server.json",

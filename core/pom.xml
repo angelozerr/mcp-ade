@@ -5,15 +5,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.ibm.mcp</groupId>
-        <artifactId>mcp-language-tools-parent</artifactId>
+        <groupId>org.eclipse.mcp</groupId>
+        <artifactId>mcp-ade-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>mcp-language-tools-core</artifactId>
+    <artifactId>mcp-ade-core</artifactId>
     <packaging>jar</packaging>
 
-    <name>MCP Language Tools Core</name>
+    <name>MCP ADE (Agent Development Environment) Core</name>
     <description>MCP server core - LSP integration framework without bundled servers</description>
 
     <dependencies>

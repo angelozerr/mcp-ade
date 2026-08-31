@@ -1,6 +1,6 @@
 # Extension Guide
 
-An **extension** groups one or more LSP servers and/or DAP servers under a single language identifier (e.g., "java", "python"). This page explains how to add your own servers to MCP Language Tools.
+An **extension** groups one or more LSP servers and/or DAP servers under a single language identifier (e.g., "java", "python"). This page explains how to add your own servers to MCP ADE (Agent Development Environment).
 
 ## Adding Servers at Runtime
 
@@ -109,7 +109,7 @@ The installer:
 
 ## Creating a Bundled Extension Module
 
-For packaging servers as part of the MCP Language Tools build, create a Maven module under `extensions/`.
+For packaging servers as part of the MCP ADE (Agent Development Environment) build, create a Maven module under `extensions/`.
 
 ### Directory structure
 
@@ -144,7 +144,7 @@ This groups all LSP and DAP servers under this directory into the "ruby" extensi
 <project>
     <parent>
         <groupId>com.ibm.mcp</groupId>
-        <artifactId>mcp-language-tools-parent</artifactId>
+        <artifactId>mcp-ade-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>

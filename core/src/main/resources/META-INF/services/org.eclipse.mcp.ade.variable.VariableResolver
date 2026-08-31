@@ -1,0 +1,2 @@
+org.eclipse.mcp.ade.variable.ServerVariableResolver
+org.eclipse.mcp.ade.variable.VscodeVariableResolver

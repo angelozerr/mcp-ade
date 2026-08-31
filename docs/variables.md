@@ -1,6 +1,6 @@
 # Variables Reference
 
-MCP Language Tools supports variable substitution in `server.json` commands, `installer.json` templates, and DAP launch configurations.
+MCP ADE (Agent Development Environment) supports variable substitution in `server.json` commands, `installer.json` templates, and DAP launch configurations.
 
 ## Syntax
 
@@ -22,7 +22,7 @@ ${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server
 |---|---|---|
 | `${serverHome}` | Root installation directory for the server | command, installer |
 | `${userHome}` | User's home directory | command, installer |
-| `${mcpHome}` | Root directory of the MCP Language Tools installation | installer |
+| `${mcpHome}` | Root directory of the MCP ADE (Agent Development Environment) installation | installer |
 | `${workspaceFolder}` | Current project/workspace directory | installer, DAP launch config |
 | `${workspaceRoot}` | Deprecated alias for `${workspaceFolder}` | DAP launch config |
 | `${vscodeExtension:id}` | Path to a VS Code extension directory | command |
@@ -96,9 +96,9 @@ You can add custom variables by implementing the `VariableResolver` SPI:
 ```java
 package com.example;
 
-import com.ibm.mcp.languagetools.variable.VariableExpression;
-import com.ibm.mcp.languagetools.variable.VariableContext;
-import com.ibm.mcp.languagetools.variable.VariableResolver;
+import variable.org.eclipse.mcp.ade.VariableExpression;
+import variable.org.eclipse.mcp.ade.VariableContext;
+import variable.org.eclipse.mcp.ade.VariableResolver;
 
 public class MyVariableResolver implements VariableResolver {
 

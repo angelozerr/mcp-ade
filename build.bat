@@ -2,8 +2,8 @@
 setlocal
 
 set SCRIPT_DIR=%~dp0
-set TYCHO_DIR=%SCRIPT_DIR%com.ibm.mcp.jdtls
-set PLUGIN_TARGET=%TYCHO_DIR%\com.ibm.mcp.jdtls.plugin\target
+set TYCHO_DIR=%SCRIPT_DIR%org.eclipse.mcp.jdtls
+set PLUGIN_TARGET=%TYCHO_DIR%\org.eclipse.mcp.jdtls.plugin\target
 set DEST_DIR=%SCRIPT_DIR%extensions\java\src\main\resources\lsp\mcp-jdtls\plugins
 echo === Building MCP JDT.LS plugin (Tycho) ===
 cd /d "%TYCHO_DIR%"
@@ -17,7 +17,7 @@ echo Tycho build OK
 if not exist "%DEST_DIR%" mkdir "%DEST_DIR%"
 
 set JAR=
-for %%f in ("%PLUGIN_TARGET%\com.ibm.mcp.jdtls.plugin-*.jar") do (
+for %%f in ("%PLUGIN_TARGET%\org.eclipse.mcp.jdtls.plugin-*.jar") do (
     echo %%~nf | findstr /i "sources" >nul || set JAR=%%f
 )
 
@@ -26,10 +26,10 @@ if "%JAR%"=="" (
     exit /b 1
 )
 
-copy /y "%JAR%" "%DEST_DIR%\com.ibm.mcp.jdtls.plugin.jar" >nul
+copy /y "%JAR%" "%DEST_DIR%\org.eclipse.mcp.jdtls.plugin.jar" >nul
 echo Copied plugin JAR to %DEST_DIR%
 
 echo.
-echo === Building MCP Language Tools (Maven) ===
+echo === Building MCP ADE (Agent Development Environment) (Maven) ===
 cd /d "%SCRIPT_DIR%"
 call "%SCRIPT_DIR%mvnw.cmd" clean install %*

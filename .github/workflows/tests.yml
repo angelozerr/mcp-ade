@@ -1,8 +1,8 @@
 name: Tests
 on: [push, pull_request]
 jobs:
-  mcp-languagetools-build:
-    name: MCP LanguageTools (${{ matrix.os }})
+  mcp-ade-build:
+    name: MCP ADE (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,7 +27,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mcp-languagetools-test-reports-${{ matrix.os }}
+          name: mcp-ade-test-reports-${{ matrix.os }}
           path: '**/target/surefire-reports/**'
           retention-days: 7
 
@@ -48,12 +48,12 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build and test
-        working-directory: com.ibm.mcp.jdtls
+        working-directory: org.eclipse.mcp.jdtls
         run: mvn -B -U -e clean verify
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jdtls-test-reports-${{ matrix.os }}
-          path: 'com.ibm.mcp.jdtls/**/target/surefire-reports/**'
+          path: 'org.eclipse.mcp.jdtls/**/target/surefire-reports/**'
           retention-days: 7

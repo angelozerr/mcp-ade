@@ -4,7 +4,10 @@
   "check": {
     "exec": {
       "name": "Check if Ruby LSP is available",
-      "command": "ruby-lsp --version",
+      "command": {
+        "windows": "where ruby-lsp",
+        "default": "which ruby-lsp"
+      },
       "timeout": 5000
     }
   },
@@ -12,8 +15,8 @@
     "exec": {
       "name": "Install Ruby LSP",
       "command": {
-        "windows": "gem install prism --platform x64-mingw-ucrt --no-document && gem install ruby-lsp --conservative --no-document",
-        "default": "gem install ruby-lsp --conservative --no-document"
+        "windows": "gem uninstall prism --all --force --executables 2>NUL & gem install ruby-lsp --no-document",
+        "default": "gem install ruby-lsp --no-document"
       },
       "onSuccess": {
         "configureServer": {

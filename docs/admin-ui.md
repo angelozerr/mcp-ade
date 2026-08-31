@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Admin UI is a web-based dashboard that provides real-time visibility into MCP Language Tools operations. It allows you to monitor language servers, debug adapters, MCP clients, and view traces of all communications.
+The Admin UI is a web-based dashboard that provides real-time visibility into MCP ADE (Agent Development Environment) operations. It allows you to monitor language servers, debug adapters, MCP clients, and view traces of all communications.
 
 **Access**: `http://localhost:7654/admin`
 
@@ -408,11 +408,11 @@ The **Contributions tab** provides an interactive diagram that visualizes how la
 
 ### Real-World Insight
 
-This diagram shows something **unique to MCP Language Tools**:
+This diagram shows something **unique to MCP ADE (Agent Development Environment)**:
 
 Most LSP platforms (VS Code, Eclipse, IntelliJ) treat language servers as **isolated silos**. Each server operates independently.
 
-**MCP Language Tools** enables **server collaboration**:
+**MCP ADE (Agent Development Environment)** enables **server collaboration**:
 - MicroProfile doesn't re-implement Java parsing
 - Qute reuses JDT.LS's Java analysis
 - Liberty LS extends LemMinX without forking it
@@ -882,7 +882,7 @@ Console shows:
 **Scenario**: First time opening a Qute template file
 
 **What happens**:
-1. MCP Language Tools detects `.qute.html` file
+1. MCP ADE (Agent Development Environment) detects `.qute.html` file
 2. Checks if Qute server is installed
 3. **Automatically downloads** Qute server if missing
 4. **Admin UI shows progress**:
@@ -1012,7 +1012,7 @@ ws://localhost:7654/api/admin/ws
 
 ### Multiple Language Clients (In Progress)
 
-**Vision**: Connect MCP Language Tools to language servers already running in VS Code or other IDEs.
+**Vision**: Connect MCP ADE (Agent Development Environment) to language servers already running in VS Code or other IDEs.
 
 #### Current Architecture
 ```

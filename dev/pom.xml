@@ -5,311 +5,311 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.ibm.mcp</groupId>
-        <artifactId>mcp-language-tools-parent</artifactId>
+        <groupId>org.eclipse.mcp</groupId>
+        <artifactId>mcp-ade-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>mcp-language-tools-dev</artifactId>
+    <artifactId>mcp-ade-dev</artifactId>
     <packaging>jar</packaging>
 
-    <name>MCP Language Tools Dev</name>
+    <name>MCP ADE (Agent Development Environment) Dev</name>
     <description>Development distribution with all extensions bundled</description>
 
     <dependencies>
         <!-- Core -->
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
-            <artifactId>mcp-language-tools-core</artifactId>
+            <groupId>org.eclipse.mcp</groupId>
+            <artifactId>mcp-ade-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- Admin UI -->
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
-            <artifactId>mcp-language-tools-admin</artifactId>
+            <groupId>org.eclipse.mcp</groupId>
+            <artifactId>mcp-ade-admin</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- All extensions (runtime) -->
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>xml-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>microprofile-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>quarkus-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>java-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>javascript-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>angular-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>python-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>rust-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>c-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>go-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>dart-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>yaml-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>lua-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>php-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>kotlin-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>dockerfile-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>liberty-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>dotnet-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>jakarta-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>web-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>bash-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>ruby-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>svelte-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>vue-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>elm-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>fortran-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>swift-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>zig-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>haskell-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>scala-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>clojure-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>elixir-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>erlang-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>ocaml-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>terraform-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>latex-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>markdown-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>toml-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>nix-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>r-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>perl-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>ada-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>julia-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>ansible-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>pascal-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>gradle-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>maven-extension</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>

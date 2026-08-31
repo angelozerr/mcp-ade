@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "installer.json",
-  "description": "Installation configuration for an LSP or DAP server in mcp-languagetools. Used for both lsp/<server-id>/installer.json and dap/<server-id>/installer.json.",
+  "description": "Installation configuration for an LSP or DAP server in mcp-ade. Used for both lsp/<server-id>/installer.json and dap/<server-id>/installer.json.",
   "type": "object",
   "required": ["id", "name", "check"],
   "properties": {
@@ -251,7 +251,7 @@
   "variables": {
     "${serverHome}": "Root installation directory for the server",
     "${userHome}": "User's home directory",
-    "${mcpHome}": "Root directory of the MCP Language Tools installation",
+    "${mcpHome}": "Root directory of the MCP ADE (Agent Development Environment) installation",
     "${workspaceFolder}": "Current project/workspace directory",
     "${output.file.name}": "Output filename from the download step",
     "${output.dir}": "Output directory from the download step",

@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.ibm.mcp</groupId>
-        <artifactId>mcp-language-tools-parent</artifactId>
+        <groupId>org.eclipse.mcp</groupId>
+        <artifactId>mcp-ade-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
@@ -15,7 +15,7 @@
     <packaging>jar</packaging>
 
     <name>R Extension</name>
-    <description>R language support via languageserver for MCP Language Tools</description>
+    <description>R language support via languageserver for MCP ADE (Agent Development Environment)</description>
 
     <build>
         <plugins>

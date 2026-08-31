@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LSP server.json",
-  "description": "Configuration for an LSP language server in mcp-languagetools",
+  "description": "Configuration for an LSP language server in mcp-ade",
   "type": "object",
   "required": ["id", "name", "documentSelector"],
   "properties": {

@@ -5,36 +5,36 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.ibm.mcp</groupId>
-        <artifactId>mcp-language-tools-parent</artifactId>
+        <groupId>org.eclipse.mcp</groupId>
+        <artifactId>mcp-ade-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>mcp-language-tools-integration-tests</artifactId>
+    <artifactId>mcp-ade-integration-tests</artifactId>
     <packaging>jar</packaging>
 
-    <name>MCP Language Tools Integration Tests</name>
-    <description>Integration tests for MCP Language Tools LSP/DAP tools</description>
+    <name>MCP ADE (Agent Development Environment) Integration Tests</name>
+    <description>Integration tests for MCP ADE (Agent Development Environment) LSP/DAP tools</description>
 
     <dependencies>
         <!-- Core (MCP tools, LSP/DAP framework) -->
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
-            <artifactId>mcp-language-tools-core</artifactId>
+            <groupId>org.eclipse.mcp</groupId>
+            <artifactId>mcp-ade-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- XML extension (LemMinX server config) -->
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>xml-extension</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- Python extension (debugpy DAP config) -->
         <dependency>
-            <groupId>com.ibm.mcp</groupId>
+            <groupId>org.eclipse.mcp</groupId>
             <artifactId>python-extension</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -84,7 +84,7 @@
                         </goals>
                         <configuration>
                             <url>https://download.eclipse.org/lemminx/releases/0.31.2/org.eclipse.lemminx-uber.jar</url>
-                            <outputDirectory>${project.build.directory}/test-mcp-root/.mcp-languagetools/extensions/xml/lsp/lemminx</outputDirectory>
+                            <outputDirectory>${project.build.directory}/test-mcp-root/.mcp-ade/extensions/xml/lsp/lemminx</outputDirectory>
                             <outputFileName>lemminx.jar</outputFileName>
                         </configuration>
                     </execution>
@@ -96,7 +96,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <systemPropertyVariables>
-                        <mcp.languagetools.root>${project.build.directory}/test-mcp-root</mcp.languagetools.root>
+                        <mcp.ade.root>${project.build.directory}/test-mcp-root</mcp.ade.root>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

@@ -1,9 +1,9 @@
 # Getting Started with JetBrains IntelliJ Language Server
 
-Integrate the JetBrains IntelliJ Language Server into MCP Language Tools as an alternative to Eclipse JDT.LS for Java validation.
+Integrate the JetBrains IntelliJ Language Server into MCP ADE (Agent Development Environment) as an alternative to Eclipse JDT.LS for Java validation.
 
 **Prerequisites**:
-- MCP Language Tools server running (see [Getting Started](./getting-started.md))
+- MCP ADE (Agent Development Environment) server running (see [Getting Started](./getting-started.md))
 - An MCP client (Claude Desktop, Claude Code, Bob IDE)
 
 ## Step 1: Install the VS Code Extension
@@ -12,13 +12,13 @@ Integrate the JetBrains IntelliJ Language Server into MCP Language Tools as an a
 2. Search for **[Java and Kotlin by IntelliJ IDEA](https://marketplace.visualstudio.com/items?itemName=JetBrains.intellij-server)** by JetBrains
 3. Click **Install**
 
-> **Note**: VS Code is only needed to install the server binary. The language server runs independently via MCP Language Tools.
+> **Note**: VS Code is only needed to install the server binary. The language server runs independently via MCP ADE (Agent Development Environment).
 
 ![Install IntelliJ extension in VS Code](./images/jetbrains/install-vscode-extension.png)
 
 ## Step 2: Open the Admin UI
 
-After [starting the MCP Language Tools server](./getting-started.md#step-1-build--launch-mcp-language-tools), open **[http://localhost:7654/admin](http://localhost:7654/admin)** and click on the **Extensions** tab.
+After [starting the MCP ADE (Agent Development Environment) server](./getting-started.md#step-1-build--launch-mcp-ade), open **[http://localhost:7654/admin](http://localhost:7654/admin)** and click on the **Extensions** tab.
 
 ![Admin UI — Extensions tab](./images/jetbrains/admin-extensions-tab.png)
 

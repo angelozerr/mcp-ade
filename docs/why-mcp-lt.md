@@ -1,4 +1,4 @@
-# Why MCP Language Tools?
+# Why MCP ADE (Agent Development Environment)?
 
 *A conversation between a skeptic and MCP LT.*
 

@@ -1,6 +1,12 @@
-# MCP Language Tools
+# MCP ADE
 
-> **MCP LT** is an [MCP](https://modelcontextprotocol.io/) server for [LSP](https://microsoft.github.io/language-server-protocol/) and [DAP](https://microsoft.github.io/debug-adapter-protocol/).
+**A**gent **D**evelopment **E**nvironment — like an IDE, but the **I** is replaced by **A**gent. No IDE required.
+
+An [MCP](https://modelcontextprotocol.io/) server that gives AI agents full development capabilities:
+
+- **Code Editing** — diagnostics, code navigation, refactoring, completions, powered by [LSP](https://microsoft.github.io/language-server-protocol/)
+- **Debugging** — breakpoints, stepping, variable inspection, powered by [DAP](https://microsoft.github.io/debug-adapter-protocol/)
+- **Building** — compile, test, dependencies, powered by [BSP](https://build-server-protocol.github.io/)
 
 *— What! Yet another MCP Server for LSP?*
 
@@ -10,9 +16,9 @@ and exposes all their capabilities as MCP tools to any AI assistant.
 
 *— OK but what can it actually do?*
 
-Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [40+ more languages](docs/why-mcp-lt.md). **47 bundled extensions**, **52 LSP servers**, **9 DAP servers**. Java alone has **60 dedicated tools** powered by Eclipse JDT.LS.
+Diagnostics, code navigation, refactoring, code generation, debugging with breakpoints and variable inspection — for **Java, Python, JavaScript, Go, Rust, C/C++**, and [40+ more languages](docs/why-mcp-ade.md). **47 bundled extensions**, **52 LSP servers**, **9 DAP servers**. Java alone has **60 dedicated tools** powered by Eclipse JDT.LS.
 
-*— [Read the full conversation with our skeptic →](docs/why-mcp-lt.md)*
+*— [Read the full conversation with our skeptic →](docs/why-mcp-ade.md)*
 
 ### Key highlights
 
@@ -430,7 +436,7 @@ MCP client configuration:
 ```json
 {
   "mcpServers": {
-    "mcp-languagetools": {
+    "mcp-ade": {
       "type": "http",
       "url": "http://localhost:7654/mcp"
     }
@@ -447,7 +453,7 @@ MCP client configuration (Claude Code, Claude Desktop, etc.):
 ```json
 {
   "mcpServers": {
-    "mcp-languagetools": {
+    "mcp-ade": {
       "type": "stdio",
       "command": "java",
       "args": ["-jar", "/path/to/dev/target/quarkus-app/quarkus-run.jar"]

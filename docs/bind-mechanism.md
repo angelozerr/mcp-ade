@@ -339,4 +339,4 @@ private static final String TARGET_METHOD = "targetMethod";
 
 - [Contributes Documentation](./contributes.md)
 - [Extension System](./extensions.md)
-- [Request Router](../core/src/main/java/com/redhat/mcp/languagetools/lsp/RequestRouter.java)
+- [Request Router](../core/src/main/java/org/eclipse/mcp/ade/lsp/RequestRouter.java)

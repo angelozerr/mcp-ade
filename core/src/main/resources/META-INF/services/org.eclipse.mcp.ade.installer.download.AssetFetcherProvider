@@ -1,0 +1,3 @@
+org.eclipse.mcp.ade.installer.download.GitHubAssetFetcherProvider
+org.eclipse.mcp.ade.installer.download.MavenAssetFetcherProvider
+org.eclipse.mcp.ade.installer.download.OpenVsxAssetFetcherProvider

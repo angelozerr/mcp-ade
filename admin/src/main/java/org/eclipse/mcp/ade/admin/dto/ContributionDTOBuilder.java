@@ -1,0 +1,220 @@
+/*******************************************************************************
+ * Copyright (c) 2026 IBM Corporation and others.
+ *
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *     Angelo ZERR - initial API and implementation
+ *******************************************************************************/
+package org.eclipse.mcp.ade.admin.dto;
+
+import com.google.gson.Gson;
+import org.eclipse.mcp.ade.PathManager;
+import org.eclipse.mcp.ade.server.ServerConfigBase;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.util.*;
+import java.util.stream.Stream;
+
+/**
+ * Builder utility to convert LspServerConfig contributions to ContributionDTO list.
+ * Centralizes the logic to avoid duplication across AdminResource, LspServerControlResource, and AdminWebSocketEndpoint.
+ * Resolves patterns (*.jar) to actual file paths.
+ */
+@ApplicationScoped
+public class ContributionDTOBuilder {
+
+    private static final Logger LOG = Logger.getLogger(ContributionDTOBuilder.class);
+
+    private final Gson gson = new Gson();
+
+    @Inject
+    PathManager pathManager;
+
+    /**
+     * Parse contributions from config into a Map structure.
+     * Resolves path patterns (*.jar) to actual file paths.
+     *
+     * Returns Map<targetServerId, Map<contributionType, List<?>>>
+     * Example: {"jdtls": {"bundles": ["/path/to/plugin.jar"]}}
+     */
+    public Map<String, Map<String, List<?>>> buildContributions(ServerConfigBase config) {
+        Map<String, Map<String, List<?>>> contributions = new HashMap<>();
+
+        if (config.getContributes() != null && config.getContributes().getContributions() != null) {
+            config.getContributes().getContributions().forEach((targetServerId, contributionData) -> {
+                // Parse contribution data (JSON) into Map<String, List<?>>
+                Map<String, List<?>> data = new HashMap<>();
+
+                if (contributionData != null && contributionData.isJsonObject()) {
+                    var obj = contributionData.getAsJsonObject();
+
+                    // For each property in the JSON object (e.g., "bundles", "bindRequest", "classpath")
+                    obj.entrySet().forEach(entry -> {
+                        String key = entry.getKey();
+                        if (entry.getValue().isJsonArray()) {
+                            // Use Gson to convert JsonArray to List<?> (handles both strings and objects)
+                            List<?> values = gson.fromJson(entry.getValue(), List.class);
+
+                            // Resolve patterns for path-based contributions (bundles, classpath)
+                            if (shouldResolvePatterns(key)) {
+                                values = resolvePatterns(config.getServerId(), values);
+                            }
+
+                            data.put(key, values);
+                        }
+                    });
+                }
+
+                contributions.put(targetServerId, data);
+            });
+        }
+        return contributions;
+    }
+
+    /**
+     * Check if this contribution type should have patterns resolved.
+     */
+    private boolean shouldResolvePatterns(String contributionType) {
+        // Resolve patterns for path-based contributions
+        return "bundles".equals(contributionType) || "classpath".equals(contributionType);
+    }
+
+    /**
+     * Resolve path patterns (e.g., "plugins/*.jar") to actual file paths.
+     * Similar to JdtLsServer.resolveBundlesFromServerHome().
+     */
+    private List<?> resolvePatterns(String contributorServerId, List<?> patterns) {
+        List<String> resolved = new ArrayList<>();
+
+        // Get contributor server's home directory
+        Path contributorHome = getContributorServerHome(contributorServerId);
+        if (contributorHome == null || !Files.exists(contributorHome)) {
+            LOG.debugf("Contributor server home not found: %s (returning patterns as-is)", contributorServerId);
+            return patterns; // Return original patterns if server home doesn't exist
+        }
+
+        for (Object patternObj : patterns) {
+            if (!(patternObj instanceof String pattern)) {
+                continue; // Skip non-string patterns
+            }
+
+            // Resolve path (remove leading ./)
+            String normalizedPath = pattern.startsWith("./") ? pattern.substring(2) : pattern;
+
+            // Check for wildcards
+            if (normalizedPath.contains("*") || normalizedPath.contains("?")) {
+                resolved.addAll(expandGlobPattern(contributorHome, normalizedPath, contributorServerId));
+            } else {
+                // Simple path without wildcards
+                Path filePath = contributorHome.resolve(normalizedPath);
+                if (Files.exists(filePath)) {
+                    resolved.add(filePath.toAbsolutePath().toString());
+                } else {
+                    // Mark as error if file doesn't exist
+                    resolved.add("ERROR:" + pattern);
+                    LOG.warnf("File not found: %s (from %s)", filePath, contributorServerId);
+                }
+            }
+        }
+
+        return resolved;
+    }
+
+    /**
+     * Expand a glob pattern like "plugins/*.jar" to actual file paths.
+     */
+    private List<String> expandGlobPattern(Path contributorHome, String normalizedPath, String contributorServerId) {
+        List<String> resolved = new ArrayList<>();
+
+        // Extract the directory to search in
+        int lastSlash = normalizedPath.lastIndexOf('/');
+        String dirPart = lastSlash >= 0 ? normalizedPath.substring(0, lastSlash) : "";
+        String filePattern = lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
+
+        Path searchDir = dirPart.isEmpty() ? contributorHome : contributorHome.resolve(dirPart);
+
+        // Build glob pattern for matching (just the filename part)
+        String globPattern = "glob:" + filePattern;
+
+        LOG.debugf("Expanding glob pattern: %s in directory: %s", globPattern, searchDir);
+
+        try {
+            PathMatcher matcher = searchDir.getFileSystem().getPathMatcher(globPattern);
+
+            if (Files.exists(searchDir) && Files.isDirectory(searchDir)) {
+                try (Stream<Path> files = Files.list(searchDir)) {
+                    files.filter(p -> matcher.matches(p.getFileName()))
+                         .forEach(p -> {
+                             resolved.add(p.toAbsolutePath().toString());
+                             LOG.debugf("Resolved file: %s (from %s)", p, contributorServerId);
+                         });
+                }
+            } else {
+                LOG.warnf("Directory not found: %s", searchDir);
+                resolved.add("ERROR:" + normalizedPath); // Mark as error if dir doesn't exist
+            }
+        } catch (IOException e) {
+            LOG.warnf("Failed to expand glob pattern %s: %s", normalizedPath, e.getMessage());
+            resolved.add("ERROR:" + normalizedPath); // Mark as error on exception
+        }
+
+        // If no files matched the pattern, mark as error
+        if (resolved.isEmpty()) {
+            LOG.warnf("No files matched pattern: %s (from %s)", normalizedPath, contributorServerId);
+            resolved.add("ERROR:" + normalizedPath);
+        }
+
+        return resolved;
+    }
+
+    /**
+     * Build the full contributions view for a server: what it contributes to, and what contributes to it.
+     * Scans all provided configs to find cross-server contribution relationships.
+     *
+     * @return Map with "contributesTo" and "contributedBy" keys (only present if non-empty)
+     */
+    public Map<String, Object> buildContributionsView(String serverId,
+                                                       ServerConfigBase targetConfig,
+                                                       Collection<? extends ServerConfigBase> allConfigs) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        Map<String, Map<String, List<?>>> contributesTo = buildContributions(targetConfig);
+        if (!contributesTo.isEmpty()) {
+            result.put("contributesTo", contributesTo);
+        }
+
+        Map<String, Map<String, List<?>>> contributedBy = new LinkedHashMap<>();
+        for (ServerConfigBase config : allConfigs) {
+            if (config.getServerId().equals(serverId)) continue;
+            Map<String, Map<String, List<?>>> theirContributions = buildContributions(config);
+            Map<String, List<?>> toThisServer = theirContributions.get(serverId);
+            if (toThisServer != null && !toThisServer.isEmpty()) {
+                contributedBy.put(config.getServerId(), toThisServer);
+            }
+        }
+        if (!contributedBy.isEmpty()) {
+            result.put("contributedBy", contributedBy);
+        }
+
+        return result;
+    }
+
+    /**
+     * Get the server home directory for a contributor server.
+     */
+    private Path getContributorServerHome(String contributorServerId) {
+        return pathManager.getLspServersDir().resolve(contributorServerId);
+    }
+}

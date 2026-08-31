@@ -1,0 +1,6 @@
+org.eclipse.mcp.ade.installer.task.FileExistsTask$Factory
+org.eclipse.mcp.ade.installer.task.ConfigureServerTask$Factory
+org.eclipse.mcp.ade.installer.task.DownloadTask$Factory
+org.eclipse.mcp.ade.installer.task.CopyTask$Factory
+org.eclipse.mcp.ade.installer.task.ExecTask$Factory
+org.eclipse.mcp.ade.installer.task.ExtractResourceTask$Factory
