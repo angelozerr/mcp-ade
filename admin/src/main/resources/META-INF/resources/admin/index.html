@@ -59,7 +59,15 @@
                 <div id="lsp-servers-list" class="d-none"></div>
                 <div id="dap-servers-list" class="d-none"></div>
                 <div id="bsp-servers-list" class="d-none"></div>
-                <div id="runtimes-list" class="d-none"></div>
+                <div id="runtimes-container" class="d-none">
+                    <div class="runtime-subtabs">
+                        <div class="runtime-subtab active" data-action="switchRuntimeSubtab" data-subtab="list">Runtimes</div>
+                        <div class="runtime-subtab" data-action="switchRuntimeSubtab" data-subtab="path">PATH</div>
+                        <div class="runtime-subtab" data-action="switchRuntimeSubtab" data-subtab="environment">Environment</div>
+                        <div class="runtime-subtab" data-action="switchRuntimeSubtab" data-subtab="terminal">Terminal</div>
+                    </div>
+                    <div id="runtimes-list"></div>
+                </div>
                 <div id="languages-list" class="d-none"></div>
                 <div id="extensions-container" class="d-none">
                     <div class="add-extension-bar">

@@ -6,7 +6,7 @@
   "check": {
     "exec": {
       "name": "Check if Nix is available",
-      "command": "nix --version",
+      "command": "which nix",
       "timeout": 5000
     }
   }

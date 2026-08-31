@@ -29,6 +29,7 @@ import { getMcpClients, getSelectedMcpClient, getMcpTracesByClient,
     selectMcpClient, loadMcpConsole, loadMcpTracesConsole,
     renderMcpConsole, renderMcpConsoleWithHighlights } from './admin-mcp.js';
 import { handleOperationUpdate, handleActivityState } from './admin-activity.js';
+import { loadEnvironmentPath, loadEnvironmentVars, loadTerminal, resetEnvironmentView, onEnvironmentChanged } from './admin-environment.js';
 
 // ========== Init event delegation + modals ==========
 initEventDelegation();
@@ -135,6 +136,9 @@ function handleWebSocketMessage(message) {
             break;
         case 'runtime-status-changed':
             handleRuntimeStatusChanged(message);
+            break;
+        case 'environment-changed':
+            onEnvironmentChanged();
             break;
         case 'runtime-trace':
             storeInstallTrace({...message, serverId: message.runtimeId});
@@ -568,13 +572,16 @@ function switchTab(tab, element, options = {}) {
     }
 
     const contentArea = document.querySelector('.content-area');
+    const sidebarColumn = document.querySelector('.workspaces-sidebar');
+    sidebarColumn.style.display = 'flex';
     const serversColumn = document.querySelector('.servers-sidebar');
     const consoleColumn = document.querySelector('.console-container');
 
     function showSidebarPanel(activeId) {
-        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'bsp-servers-list', 'runtimes-list', 'languages-list', 'extensions-container', 'mcp-traces-list'];
+        const panels = ['workspaces-list', 'lsp-servers-list', 'dap-servers-list', 'bsp-servers-list', 'runtimes-container', 'languages-list', 'extensions-container', 'mcp-traces-list'];
         panels.forEach(id => {
-            document.getElementById(id).classList.toggle('d-none', id !== activeId);
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('d-none', id !== activeId);
         });
     }
 
@@ -631,13 +638,13 @@ function switchTab(tab, element, options = {}) {
 
         loadAllBspServers(options.serverId);
     } else if (tab === 'runtimes') {
-        showSidebarPanel('runtimes-list');
+        showSidebarPanel('runtimes-container');
         serversColumn.style.display = 'none';
         consoleColumn.style.display = 'flex';
-        contentArea.style.gridTemplateColumns = '400px 1fr';
-        consoleColumn.style.gridColumn = '2';
 
-        loadAllRuntimes(options.runtimeId);
+        const activeSubtab = document.querySelector('.runtime-subtab.active');
+        const subtab = options.subtab || (activeSubtab ? activeSubtab.dataset.subtab : 'list');
+        applyRuntimeSubtab(subtab, options);
         updateSearchBoxVisibility(false);
     } else if (tab === 'languages') {
         showSidebarPanel('languages-list');
@@ -717,6 +724,46 @@ setRenderMcpConsoleWithHighlightsFn(renderMcpConsoleWithHighlights);
 
 // ========== Register actions ==========
 
+// ========== Runtime sub-tabs ==========
+
+function applyRuntimeSubtab(subtab, options = {}) {
+    const contentArea = document.querySelector('.content-area');
+    const consoleColumn = document.querySelector('.console-container');
+
+    document.querySelectorAll('.runtime-subtab').forEach(t => {
+        t.classList.toggle('active', t.dataset.subtab === subtab);
+    });
+
+    const runtimesList = document.getElementById('runtimes-list');
+
+    if (subtab === 'path') {
+        if (runtimesList) runtimesList.style.display = 'none';
+        consoleColumn.style.display = 'flex';
+        contentArea.style.gridTemplateColumns = 'auto 1fr';
+        consoleColumn.style.gridColumn = '2';
+        loadEnvironmentPath();
+    } else if (subtab === 'environment') {
+        if (runtimesList) runtimesList.style.display = 'none';
+        consoleColumn.style.display = 'flex';
+        contentArea.style.gridTemplateColumns = 'auto 1fr';
+        consoleColumn.style.gridColumn = '2';
+        loadEnvironmentVars();
+    } else if (subtab === 'terminal') {
+        if (runtimesList) runtimesList.style.display = 'none';
+        consoleColumn.style.display = 'flex';
+        contentArea.style.gridTemplateColumns = 'auto 1fr';
+        consoleColumn.style.gridColumn = '2';
+        loadTerminal();
+    } else {
+        resetEnvironmentView();
+        if (runtimesList) runtimesList.style.display = '';
+        consoleColumn.style.display = 'flex';
+        contentArea.style.gridTemplateColumns = '400px 1fr';
+        consoleColumn.style.gridColumn = '2';
+        loadAllRuntimes(options.runtimeId);
+    }
+}
+
 registerActions('click', {
     switchTab: (el) => switchTab(el.dataset.tab, el),
     toggleTheme: () => toggleTheme(),
@@ -725,9 +772,14 @@ registerActions('click', {
     hideConfirmModalOverlay: (el, e) => {
         if (e.target === el) hideConfirmModal();
     },
+    switchRuntimeSubtab: (el) => {
+        if (state.currentTab === 'runtimes') {
+            applyRuntimeSubtab(el.dataset.subtab);
+        }
+    },
     navigateToRuntime: (el) => {
         const runtimeId = el.dataset.runtimeId;
-        switchTab('runtimes', null, { runtimeId });
+        switchTab('runtimes', null, { runtimeId, subtab: 'list' });
     },
     navigateToLanguage: (el) => {
         const languageId = el.dataset.languageId;

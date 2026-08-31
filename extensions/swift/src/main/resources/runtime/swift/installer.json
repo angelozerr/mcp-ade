@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if Swift is available",
-      "command": "swift --version",
+      "command": {
+        "windows": "where swift",
+        "default": "which swift"
+      },
       "timeout": 5000
     }
   }

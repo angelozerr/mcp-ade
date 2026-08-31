@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if Dart is available",
-      "command": "dart --version",
+      "command": {
+        "windows": "where dart",
+        "default": "which dart"
+      },
       "timeout": 5000
     }
   }

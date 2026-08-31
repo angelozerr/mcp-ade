@@ -10,7 +10,10 @@
   "check": {
     "exec": {
       "name": "Check if .NET is available",
-      "command": "dotnet --version",
+      "command": {
+        "windows": "where dotnet",
+        "default": "which dotnet"
+      },
       "timeout": 5000
     }
   },

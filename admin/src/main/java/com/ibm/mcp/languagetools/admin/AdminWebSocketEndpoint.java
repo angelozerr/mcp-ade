@@ -20,6 +20,7 @@ import com.ibm.mcp.languagetools.admin.dto.WorkspaceDTO;
 import com.ibm.mcp.languagetools.admin.ws.*;
 import com.ibm.mcp.languagetools.dap.session.DapSessionEvent;
 import com.ibm.mcp.languagetools.dap.session.DapSessionManager;
+import com.ibm.mcp.languagetools.runtime.RuntimeRegistry;
 import com.ibm.mcp.languagetools.runtime.RuntimeStatusChangeEvent;
 import com.ibm.mcp.languagetools.event.ServerEnabledChangeEvent;
 import com.ibm.mcp.languagetools.server.ServerBase;
@@ -77,6 +78,9 @@ public class AdminWebSocketEndpoint {
     @Inject
     OperationTracker operationTracker;
 
+    @Inject
+    RuntimeRegistry runtimeRegistry;
+
     // Thread-safe set of active WebSocket sessions
     private final Set<Session> sessions = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -98,6 +102,8 @@ public class AdminWebSocketEndpoint {
                     event.type().name(), event.operation());
             broadcast(msg);
         });
+        runtimeRegistry.setEnvironmentChangeListener(env ->
+                broadcast(new EnvironmentChangedWsMessage()));
     }
 
     @OnOpen

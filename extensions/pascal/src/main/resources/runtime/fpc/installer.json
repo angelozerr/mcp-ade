@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if Free Pascal is available",
-      "command": "fpc -iV",
+      "command": {
+        "windows": "where fpc",
+        "default": "which fpc"
+      },
       "timeout": 5000
     }
   }

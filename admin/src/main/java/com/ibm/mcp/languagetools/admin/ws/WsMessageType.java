@@ -33,7 +33,8 @@ public enum WsMessageType {
     RUNTIME_STATUS_CHANGED("runtime-status-changed"),
     RUNTIME_TRACE("runtime-trace"),
     FILE_WATCHER_STATUS_CHANGED("file-watcher-status-changed"),
-    INSTALL_STATUS_CHANGED("install-status-changed");
+    INSTALL_STATUS_CHANGED("install-status-changed"),
+    ENVIRONMENT_CHANGED("environment-changed");
 
     private final String label;
 

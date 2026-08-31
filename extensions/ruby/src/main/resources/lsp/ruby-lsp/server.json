@@ -1,0 +1,15 @@
+{
+  "id": "ruby-lsp",
+  "name": "Ruby LSP",
+  "description": "Ruby language server by Shopify",
+  "url": "https://github.com/Shopify/ruby-lsp",
+  "runtime": "ruby",
+  "env": {
+    "BUNDLE_GEMFILE": "Gemfile"
+  },
+  "documentSelector": [
+    {
+      "language": "ruby"
+    }
+  ]
+}

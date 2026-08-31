@@ -7,8 +7,8 @@
     "exec": {
       "name": "Check if Python is available",
       "command": {
-        "windows": "python --version",
-        "default": "python3 --version"
+        "windows": "where python",
+        "default": "which python3"
       },
       "timeout": 5000
     }

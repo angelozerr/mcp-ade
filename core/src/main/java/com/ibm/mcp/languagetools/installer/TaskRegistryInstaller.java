@@ -366,8 +366,13 @@ public class TaskRegistryInstaller implements ServerInstaller {
         if (command == null || command.isEmpty()) {
             return null;
         }
-        // Take first token (e.g. "dotnet" from "dotnet --version")
+        // Take the runtime name from the check command.
+        // For "where java" / "which java", the runtime name is the second token.
+        // For "java --version", the runtime name is the first token.
         String[] tokens = command.trim().split("\\s+");
+        if (tokens.length >= 2 && ("where".equals(tokens[0]) || "which".equals(tokens[0]))) {
+            return tokens[1];
+        }
         return tokens[0];
     }
 

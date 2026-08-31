@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if opam is available",
-      "command": "opam --version",
+      "command": {
+        "windows": "where opam",
+        "default": "which opam"
+      },
       "timeout": 5000
     }
   }

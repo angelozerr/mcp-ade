@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * Registry for all runtime configurations.
@@ -49,6 +50,8 @@ public class RuntimeRegistry {
 
     private final Map<String, RuntimeConfig> runtimes = new ConcurrentHashMap<>();
     private volatile TraceCollector traceCollector;
+    private final ApplicationEnvironment applicationEnvironment = new ApplicationEnvironment();
+    private volatile Consumer<ApplicationEnvironment> environmentChangeListener;
 
     /**
      * Sets the trace collector used by all runtimes for installation traces.
@@ -72,6 +75,7 @@ public class RuntimeRegistry {
         // Load persisted source preference
         RuntimeSourcePreference pref = applicationConfiguration.getRuntimeSourcePreference(runtime.getRuntimeId());
         runtime.setSourcePreference(pref);
+        runtime.setApplicationPathSupplier(applicationEnvironment::getPath);
         runtimes.put(runtime.getRuntimeId(), runtime);
         LOG.infof("Registered runtime: %s (%s), source preference: %s", runtime.getRuntimeId(), runtime.getName(), pref);
     }
@@ -178,11 +182,34 @@ public class RuntimeRegistry {
         checkRuntimeAsync(runtime);
     }
 
+    // --- Application environment ---
+
+    public ApplicationEnvironment getApplicationEnvironment() {
+        return applicationEnvironment;
+    }
+
+    public void setEnvironmentChangeListener(Consumer<ApplicationEnvironment> listener) {
+        this.environmentChangeListener = listener;
+    }
+
+    public void rebuildApplicationEnvironment() {
+        applicationEnvironment.rebuild(runtimes);
+        Consumer<ApplicationEnvironment> listener = environmentChangeListener;
+        if (listener != null) {
+            try {
+                listener.accept(applicationEnvironment);
+            } catch (Exception e) {
+                LOG.debugf(e, "Failed to notify environment change listener");
+            }
+        }
+    }
+
     private void fireStatusChange(RuntimeConfig runtime) {
         fireStatusChange(runtime, runtime.getStatus());
     }
 
     private void fireStatusChange(RuntimeConfig runtime, InstallationStatus status) {
+        rebuildApplicationEnvironment();
         try {
             runtimeStatusEvent.fire(new RuntimeStatusChangeEvent(
                     runtime.getRuntimeId(),

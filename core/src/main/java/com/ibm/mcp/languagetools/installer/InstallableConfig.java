@@ -405,7 +405,7 @@ public abstract class InstallableConfig {
         if (env == null) {
             env = new HashMap<>();
         }
-        String currentPath = env.getOrDefault("PATH", System.getenv("PATH"));
+        String currentPath = env.getOrDefault("PATH", installerRuntime.getApplicationPath());
         env.put("PATH", runtimeDir + File.pathSeparator + (currentPath != null ? currentPath : ""));
         addInstallerRuntimeEnv(env, installerRuntime, runtimeCtx);
         context.setEnv(env);

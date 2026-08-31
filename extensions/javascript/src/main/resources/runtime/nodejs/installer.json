@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if Node.js is available",
-      "command": "node --version",
+      "command": {
+        "windows": "where node",
+        "default": "which node"
+      },
       "timeout": 5000
     }
   },

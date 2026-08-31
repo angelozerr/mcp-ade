@@ -6,8 +6,57 @@
   "check": {
     "exec": {
       "name": "Check if Ruby is available",
-      "command": "ruby --version",
+      "command": {
+        "windows": "where ruby",
+        "default": "which ruby"
+      },
       "timeout": 5000
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download Ruby",
+      "github": {
+        "owner": {
+          "windows": "oneclick",
+          "default": "ruby"
+        },
+        "repository": {
+          "windows": "rubyinstaller2",
+          "default": "ruby-builder"
+        },
+        "prerelease": false,
+        "tagPattern": {
+          "windows": "RubyInstaller-*",
+          "default": "ruby-*"
+        },
+        "asset": {
+          "windows": {
+            "x86_64": "rubyinstaller-*-x64.7z"
+          },
+          "unix": {
+            "x86_64": "ruby-*-ubuntu-24.04-x64.tar.gz",
+            "arm64": "ruby-*-ubuntu-24.04-arm64.tar.gz"
+          },
+          "mac": {
+            "x86_64": "ruby-*-darwin-x64.tar.gz",
+            "arm64": "ruby-*-darwin-arm64.tar.gz"
+          }
+        }
+      },
+      "output": {
+        "dir": "${serverHome}",
+        "stripRootDir": true
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Ruby",
+          "command": {
+            "windows": "${serverHome}/bin/ruby.exe",
+            "default": "${serverHome}/bin/ruby"
+          }
+        }
+      }
     }
   }
 }

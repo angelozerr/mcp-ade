@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if Julia is available",
-      "command": "julia --version",
+      "command": {
+        "windows": "where julia",
+        "default": "which julia"
+      },
       "timeout": 5000
     }
   },

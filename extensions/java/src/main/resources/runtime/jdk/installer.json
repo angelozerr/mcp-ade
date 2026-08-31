@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if Java is available",
-      "command": "java -version",
+      "command": {
+        "windows": "where java",
+        "default": "which java"
+      },
       "timeout": 5000
     }
   },

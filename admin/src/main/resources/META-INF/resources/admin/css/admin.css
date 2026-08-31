@@ -2671,3 +2671,207 @@ body {
     background: var(--bg-hover);
 }
 
+/* ── Environment tables ── */
+
+.env-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.env-table th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid var(--border-subtle);
+    color: var(--text-dimmed);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.env-table td {
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+}
+
+.env-runtime-row {
+    background: var(--bg-card);
+    transition: background 0.3s ease;
+}
+
+.env-system-row {
+    opacity: 0.7;
+    transition: background 0.3s ease;
+}
+
+.env-row-changed {
+    background: rgba(255, 165, 0, 0.2) !important;
+}
+
+.env-row-added {
+    background: rgba(0, 200, 80, 0.2) !important;
+}
+
+.env-row-highlight-fade {
+    animation: env-highlight-fadeout 1s ease forwards;
+}
+
+@keyframes env-highlight-fadeout {
+    from { background: rgba(255, 165, 0, 0.2); }
+    to { background: transparent; }
+}
+
+.env-row-added.env-row-highlight-fade {
+    animation: env-highlight-added-fadeout 1s ease forwards;
+}
+
+@keyframes env-highlight-added-fadeout {
+    from { background: rgba(0, 200, 80, 0.2); }
+    to { background: transparent; }
+}
+
+.env-separator {
+    padding: 0.6rem 0.75rem !important;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.env-separator-row td {
+    background: var(--bg-panel);
+}
+
+.env-path {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    word-break: break-all;
+}
+
+.env-source-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.env-source-badge.runtime {
+    background: var(--badge-bg-ok);
+    color: var(--badge-text-ok);
+}
+
+.env-source-badge.system {
+    background: var(--bg-card-alt);
+    color: var(--text-dimmed);
+}
+
+/* ── Terminal ── */
+
+.terminal-container {
+    background: var(--bg-console);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 0.75rem;
+}
+
+.terminal-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.terminal-prompt {
+    color: var(--color-success);
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.terminal-input {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    padding: 0.4rem 0.6rem;
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.terminal-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+
+.terminal-run-btn {
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.terminal-run-btn:hover {
+    filter: brightness(1.1);
+}
+
+.terminal-output {
+    background: var(--bg-body);
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    padding: 0.5rem;
+    border-radius: 3px;
+    min-height: 3rem;
+    max-height: 20rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+}
+
+/* ── Runtime sub-tabs ── */
+
+.runtime-subtabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0 0.5rem;
+    background: var(--bg-panel);
+}
+
+.runtime-subtab {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: var(--text-dimmed);
+    font-size: 0.85rem;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.runtime-subtab:hover {
+    color: var(--text-primary);
+}
+
+.runtime-subtab.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+}
+
+#runtimes-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+#runtimes-container #runtimes-list {
+    flex: 1;
+    overflow-y: auto;
+}
+

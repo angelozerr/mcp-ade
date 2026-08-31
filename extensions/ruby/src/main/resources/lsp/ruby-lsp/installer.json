@@ -1,0 +1,26 @@
+{
+  "id": "ruby-lsp-installer",
+  "name": "ruby-lsp",
+  "check": {
+    "exec": {
+      "name": "Check if Ruby LSP is available",
+      "command": "ruby-lsp --version",
+      "timeout": 5000
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install Ruby LSP",
+      "command": {
+        "windows": "gem install prism --platform x64-mingw-ucrt --no-document && gem install ruby-lsp --conservative --no-document",
+        "default": "gem install ruby-lsp --conservative --no-document"
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure Ruby LSP command",
+          "command": "ruby-lsp"
+        }
+      }
+    }
+  }
+}

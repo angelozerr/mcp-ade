@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * Configuration for a runtime (JDK, Node.js, Go, etc.).
@@ -52,6 +53,7 @@ public class RuntimeConfig extends InstallableConfig {
     private volatile String resolvedPath;
     private volatile RuntimeSourceType activeSource = RuntimeSourceType.UNKNOWN;
     private volatile boolean fallbackUsed;
+    private volatile Supplier<String> applicationPathSupplier;
 
     public RuntimeConfig(String runtimeId, Path runtimeHome, Extension extension) {
         super(runtimeId, runtimeHome, extension);
@@ -116,6 +118,19 @@ public class RuntimeConfig extends InstallableConfig {
         return fallbackUsed;
     }
 
+    public void setApplicationPathSupplier(Supplier<String> supplier) {
+        this.applicationPathSupplier = supplier;
+    }
+
+    /**
+     * Returns the application-level PATH that includes all installed runtimes,
+     * or falls back to the system PATH if not yet available.
+     */
+    public String getApplicationPath() {
+        Supplier<String> supplier = applicationPathSupplier;
+        return supplier != null ? supplier.get() : System.getenv("PATH");
+    }
+
     /**
      * Resolves the actual runtime binary path using which/where,
      * respecting the user's source preference.
@@ -165,8 +180,8 @@ public class RuntimeConfig extends InstallableConfig {
 
         // Build env with installer dir on PATH and resolve
         Map<String, String> env = new HashMap<>();
-        String systemPath = System.getenv("PATH");
-        env.put("PATH", commandDir + File.pathSeparator + (systemPath != null ? systemPath : ""));
+        String basePath = getApplicationPath();
+        env.put("PATH", commandDir + File.pathSeparator + (basePath != null ? basePath : ""));
         String installerResult = OSUtils.resolveCommandPath(command, env);
         if (installerResult != null) {
             resolvedPath = installerResult;
@@ -215,9 +230,12 @@ public class RuntimeConfig extends InstallableConfig {
         Path commandDirPath = Path.of(commandDir);
         boolean dirExists = Files.isDirectory(commandDirPath);
 
+        String basePath = getApplicationPath();
+
         if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
             Map<String, String> env = new HashMap<>();
-            env.put("PATH", dirExists ? commandDir : "");
+            String path = dirExists ? commandDir + File.pathSeparator : "";
+            env.put("PATH", path + (basePath != null ? basePath : ""));
             context.setEnv(env);
             return;
         }
@@ -226,8 +244,7 @@ public class RuntimeConfig extends InstallableConfig {
             return;
         }
         Map<String, String> env = new HashMap<>();
-        String systemPath = System.getenv("PATH");
-        env.put("PATH", commandDir + File.pathSeparator + (systemPath != null ? systemPath : ""));
+        env.put("PATH", commandDir + File.pathSeparator + (basePath != null ? basePath : ""));
         context.setEnv(env);
     }
 

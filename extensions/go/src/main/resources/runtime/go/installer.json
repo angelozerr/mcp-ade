@@ -10,7 +10,10 @@
   "check": {
     "exec": {
       "name": "Check if Go is available",
-      "command": "go version",
+      "command": {
+        "windows": "where go",
+        "default": "which go"
+      },
       "timeout": 5000
     }
   },

@@ -6,7 +6,10 @@
   "check": {
     "exec": {
       "name": "Check if R is available",
-      "command": "Rscript --version",
+      "command": {
+        "windows": "where Rscript",
+        "default": "which Rscript"
+      },
       "timeout": 5000
     }
   }
