@@ -17,6 +17,15 @@
     <name>Dart Extension</name>
     <description>Dart language support via Dart LSP and DAP (from Dart SDK) for MCP ADE (Agent Development Environment)</description>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.eclipse.mcp</groupId>
+            <artifactId>mcp-ade-core</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
