@@ -1,7 +1,10 @@
 target/
-.classpath
-.project
-.settings/
+
+# Ignore Eclipse metadata only at repo root (sub-modules need them tracked)
+/.classpath
+/.project
+/.settings/
+
 .vscode/
 *.iml
 .idea/
