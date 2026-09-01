@@ -1020,6 +1020,8 @@ public class LspServer extends ServerBase<LspServerConfig> {
      * Execute a request with auto didOpen/didClose if needed.
      * If the server's config has skipDidOpen for this capability, the request runs directly.
      * Otherwise, the file is auto-opened before and auto-closed after (unless explicitly opened).
+     * When opening a new file, waits for the server to finish parsing (via publishDiagnostics)
+     * before executing the request.
      */
     public <T> CompletableFuture<T> withAutoDidOpen(
             LspCapability capability, String fileUri, String languageId,
@@ -1029,14 +1031,19 @@ public class LspServer extends ServerBase<LspServerConfig> {
         }
         boolean wasAlreadyOpened = isFileOpened(fileUri);
         if (!wasAlreadyOpened) {
+            CompletableFuture<?> parsingDone = languageClient != null
+                    ? languageClient.waitForDiagnostics(fileUri, DIAGNOSTICS_TIMEOUT_MS)
+                    : CompletableFuture.completedFuture(null);
             openFile(fileUri, languageId);
+            return parsingDone
+                    .thenCompose(diags -> request.get())
+                    .whenComplete((result, ex) -> {
+                        if (!isExplicitlyOpened(fileUri)) {
+                            closeFile(fileUri);
+                        }
+                    });
         }
-        return request.get()
-                .whenComplete((result, ex) -> {
-                    if (!wasAlreadyOpened && !isExplicitlyOpened(fileUri)) {
-                        closeFile(fileUri);
-                    }
-                });
+        return request.get();
     }
 
     /**
