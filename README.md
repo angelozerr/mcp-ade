@@ -1,3 +1,5 @@
+<img src="logo/mcp-ade-logo.png" alt="MCP ADE Logo" width="350" align="right"/>
+
 # mcp-ade
 
 **Agent Development Environment**
