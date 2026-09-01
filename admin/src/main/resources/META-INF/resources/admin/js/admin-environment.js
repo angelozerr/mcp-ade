@@ -7,11 +7,15 @@
  */
 
 import { registerActions } from './event-delegation.js';
+import { isOnRuntimesTab } from './shared-state.js';
 
 let environmentData = null;
 let terminalEnabled = null;
 let terminalHistory = [];
 let historyIndex = -1;
+const VIEW_PATH = 'path';
+const VIEW_ENVIRONMENT = 'environment';
+const VIEW_TERMINAL = 'terminal';
 let activeView = null;
 
 async function ensureEnvironmentData() {
@@ -41,19 +45,19 @@ async function ensureEnvironmentData() {
 }
 
 export async function loadEnvironmentPath() {
-    activeView = 'path';
+    activeView = VIEW_PATH;
     if (!await ensureEnvironmentData()) return;
     renderPath();
 }
 
 export async function loadEnvironmentVars() {
-    activeView = 'environment';
+    activeView = VIEW_ENVIRONMENT;
     if (!await ensureEnvironmentData()) return;
     renderVars();
 }
 
 export async function loadTerminal() {
-    activeView = 'terminal';
+    activeView = VIEW_TERMINAL;
     if (!await ensureEnvironmentData()) return;
     renderTerminalView();
 }
@@ -68,8 +72,9 @@ export function onEnvironmentChanged() {
         .then(r => r.json())
         .then(data => {
             environmentData = data;
-            if (activeView === 'path') updatePath(oldData);
-            else if (activeView === 'environment') updateVars(oldData);
+            if (!isOnRuntimesTab()) return;
+            if (activeView === VIEW_PATH) updatePath(oldData);
+            else if (activeView === VIEW_ENVIRONMENT) updateVars(oldData);
         })
         .catch(() => {});
 }

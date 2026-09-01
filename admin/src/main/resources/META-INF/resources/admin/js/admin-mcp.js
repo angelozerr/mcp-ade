@@ -1,4 +1,4 @@
-import { state, updateSearchBoxVisibility } from './shared-state.js';
+import { state, isOnMcpTab, updateSearchBoxVisibility } from './shared-state.js';
 import {
     renderTraceControls, updateTraceControls, renderTracesInContainer,
     getCurrentSearchQuery, escapeHtml, initTraceContainer, toggleAllTraces
@@ -71,7 +71,7 @@ function renderMcpClients() {
         `;
     }).join('');
 
-    if (state.currentTab === 'mcp-traces') {
+    if (isOnMcpTab()) {
         if (!selectedMcpClient && mcpClients.length > 0) {
             selectMcpClient(mcpClients[0].id);
         } else if (selectedMcpClient) {
@@ -92,7 +92,7 @@ export function selectMcpClient(clientId) {
     selectedMcpClient = clientId;
     renderMcpClients();
     loadInitialMcpTraces();
-    if (state.currentTab === 'mcp-traces') {
+    if (isOnMcpTab()) {
         loadMcpConsole(clientId);
     }
 }
@@ -344,7 +344,7 @@ export function handleMcpClientsUpdate(newClients) {
             selectedMcpClient = null;
             if (mcpClients.length > 0) {
                 selectMcpClient(mcpClients[0].id);
-            } else if (state.currentTab === 'mcp-traces') {
+            } else if (isOnMcpTab()) {
                 loadMcpTracesConsole();
             }
         }

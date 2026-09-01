@@ -4,7 +4,7 @@
  * Handles DAP session creation, launching, and management
  */
 
-import { state, updateSearchBoxVisibility, ensureDapConfigs, ensureDapConfigDetail } from './shared-state.js';
+import { state, updateSearchBoxVisibility, ensureDapConfigs, ensureDapConfigDetail, isOnDebuggersTab } from './shared-state.js';
 import {
     confirmAction, showAlert, renderLoadingPlaceholder, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
@@ -933,7 +933,7 @@ export async function changeDapTraceLevel(sessionId, level) {
 export async function onDapSessionUpdate(message) {
     console.log('[DAP] Session update:', message.eventType, message.sessionId, message.newStatus);
 
-    const onDebuggersTab = state.currentTab === 'workspaces' && state.currentWorkspaceTab === 'debuggers';
+    const onDebuggersTab = isOnDebuggersTab();
 
     // Update only the affected session based on event type
     switch (message.eventType) {

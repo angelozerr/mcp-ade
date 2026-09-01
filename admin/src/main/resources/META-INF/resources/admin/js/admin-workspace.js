@@ -1,4 +1,4 @@
-import { state, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility, ensureLspConfigs, ensureBspConfigs, ensureDapConfigs } from './shared-state.js';
+import { state, isOnWorkspacesTab, isOnMcpTab, formatStatusClass, formatStatusLabel, formatWorkspaceContributeInfo, buildWorkspaceContributedByMap, traceKey, getServerApiBase, mergeServerData, mergeBspServerData, updateSearchBoxVisibility, ensureLspConfigs, ensureBspConfigs, ensureDapConfigs } from './shared-state.js';
 import { confirmAction, showAlert, showConfirmModal, hideConfirmModal, renderLoadingPlaceholder, renderDocumentSelector, runServerInstaller, renderServerActions, renderBadge, getInstallStatusBadge, renderServerNameHeader, buildInstallerControlsHTML } from './shared-ui.js';
 import { formatContributionsSection } from './shared-contributions.js';
 import { renderWorkspaceDiagram, renderServerDiagram } from './diagram.js';
@@ -895,16 +895,15 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
             const wasAlreadySelected = state.selectedServer && state.selectedServer.id === server.id;
             state.selectedServer = server;
 
-            // Track if this is an explicit user action
             if (isUserAction) {
                 state.userExplicitlySelectedServer = true;
                 console.log('User explicitly selected server:', server.id);
             }
 
-            // Clear DAP session when selecting an LSP server
             state.currentDapSessionId = null;
 
-            // Update active class without full re-render to preserve scroll position
+            if (!isOnWorkspacesTab()) return;
+
             document.querySelectorAll('.server-item').forEach(el => {
                 if (el.dataset.serverId === server.id) {
                     el.classList.add('active');
@@ -913,13 +912,13 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 }
             });
 
-            // Only reload console if switching to a different server
             if (!wasAlreadySelected) {
                 loadConsole(server);
             }
         }
 
         function showPlaceholder() {
+            if (!isOnWorkspacesTab()) return;
             document.getElementById('console-area').innerHTML = `
                 <div class="placeholder">
                     ← Select an LSP server to view console
@@ -966,6 +965,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
 
         export async function loadConsole(server) {
+            if (!isOnWorkspacesTab()) return;
             // Check if server has contributions
             const workspace = state.workspaces.find(w => w.rootUri === state.selectedWorkspace);
             // Include both LSP and DAP servers for contribution detection (mark DAP servers)
@@ -1659,7 +1659,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                 if (renderDapTracesForSessionFn) {
                     renderDapTracesForSessionFn(state.currentDapSessionId);
                 }
-            } else if (state.currentTab === 'mcp-traces') {
+            } else if (isOnMcpTab()) {
                 if (renderMcpConsoleWithHighlightsFn) {
                     renderMcpConsoleWithHighlightsFn();
                 }

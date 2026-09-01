@@ -1,5 +1,6 @@
 import { state, getCurrentTheme, setTheme, updateThemeIcon, traceKey,
-    formatStatusClass, formatStatusLabel, updateSearchBoxVisibility } from './shared-state.js';
+    formatStatusClass, formatStatusLabel, updateSearchBoxVisibility,
+    isOnWorkspacesTab, isOnMcpTab, isOnRuntimesTab, isOnBuildTab, isOnSettingsTab } from './shared-state.js';
 import { initModalOverlay, hideConfirmModal, appendInstallTrace, updateInstallProgress, onInstallerTaskCompleted, updateInstallerButtons, updateInstallBadgeInList, renderServerActions, renderBadge } from './shared-ui.js';
 import { escapeHtml, updateTraceControls, clearHighlights, closeSearch } from './trace-renderer.js';
 import { initEventDelegation, registerActions } from './event-delegation.js';
@@ -193,7 +194,7 @@ function handleLspTrace(trace) {
     pushTrace(state.tracesByServer, tk, trace);
 
     if ((trace.messageType === 'INFO' || trace.messageType === 'UPDATE' || trace.messageType === 'ERROR') &&
-        !state.currentServerId && state.currentTab === 'workspaces') {
+        !state.currentServerId && isOnWorkspacesTab()) {
         console.log('Auto-selecting server for installation:', trace.serverId);
 
         const workspace = trace.workspaceUri
@@ -208,7 +209,7 @@ function handleLspTrace(trace) {
         }
     }
 
-    if (state.currentTab === 'workspaces' &&
+    if (isOnWorkspacesTab() &&
         (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
         (trace.workspaceUri == null && trace.serverId === state.currentServerId))) {
         console.log('Refreshing console for current server');
@@ -242,13 +243,13 @@ function handleBspTrace(trace) {
     const tk = traceKey(trace.workspaceUri, trace.serverId);
     pushTrace(state.tracesByServer, tk, trace);
 
-    if (state.currentTab === 'workspaces' &&
+    if (isOnWorkspacesTab() &&
         (tk === traceKey(state.selectedWorkspace, state.currentServerId) ||
         (trace.workspaceUri == null && trace.serverId === state.currentServerId))) {
         renderConsole();
     }
 
-    if (state.currentWorkspaceTab === 'build') {
+    if (isOnBuildTab()) {
         const workspace = trace.workspaceUri
             ? state.workspaces.find(w => w.rootUri === trace.workspaceUri)
             : state.workspaces.find(w => w.bspServers && w.bspServers.some(s => s.id === trace.serverId));
@@ -281,7 +282,7 @@ function handleWorkspacesUpdate(newWorkspaces) {
             state.selectedWorkspace = null;
             document.getElementById('servers-list').innerHTML = '<div class="servers-placeholder">No workspaces selected</div>';
         }
-    } else if (state.workspaces.length > 0 && state.currentTab === 'workspaces') {
+    } else if (state.workspaces.length > 0 && isOnWorkspacesTab()) {
         selectWorkspace(state.workspaces[0].rootUri);
     }
 }
@@ -357,9 +358,11 @@ function handleServerStatusChanged(event) {
 
     const serverType = event.serverType || 'LSP';
     const servers = serverType === 'BSP' ? workspace.bspServers : workspace.lspServers;
+    const onWorkspacesTab = isOnWorkspacesTab() && state.selectedWorkspace === event.workspaceUri;
+
     if (!servers) {
         console.warn('Badge: servers array is null for type', serverType);
-        if (state.selectedWorkspace === event.workspaceUri) {
+        if (onWorkspacesTab) {
             loadServers(state.selectedWorkspace);
         }
         return;
@@ -368,12 +371,13 @@ function handleServerStatusChanged(event) {
     const changedServer = servers.find(s => s.id === event.serverId);
     if (!changedServer) {
         console.warn('Badge: server not found:', event.serverId, 'in', servers.map(s => s.id));
-        if (state.selectedWorkspace === event.workspaceUri) {
+        if (onWorkspacesTab) {
             loadServers(state.selectedWorkspace);
         }
         return;
     }
 
+    // Always update in-memory state
     changedServer.status = event.newStatus;
     changedServer.statusMessage = event.statusMessage;
     changedServer.installProgress = event.installProgress;
@@ -390,39 +394,38 @@ function handleServerStatusChanged(event) {
             ext.command = changedServer.command;
         }
 
-        if (state.selectedWorkspace === event.workspaceUri) {
+        if (onWorkspacesTab) {
             for (const ext of extensions) {
                 updateServerStatusBadge(ext.id, ext);
             }
         }
     }
 
-    if (state.selectedWorkspace === event.workspaceUri) {
-        console.log('Badge: updating badge for', event.serverId, 'status=', changedServer.status);
+    // DOM updates — only when viewing the workspaces tab for this workspace
+    if (!onWorkspacesTab) return;
 
-        const serverElement = findWorkspaceServerElement(event.serverId);
-        if (serverElement) {
-            updateServerStatusBadge(event.serverId, changedServer);
-        } else {
-            refreshWorkspaceServers();
-        }
+    console.log('Badge: updating badge for', event.serverId, 'status=', changedServer.status);
 
-        if (state.selectedServer && state.selectedServer.id === event.serverId) {
-            updateDetailPanelStatusBadge(changedServer);
-        }
-
-        if (!state.userExplicitlySelectedServer
-            && event.newStatus !== 'STOPPED'
-            && state.selectedServer?.id !== event.serverId) {
-            const currentSelected = state.selectedServer
-                ? servers?.find(s => s.id === state.selectedServer.id)
-                : null;
-            if (!currentSelected || currentSelected.status === 'STOPPED') {
-                selectServer(changedServer, false);
-            }
-        }
+    const serverElement = findWorkspaceServerElement(event.serverId);
+    if (serverElement) {
+        updateServerStatusBadge(event.serverId, changedServer);
     } else {
-        console.warn('Badge: workspace mismatch. selectedWorkspace=', state.selectedWorkspace, 'event.workspaceUri=', event.workspaceUri);
+        refreshWorkspaceServers();
+    }
+
+    if (state.selectedServer && state.selectedServer.id === event.serverId) {
+        updateDetailPanelStatusBadge(changedServer);
+    }
+
+    if (!state.userExplicitlySelectedServer
+        && event.newStatus !== 'STOPPED'
+        && state.selectedServer?.id !== event.serverId) {
+        const currentSelected = state.selectedServer
+            ? servers?.find(s => s.id === state.selectedServer.id)
+            : null;
+        if (!currentSelected || currentSelected.status === 'STOPPED') {
+            selectServer(changedServer, false);
+        }
     }
 }
 
@@ -488,7 +491,7 @@ function handleFileWatcherStatusChanged(message) {
         workspace.fileWatcherScannedDirs = message.scannedDirs;
     }
     updateFileWatcherBadge(message.workspaceUri);
-    if (state.currentWorkspaceTab === 'settings' && state.selectedWorkspace === message.workspaceUri) {
+    if (isOnSettingsTab() && state.selectedWorkspace === message.workspaceUri) {
         refreshWorkspaceServers();
     }
 }
@@ -773,7 +776,7 @@ registerActions('click', {
         if (e.target === el) hideConfirmModal();
     },
     switchRuntimeSubtab: (el) => {
-        if (state.currentTab === 'runtimes') {
+        if (isOnRuntimesTab()) {
             applyRuntimeSubtab(el.dataset.subtab);
         }
     },
@@ -822,7 +825,7 @@ registerActions('click', {
             }
 
             const mcpConsoleOutput = document.getElementById('mcp-console-output');
-            if (mcpConsoleOutput && state.currentTab === 'mcp-traces' && getSelectedMcpClient()) {
+            if (mcpConsoleOutput && isOnMcpTab() && getSelectedMcpClient()) {
                 return {
                     type: 'mcp',
                     containerId: 'mcp-console-output',
@@ -838,7 +841,7 @@ registerActions('click', {
             const dapTracesContainer = document.getElementById(`dap-traces-container-${state.currentDapSessionId}`);
 
             const hasLspConsole = consoleOutput && state.selectedServer;
-            const hasMcpConsole = mcpConsoleOutput && state.currentTab === 'mcp-traces' && getSelectedMcpClient();
+            const hasMcpConsole = mcpConsoleOutput && isOnMcpTab() && getSelectedMcpClient();
             const hasDapConsole = dapTracesContainer && state.currentDapSessionId;
 
             if (hasLspConsole || hasMcpConsole || hasDapConsole) {

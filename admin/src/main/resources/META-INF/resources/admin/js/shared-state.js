@@ -32,6 +32,30 @@ export const state = {
     userExplicitlySelectedServer: false,
 };
 
+export function isOnWorkspacesTab() {
+    return state.currentTab === 'workspaces';
+}
+
+export function isOnMcpTab() {
+    return state.currentTab === 'mcp-traces';
+}
+
+export function isOnRuntimesTab() {
+    return state.currentTab === 'runtimes';
+}
+
+export function isOnDebuggersTab() {
+    return state.currentTab === 'workspaces' && state.currentWorkspaceTab === 'debuggers';
+}
+
+export function isOnBuildTab() {
+    return state.currentTab === 'workspaces' && state.currentWorkspaceTab === 'build';
+}
+
+export function isOnSettingsTab() {
+    return state.currentTab === 'workspaces' && state.currentWorkspaceTab === 'settings';
+}
+
 const THEME_DARK = 'dark';
 const THEME_LIGHT = 'light';
 const THEME_STORAGE_KEY = 'admin-theme';
