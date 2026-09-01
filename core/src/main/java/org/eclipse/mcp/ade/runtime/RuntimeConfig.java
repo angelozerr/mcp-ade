@@ -132,6 +132,20 @@ public class RuntimeConfig extends InstallableConfig {
     }
 
     /**
+     * Returns the directory containing the runtime binary,
+     * derived from the resolved binary path.
+     */
+    public String getBinDirectory() {
+        if (resolvedPath != null) {
+            Path binDir = Path.of(resolvedPath).getParent();
+            if (binDir != null) {
+                return binDir.toString();
+            }
+        }
+        return getServerHome().toString();
+    }
+
+    /**
      * Resolves the actual runtime binary path using which/where,
      * respecting the user's source preference.
      */

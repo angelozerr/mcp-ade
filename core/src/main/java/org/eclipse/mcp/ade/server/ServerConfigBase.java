@@ -34,13 +34,17 @@ import org.eclipse.mcp.ade.dap.server.DapServerConfig;
 import org.eclipse.mcp.ade.lsp.server.LspServerConfig;
 import org.jboss.logging.Logger;
 
+import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Base class for server configurations (LSP and DAP).
@@ -61,6 +65,7 @@ import java.util.function.Consumer;
 public class ServerConfigBase extends InstallableConfig {
 
     private static final Logger LOG = Logger.getLogger(ServerConfigBase.class);
+    private static final String PATH_ENV = "PATH";
 
     private DocumentSelector documentSelector;
     private String command;
@@ -69,7 +74,7 @@ public class ServerConfigBase extends InstallableConfig {
 
     private String runtime;
     private RuntimeConfig runtimeConfig;
-    private volatile boolean runtimePathAdded;
+    private volatile String lastRuntimeBin;
 
     private ActivationCondition activateWhen;
 
@@ -118,34 +123,30 @@ public class ServerConfigBase extends InstallableConfig {
     }
 
     private synchronized void addRuntimeToPath() {
-        if (runtimePathAdded || runtimeConfig == null) {
+        if (runtimeConfig == null) {
             return;
         }
 
-        String runtimeBin;
-        // Use the resolved path from which/where if available
-        if (runtimeConfig.getResolvedPath() != null) {
-            java.nio.file.Path resolvedBinDir = java.nio.file.Path.of(runtimeConfig.getResolvedPath()).getParent();
-            runtimeBin = resolvedBinDir != null ? resolvedBinDir.toString() : runtimeConfig.getServerHome().toString();
-        } else {
-            java.nio.file.Path runtimeHome = runtimeConfig.getServerHome();
-            java.nio.file.Path binDir = runtimeHome.resolve("bin");
-            if (java.nio.file.Files.isDirectory(binDir)) {
-                runtimeBin = binDir.toString();
-            } else {
-                runtimeBin = runtimeHome.toString();
-            }
+        String runtimeBin = runtimeConfig.getBinDirectory();
+        if (runtimeBin.equals(lastRuntimeBin)) {
+            return;
         }
 
-        String existingPath = env.get("PATH");
-        if (existingPath != null) {
-            env.put("PATH", runtimeBin + java.io.File.pathSeparator + existingPath);
+        String existingPath = env.get(PATH_ENV);
+        if (lastRuntimeBin != null && existingPath != null) {
+            existingPath = Arrays.stream(existingPath.split(Pattern.quote(File.pathSeparator)))
+                    .filter(entry -> !entry.equals(lastRuntimeBin))
+                    .collect(Collectors.joining(File.pathSeparator));
+        }
+
+        if (existingPath != null && !existingPath.isEmpty()) {
+            env.put(PATH_ENV, runtimeBin + File.pathSeparator + existingPath);
         } else {
             String basePath = runtimeConfig.getApplicationPath();
-            env.put("PATH", runtimeBin + java.io.File.pathSeparator + (basePath != null ? basePath : ""));
+            env.put(PATH_ENV, runtimeBin + File.pathSeparator + (basePath != null ? basePath : ""));
         }
         env.putAll(runtimeConfig.getResolvedEnv());
-        runtimePathAdded = true;
+        lastRuntimeBin = runtimeBin;
     }
 
     // --- Installer config (with configureServer detection) ---
