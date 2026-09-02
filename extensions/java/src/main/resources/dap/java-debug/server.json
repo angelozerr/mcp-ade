@@ -9,6 +9,27 @@
 			"language": "java"
 		}
 	],
+	"resolve": {
+		"launch": [
+			{
+				"vscode.java.resolveClasspath": {
+					"args": ["${mainClass}", "${projectName}", null],
+					"returns": {
+						"modulePaths": "$[0]",
+						"classPaths": "$[1]"
+					}
+				}
+			},
+			{
+				"vscode.java.resolveJavaExecutable": {
+					"args": ["${mainClass}", "${projectName}"],
+					"returns": {
+						"javaExec": "$"
+					}
+				}
+			}
+		]
+	},
 	"contributes": {
 		"jdtls": {
 			"bundles": [
