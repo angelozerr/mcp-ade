@@ -1695,7 +1695,8 @@ body {
     cursor: text;
 }
 
-.console .trace-toggle {
+.console .trace-toggle,
+.console .nav-link {
     cursor: pointer !important;
 }
 
