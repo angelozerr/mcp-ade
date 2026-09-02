@@ -20,6 +20,8 @@ import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
 import org.jboss.logging.Logger;
 
+import org.eclipse.mcp.ade.dap.server.resolve.ResolveConfig;
+
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
@@ -55,6 +57,7 @@ public class DapServerConfig extends ServerConfigBase {
      * Attach configuration for DAP servers.
      */
     private Map<String, Object> attach;
+    private ResolveConfig resolveConfig;
     private String debugServerReadyPattern;
     private DebugServerWaitStrategy debugServerWaitStrategy = DebugServerWaitStrategy.TIMEOUT;
     private Integer connectTimeout = 500; // Default 500ms
@@ -88,6 +91,14 @@ public class DapServerConfig extends ServerConfigBase {
 
     public void setAttach(Map<String, Object> attach) {
         this.attach = attach;
+    }
+
+    public ResolveConfig getResolveConfig() {
+        return resolveConfig;
+    }
+
+    public void setResolveConfig(ResolveConfig resolveConfig) {
+        this.resolveConfig = resolveConfig;
     }
 
     public void setDebugServerReadyPattern(String debugServerReadyPattern) {

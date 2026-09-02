@@ -1,0 +1,58 @@
+{
+  "id": "intellij-debug",
+  "name": "IntelliJ Java Debug Server",
+  "description": "JetBrains IntelliJ Debug Adapter",
+  "launchMethod": "start_debug_server",
+  "documentSelector": [
+    {
+      "language": "java"
+    },
+    {
+      "language": "kotlin"
+    }
+  ],
+  "resolve": {
+    "launch": [
+      {
+        "intellij.java.resolveClassDocument": {
+          "args": [{"fqn": "${mainClass}"}],
+          "returns": {"uri": "$uri"}
+        }
+      },
+      {
+        "intellij.java.resolveClasspath": {
+          "args": [{"uri": "${uri}"}],
+          "returns": {
+            "classPaths": "$classpath",
+            "modulePaths": "$modulePath",
+            "moduleName": "$moduleName"
+          }
+        }
+      },
+      {
+        "optional": true,
+        "intellij.java.resolveWorkingDirectory": {
+          "args": [{"uri": "${uri}"}],
+          "returns": {"cwd": "$workingDirectory"}
+        }
+      },
+      {
+        "intellij.java.resolveJavaExecutable": {
+          "args": [{"uri": "${uri}"}],
+          "returns": {"javaExec": "$javaExec"}
+        }
+      }
+    ]
+  },
+  "contributes": {
+    "intellij": {
+      "bindRequest": [
+        "start_debug_server",
+        "intellij.java.resolveClassDocument",
+        "intellij.java.resolveClasspath",
+        "intellij.java.resolveWorkingDirectory",
+        "intellij.java.resolveJavaExecutable"
+      ]
+    }
+  }
+}

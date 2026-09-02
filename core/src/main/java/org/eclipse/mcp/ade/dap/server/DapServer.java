@@ -14,6 +14,9 @@
 package org.eclipse.mcp.ade.dap.server;
 
 import org.eclipse.mcp.ade.dap.client.DapClient;
+import org.eclipse.mcp.ade.dap.server.resolve.ResolveConfig;
+import org.eclipse.mcp.ade.dap.server.resolve.ResolveStepConfig;
+import org.eclipse.mcp.ade.dap.server.resolve.ResolveStepExecutor;
 import org.eclipse.mcp.ade.dap.session.DapSession;
 import org.eclipse.mcp.ade.dap.transport.SocketTransportStreams;
 import org.eclipse.mcp.ade.dap.transport.StdioTransportStreams;
@@ -156,10 +159,12 @@ public class DapServer extends ServerBase<DapServerConfig> {
      * Override this method in subclasses to add custom resolution logic.
      * For example, JavaDebugServer resolves classpath, java executable, etc.
      *
-     * <p>Default implementation handles attach mode for standalone DAP servers (e.g., debugpy):
-     * resolves {@code $connect.host} and {@code $connect.port} JSON path references
-     * from the server.json {@code attach} block against the launch configuration,
-     * then connects to the DAP server via socket.</p>
+     * <p>Default implementation:</p>
+     * <ol>
+     *   <li>Handles attach mode for standalone DAP servers (e.g., debugpy)</li>
+     *   <li>Executes declarative resolve steps from server.json if present</li>
+     *   <li>Starts embedded debug session via launchMethod if configured</li>
+     * </ol>
      *
      * @param launchConfig The initial launch configuration
      * @param sessionId The session ID for tracing
@@ -188,13 +193,33 @@ public class DapServer extends ServerBase<DapServerConfig> {
             }
         }
 
-        // Embedded mode: call launchMethod to start the debug session and get a DAP port
-        String launchMethod = getConfig().getLaunchMethod();
-        if (launchMethod != null) {
-            return startEmbeddedDebugSession(launchMethod, launchConfig);
+        // Flush file watcher to ensure LSP server sees recent changes
+        getWorkspace().flushFileWatcher();
+
+        // Execute declarative resolve steps if configured
+        String requestType = (String) launchConfig.getOrDefault("request", "launch");
+        ResolveConfig resolveConfig = getConfig().getResolveConfig();
+        CompletableFuture<Map<String, Object>> resolveFuture;
+
+        if (resolveConfig != null && resolveConfig.hasSteps(requestType)) {
+            List<ResolveStepConfig> steps = resolveConfig.getSteps(requestType);
+            ResolveStepExecutor executor = new ResolveStepExecutor(
+                    this::routeRequest,
+                    this::addTrace
+            );
+            resolveFuture = executor.execute(steps, launchConfig);
+        } else {
+            resolveFuture = CompletableFuture.completedFuture(launchConfig);
         }
 
-        return CompletableFuture.completedFuture(launchConfig);
+        // After resolve steps, start embedded debug session if configured
+        String launchMethod = getConfig().getLaunchMethod();
+        if (launchMethod != null) {
+            return resolveFuture.thenCompose(
+                    enrichedConfig -> startEmbeddedDebugSession(launchMethod, enrichedConfig));
+        }
+
+        return resolveFuture;
     }
 
     /**
