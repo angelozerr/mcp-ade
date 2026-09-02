@@ -2,6 +2,7 @@ import { state, getServerApiBase, getServerName, getRuntimeName } from './shared
 import { renderSettingsPanel, renderServerSetting } from './admin-settings.js';
 import { renderServerDiagram } from './diagram.js';
 import { registerActions } from './event-delegation.js';
+import { showToast } from './toast.js';
 
 export function renderLoadingPlaceholder() {
     return '<div class="servers-placeholder"><div class="spinner"></div>Loading...</div>';
@@ -587,6 +588,7 @@ export async function toggleServerEnabled(serverType, serverId, enabled, configs
         const response = await fetch(`/api/admin/extensions/${serverType}/servers/${serverId}/${action}`, { method: 'POST' });
         if (response.ok) {
             if (configs[serverId]) configs[serverId].enabled = enabled;
+            showToast('Settings saved');
             reloadFn();
         }
     } catch (error) {
@@ -599,11 +601,14 @@ export async function changeServerTraceLevel(protocol, serverId, level) {
         state.traceLevels[`${protocol}.${serverId}`] = level;
     }
     try {
-        await fetch(`/api/admin/traces/${protocol}/${serverId}`, {
+        const response = await fetch(`/api/admin/traces/${protocol}/${serverId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ traceLevel: level })
         });
+        if (response.ok) {
+            showToast('Settings saved');
+        }
     } catch (e) {
         console.error(`Failed to save ${protocol.toUpperCase()} trace level:`, e);
     }

@@ -5,6 +5,7 @@ import {
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
 import { renderActivity, updateActivityToggleUI } from './admin-activity.js';
+import { showToast } from './toast.js';
 
 let mcpTraces = [];
 let mcpTraceLevel = 'off';
@@ -235,11 +236,12 @@ async function changeMcpTraceLevel(newLevel) {
     renderMcpConsole();
 
     try {
-        await fetch('/api/admin/traces/mcp', {
+        const response = await fetch('/api/admin/traces/mcp', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ traceLevel: newLevel })
         });
+        if (response.ok) showToast('Settings saved');
     } catch (err) {
         console.error('Failed to set MCP trace level:', err);
     }

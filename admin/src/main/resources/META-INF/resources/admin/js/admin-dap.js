@@ -20,6 +20,7 @@ import {
     getCurrentSearchQuery, toggleAllTraces, clearHighlights, initTraceContainer
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
+import { showToast } from './toast.js';
 
 let selectDapSessionByServerIdCallback = null;
 export function setSelectDapSessionByServerIdCallback(cb) { selectDapSessionByServerIdCallback = cb; }
@@ -911,11 +912,12 @@ export async function changeDapTraceLevel(sessionId, level) {
     const workspaceUri = session?.workspaceUri;
     if (serverId && workspaceUri) {
         try {
-            await fetch(`/api/admin/workspaces/${encodeURIComponent(workspaceUri)}/traces/dap/${encodeURIComponent(serverId)}`, {
+            const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspaceUri)}/traces/dap/${encodeURIComponent(serverId)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ traceLevel: level })
             });
+            if (response.ok) showToast('Settings saved');
         } catch (e) {
             console.error('Failed to save DAP trace level:', e);
         }

@@ -15,6 +15,7 @@ import { formatContributionsSection } from './shared-contributions.js';
 import { renderServerDiagram } from './diagram.js';
 import { LanguageFilter } from './language-filter.js';
 import { registerActions } from './event-delegation.js';
+import { showToast } from './toast.js';
 
 let selectedAllServer = null; // Track selected server in global Servers tab
 let currentServerTab = 'overview'; // Track current tab: overview, contributions, settings
@@ -272,6 +273,7 @@ function updateServerSetting(serverId, settingKey, value) {
                 setting.currentValue = value;
             }
         }
+        showToast('Settings saved');
     }).catch(err => console.error('Error updating setting:', err));
 }
 

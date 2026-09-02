@@ -5,6 +5,8 @@
  * reset buttons, and toggle controls. Used by workspace settings, server settings, etc.
  */
 
+import { showToast } from './toast.js';
+
 const FILTER_THRESHOLD = 5;
 
 /**
@@ -200,6 +202,7 @@ export async function resetWorkspaceSetting(uri, key) {
         if (response.ok) {
             const result = await response.json();
             console.log(`Setting '${key}' reset:`, result);
+            showToast('Setting reset');
             return result;
         }
     } catch (error) {
@@ -221,6 +224,7 @@ export async function setWorkspaceSetting(uri, key, value) {
         if (response.ok) {
             const result = await response.json();
             console.log(`Setting '${key}' set:`, result);
+            showToast('Settings saved');
             return result;
         }
     } catch (error) {

@@ -12,6 +12,7 @@ import {
 import { registerActions } from './event-delegation.js';
 import { renderSettingsPanel, renderToggleSetting, renderServerSetting, renderActionItem, resetWorkspaceSetting, setWorkspaceSetting } from './admin-settings.js';
 import { selectDapSession as selectDapSessionImpl, createNewTestSession as createNewTestSessionImpl } from './admin-dap.js';
+import { showToast } from './toast.js';
 
         // Global variable to store DAP sessions
         let dapSessions = [];
@@ -44,6 +45,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                     if (configs && configs[serverId]) {
                         configs[serverId].enabled = enabled;
                     }
+                    showToast('Settings saved');
                     if (afterToggle) afterToggle();
                     const serverElement = document.querySelector(`.server-item[data-server-id="${serverId}"]`);
                     if (serverElement) {
@@ -945,11 +947,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
 
             if (uri && serverId) {
                 try {
-                    await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${serverType}/${encodeURIComponent(serverId)}`, {
+                    const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${serverType}/${encodeURIComponent(serverId)}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ traceLevel: level })
                     });
+                    if (response.ok) showToast('Settings saved');
                     reloadServerSettingsTab(serverId);
                 } catch (error) {
                     console.error(`Failed to change ${serverType.toUpperCase()} trace level:`, error);
@@ -1692,6 +1695,7 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
                         workspace.fileWatcherStatus = result.fileWatcherStatus;
                         workspace.fileWatcherFailureReason = result.fileWatcherFailureReason;
                     }
+                    showToast('Settings saved');
                     renderWorkspaces();
                     if (state.currentWorkspaceTab === 'settings') {
                         renderServers(workspace?.lspServers || [], [], workspace);
@@ -1781,11 +1785,12 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         async function updateWorkspaceServerSettingAction(uri, serverId, settingKey, value, serverType) {
             if (settingKey === 'trace') {
                 const type = serverType || 'lsp';
-                await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${type}/${encodeURIComponent(serverId)}`, {
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${type}/${encodeURIComponent(serverId)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ traceLevel: value })
                 });
+                if (response.ok) showToast('Settings saved');
                 currentTraceLevel = value;
                 if (state.selectedServer) state.selectedServer.traceLevel = value;
                 updateTraceControls('trace', value);
@@ -1801,9 +1806,10 @@ import { selectDapSession as selectDapSessionImpl, createNewTestSession as creat
         async function resetWorkspaceServerSettingAction(uri, serverId, key, serverType) {
             if (key === 'trace') {
                 const type = serverType || 'lsp';
-                await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${type}/${encodeURIComponent(serverId)}`, {
+                const response = await fetch(`/api/admin/workspaces/${encodeURIComponent(uri)}/traces/${type}/${encodeURIComponent(serverId)}`, {
                     method: 'DELETE'
                 });
+                if (response.ok) showToast('Setting reset');
                 await reloadServerSettingsTab(serverId);
                 return;
             }

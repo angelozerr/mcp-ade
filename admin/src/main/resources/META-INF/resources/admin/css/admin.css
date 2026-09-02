@@ -2876,3 +2876,31 @@ body {
     overflow-y: auto;
 }
 
+/* ── Toast notification ── */
+
+.toast-container {
+    position: fixed;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-success);
+    color: #fff;
+    padding: 0.5rem 1.25rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    z-index: 11000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.toast-container.toast-show {
+    opacity: 1;
+}
+
+.toast-container.toast-hide {
+    opacity: 0;
+}
+

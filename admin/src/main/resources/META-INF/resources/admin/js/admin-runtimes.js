@@ -9,6 +9,7 @@ import { getRuntimeStatusInfo, renderLoadingPlaceholder, renderServerLink, rende
     buildInstallerControlsHTML, getInstallStatusBadge, updateInstallBadgeInList,
     buildInstallOutputHTML, runServerInstaller, restoreInstallOutput } from './shared-ui.js';
 import { registerActions } from './event-delegation.js';
+import { showToast } from './toast.js';
 
 let selectedRuntime = null;
 let switchTabCallback = null;
@@ -407,11 +408,12 @@ registerActions('change', {
         const runtimeId = el.dataset.runtimeId;
         const value = el.value;
         try {
-            await fetch(`/api/admin/runtimes/${encodeURIComponent(runtimeId)}/source-preference`, {
+            const response = await fetch(`/api/admin/runtimes/${encodeURIComponent(runtimeId)}/source-preference`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sourcePreference: value })
             });
+            if (response.ok) showToast('Settings saved');
         } catch (error) {
             console.error('Failed to change source preference:', error);
         }

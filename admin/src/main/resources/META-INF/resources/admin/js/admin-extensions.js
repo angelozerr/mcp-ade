@@ -8,6 +8,7 @@
 import { confirmAction, showAlert, renderLoadingPlaceholder, renderServerLink, renderRuntimeLink, selectListItem, renderDocumentSelector } from './shared-ui.js';
 import { state, loadLspConfigs, loadDapConfigs, loadBspConfigs, ensureExtensionConfigs, ensureExtensionConfigDetail } from './shared-state.js';
 import { registerActions } from './event-delegation.js';
+import { showToast } from './toast.js';
 
 let switchTabCallback = null;
 export function setSwitchTabCallback(cb) { switchTabCallback = cb; }
@@ -603,9 +604,9 @@ async function toggleExtensionEnabled(extensionId, enabled) {
     try {
         const response = await fetch(`/api/admin/extensions/${encodeURIComponent(extensionId)}/${action}`, { method: 'POST' });
         if (response.ok) {
-            // Update local data
             const ext = extensionsData.find(e => e.id === extensionId);
             if (ext) ext.enabled = enabled;
+            showToast('Settings saved');
             renderExtensionsList();
             if (selectedExtension === extensionId) showExtensionDetails(extensionId);
         }
@@ -622,12 +623,12 @@ async function toggleExtensionServerEnabled(type, serverId, enabled) {
     try {
         const response = await fetch(`/api/admin/extensions/${type}/servers/${serverId}/${action}`, { method: 'POST' });
         if (response.ok) {
-            // Update local data
             for (const ext of extensionsData) {
                 const serverList = type === 'lsp' ? ext.lspServers : type === 'dap' ? ext.dapServers : ext.bspServers;
                 const srv = serverList?.find(s => s.id === serverId);
                 if (srv) { srv.enabled = enabled; break; }
             }
+            showToast('Settings saved');
             if (selectedExtension) showExtensionDetails(selectedExtension);
         }
     } catch (error) {
