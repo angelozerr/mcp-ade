@@ -64,11 +64,27 @@ public class ResolveStepExecutor {
     public CompletableFuture<Map<String, Object>> execute(
             List<ResolveStepConfig> steps,
             Map<String, Object> launchConfig) {
+        return execute(steps, launchConfig, Map.of());
+    }
+
+    /**
+     * Execute all resolve steps sequentially, enriching the launch configuration.
+     *
+     * @param steps the resolve steps to execute
+     * @param launchConfig the mutable launch configuration map
+     * @param context extra variables for {@code ${variable}} resolution that should
+     *                not be written into the launch config (e.g. workspaceUri)
+     * @return future that completes with the enriched launch config
+     */
+    public CompletableFuture<Map<String, Object>> execute(
+            List<ResolveStepConfig> steps,
+            Map<String, Object> launchConfig,
+            Map<String, Object> context) {
 
         CompletableFuture<Map<String, Object>> future = CompletableFuture.completedFuture(launchConfig);
 
         for (ResolveStepConfig step : steps) {
-            future = future.thenCompose(config -> executeStep(step, config));
+            future = future.thenCompose(config -> executeStep(step, config, context));
         }
 
         return future;
@@ -76,7 +92,8 @@ public class ResolveStepExecutor {
 
     private CompletableFuture<Map<String, Object>> executeStep(
             ResolveStepConfig step,
-            Map<String, Object> launchConfig) {
+            Map<String, Object> launchConfig,
+            Map<String, Object> context) {
 
         String command = step.getCommand();
 
@@ -86,10 +103,14 @@ public class ResolveStepExecutor {
             return CompletableFuture.completedFuture(launchConfig);
         }
 
-        // Resolve args
+        // Build combined variable map: context as defaults, launchConfig takes precedence
+        Map<String, Object> vars = new LinkedHashMap<>(context);
+        vars.putAll(launchConfig);
+
+        // Resolve args from combined map
         List<Object> resolvedArgs;
         try {
-            resolvedArgs = resolveArgs(step.getArgs(), launchConfig);
+            resolvedArgs = resolveArgs(step.getArgs(), vars);
         } catch (UnresolvedVariableException e) {
             String msg = String.format("Cannot resolve ${%s} for command %s", e.getVariableName(), command);
             if (step.isOptional()) {

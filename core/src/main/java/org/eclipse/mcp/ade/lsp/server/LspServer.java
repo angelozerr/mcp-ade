@@ -765,6 +765,18 @@ public class LspServer extends ServerBase<LspServerConfig> {
     }
 
     /**
+     * Prepare the server before declarative resolve steps are executed.
+     * Override in subclasses to perform setup such as ensuring modules
+     * are loaded (e.g., fast mode in JDT.LS).
+     *
+     * @param launchConfig the debug launch configuration (contains cwd, mainClass, etc.)
+     * @return future that completes when preparation is done
+     */
+    public CompletableFuture<Void> prepareForResolve(Map<String, Object> launchConfig) {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    /**
      * Shutdown the language server.
      */
     public CompletableFuture<Void> shutdown() {

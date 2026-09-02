@@ -303,6 +303,13 @@ public class JdtLsServer extends LspServer implements InstallerListener {
                 });
     }
 
+    @Override
+    public CompletableFuture<Void> prepareForResolve(Map<String, Object> launchConfig) {
+        String cwd = (String) launchConfig.get("cwd");
+        return ensureModuleSetupIfFastMode(cwd)
+                .thenCompose(v -> waitForPendingFileWatcherModuleSetups());
+    }
+
     public CompletableFuture<Void> ensureModuleSetupIfFastMode(String fileUri) {
         if (!isFastMode()) {
             return CompletableFuture.completedFuture(null);

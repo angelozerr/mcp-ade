@@ -387,4 +387,92 @@ class ResolveStepExecutorTest {
         assertEquals("validateLaunchConfig", lastCommandName);
         assertEquals("com.example.Main", result.get("mainClass"));
     }
+
+    // ===== Context variables =====
+
+    @Test
+    void execute_contextVariableResolvedInArgs() throws Exception {
+        commandResult = "ok";
+
+        ResolveStepConfig step = new ResolveStepConfig(
+                "validateLaunchConfig",
+                List.of("${workspaceUri}", "${mainClass}"),
+                Map.of(),
+                false
+        );
+
+        Map<String, Object> config = new HashMap<>();
+        config.put("mainClass", "com.example.Main");
+
+        Map<String, Object> context = Map.of("workspaceUri", "file:///workspace");
+
+        Map<String, Object> result = executor.execute(List.of(step), config, context).get();
+
+        assertEquals("validateLaunchConfig", lastCommandName);
+        assertFalse(result.containsKey("workspaceUri"), "context variable must not leak into launchConfig");
+    }
+
+    @Test
+    void execute_launchConfigTakesPrecedenceOverContext() throws Exception {
+        commandResult = "ok";
+
+        ResolveStepConfig step = new ResolveStepConfig(
+                "someCommand",
+                List.of("${workspaceUri}"),
+                Map.of(),
+                false
+        );
+
+        Map<String, Object> config = new HashMap<>();
+        config.put("workspaceUri", "file:///user-provided");
+
+        Map<String, Object> context = Map.of("workspaceUri", "file:///default");
+
+        executor.execute(List.of(step), config, context).get();
+
+        @SuppressWarnings("unchecked")
+        List<Object> sentArgs = (List<Object>) executor.resolveArgs(
+                List.of("${workspaceUri}"),
+                new LinkedHashMap<>(context) {{ putAll(config); }}
+        );
+        assertEquals("file:///user-provided", sentArgs.get(0));
+    }
+
+    @Test
+    void execute_contextVariableUsedAcrossChainedSteps() throws Exception {
+        BiFunction<String, Object, CompletableFuture<?>> sender = (command, args) -> {
+            if (command.equals("validate")) {
+                return CompletableFuture.completedFuture("ok");
+            }
+            if (command.equals("resolveClasspath")) {
+                return CompletableFuture.completedFuture(List.of(
+                        List.of("module.jar"),
+                        List.of("class.jar")
+                ));
+            }
+            return CompletableFuture.completedFuture(Map.of());
+        };
+
+        ResolveStepExecutor exec = createExecutorWithSender(sender);
+
+        List<ResolveStepConfig> steps = List.of(
+                new ResolveStepConfig("validate",
+                        List.of("${workspaceUri}", "${mainClass}"),
+                        Map.of(), false),
+                new ResolveStepConfig("resolveClasspath",
+                        List.of("${mainClass}"),
+                        Map.of("modulePaths", "$[0]", "classPaths", "$[1]"), false)
+        );
+
+        Map<String, Object> config = new HashMap<>();
+        config.put("mainClass", "com.example.Main");
+
+        Map<String, Object> context = Map.of("workspaceUri", "file:///workspace");
+
+        Map<String, Object> result = exec.execute(steps, config, context).get();
+
+        assertEquals(List.of("module.jar"), result.get("modulePaths"));
+        assertEquals(List.of("class.jar"), result.get("classPaths"));
+        assertFalse(result.containsKey("workspaceUri"), "context variable must not leak into launchConfig");
+    }
 }

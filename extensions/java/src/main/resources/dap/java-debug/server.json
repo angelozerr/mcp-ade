@@ -12,6 +12,16 @@
 	"resolve": {
 		"launch": [
 			{
+				"vscode.java.validateLaunchConfig": {
+					"args": ["${workspaceUri}", "${mainClass}", "${projectName}", false]
+				}
+			},
+			{
+				"vscode.java.buildWorkspace": {
+					"args": ["{\"isFullBuild\":false}"]
+				}
+			},
+			{
 				"vscode.java.resolveClasspath": {
 					"args": ["${mainClass}", "${projectName}", null],
 					"returns": {

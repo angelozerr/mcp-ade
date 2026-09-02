@@ -156,12 +156,10 @@ public class DapServer extends ServerBase<DapServerConfig> {
 
     /**
      * Enrich launch configuration before launching.
-     * Override this method in subclasses to add custom resolution logic.
-     * For example, JavaDebugServer resolves classpath, java executable, etc.
-     *
      * <p>Default implementation:</p>
      * <ol>
      *   <li>Handles attach mode for standalone DAP servers (e.g., debugpy)</li>
+     *   <li>Prepares the target LSP server (via {@code contributes})</li>
      *   <li>Executes declarative resolve steps from server.json if present</li>
      *   <li>Starts embedded debug session via launchMethod if configured</li>
      * </ol>
@@ -196,21 +194,27 @@ public class DapServer extends ServerBase<DapServerConfig> {
         // Flush file watcher to ensure LSP server sees recent changes
         getWorkspace().flushFileWatcher();
 
+        // Prepare the target LSP server (e.g., fast mode module setup in JDT.LS)
+        CompletableFuture<Void> prepareFuture = prepareTargetLspServer(launchConfig, progressMonitor);
+
         // Execute declarative resolve steps if configured
         String requestType = (String) launchConfig.getOrDefault("request", "launch");
         ResolveConfig resolveConfig = getConfig().getResolveConfig();
-        CompletableFuture<Map<String, Object>> resolveFuture;
 
-        if (resolveConfig != null && resolveConfig.hasSteps(requestType)) {
-            List<ResolveStepConfig> steps = resolveConfig.getSteps(requestType);
-            ResolveStepExecutor executor = new ResolveStepExecutor(
-                    this::routeRequest,
-                    this::addTrace
-            );
-            resolveFuture = executor.execute(steps, launchConfig);
-        } else {
-            resolveFuture = CompletableFuture.completedFuture(launchConfig);
-        }
+        CompletableFuture<Map<String, Object>> resolveFuture = prepareFuture.thenCompose(v -> {
+            if (resolveConfig != null && resolveConfig.hasSteps(requestType)) {
+                List<ResolveStepConfig> steps = resolveConfig.getSteps(requestType);
+                ResolveStepExecutor executor = new ResolveStepExecutor(
+                        this::routeRequest,
+                        this::addTrace
+                );
+                Map<String, Object> resolveContext = Map.of(
+                        "workspaceUri", getWorkspace().getNormalizedUri()
+                );
+                return executor.execute(steps, launchConfig, resolveContext);
+            }
+            return CompletableFuture.completedFuture(launchConfig);
+        });
 
         // After resolve steps, start embedded debug session if configured
         String launchMethod = getConfig().getLaunchMethod();
@@ -220,6 +224,28 @@ public class DapServer extends ServerBase<DapServerConfig> {
         }
 
         return resolveFuture;
+    }
+
+    /**
+     * Prepare the target LSP server before executing resolve steps.
+     * Finds the target from the {@code contributes} section, ensures it is ready,
+     * and calls {@link org.eclipse.mcp.ade.lsp.server.LspServer#prepareForResolve}.
+     */
+    private CompletableFuture<Void> prepareTargetLspServer(
+            Map<String, Object> launchConfig,
+            ProgressMonitor progressMonitor) {
+        var contributes = getConfig().getContributes();
+        if (contributes == null || contributes.getContributions() == null
+                || contributes.getContributions().isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        String targetLspId = contributes.getContributions().keySet().iterator().next();
+        return getWorkspace().ensureLspServerReady(targetLspId, progressMonitor)
+                .thenCompose(lspServer -> lspServer.prepareForResolve(launchConfig))
+                .exceptionally(ex -> {
+                    LOG.warnf(ex, "Target LSP server preparation failed for '%s', proceeding anyway", targetLspId);
+                    return null;
+                });
     }
 
     /**
