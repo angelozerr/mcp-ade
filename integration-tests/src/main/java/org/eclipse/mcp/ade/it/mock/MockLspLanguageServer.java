@@ -243,6 +243,70 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
         CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> replay =
                 tryReplay("textDocument/documentSymbol", new TypeToken<List<Either<SymbolInformation, DocumentSymbol>>>() {}.getType());
         if (replay != null) return replay;
+
+        String uri = params.getTextDocument().getUri();
+        if (uri != null && uri.endsWith(".xml")) {
+            return CompletableFuture.completedFuture(buildXmlDocumentSymbols());
+        }
+        return CompletableFuture.completedFuture(buildDefaultDocumentSymbols());
+    }
+
+    private List<Either<SymbolInformation, DocumentSymbol>> buildXmlDocumentSymbols() {
+        List<Either<SymbolInformation, DocumentSymbol>> result = new ArrayList<>();
+
+        DocumentSymbol catalog = new DocumentSymbol();
+        catalog.setName("catalog");
+        catalog.setKind(SymbolKind.Field);
+        catalog.setRange(new Range(new Position(1, 0), new Position(10, 10)));
+        catalog.setSelectionRange(new Range(new Position(1, 1), new Position(1, 8)));
+
+        DocumentSymbol book1 = new DocumentSymbol();
+        book1.setName("book");
+        book1.setKind(SymbolKind.Field);
+        book1.setRange(new Range(new Position(2, 2), new Position(5, 9)));
+        book1.setSelectionRange(new Range(new Position(2, 3), new Position(2, 7)));
+
+        DocumentSymbol title1 = new DocumentSymbol();
+        title1.setName("title");
+        title1.setKind(SymbolKind.Field);
+        title1.setRange(new Range(new Position(3, 4), new Position(3, 35)));
+        title1.setSelectionRange(new Range(new Position(3, 5), new Position(3, 10)));
+
+        DocumentSymbol author1 = new DocumentSymbol();
+        author1.setName("author");
+        author1.setKind(SymbolKind.Field);
+        author1.setRange(new Range(new Position(4, 4), new Position(4, 29)));
+        author1.setSelectionRange(new Range(new Position(4, 5), new Position(4, 11)));
+
+        book1.setChildren(List.of(title1, author1));
+
+        DocumentSymbol book2 = new DocumentSymbol();
+        book2.setName("book");
+        book2.setKind(SymbolKind.Field);
+        book2.setRange(new Range(new Position(6, 2), new Position(9, 9)));
+        book2.setSelectionRange(new Range(new Position(6, 3), new Position(6, 7)));
+
+        DocumentSymbol title2 = new DocumentSymbol();
+        title2.setName("title");
+        title2.setKind(SymbolKind.Field);
+        title2.setRange(new Range(new Position(7, 4), new Position(7, 29)));
+        title2.setSelectionRange(new Range(new Position(7, 5), new Position(7, 10)));
+
+        DocumentSymbol author2 = new DocumentSymbol();
+        author2.setName("author");
+        author2.setKind(SymbolKind.Field);
+        author2.setRange(new Range(new Position(8, 4), new Position(8, 31)));
+        author2.setSelectionRange(new Range(new Position(8, 5), new Position(8, 11)));
+
+        book2.setChildren(List.of(title2, author2));
+
+        catalog.setChildren(List.of(book1, book2));
+        result.add(Either.forRight(catalog));
+
+        return result;
+    }
+
+    private List<Either<SymbolInformation, DocumentSymbol>> buildDefaultDocumentSymbols() {
         List<Either<SymbolInformation, DocumentSymbol>> result = new ArrayList<>();
 
         DocumentSymbol greeterClass = new DocumentSymbol();
@@ -281,7 +345,7 @@ public class MockLspLanguageServer implements LanguageServer, TextDocumentServic
         appClass.setChildren(List.of(mainMethod));
         result.add(Either.forRight(appClass));
 
-        return CompletableFuture.completedFuture(result);
+        return result;
     }
 
     /**
