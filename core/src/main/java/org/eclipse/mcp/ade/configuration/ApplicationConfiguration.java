@@ -143,13 +143,24 @@ public class ApplicationConfiguration extends AbstractConfiguration {
     }
 
     public synchronized void setDisabledExtensionIds(List<String> ids) {
-        // Remove all existing extension.*.enabled entries
+        // Remove only disabled entries (preserve explicitly enabled=true for default-disabled extensions)
         getSettings().entrySet().removeIf(e ->
-                e.getKey().startsWith("extension.") && e.getKey().endsWith(".enabled"));
+                e.getKey().startsWith("extension.") && e.getKey().endsWith(".enabled")
+                && Boolean.FALSE.equals(e.getValue()));
         // Write only disabled ones (enabled is the default)
         for (String id : ids) {
             getSettings().put("extension." + id + ".enabled", false);
         }
+        save();
+    }
+
+    public boolean isExtensionExplicitlyEnabled(String extensionId) {
+        Object value = get("extension." + extensionId + ".enabled");
+        return Boolean.TRUE.equals(value);
+    }
+
+    public synchronized void setExtensionExplicitlyEnabled(String extensionId) {
+        getSettings().put("extension." + extensionId + ".enabled", true);
         save();
     }
 

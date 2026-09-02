@@ -12,6 +12,10 @@
     "name": {
       "type": "string",
       "description": "Human-readable display name (e.g. 'C#', 'Rust', 'Python')"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether the extension is enabled by default. Defaults to true. Set to false for extensions that require additional setup before use."
     }
   },
   "extensionStructure": {

@@ -1,0 +1,7 @@
+{
+  "type": "intellij_debugger",
+  "request": "launch",
+  "name": "Run main",
+  "mainClass": "org.acme.DebugDemo",
+  "cwd": "${workspaceFolder}"
+}

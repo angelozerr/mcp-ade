@@ -67,6 +67,7 @@ public class ExtensionRegistry {
     private final Map<String, Extension> extensions = new ConcurrentHashMap<>();
     private final Set<String> disabledExtensions = ConcurrentHashMap.newKeySet();
     private final Set<String> disabledServers = ConcurrentHashMap.newKeySet();
+    private final Set<String> defaultDisabledBundledExtensions = ConcurrentHashMap.newKeySet();
 
     private final List<ExtensionListener> extensionListeners = new CopyOnWriteArrayList<>();
     private final List<InstallerListener> installerListeners = new CopyOnWriteArrayList<>();
@@ -111,6 +112,7 @@ public class ExtensionRegistry {
     public void initialize(Application application) {
         deployBundledConfigs(application);
         scanExtensions(application);
+        applyDefaultDisabledState();
         LOG.infof("ExtensionRegistry initialized: %d extensions, %d LSP servers, %d DAP servers, %d BSP servers",
                 extensions.size(),
                 getAllLspServerConfigs().size(),
@@ -152,6 +154,9 @@ public class ExtensionRegistry {
             }
 
             bundledExtensionIds.add(extensionId);
+            if (Boolean.FALSE.equals(descriptor.enabled())) {
+                defaultDisabledBundledExtensions.add(extensionId);
+            }
             if (descriptor.name() != null) {
                 bundledExtensionNames.put(extensionId, descriptor.name());
             }
@@ -178,7 +183,7 @@ public class ExtensionRegistry {
         }
     }
 
-    private record ExtensionDescriptor(String id, String name) {}
+    private record ExtensionDescriptor(String id, String name, Boolean enabled) {}
 
     private ExtensionDescriptor readExtensionDescriptor(URL descriptorUrl) throws IOException {
         try (InputStream is = descriptorUrl.openStream();
@@ -186,7 +191,8 @@ public class ExtensionRegistry {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
             String id = json.has("id") ? json.get("id").getAsString() : null;
             String name = json.has("name") ? json.get("name").getAsString() : null;
-            return new ExtensionDescriptor(id, name);
+            Boolean enabled = json.has("enabled") ? json.get("enabled").getAsBoolean() : null;
+            return new ExtensionDescriptor(id, name, enabled);
         }
     }
 
@@ -324,6 +330,19 @@ public class ExtensionRegistry {
         }
 
         return extension;
+    }
+
+    /**
+     * Apply default-disabled state for bundled extensions that declare {@code "enabled": false}.
+     * Only disables if the user hasn't explicitly enabled the extension in their settings.
+     */
+    private void applyDefaultDisabledState() {
+        for (String extensionId : defaultDisabledBundledExtensions) {
+            if (!applicationConfiguration.isExtensionExplicitlyEnabled(extensionId)
+                    && !disabledExtensions.contains(extensionId)) {
+                disabledExtensions.add(extensionId);
+            }
+        }
     }
 
     // ========== Add extension ==========
@@ -677,6 +696,9 @@ public class ExtensionRegistry {
             throw new IllegalArgumentException("Extension '" + extensionId + "' not found");
         }
         disabledExtensions.remove(extensionId);
+        if (defaultDisabledBundledExtensions.contains(extensionId)) {
+            applicationConfiguration.setExtensionExplicitlyEnabled(extensionId);
+        }
         persistDisabledExtensions();
         fireOnAdded(extensions.get(extensionId));
     }

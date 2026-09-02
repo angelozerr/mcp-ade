@@ -45,7 +45,7 @@
     ]
   },
   "contributes": {
-    "intellij": {
+    "intellij-server": {
       "bindRequest": [
         "start_debug_server",
         "intellij.java.resolveClassDocument",

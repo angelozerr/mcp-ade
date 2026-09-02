@@ -1,0 +1,27 @@
+{
+  "id": "intellij-server",
+  "name": "IntelliJ Language Server",
+  "description": "JetBrains IntelliJ Language Server",
+  "readyNotification": "intellij/ready-for-test",
+  "statusNotification": {
+    "intellij/importLog": "message"
+  },
+  "documentSelector": [
+    {
+      "language": "java"
+    }
+  ],
+  "settings": [
+    {
+      "key": "eula",
+      "label": "EULA acceptance code",
+      "description": "JetBrains IntelliJ Language Server EULA acceptance hash. Required to start the server.",
+      "type": "string",
+      "default": ""
+    }
+  ],
+  "command": {
+    "windows": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server.exe --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}",
+    "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}"
+  }
+}

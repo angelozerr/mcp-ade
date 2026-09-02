@@ -63,6 +63,7 @@
         <module>extensions/pascal</module>
         <module>extensions/maven</module>
         <module>extensions/gradle</module>
+        <module>extensions/intellij</module>
         <module>dev</module>
         <module>integration-tests</module>
     </modules>
