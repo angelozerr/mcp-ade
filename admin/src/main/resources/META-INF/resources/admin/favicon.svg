@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 42">
+  <!-- A: script italic, top-left -->
+  <text x="0" y="22" font-family="'Brush Script MT','Segoe Script',cursive" font-style="italic" font-size="36" fill="#e63946">A</text>
+  <!-- D: serif bold, bottom -->
+  <text x="22" y="41" font-family="'Georgia','Times New Roman',serif" font-weight="bold" font-size="38" fill="#333333">D</text>
+  <!-- E: serif bold, bottom -->
+  <text x="50" y="41" font-family="'Georgia','Times New Roman',serif" font-weight="bold" font-size="38" fill="#333333">E</text>
+</svg>
