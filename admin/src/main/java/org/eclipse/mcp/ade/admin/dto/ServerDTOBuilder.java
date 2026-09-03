@@ -284,48 +284,32 @@ public class ServerDTOBuilder {
     }
 
     /**
-     * Build IDE settings for a server in a workspace.
-     * Reads settings from the workspace's IDE configuration (e.g. .vscode/settings.json)
-     * and filters them using the server's applicableSettings glob patterns.
+     * Build IDE configuration settings for a server in a workspace.
+     * Uses the server's {@code configuration} defaults as the source of all setting keys,
+     * then cross-references with the workspace's IDE configuration providers
+     * (e.g. .vscode/settings.json) to show overridden values.
      */
-    public List<IdeSettingDTO> buildIdeSettings(ServerConfigBase config, Workspace workspace) {
-        List<String> patterns = config.getApplicableSettings();
-        if (patterns == null || patterns.isEmpty()) {
+    public List<IdeSettingDTO> buildIdeSettings(LspServerConfig config, Workspace workspace) {
+        Map<String, Object> defaults = config.getConfiguration();
+        if (defaults == null || defaults.isEmpty()) {
             return List.of();
         }
         Configuration ideConfig = workspace.getIdeConfiguration();
-        if (ideConfig == null) {
-            return List.of();
-        }
-        Map<String, Object> allSettings = ideConfig.getAll();
-        if (allSettings == null || allSettings.isEmpty()) {
-            return List.of();
-        }
+        Map<String, Object> ideSettings = (ideConfig != null) ? ideConfig.getAll() : Map.of();
+
         List<IdeSettingDTO> result = new ArrayList<>();
-        for (Map.Entry<String, Object> entry : allSettings.entrySet()) {
+        for (Map.Entry<String, Object> entry : defaults.entrySet()) {
             String key = entry.getKey();
-            if (matchesAnyPattern(key, patterns)) {
-                String value = entry.getValue() != null ? entry.getValue().toString() : null;
-                result.add(new IdeSettingDTO(key, value));
+            String defaultValue = entry.getValue() != null ? entry.getValue().toString() : null;
+            Object ideValue = ideSettings.get(key);
+            if (ideValue != null) {
+                result.add(new IdeSettingDTO(key, defaultValue, ideValue.toString(), IdeSettingSource.IDE));
+            } else {
+                result.add(new IdeSettingDTO(key, defaultValue, defaultValue, IdeSettingSource.DEFAULT));
             }
         }
         result.sort((a, b) -> a.key().compareTo(b.key()));
         return result;
     }
 
-    private static boolean matchesAnyPattern(String key, List<String> patterns) {
-        for (String pattern : patterns) {
-            if (matchesGlob(key, pattern)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean matchesGlob(String key, String pattern) {
-        String regex = pattern
-                .replace(".", "\\.")
-                .replace("*", ".*");
-        return key.matches(regex);
-    }
 }

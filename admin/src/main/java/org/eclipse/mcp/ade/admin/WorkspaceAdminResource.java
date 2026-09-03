@@ -148,9 +148,9 @@ public class WorkspaceAdminResource {
     }
 
     /**
-     * Get IDE settings for a specific server in a workspace.
-     * Reads from the workspace's IDE configuration (e.g. .vscode/settings.json)
-     * and filters by the server's applicableSettings patterns.
+     * Get IDE configuration settings for a specific server in a workspace.
+     * Shows default values from the server's configuration section and
+     * current values from IDE providers (e.g. .vscode/settings.json).
      */
     @GET
     @Path("/workspaces/{uri}/lsp-servers/{serverId}/ide-settings")

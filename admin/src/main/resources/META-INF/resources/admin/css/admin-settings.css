@@ -98,3 +98,7 @@
 .setting-item-required {
     border-left: 3px solid var(--status-error, #dc3545);
 }
+
+.setting-item-overridden {
+    border-left: 3px solid var(--accent-primary);
+}

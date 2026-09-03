@@ -81,7 +81,6 @@ public class ServerConfigBase extends InstallableConfig {
     private Contributes contributes;
     private List<String> acceptContributions;
     private List<ServerSettingDescriptor> settings;
-    private List<String> applicableSettings;
 
     // Cached: whether the installer JSON contains a configureServer task
     private boolean hasConfigureServer;
@@ -254,14 +253,6 @@ public class ServerConfigBase extends InstallableConfig {
 
     public void setSettings(List<ServerSettingDescriptor> settings) {
         this.settings = settings;
-    }
-
-    public List<String> getApplicableSettings() {
-        return applicableSettings;
-    }
-
-    public void setApplicableSettings(List<String> applicableSettings) {
-        this.applicableSettings = applicableSettings;
     }
 
     // --- Command ---

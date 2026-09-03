@@ -29,7 +29,6 @@
     { "globPattern": "**/build.gradle" },
     { "globPattern": "**/build.gradle.kts" }
   ],
-  "applicableSettings": ["java.*"],
   "settings": {
     "properties": {
       "maven.buildSupport": {

@@ -14,14 +14,19 @@
 package org.eclipse.mcp.ade.admin.dto;
 
 /**
- * An IDE setting read from the workspace's IDE configuration
- * (e.g. {@code .vscode/settings.json}).
+ * An LSP configuration setting showing the default value from server.json
+ * and the current value from IDE configuration providers
+ * (e.g. {@code .vscode/settings.json}, {@code .bon/settings.json}).
  *
- * @param key   setting key (e.g. {@code "java.format.enabled"})
- * @param value current value as string
+ * @param key          setting key (e.g. {@code "java.format.enabled"})
+ * @param defaultValue default value from the server's {@code configuration} section
+ * @param currentValue current value from IDE configuration (or default if not overridden)
+ * @param source       where the current value comes from
  */
 public record IdeSettingDTO(
         String key,
-        String value
+        String defaultValue,
+        String currentValue,
+        IdeSettingSource source
 ) {
 }

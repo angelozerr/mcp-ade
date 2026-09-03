@@ -67,7 +67,6 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
     private static final String FIELD_COMMAND = "command";
     private static final String FIELD_RUNTIME = "runtime";
     private static final String FIELD_SETTINGS = "settings";
-    private static final String FIELD_APPLICABLE_SETTINGS = "applicableSettings";
     private static final String FIELD_REQUIRED = "required";
     protected static final Gson gson = new Gson();
 
@@ -223,15 +222,6 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
         String command = OSUtils.getStringFromOs(jsonObject, getCommandFieldName());
         if (command != null) {
             config.setCommand(command);
-        }
-
-        // Applicable settings patterns (e.g. ["java.*"])
-        if (jsonObject.has(FIELD_APPLICABLE_SETTINGS)) {
-            List<String> applicableSettings = new ArrayList<>();
-            jsonObject.getAsJsonArray(FIELD_APPLICABLE_SETTINGS).forEach(el ->
-                    applicableSettings.add(el.getAsString())
-            );
-            config.setApplicableSettings(applicableSettings);
         }
 
         // Declarative settings (JSON Schema format with properties/required)

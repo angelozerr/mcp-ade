@@ -10,7 +10,7 @@ import {
     initSearchListeners, initTraceContainer
 } from './trace-renderer.js';
 import { registerActions } from './event-delegation.js';
-import { renderSettingsPanel, renderToggleSetting, renderServerSetting, renderActionItem, resetWorkspaceSetting, setWorkspaceSetting } from './admin-settings.js';
+import { renderSettingsPanel, renderToggleSetting, renderServerSetting, renderActionItem, resetWorkspaceSetting, setWorkspaceSetting, filterSettingItems } from './admin-settings.js';
 import { selectDapSession as selectDapSessionImpl, createNewTestSession as createNewTestSessionImpl } from './admin-dap.js';
 import { showToast } from './toast.js';
 
@@ -1340,7 +1340,7 @@ import { showToast } from './toast.js';
                         { uri, 'server-id': server.id, 'server-type': serverType })
                 );
                 workspacePanel = renderSettingsPanel({
-                    title: 'Workspace',
+                    title: 'Settings',
                     itemsHtml: wsItems
                 });
             }
@@ -1349,8 +1349,11 @@ import { showToast } from './toast.js';
             if (hasIdeSettings) {
                 const ideItems = ideSettings.map(s => renderIdeSettingItem(s));
                 idePanel = renderSettingsPanel({
-                    title: 'IDE',
-                    itemsHtml: ideItems
+                    title: 'Configuration',
+                    itemsHtml: ideItems,
+                    filterAction: 'filterIdeSettings',
+                    listId: 'ide-settings-list',
+                    countId: 'ide-settings-count'
                 });
             }
 
@@ -1363,13 +1366,18 @@ import { showToast } from './toast.js';
         }
 
         function renderIdeSettingItem(setting) {
+            const isOverridden = setting.source === 'IDE';
+            const sourceHint = isOverridden
+                ? '<span class="setting-source-hint setting-source-overridden">overridden by IDE</span>'
+                : '<span class="setting-source-hint">default</span>';
             return `
-                <div class="setting-item">
+                <div class="setting-item${isOverridden ? ' setting-item-overridden' : ''}">
                     <div class="setting-item-info">
                         <div class="setting-item-label">${setting.key}</div>
+                        <div class="setting-source-row">${sourceHint}</div>
                     </div>
                     <div class="setting-item-control">
-                        <span class="text-secondary">${setting.value != null ? setting.value : '<em>null</em>'}</span>
+                        <span class="${isOverridden ? 'text-bright' : 'text-secondary'}">${setting.currentValue != null ? setting.currentValue : '<em>null</em>'}</span>
                     </div>
                 </div>
             `;
@@ -1954,4 +1962,5 @@ import { showToast } from './toast.js';
         });
 
         registerActions('input', {
+            filterIdeSettings: (el) => filterSettingItems('ide-settings-list', 'ide-settings-count', el.value),
         });
