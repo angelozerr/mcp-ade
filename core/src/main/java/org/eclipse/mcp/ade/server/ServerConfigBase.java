@@ -34,17 +34,13 @@ import org.eclipse.mcp.ade.dap.server.DapServerConfig;
 import org.eclipse.mcp.ade.lsp.server.LspServerConfig;
 import org.jboss.logging.Logger;
 
-import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Base class for server configurations (LSP and DAP).
@@ -65,7 +61,6 @@ import java.util.stream.Collectors;
 public class ServerConfigBase extends InstallableConfig {
 
     private static final Logger LOG = Logger.getLogger(ServerConfigBase.class);
-    private static final String PATH_ENV = "PATH";
 
     private DocumentSelector documentSelector;
     private String command;
@@ -131,19 +126,7 @@ public class ServerConfigBase extends InstallableConfig {
             return;
         }
 
-        String existingPath = env.get(PATH_ENV);
-        if (lastRuntimeBin != null && existingPath != null) {
-            existingPath = Arrays.stream(existingPath.split(Pattern.quote(File.pathSeparator)))
-                    .filter(entry -> !entry.equals(lastRuntimeBin))
-                    .collect(Collectors.joining(File.pathSeparator));
-        }
-
-        if (existingPath != null && !existingPath.isEmpty()) {
-            env.put(PATH_ENV, runtimeBin + File.pathSeparator + existingPath);
-        } else {
-            String basePath = runtimeConfig.getApplicationPath();
-            env.put(PATH_ENV, runtimeBin + File.pathSeparator + (basePath != null ? basePath : ""));
-        }
+        env.putAll(runtimeConfig.getApplicationEnvironment().createEnvWithPath(runtimeBin));
         env.putAll(runtimeConfig.getResolvedEnv());
         lastRuntimeBin = runtimeBin;
     }

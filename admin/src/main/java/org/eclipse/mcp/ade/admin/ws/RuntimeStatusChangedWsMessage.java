@@ -21,11 +21,11 @@ public class RuntimeStatusChangedWsMessage extends WsMessage {
     private final String resolvedPath;
     private final String activeSource;
     private final boolean fallbackUsed;
-    private final String sourcePreference;
+    private final String sourceMode;
 
     public RuntimeStatusChangedWsMessage(String runtimeId, String status, String error,
                                           String resolvedPath, String activeSource,
-                                          boolean fallbackUsed, String sourcePreference) {
+                                          boolean fallbackUsed, String sourceMode) {
         super(WsMessageType.RUNTIME_STATUS_CHANGED);
         this.runtimeId = runtimeId;
         this.status = status;
@@ -33,7 +33,7 @@ public class RuntimeStatusChangedWsMessage extends WsMessage {
         this.resolvedPath = resolvedPath;
         this.activeSource = activeSource;
         this.fallbackUsed = fallbackUsed;
-        this.sourcePreference = sourcePreference;
+        this.sourceMode = sourceMode;
     }
 
     public String getRuntimeId() { return runtimeId; }
@@ -42,5 +42,5 @@ public class RuntimeStatusChangedWsMessage extends WsMessage {
     public String getResolvedPath() { return resolvedPath; }
     public String getActiveSource() { return activeSource; }
     public boolean isFallbackUsed() { return fallbackUsed; }
-    public String getSourcePreference() { return sourcePreference; }
+    public String getSourceMode() { return sourceMode; }
 }

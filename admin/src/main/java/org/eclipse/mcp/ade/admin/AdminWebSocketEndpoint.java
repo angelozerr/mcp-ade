@@ -527,7 +527,7 @@ public class AdminWebSocketEndpoint {
                 event.resolvedPath(),
                 event.activeSource(),
                 event.fallbackUsed(),
-                event.sourcePreference());
+                event.sourceMode());
         broadcast(msg);
     }
 

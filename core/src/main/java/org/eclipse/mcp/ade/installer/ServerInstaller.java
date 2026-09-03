@@ -53,6 +53,11 @@ public interface ServerInstaller {
     InstallationStatus getStatus();
 
     /**
+     * Resets the installation status to NOT_INSTALLED.
+     */
+    void resetStatus();
+
+    /**
      * Stops the installation if in progress.
      */
     void stop();

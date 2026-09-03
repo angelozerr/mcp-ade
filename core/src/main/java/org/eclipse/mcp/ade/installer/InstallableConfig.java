@@ -22,9 +22,7 @@ import org.eclipse.mcp.ade.runtime.RuntimeConfig;
 import org.eclipse.mcp.ade.trace.TraceCollector;
 import org.jboss.logging.Logger;
 
-import java.io.File;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -204,6 +202,10 @@ public abstract class InstallableConfig {
             if (future != null && future.isDone()) {
                 installationFuture = null;
             }
+        }
+        ServerInstaller inst = getInstaller();
+        if (inst != null) {
+            inst.resetStatus();
         }
     }
 
@@ -414,10 +416,10 @@ public abstract class InstallableConfig {
         }
         Map<String, String> env = context.getEnv();
         if (env == null) {
-            env = new HashMap<>();
+            env = installerRuntime.getApplicationEnvironment().createEnvWithPath(runtimeDir);
+        } else {
+            installerRuntime.getApplicationEnvironment().prependToPath(env, runtimeDir);
         }
-        String currentPath = env.getOrDefault("PATH", installerRuntime.getApplicationPath());
-        env.put("PATH", runtimeDir + File.pathSeparator + (currentPath != null ? currentPath : ""));
         addInstallerRuntimeEnv(env, installerRuntime, runtimeCtx);
         context.setEnv(env);
     }

@@ -14,31 +14,45 @@
 package org.eclipse.mcp.ade.runtime;
 
 /**
- * User preference for where to find a runtime binary.
+ * Indicates where a runtime binary comes from — both as a user-configured mode
+ * and as the actual resolved source.
  */
-public enum RuntimeSourcePreference {
+public enum RuntimeSource {
 
     /**
-     * Try system PATH first, fall back to installer if not found.
+     * Mode: try system first, fall back to embedded if not found.
      */
     AUTO,
 
     /**
-     * Prefer system PATH. If not found, fall back to installer with a notification.
+     * Mode or active source: the system PATH.
      */
-    PATH,
+    SYSTEM,
 
     /**
-     * Use only the runtime installed by MCP.
+     * Mode or active source: embedded runtime managed by MCP.
      */
-    INSTALLER;
+    EMBEDDED,
 
-    public static RuntimeSourcePreference fromValue(String value) {
+    /**
+     * Active source: not yet determined.
+     */
+    UNKNOWN;
+
+    public static RuntimeSource fromValue(String value) {
         if (value == null) {
             return AUTO;
         }
+        // Backward compatibility with old persisted values
+        String upper = value.toUpperCase();
+        if ("PATH".equals(upper)) {
+            return SYSTEM;
+        }
+        if ("INSTALLER".equals(upper)) {
+            return EMBEDDED;
+        }
         try {
-            return valueOf(value.toUpperCase());
+            return valueOf(upper);
         } catch (IllegalArgumentException e) {
             return AUTO;
         }

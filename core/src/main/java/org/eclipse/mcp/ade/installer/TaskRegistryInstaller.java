@@ -197,6 +197,11 @@ public class TaskRegistryInstaller implements ServerInstaller {
     }
 
     @Override
+    public void resetStatus() {
+        status.set(InstallationStatus.NOT_INSTALLED);
+    }
+
+    @Override
     public void stop() {
         // Cancellation is handled via InstallerContext.checkCanceled()
         status.set(InstallationStatus.STOPPED);

@@ -104,10 +104,7 @@ public class EnvironmentAdminResource {
             pb.redirectErrorStream(true);
 
             ApplicationEnvironment env = runtimeRegistry.getApplicationEnvironment();
-            pb.environment().put("PATH", env.getPath());
-            for (ApplicationEnvironment.EnvEntry entry : env.getEnvEntries().values()) {
-                pb.environment().put(entry.name(), entry.value());
-            }
+            pb.environment().putAll(env.getEnv());
 
             Process process = pb.start();
             StringBuilder output = new StringBuilder();

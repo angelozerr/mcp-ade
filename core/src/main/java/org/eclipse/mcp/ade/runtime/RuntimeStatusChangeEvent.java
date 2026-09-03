@@ -25,6 +25,6 @@ public record RuntimeStatusChangeEvent(
     String resolvedPath,
     String activeSource,
     boolean fallbackUsed,
-    String sourcePreference
+    String sourceMode
 ) {
 }

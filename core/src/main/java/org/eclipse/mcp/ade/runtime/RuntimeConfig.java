@@ -25,7 +25,6 @@ import org.eclipse.mcp.ade.trace.TraceCollector;
 import org.eclipse.mcp.ade.utils.OSUtils;
 import org.jboss.logging.Logger;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -34,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 
 /**
  * Configuration for a runtime (JDK, Node.js, Go, etc.).
@@ -44,18 +42,16 @@ public class RuntimeConfig extends InstallableConfig {
 
     private static final Logger LOG = Logger.getLogger(RuntimeConfig.class);
 
-    private static final String PATH_ENV = "PATH";
-
     private volatile InstallerContext activeInstallerContext;
 
     private final List<ServerConfigBase> dependentServers = Collections.synchronizedList(new ArrayList<>());
 
     // Runtime source resolution
-    private volatile RuntimeSourcePreference sourcePreference = RuntimeSourcePreference.AUTO;
+    private volatile RuntimeSource sourceMode = RuntimeSource.AUTO;
     private volatile String resolvedPath;
-    private volatile RuntimeSourceType activeSource = RuntimeSourceType.UNKNOWN;
+    private volatile RuntimeSource activeSource = RuntimeSource.UNKNOWN;
     private volatile boolean fallbackUsed;
-    private volatile Supplier<String> applicationPathSupplier;
+    private volatile ApplicationEnvironment applicationEnvironment;
 
     public RuntimeConfig(String runtimeId, Path runtimeHome, Extension extension) {
         super(runtimeId, runtimeHome, extension);
@@ -98,21 +94,24 @@ public class RuntimeConfig extends InstallableConfig {
         return new ArrayList<>(dependentServers);
     }
 
-    // --- Source preference ---
+    // --- Source mode ---
 
-    public RuntimeSourcePreference getSourcePreference() {
-        return sourcePreference;
+    public RuntimeSource getSourceMode() {
+        return sourceMode;
     }
 
-    public void setSourcePreference(RuntimeSourcePreference sourcePreference) {
-        this.sourcePreference = sourcePreference;
+    public void setSourceMode(RuntimeSource sourceMode) {
+        this.sourceMode = sourceMode;
+        this.resolvedPath = null;
+        this.activeSource = RuntimeSource.UNKNOWN;
+        this.fallbackUsed = false;
     }
 
     public String getResolvedPath() {
         return resolvedPath;
     }
 
-    public RuntimeSourceType getActiveSource() {
+    public RuntimeSource getActiveSource() {
         return activeSource;
     }
 
@@ -120,17 +119,20 @@ public class RuntimeConfig extends InstallableConfig {
         return fallbackUsed;
     }
 
-    public void setApplicationPathSupplier(Supplier<String> supplier) {
-        this.applicationPathSupplier = supplier;
+    public void setApplicationEnvironment(ApplicationEnvironment applicationEnvironment) {
+        this.applicationEnvironment = applicationEnvironment;
+    }
+
+    public ApplicationEnvironment getApplicationEnvironment() {
+        return applicationEnvironment;
     }
 
     /**
-     * Returns the application-level PATH that includes all installed runtimes,
-     * or falls back to the system PATH if not yet available.
+     * Returns the application-level PATH that includes all installed runtimes.
      */
     public String getApplicationPath() {
-        Supplier<String> supplier = applicationPathSupplier;
-        return supplier != null ? supplier.get() : System.getenv(PATH_ENV);
+        ApplicationEnvironment appEnv = applicationEnvironment;
+        return appEnv != null ? appEnv.getPath() : null;
     }
 
     /**
@@ -155,7 +157,7 @@ public class RuntimeConfig extends InstallableConfig {
         String command = TaskRegistryInstaller.extractCheckCommand(getInstallerConfig());
         if (command == null) {
             resolvedPath = null;
-            activeSource = RuntimeSourceType.UNKNOWN;
+            activeSource = RuntimeSource.UNKNOWN;
             fallbackUsed = false;
             return;
         }
@@ -163,7 +165,7 @@ public class RuntimeConfig extends InstallableConfig {
         // Reset fallback flag before each resolution
         fallbackUsed = false;
 
-        if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
+        if (sourceMode == RuntimeSource.EMBEDDED) {
             resolveFromInstaller(command);
             return;
         }
@@ -172,13 +174,13 @@ public class RuntimeConfig extends InstallableConfig {
         String pathResult = OSUtils.resolveCommandPath(command);
         if (pathResult != null) {
             resolvedPath = pathResult;
-            activeSource = RuntimeSourceType.PATH;
+            activeSource = RuntimeSource.SYSTEM;
             return;
         }
 
         // Not found on PATH, try installer
         resolveFromInstaller(command);
-        if (resolvedPath != null && sourcePreference == RuntimeSourcePreference.PATH) {
+        if (resolvedPath != null && sourceMode == RuntimeSource.SYSTEM) {
             fallbackUsed = true;
         }
     }
@@ -188,31 +190,21 @@ public class RuntimeConfig extends InstallableConfig {
         String commandDir = TaskRegistryInstaller.extractCommandDir(getInstallerConfig(), tempContext);
         if (commandDir == null) {
             resolvedPath = null;
-            activeSource = RuntimeSourceType.UNKNOWN;
+            activeSource = RuntimeSource.UNKNOWN;
             fallbackUsed = false;
             return;
         }
 
-        String installerResult = OSUtils.resolveCommandPath(command, createEnvWithPath(commandDir));
+        Map<String, String> env = applicationEnvironment.createEnvWithPath(commandDir);
+        String installerResult = OSUtils.resolveCommandPath(command, env);
         if (installerResult != null) {
             resolvedPath = installerResult;
-            activeSource = RuntimeSourceType.INSTALLER;
+            activeSource = RuntimeSource.EMBEDDED;
         } else {
             resolvedPath = null;
-            activeSource = RuntimeSourceType.UNKNOWN;
+            activeSource = RuntimeSource.UNKNOWN;
             fallbackUsed = false;
         }
-    }
-
-    private Map<String, String> createEnvWithPath(String commandDir) {
-        Map<String, String> env = new HashMap<>();
-        if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
-            env.put(PATH_ENV, commandDir);
-        } else {
-            String basePath = getApplicationPath();
-            env.put(PATH_ENV, commandDir + File.pathSeparator + (basePath != null ? basePath : ""));
-        }
-        return env;
     }
 
     /**
@@ -231,7 +223,7 @@ public class RuntimeConfig extends InstallableConfig {
         InstallerContext tempCtx = new InstallerContext(this, ProgressMonitor.none());
         Map<String, String> result = new HashMap<>();
         for (var entry : envElement.getAsJsonObject().entrySet()) {
-            if (!PATH_ENV.equals(entry.getKey())) {
+            if (!"PATH".equals(entry.getKey())) {
                 result.put(entry.getKey(), tempCtx.resolveVariables(entry.getValue().getAsString()));
             }
         }
@@ -250,14 +242,14 @@ public class RuntimeConfig extends InstallableConfig {
             return;
         }
         boolean dirExists = Files.isDirectory(Path.of(commandDir));
-
-        if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
-            context.setEnv(createEnvWithPath(dirExists ? commandDir : ""));
+        if (!dirExists && sourceMode != RuntimeSource.EMBEDDED) {
             return;
         }
 
         if (dirExists) {
-            context.setEnv(createEnvWithPath(commandDir));
+            context.setEnv(applicationEnvironment.createEnvWithPath(commandDir));
+        } else {
+            context.setEnv(applicationEnvironment.createEnvWithPath());
         }
     }
 

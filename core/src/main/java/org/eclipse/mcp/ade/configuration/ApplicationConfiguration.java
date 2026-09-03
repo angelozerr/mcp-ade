@@ -19,7 +19,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
-import org.eclipse.mcp.ade.runtime.RuntimeSourcePreference;
+import org.eclipse.mcp.ade.runtime.RuntimeSource;
 import org.eclipse.mcp.ade.workspace.IdeConfigurationProviderRegistry;
 import org.eclipse.mcp.ade.workspace.IdeConfigurationStrategy;
 
@@ -253,13 +253,13 @@ public class ApplicationConfiguration extends AbstractConfiguration {
         super.setDapTraceLevel(serverId, level);
     }
 
-    // ========== Runtime source preference ==========
+    // ========== Runtime source mode ==========
 
-    public RuntimeSourcePreference getRuntimeSourcePreference(String runtimeId) {
-        return RuntimeSourcePreference.fromValue(getString("runtime." + runtimeId + ".source"));
+    public RuntimeSource getRuntimeSourceMode(String runtimeId) {
+        return RuntimeSource.fromValue(getString("runtime." + runtimeId + ".source"));
     }
 
-    public void setRuntimeSourcePreference(String runtimeId, RuntimeSourcePreference pref) {
+    public void setRuntimeSourceMode(String runtimeId, RuntimeSource pref) {
         set("runtime." + runtimeId + ".source", pref.name().toLowerCase());
     }
 

@@ -20,7 +20,7 @@ import org.eclipse.mcp.ade.installer.TraceProgressMonitor;
 import org.eclipse.mcp.ade.progress.ProgressBroadcaster;
 import org.eclipse.mcp.ade.runtime.RuntimeConfig;
 import org.eclipse.mcp.ade.runtime.RuntimeRegistry;
-import org.eclipse.mcp.ade.runtime.RuntimeSourcePreference;
+import org.eclipse.mcp.ade.runtime.RuntimeSource;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -151,7 +151,7 @@ public class RuntimeAdminResource {
         if (activeSource != null) {
             dto.put("activeSource", activeSource);
         }
-        dto.put("sourcePreference", runtime.getSourcePreference().name());
+        dto.put("sourceMode", runtime.getSourceMode().name());
         if (runtime.isFallbackUsed()) {
             dto.put("fallbackUsed", true);
         }
@@ -230,19 +230,19 @@ public class RuntimeAdminResource {
     }
 
     /**
-     * Change the source preference for a runtime (AUTO, PATH, INSTALLER).
+     * Change the source mode for a runtime (AUTO, SYSTEM, EMBEDDED).
      */
     @PUT
-    @Path("/{runtimeId}/source-preference")
+    @Path("/{runtimeId}/source-mode")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response setSourcePreference(@PathParam("runtimeId") String runtimeId, Map<String, String> body) {
+    public Response setSourceMode(@PathParam("runtimeId") String runtimeId, Map<String, String> body) {
         RuntimeConfig runtime = runtimeRegistry.get(runtimeId);
         if (runtime == null) {
             return Response.status(404).entity(new ErrorResponse("Runtime not found: " + runtimeId)).build();
         }
-        String value = body.get("sourcePreference");
-        RuntimeSourcePreference pref = RuntimeSourcePreference.fromValue(value);
-        runtimeRegistry.setSourcePreference(runtimeId, pref);
+        String value = body.get("sourceMode");
+        RuntimeSource pref = RuntimeSource.fromValue(value);
+        runtimeRegistry.setSourceMode(runtimeId, pref);
         return Response.accepted().entity(new StatusResponse(pref.name())).build();
     }
 

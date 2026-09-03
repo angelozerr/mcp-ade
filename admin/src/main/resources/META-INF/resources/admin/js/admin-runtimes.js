@@ -23,10 +23,10 @@ function getStatusIconHTML(runtime) {
 
 function getSourceIcon(runtime) {
     if (!runtime.activeSource || runtime.activeSource === 'UNKNOWN') return '';
-    if (runtime.activeSource === 'PATH') {
+    if (runtime.activeSource === 'SYSTEM') {
         return `<span class="source-icon" title="Found on system PATH">💻</span>`;
     }
-    return `<span class="source-icon" title="Provided by MCP installer">📦</span>`;
+    return `<span class="source-icon" title="Provided by embedded runtime">📦</span>`;
 }
 
 function renderRuntimeItem(runtime) {
@@ -166,10 +166,10 @@ function buildSourceHTML(runtime) {
     if (!runtime.activeSource || runtime.activeSource === 'UNKNOWN') {
         return '<span class="text-dimmed">Not resolved</span>';
     }
-    if (runtime.activeSource === 'PATH') {
-        return '<span>💻 System PATH</span>';
+    if (runtime.activeSource === 'SYSTEM') {
+        return '<span>💻 System</span>';
     }
-    return '<span>📦 MCP Installer</span>';
+    return '<span>📦 Embedded</span>';
 }
 
 function buildRuntimeDetailHTML(runtime) {
@@ -240,17 +240,17 @@ function buildRuntimeDetailHTML(runtime) {
         ` : '<div class="detail-row"><span class="detail-label">Path:</span><span id="runtime-resolved-path" class="detail-value text-dimmed">Not resolved</span></div>'}
 
         <div class="detail-row">
-            <span class="detail-label">Source:</span>
+            <span class="detail-label">Active source:</span>
             <span id="runtime-active-source" class="detail-value">${buildSourceHTML(runtime)}</span>
         </div>
 
         <div class="detail-row">
-            <span class="detail-label">Preference:</span>
+            <span class="detail-label">Source mode:</span>
             <span class="detail-value">
-                <select class="select-field font-md" data-action="changeRuntimeSourcePreference" data-runtime-id="${runtime.id}" style="padding: 0.2rem 0.4rem;">
-                    <option value="AUTO" ${(runtime.sourcePreference || 'AUTO') === 'AUTO' ? 'selected' : ''}>Auto (PATH first, then installer)</option>
-                    <option value="PATH" ${runtime.sourcePreference === 'PATH' ? 'selected' : ''}>System PATH only</option>
-                    <option value="INSTALLER" ${runtime.sourcePreference === 'INSTALLER' ? 'selected' : ''}>MCP installer only</option>
+                <select class="select-field font-md" data-action="changeRuntimeSourceMode" data-runtime-id="${runtime.id}" style="padding: 0.2rem 0.4rem;">
+                    <option value="AUTO" ${(runtime.sourceMode || 'AUTO') === 'AUTO' ? 'selected' : ''}>Auto (System first, then embedded)</option>
+                    <option value="SYSTEM" ${runtime.sourceMode === 'SYSTEM' ? 'selected' : ''}>System</option>
+                    <option value="EMBEDDED" ${runtime.sourceMode === 'EMBEDDED' ? 'selected' : ''}>Embedded</option>
                 </select>
             </span>
         </div>
@@ -258,7 +258,7 @@ function buildRuntimeDetailHTML(runtime) {
         ${runtime.fallbackUsed ? `
         <div id="runtime-fallback-banner" class="p-lg bg-panel rounded mt-lg border-left-warning">
             <strong>Fallback Active:</strong>
-            <p class="mt-xs mb-0">You selected "System PATH" but the runtime was not found on PATH. Using the MCP-installed version instead.</p>
+            <p class="mt-xs mb-0">You selected "System" but the runtime was not found on PATH. Using the embedded version instead.</p>
         </div>
         ` : '<div id="runtime-fallback-banner"></div>'}
 
@@ -303,7 +303,7 @@ async function installRuntime(runtimeId) {
  * Update a runtime's status from a WebSocket message.
  * Updates the cached config and refreshes the UI for that runtime.
  */
-export function updateRuntimeStatus(runtimeId, status, error, resolvedPath, activeSource, fallbackUsed, sourcePreference) {
+export function updateRuntimeStatus(runtimeId, status, error, resolvedPath, activeSource, fallbackUsed, sourceMode) {
     const runtime = state.runtimeConfigs?.[runtimeId];
     if (!runtime) return;
 
@@ -312,7 +312,7 @@ export function updateRuntimeStatus(runtimeId, status, error, resolvedPath, acti
     if (resolvedPath !== undefined) runtime.resolvedPath = resolvedPath;
     if (activeSource !== undefined) runtime.activeSource = activeSource;
     if (fallbackUsed !== undefined) runtime.fallbackUsed = fallbackUsed;
-    if (sourcePreference !== undefined) runtime.sourcePreference = sourcePreference;
+    if (sourceMode !== undefined) runtime.sourceMode = sourceMode;
 
     if (status === 'INSTALLING') {
         state.installStatus[runtimeId] = 'installing';
@@ -321,6 +321,9 @@ export function updateRuntimeStatus(runtimeId, status, error, resolvedPath, acti
         delete state.installProgress[runtimeId];
     } else if (status === 'FAILED' || status === 'ERROR') {
         state.installStatus[runtimeId] = 'failed';
+        delete state.installProgress[runtimeId];
+    } else {
+        delete state.installStatus[runtimeId];
         delete state.installProgress[runtimeId];
     }
 
@@ -384,7 +387,7 @@ function updateRuntimeDetailsPath(runtime) {
             fallbackBanner.innerHTML = `
                 <div class="p-lg bg-panel rounded border-left-warning">
                     <strong>Fallback Active:</strong>
-                    <p class="mt-xs mb-0">You selected "System PATH" but the runtime was not found on PATH. Using the MCP-installed version instead.</p>
+                    <p class="mt-xs mb-0">You selected "System" but the runtime was not found on PATH. Using the embedded version instead.</p>
                 </div>
             `;
         } else {
@@ -404,18 +407,18 @@ registerActions('click', {
 });
 
 registerActions('change', {
-    changeRuntimeSourcePreference: async (el) => {
+    changeRuntimeSourceMode: async (el) => {
         const runtimeId = el.dataset.runtimeId;
         const value = el.value;
         try {
-            const response = await fetch(`/api/admin/runtimes/${encodeURIComponent(runtimeId)}/source-preference`, {
+            const response = await fetch(`/api/admin/runtimes/${encodeURIComponent(runtimeId)}/source-mode`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sourcePreference: value })
+                body: JSON.stringify({ sourceMode: value })
             });
             if (response.ok) showToast('Settings saved');
         } catch (error) {
-            console.error('Failed to change source preference:', error);
+            console.error('Failed to change source mode:', error);
         }
     }
 });

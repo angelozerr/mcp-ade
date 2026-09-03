@@ -72,12 +72,12 @@ public class RuntimeRegistry {
         if (traceCollector != null && runtime.getTraceCollector() == null) {
             runtime.setTraceCollector(traceCollector);
         }
-        // Load persisted source preference
-        RuntimeSourcePreference pref = applicationConfiguration.getRuntimeSourcePreference(runtime.getRuntimeId());
-        runtime.setSourcePreference(pref);
-        runtime.setApplicationPathSupplier(applicationEnvironment::getPath);
+        // Load persisted source mode
+        RuntimeSource pref = applicationConfiguration.getRuntimeSourceMode(runtime.getRuntimeId());
+        runtime.setSourceMode(pref);
+        runtime.setApplicationEnvironment(applicationEnvironment);
         runtimes.put(runtime.getRuntimeId(), runtime);
-        LOG.infof("Registered runtime: %s (%s), source preference: %s", runtime.getRuntimeId(), runtime.getName(), pref);
+        LOG.infof("Registered runtime: %s (%s), source mode: %s", runtime.getRuntimeId(), runtime.getName(), pref);
     }
 
     /**
@@ -100,6 +100,7 @@ public class RuntimeRegistry {
      * Fires a CDI {@link RuntimeStatusChangeEvent} for each runtime when its check completes.
      */
     public CompletableFuture<Void> checkUnchecked() {
+        rebuildApplicationEnvironment();
         List<CompletableFuture<?>> futures = new ArrayList<>();
         for (RuntimeConfig runtime : runtimes.values()) {
             if (runtime.getStatus() != InstallationStatus.NOT_INSTALLED) {
@@ -171,14 +172,16 @@ public class RuntimeRegistry {
     /**
      * Changes the source preference for a runtime, persists it, and triggers a re-check.
      */
-    public void setSourcePreference(String runtimeId, RuntimeSourcePreference pref) {
+    public void setSourceMode(String runtimeId, RuntimeSource pref) {
         RuntimeConfig runtime = runtimes.get(runtimeId);
         if (runtime == null) {
             return;
         }
-        runtime.setSourcePreference(pref);
-        applicationConfiguration.setRuntimeSourcePreference(runtimeId, pref);
+        runtime.setSourceMode(pref);
+        applicationConfiguration.setRuntimeSourceMode(runtimeId, pref);
+        rebuildApplicationEnvironment();
         runtime.resetInstallState();
+        fireStatusChange(runtime);
         checkRuntimeAsync(runtime);
     }
 
@@ -218,7 +221,7 @@ public class RuntimeRegistry {
                     runtime.getResolvedPath(),
                     runtime.getActiveSource() != null ? runtime.getActiveSource().name() : null,
                     runtime.isFallbackUsed(),
-                    runtime.getSourcePreference().name()));
+                    runtime.getSourceMode().name()));
         } catch (Exception e) {
             LOG.debugf(e, "Failed to fire runtime status event for '%s'", runtime.getRuntimeId());
         }

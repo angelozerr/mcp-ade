@@ -473,7 +473,7 @@ function handleServerEnabledChanged(event) {
 
 function handleRuntimeStatusChanged(message) {
     updateRuntimeStatus(message.runtimeId, message.status, message.error,
-        message.resolvedPath, message.activeSource, message.fallbackUsed, message.sourcePreference);
+        message.resolvedPath, message.activeSource, message.fallbackUsed, message.sourceMode);
 }
 
 function handleInstallStatusChanged(message) {
