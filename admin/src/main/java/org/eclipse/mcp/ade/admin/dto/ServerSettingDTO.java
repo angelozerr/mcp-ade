@@ -14,28 +14,33 @@
 package org.eclipse.mcp.ade.admin.dto;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * A server setting descriptor enriched with the current persisted value.
+ * A server setting descriptor enriched with the current persisted value,
+ * following the JSON Schema format.
  *
- * @param key          setting key (e.g. {@code "java.import.mode"})
- * @param label        human-readable label
- * @param description  tooltip / help text
- * @param type         {@code "enum"}, {@code "boolean"}, or {@code "string"}
- * @param values       allowed values (for enum type)
- * @param valueLabels  display labels for enum values
- * @param defaultValue default when not configured
- * @param currentValue current persisted value (or defaultValue if not set)
+ * @param serverId         the server this setting belongs to (e.g. {@code "jdtls"})
+ * @param key              setting key (e.g. {@code "maven.buildSupport"})
+ * @param title            short human-readable label (JSON Schema {@code title})
+ * @param description      tooltip / help text
+ * @param type             JSON Schema type: {@code "string"}, {@code "boolean"}, {@code "number"}
+ * @param enumValues       allowed values (for string settings with a fixed set of choices)
+ * @param enumDescriptions display labels for enum values (ordered array, parallel to {@code enumValues})
+ * @param defaultValue     default when not configured
+ * @param required         whether this setting must be configured before the server can start
+ * @param currentValue     current persisted value (or defaultValue if not set)
+ * @param source           where the current value comes from
  */
 public record ServerSettingDTO(
+        String serverId,
         String key,
-        String label,
+        String title,
         String description,
         String type,
-        List<String> values,
-        Map<String, String> valueLabels,
+        List<String> enumValues,
+        List<String> enumDescriptions,
         String defaultValue,
+        boolean required,
         String currentValue,
         String source
 ) {

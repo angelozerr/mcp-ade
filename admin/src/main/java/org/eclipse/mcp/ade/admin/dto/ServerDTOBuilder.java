@@ -276,9 +276,9 @@ public class ServerDTOBuilder {
                 source = "APPLICATION";
             }
             result.add(new ServerSettingDTO(
-                    desc.key(), desc.label(), desc.description(),
-                    desc.type(), desc.values(), desc.valueLabels(),
-                    desc.defaultValue(), currentValue, source));
+                    serverId, desc.key(), desc.title(), desc.description(),
+                    desc.type(), desc.enumValues(), desc.enumDescriptions(),
+                    desc.defaultValue(), desc.required(), currentValue, source));
         }
         return result;
     }

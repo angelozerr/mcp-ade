@@ -14,15 +14,17 @@
       "language": "kotlin"
     }
   ],
-  "settings": [
-    {
-      "key": "eula",
-      "label": "EULA acceptance code",
-      "description": "JetBrains IntelliJ Language Server EULA acceptance hash. Required to start the server.",
-      "type": "string",
-      "default": ""
-    }
-  ],
+  "settings": {
+    "properties": {
+      "eula": {
+        "type": "string",
+        "title": "EULA acceptance code",
+        "description": "JetBrains IntelliJ Language Server EULA acceptance hash. Required to start the server.",
+        "default": ""
+      }
+    },
+    "required": ["eula"]
+  },
   "command": {
     "windows": "${serverHome}/bin/intellij-server.exe --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}",
     "default": "${serverHome}/bin/intellij-server --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}"

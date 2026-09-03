@@ -30,33 +30,26 @@
     { "globPattern": "**/build.gradle.kts" }
   ],
   "applicableSettings": ["java.*"],
-  "settings": [
-    {
-      "key": "maven.buildSupport",
-      "label": "Maven build support",
-      "description": "How Maven projects are handled. Native: M2E import (full IDE support). Fast: direct classpath extraction with cache (faster startup).",
-      "type": "enum",
-      "values": ["native", "fast"],
-      "valueLabels": {
-        "native": "Native (M2E import)",
-        "fast": "Fast (direct classpath extraction with cache)"
+  "settings": {
+    "properties": {
+      "maven.buildSupport": {
+        "type": "string",
+        "title": "Maven build support",
+        "description": "How Maven projects are handled. Native: M2E import (full IDE support). Fast: direct classpath extraction with cache (faster startup).",
+        "enum": ["native", "fast"],
+        "enumDescriptions": ["Native (M2E import)", "Fast (direct classpath extraction with cache)"],
+        "default": "native"
       },
-      "default": "native"
-    },
-    {
-      "key": "gradle.buildSupport",
-      "label": "Gradle build support",
-      "description": "How Gradle projects are handled. Native: Buildship import (full IDE support). Fast: direct classpath extraction with cache (faster startup). BSP: Build Server Protocol via build-server-for-gradle.",
-      "type": "enum",
-      "values": ["native", "fast", "bsp"],
-      "valueLabels": {
-        "native": "Native (Buildship import)",
-        "fast": "Fast (direct classpath extraction with cache)",
-        "bsp": "BSP (Build Server Protocol)"
-      },
-      "default": "native"
+      "gradle.buildSupport": {
+        "type": "string",
+        "title": "Gradle build support",
+        "description": "How Gradle projects are handled. Native: Buildship import (full IDE support). Fast: direct classpath extraction with cache (faster startup). BSP: Build Server Protocol via build-server-for-gradle.",
+        "enum": ["native", "fast", "bsp"],
+        "enumDescriptions": ["Native (Buildship import)", "Fast (direct classpath extraction with cache)", "BSP (Build Server Protocol)"],
+        "default": "native"
+      }
     }
-  ],
+  },
   "configuration": {
     "java.format.enabled": true,
     "java.format.comments.enabled": true,

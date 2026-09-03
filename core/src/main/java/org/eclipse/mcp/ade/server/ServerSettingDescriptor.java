@@ -14,26 +14,28 @@
 package org.eclipse.mcp.ade.server;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * Describes a configurable setting declared in a server's {@code server.json}.
+ * Describes a configurable setting declared in a server's {@code server.json},
+ * following the JSON Schema format used by VS Code.
  *
- * @param key         the setting key (e.g. {@code "java.import.mode"})
- * @param label       human-readable label for the UI
- * @param description tooltip / help text
- * @param type        setting type: {@code "enum"}, {@code "boolean"}, or {@code "string"}
- * @param values      allowed values (for {@code "enum"} type)
- * @param valueLabels display labels for enum values (key = value, value = label)
- * @param defaultValue default value when not configured
+ * @param key              the setting key (e.g. {@code "maven.buildSupport"})
+ * @param title            short human-readable label for the UI (JSON Schema {@code title})
+ * @param description      tooltip / help text
+ * @param type             JSON Schema type: {@code "string"}, {@code "boolean"}, {@code "number"}
+ * @param enumValues       allowed values (for string settings with a fixed set of choices)
+ * @param enumDescriptions display labels for enum values (ordered array, parallel to {@code enumValues})
+ * @param defaultValue     default value when not configured
+ * @param required         whether this setting must be configured before the server can start
  */
 public record ServerSettingDescriptor(
         String key,
-        String label,
+        String title,
         String description,
         String type,
-        List<String> values,
-        Map<String, String> valueLabels,
-        String defaultValue
+        List<String> enumValues,
+        List<String> enumDescriptions,
+        String defaultValue,
+        boolean required
 ) {
 }

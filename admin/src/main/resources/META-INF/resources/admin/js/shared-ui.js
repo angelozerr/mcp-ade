@@ -618,10 +618,10 @@ export function buildServerSettingsHTML(protocol, server, changeAction, extraSet
     const traceLevel = (state.traceLevels && state.traceLevels[`${protocol}.${server.id}`]) || 'off';
     const traceSetting = {
         key: 'trace',
-        label: 'Trace Level',
+        title: 'Trace Level',
         description: 'Controls protocol message tracing',
-        type: 'enum',
-        values: ['off', 'messages', 'verbose'],
+        type: 'string',
+        enumValues: ['off', 'messages', 'verbose'],
         currentValue: traceLevel,
         source: null
     };

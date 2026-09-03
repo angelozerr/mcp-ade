@@ -78,3 +78,23 @@
     font-size: 0.7rem !important;
     padding: 0.1rem 0.4rem !important;
 }
+
+/* ── Required badge ── */
+
+.setting-required-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    background: var(--status-error, #dc3545);
+    color: #fff;
+    vertical-align: middle;
+    margin-left: 0.4rem;
+}
+
+.setting-item-required {
+    border-left: 3px solid var(--status-error, #dc3545);
+}

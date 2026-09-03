@@ -103,13 +103,14 @@ export function renderToggleSetting(opts) {
 export function renderServerSetting(setting, changeAction, resetAction, dataAttrs) {
     const attrs = Object.entries(dataAttrs).map(([k, v]) => `data-${k}="${v}"`).join(' ');
     const sourceRow = setting.source ? renderSettingSourceRow(setting.source, resetAction, { ...dataAttrs, key: setting.key }) : '';
+    const requiredBadge = setting.required ? '<span class="setting-required-badge">required</span>' : '';
 
     let controlHTML = '';
     const currentValue = setting.currentValue || setting.defaultValue || '';
 
-    if (setting.type === 'enum' && setting.values) {
-        const options = setting.values.map(v => {
-            const label = (setting.valueLabels && setting.valueLabels[v]) ? setting.valueLabels[v] : v;
+    if (setting.enumValues && setting.enumValues.length > 0) {
+        const options = setting.enumValues.map((v, i) => {
+            const label = (setting.enumDescriptions && setting.enumDescriptions[i]) ? setting.enumDescriptions[i] : v;
             const selected = v === currentValue ? 'selected' : '';
             return `<option value="${v}" ${selected}>${label}</option>`;
         }).join('');
@@ -124,9 +125,9 @@ export function renderServerSetting(setting, changeAction, resetAction, dataAttr
     }
 
     return `
-        <div class="setting-item">
+        <div class="setting-item${setting.required ? ' setting-item-required' : ''}">
             <div class="setting-item-info">
-                <div class="setting-item-label">${setting.label}</div>
+                <div class="setting-item-label">${setting.title || setting.key} ${requiredBadge}</div>
                 ${setting.description ? `<div class="setting-item-description">${setting.description}</div>` : ''}
                 ${sourceRow}
             </div>

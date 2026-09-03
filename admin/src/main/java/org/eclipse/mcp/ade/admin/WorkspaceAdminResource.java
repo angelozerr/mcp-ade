@@ -402,9 +402,9 @@ public class WorkspaceAdminResource {
         var resolved = workspace.getWorkspaceConfiguration().resolveString(
                 serverType + "." + serverId + ".trace", ServerTrace.off.toString());
         return new ServerSettingDTO(
-                "trace", "Trace Level", "Controls protocol message tracing",
-                "enum", List.of("off", "messages", "verbose"), null,
-                ServerTrace.off.toString(), resolved.value(), resolved.source().name()
+                serverId, "trace", "Trace Level", "Controls protocol message tracing",
+                "string", List.of("off", "messages", "verbose"), null,
+                ServerTrace.off.toString(), false, resolved.value(), resolved.source().name()
         );
     }
 

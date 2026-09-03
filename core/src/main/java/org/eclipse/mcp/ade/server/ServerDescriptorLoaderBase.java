@@ -68,6 +68,7 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
     private static final String FIELD_RUNTIME = "runtime";
     private static final String FIELD_SETTINGS = "settings";
     private static final String FIELD_APPLICABLE_SETTINGS = "applicableSettings";
+    private static final String FIELD_REQUIRED = "required";
     protected static final Gson gson = new Gson();
 
     protected ServerDescriptorLoaderBase() {
@@ -233,39 +234,9 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
             config.setApplicableSettings(applicableSettings);
         }
 
-        // Declarative settings
+        // Declarative settings (JSON Schema format with properties/required)
         if (jsonObject.has(FIELD_SETTINGS)) {
-            List<ServerSettingDescriptor> settings = new ArrayList<>();
-            jsonObject.getAsJsonArray(FIELD_SETTINGS).forEach(el -> {
-                JsonObject settingObj = el.getAsJsonObject();
-                String key = settingObj.has("key") ? settingObj.get("key").getAsString() : null;
-                if (key == null) {
-                    return;
-                }
-                String label = settingObj.has("label") ? settingObj.get("label").getAsString() : key;
-                String desc = settingObj.has("description") ? settingObj.get("description").getAsString() : null;
-                String type = settingObj.has("type") ? settingObj.get("type").getAsString() : "string";
-                String defaultValue = settingObj.has("default") ? settingObj.get("default").getAsString() : null;
-
-                List<String> values = null;
-                if (settingObj.has("values")) {
-                    values = new ArrayList<>();
-                    for (var v : settingObj.getAsJsonArray("values")) {
-                        values.add(v.getAsString());
-                    }
-                }
-
-                Map<String, String> valueLabels = null;
-                if (settingObj.has("valueLabels")) {
-                    valueLabels = new HashMap<>();
-                    for (var entry : settingObj.getAsJsonObject("valueLabels").entrySet()) {
-                        valueLabels.put(entry.getKey(), entry.getValue().getAsString());
-                    }
-                }
-
-                settings.add(new ServerSettingDescriptor(key, label, desc, type, values, valueLabels, defaultValue));
-            });
-            config.setSettings(settings);
+            config.setSettings(parseSettings(jsonObject.getAsJsonObject(FIELD_SETTINGS)));
         }
 
         return jsonObject;
@@ -293,6 +264,67 @@ public abstract class ServerDescriptorLoaderBase<T extends ServerConfigBase> {
 
         JsonObject jsonObject = loadJson(installerFile);
         config.setInstallerConfig(jsonObject);
+    }
+
+    /**
+     * Parse settings in JSON Schema format:
+     * <pre>
+     * "settings": {
+     *   "properties": {
+     *     "eula": { "type": "string", "title": "...", "description": "...", "default": "" }
+     *   },
+     *   "required": ["eula"]
+     * }
+     * </pre>
+     */
+    private List<ServerSettingDescriptor> parseSettings(JsonObject settingsObj) {
+        List<String> requiredKeys = new ArrayList<>();
+        if (settingsObj.has(FIELD_REQUIRED)) {
+            settingsObj.getAsJsonArray(FIELD_REQUIRED).forEach(el ->
+                    requiredKeys.add(el.getAsString())
+            );
+        }
+
+        List<ServerSettingDescriptor> settings = new ArrayList<>();
+        JsonObject properties = settingsObj.getAsJsonObject("properties");
+        if (properties == null) {
+            return settings;
+        }
+
+        for (var entry : properties.entrySet()) {
+            String key = entry.getKey();
+            if (!entry.getValue().isJsonObject()) {
+                continue;
+            }
+            JsonObject propObj = entry.getValue().getAsJsonObject();
+            settings.add(parseSettingProperty(key, propObj, requiredKeys.contains(key)));
+        }
+        return settings;
+    }
+
+    private ServerSettingDescriptor parseSettingProperty(String key, JsonObject propObj, boolean required) {
+        String title = propObj.has("title") ? propObj.get("title").getAsString() : key;
+        String desc = propObj.has("description") ? propObj.get("description").getAsString() : null;
+        String type = propObj.has("type") ? propObj.get("type").getAsString() : "string";
+        String defaultValue = propObj.has("default") ? propObj.get("default").getAsString() : null;
+
+        List<String> enumValues = null;
+        if (propObj.has("enum")) {
+            enumValues = new ArrayList<>();
+            for (var v : propObj.getAsJsonArray("enum")) {
+                enumValues.add(v.getAsString());
+            }
+        }
+
+        List<String> enumDescriptions = null;
+        if (propObj.has("enumDescriptions")) {
+            enumDescriptions = new ArrayList<>();
+            for (var v : propObj.getAsJsonArray("enumDescriptions")) {
+                enumDescriptions.add(v.getAsString());
+            }
+        }
+
+        return new ServerSettingDescriptor(key, title, desc, type, enumValues, enumDescriptions, defaultValue, required);
     }
 
     protected JsonObject loadJson(Path jsonFile) throws IOException {
