@@ -1,4 +1,5 @@
 {
     "id": "yaml",
-    "name": "YAML"
+    "name": "YAML",
+    "description": "YAML language support via yaml-language-server"
 }

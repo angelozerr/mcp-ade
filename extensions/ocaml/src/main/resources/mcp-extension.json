@@ -1,4 +1,5 @@
 {
     "id": "ocaml",
-    "name": "OCaml"
+    "name": "OCaml",
+    "description": "OCaml language support via ocaml-lsp"
 }

@@ -1,4 +1,5 @@
 {
     "id": "c",
-    "name": "C/C++"
+    "name": "C/C++",
+    "description": "C/C++ language support via clangd"
 }

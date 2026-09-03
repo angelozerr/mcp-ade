@@ -1,4 +1,5 @@
 {
     "id": "elixir",
-    "name": "Elixir"
+    "name": "Elixir",
+    "description": "Elixir language support via ElixirLS"
 }

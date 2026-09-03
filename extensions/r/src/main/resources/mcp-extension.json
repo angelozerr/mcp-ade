@@ -1,4 +1,5 @@
 {
     "id": "r",
-    "name": "R"
+    "name": "R",
+    "description": "R language support via languageserver"
 }

@@ -103,7 +103,7 @@ public class ExtractResourceTask extends InstallerTask {
         }
 
         @Override
-        protected InstallerTask create(String name, InstallerTask onSuccess, JsonObject json) {
+        protected InstallerTask create(String name, InstallerTask onSuccess, InstallerTask onFail, JsonObject json) {
             String source = json.get("source").getAsString();
             String destination = json.get("destination").getAsString();
             return new ExtractResourceTask(name, onSuccess, source, destination);

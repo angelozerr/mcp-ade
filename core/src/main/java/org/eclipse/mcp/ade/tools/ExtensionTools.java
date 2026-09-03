@@ -58,6 +58,9 @@ public class ExtensionTools {
                 if (ext.getName() != null) {
                     entry.put("name", ext.getName());
                 }
+                if (ext.getDescription() != null) {
+                    entry.put("description", ext.getDescription());
+                }
                 entry.put("source", ext.getSource().name());
                 entry.put("enabled", registry.isExtensionEnabled(ext.getId()));
 

@@ -1,4 +1,5 @@
 {
     "id": "haskell",
-    "name": "Haskell"
+    "name": "Haskell",
+    "description": "Haskell language support via Haskell Language Server (HLS)"
 }

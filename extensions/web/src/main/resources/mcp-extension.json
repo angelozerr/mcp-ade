@@ -1,4 +1,5 @@
 {
     "id": "web",
-    "name": "Web"
+    "name": "Web",
+    "description": "HTML and CSS language support"
 }

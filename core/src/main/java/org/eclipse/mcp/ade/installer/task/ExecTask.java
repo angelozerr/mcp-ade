@@ -162,7 +162,7 @@ public class ExecTask extends InstallerTask {
         }
 
         @Override
-        protected InstallerTask create(String name, InstallerTask onSuccess, JsonObject json) {
+        protected InstallerTask create(String name, InstallerTask onSuccess, InstallerTask onFail, JsonObject json) {
             String command = OSUtils.getStringFromOs(json, "command");
             Integer timeout = json.has("timeout") ? json.get("timeout").getAsInt() : null;
             String workingDir = json.has("workingDir") ? json.get("workingDir").getAsString() : null;

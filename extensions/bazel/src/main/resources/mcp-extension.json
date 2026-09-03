@@ -1,4 +1,5 @@
 {
     "id": "bazel",
-    "name": "Bazel"
+    "name": "Bazel",
+    "description": "Bazel build system support via Starlark Language Server"
 }

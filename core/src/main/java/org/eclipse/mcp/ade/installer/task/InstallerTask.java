@@ -24,17 +24,23 @@ public abstract class InstallerTask {
 
     private final String name;
     private final InstallerTask onSuccess;
+    private final InstallerTask onFail;
 
     protected InstallerTask(String name, InstallerTask onSuccess) {
+        this(name, onSuccess, null);
+    }
+
+    protected InstallerTask(String name, InstallerTask onSuccess, InstallerTask onFail) {
         this.name = name;
         this.onSuccess = onSuccess;
+        this.onFail = onFail;
     }
 
     /**
-     * Executes the task with common logic: cancel check, progress step, onSuccess chaining.
+     * Executes the task with common logic: cancel check, progress step, onSuccess/onFail chaining.
      *
      * @param context Installation context
-     * @return true if task (and onSuccess chain) succeeded, false otherwise
+     * @return true if task (and onSuccess/onFail chain) succeeded, false otherwise
      */
     public final boolean execute(InstallerContext context) {
         context.checkCanceled();
@@ -44,6 +50,9 @@ public abstract class InstallerTask {
                 return onSuccess.execute(context);
             }
             return true;
+        }
+        if (onFail != null) {
+            return onFail.execute(context);
         }
         return false;
     }
@@ -62,5 +71,9 @@ public abstract class InstallerTask {
 
     public InstallerTask getOnSuccess() {
         return onSuccess;
+    }
+
+    public InstallerTask getOnFail() {
+        return onFail;
     }
 }

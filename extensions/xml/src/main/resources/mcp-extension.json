@@ -1,4 +1,5 @@
 {
     "id": "xml",
-    "name": "XML"
+    "name": "XML",
+    "description": "XML language support via LemMinX"
 }

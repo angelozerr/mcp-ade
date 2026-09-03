@@ -82,7 +82,7 @@ public class CopyTask extends InstallerTask {
         }
 
         @Override
-        protected InstallerTask create(String name, InstallerTask onSuccess, JsonObject json) {
+        protected InstallerTask create(String name, InstallerTask onSuccess, InstallerTask onFail, JsonObject json) {
             String source = json.get("source").getAsString();
             String destination = json.get("destination").getAsString();
             return new CopyTask(name, onSuccess, source, destination);

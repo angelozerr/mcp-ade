@@ -1,4 +1,5 @@
 {
     "id": "bash",
-    "name": "Bash"
+    "name": "Bash",
+    "description": "Bash and shell script language support via bash-language-server"
 }

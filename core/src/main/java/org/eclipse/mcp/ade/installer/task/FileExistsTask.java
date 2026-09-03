@@ -24,8 +24,8 @@ import java.util.stream.Stream;
 public class FileExistsTask extends InstallerTask {
     private final String file;
 
-    public FileExistsTask(String name, InstallerTask onSuccess, String file) {
-        super(name, onSuccess);
+    public FileExistsTask(String name, InstallerTask onSuccess, InstallerTask onFail, String file) {
+        super(name, onSuccess, onFail);
         this.file = file;
     }
 
@@ -82,9 +82,9 @@ public class FileExistsTask extends InstallerTask {
         }
 
         @Override
-        protected InstallerTask create(String name, InstallerTask onSuccess, JsonObject json) {
+        protected InstallerTask create(String name, InstallerTask onSuccess, InstallerTask onFail, JsonObject json) {
             String file = OSUtils.getStringFromOs(json, "file");
-            return new FileExistsTask(name, onSuccess, file);
+            return new FileExistsTask(name, onSuccess, onFail, file);
         }
     }
 }

@@ -1,4 +1,5 @@
 {
     "id": "swift",
-    "name": "Swift"
+    "name": "Swift",
+    "description": "Swift language support via SourceKit-LSP"
 }

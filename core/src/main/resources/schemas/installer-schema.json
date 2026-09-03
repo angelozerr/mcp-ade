@@ -20,7 +20,7 @@
     },
     "check": {
       "type": "object",
-      "description": "How to verify the server is already installed. Use ONE of fileExists or exec.",
+      "description": "How to verify the server is already installed. Use ONE of fileExists or exec. Tasks support onSuccess and onFail chaining.",
       "properties": {
         "fileExists": {
           "type": "object",
@@ -34,6 +34,13 @@
             "file": {
               "$ref": "#/$defs/platformString",
               "description": "Path to check. Supports ${serverHome} variable and glob patterns."
+            },
+            "onSuccess": {
+              "$ref": "#/$defs/onSuccess"
+            },
+            "onFail": {
+              "type": "object",
+              "description": "Task to execute if the check fails. Allows chaining fallback checks (e.g. check VS Code extension first, then serverHome)."
             }
           }
         },
@@ -53,6 +60,13 @@
             "timeout": {
               "type": "integer",
               "description": "Max wait time in milliseconds (e.g. 2000)"
+            },
+            "onSuccess": {
+              "$ref": "#/$defs/onSuccess"
+            },
+            "onFail": {
+              "type": "object",
+              "description": "Task to execute if the check fails. Allows chaining fallback checks."
             }
           }
         }
@@ -104,7 +118,11 @@
               "required": ["namespace", "extensionName"],
               "properties": {
                 "namespace": { "type": "string" },
-                "extensionName": { "type": "string" }
+                "extensionName": { "type": "string" },
+                "targetPlatform": {
+                  "type": "boolean",
+                  "description": "When true, appends the current OS/arch target platform (e.g. win32-x64, linux-arm64, darwin-x64) to the Open VSX API URL to download a platform-specific VSIX (default: false)"
+                }
               }
             },
             "output": {

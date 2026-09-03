@@ -1,4 +1,5 @@
 {
     "id": "erlang",
-    "name": "Erlang"
+    "name": "Erlang",
+    "description": "Erlang language support via erlang_ls"
 }

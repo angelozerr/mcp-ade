@@ -1,0 +1,60 @@
+{
+  "id": "intellij-server-installer",
+  "name": "IntelliJ Language Server",
+  "check": {
+    "fileExists": {
+      "name": "Check VS Code extension",
+      "file": {
+        "windows": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server.exe",
+        "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server"
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Use existing VS Code extension",
+          "command": {
+            "windows": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server.exe --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}",
+            "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}"
+          }
+        }
+      },
+      "onFail": {
+        "fileExists": {
+          "name": "Check if already downloaded",
+          "file": {
+            "windows": "${serverHome}/bin/intellij-server.exe",
+            "default": "${serverHome}/bin/intellij-server"
+          }
+        }
+      }
+    }
+  },
+  "run": {
+    "download": {
+      "name": "Download IntelliJ Language Server",
+      "jetbrains": {
+        "namespace": "JetBrains",
+        "extensionName": "intellij-server",
+        "targetPlatform": true
+      },
+      "output": {
+        "dir": "${serverHome}",
+        "file": {
+          "name": {
+            "windows": "bin/intellij-server.exe",
+            "default": "bin/intellij-server"
+          },
+          "executable": true
+        }
+      },
+      "onSuccess": {
+        "configureServer": {
+          "name": "Configure IntelliJ Language Server command",
+          "command": {
+            "windows": "${serverHome}/bin/intellij-server.exe --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}",
+            "default": "${serverHome}/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}"
+          }
+        }
+      }
+    }
+  }
+}

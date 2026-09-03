@@ -1,4 +1,5 @@
 {
     "id": "liberty",
-    "name": "Liberty"
+    "name": "Liberty",
+    "description": "Open Liberty and WebSphere Liberty support via Liberty Language Server"
 }

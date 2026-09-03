@@ -1,4 +1,5 @@
 {
     "id": "javascript",
-    "name": "JavaScript"
+    "name": "JavaScript",
+    "description": "JavaScript and TypeScript language support via TypeScript Language Server"
 }

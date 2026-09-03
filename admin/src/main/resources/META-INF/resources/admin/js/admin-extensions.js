@@ -54,6 +54,7 @@ function renderExtensionsList() {
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
+                ${ext.description ? `<div class="extension-description">${ext.description}</div>` : ''}
                 <div class="extension-id">${counts.length > 0 ? counts.join(', ') : 'No servers'}</div>
             </div>
         `;
@@ -132,6 +133,12 @@ export async function showExtensionDetails(extensionId, scroll) {
                 <span class="detail-label">Source:</span>
                 <span class="detail-value">${sourceBadge}</span>
             </div>
+
+            ${ext.description ? `
+            <div class="detail-row">
+                <span class="detail-label">Description:</span>
+                <span class="detail-value">${ext.description}</span>
+            </div>` : ''}
 
             <div class="detail-row">
                 <span class="detail-label">Status:</span>

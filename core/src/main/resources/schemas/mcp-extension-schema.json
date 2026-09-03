@@ -13,6 +13,10 @@
       "type": "string",
       "description": "Human-readable display name (e.g. 'C#', 'Rust', 'Python')"
     },
+    "description": {
+      "type": "string",
+      "description": "Short description of what this extension provides"
+    },
     "enabled": {
       "type": "boolean",
       "description": "Whether the extension is enabled by default. Defaults to true. Set to false for extensions that require additional setup before use."

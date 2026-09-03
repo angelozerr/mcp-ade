@@ -26,6 +26,7 @@ public class OpenVsxAssetFetcherProvider implements AssetFetcherProvider {
     private static final String OPENVSX_JSON_PROPERTY = "openvsx";
     private static final String OPENVSX_NAMESPACE_JSON_PROPERTY = "namespace";
     private static final String OPENVSX_EXTENSION_NAME_JSON_PROPERTY = "extensionName";
+    private static final String OPENVSX_TARGET_PLATFORM_JSON_PROPERTY = "targetPlatform";
 
     @Override
     public AssetFetcherInfo getAssetFetcher(JsonObject downloadJson) {
@@ -42,8 +43,10 @@ public class OpenVsxAssetFetcherProvider implements AssetFetcherProvider {
         }
         String namespace = openvsxObj.get(OPENVSX_NAMESPACE_JSON_PROPERTY).getAsString();
         String extensionName = openvsxObj.get(OPENVSX_EXTENSION_NAME_JSON_PROPERTY).getAsString();
+        boolean targetPlatform = openvsxObj.has(OPENVSX_TARGET_PLATFORM_JSON_PROPERTY)
+                && openvsxObj.get(OPENVSX_TARGET_PLATFORM_JSON_PROPERTY).getAsBoolean();
 
-        var assetFetcher = OpenVsxAssetFetcherManager.getInstance().getAssetFetcher(namespace, extensionName);
+        var assetFetcher = OpenVsxAssetFetcherManager.getInstance().getAssetFetcher(namespace, extensionName, targetPlatform);
         return new AssetFetcherInfo(assetFetcher,
                 obj -> true,
                 obj -> true);

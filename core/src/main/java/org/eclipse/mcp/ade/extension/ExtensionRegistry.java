@@ -143,6 +143,7 @@ public class ExtensionRegistry {
     }
 
     private final Map<String, String> bundledExtensionNames = new ConcurrentHashMap<>();
+    private final Map<String, String> bundledExtensionDescriptions = new ConcurrentHashMap<>();
 
     private void deployBundledExtension(URL descriptorUrl) {
         try {
@@ -159,6 +160,9 @@ public class ExtensionRegistry {
             }
             if (descriptor.name() != null) {
                 bundledExtensionNames.put(extensionId, descriptor.name());
+            }
+            if (descriptor.description() != null) {
+                bundledExtensionDescriptions.put(extensionId, descriptor.description());
             }
             Path basePath = resolveBasePath(descriptorUrl);
 
@@ -183,7 +187,7 @@ public class ExtensionRegistry {
         }
     }
 
-    private record ExtensionDescriptor(String id, String name, Boolean enabled) {}
+    private record ExtensionDescriptor(String id, String name, String description, Boolean enabled) {}
 
     private ExtensionDescriptor readExtensionDescriptor(URL descriptorUrl) throws IOException {
         try (InputStream is = descriptorUrl.openStream();
@@ -191,12 +195,15 @@ public class ExtensionRegistry {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
             String id = json.has("id") ? json.get("id").getAsString() : null;
             String name = json.has("name") ? json.get("name").getAsString() : null;
+            String description = json.has("description") ? json.get("description").getAsString() : null;
             Boolean enabled = json.has("enabled") ? json.get("enabled").getAsBoolean() : null;
-            return new ExtensionDescriptor(id, name, enabled);
+            return new ExtensionDescriptor(id, name, description, enabled);
         }
     }
 
-    private String readExtensionNameFromDir(Path extensionDir) {
+    private record ExtensionMetadata(String name, String description) {}
+
+    private ExtensionMetadata readExtensionMetadataFromDir(Path extensionDir) {
         Path descriptor = extensionDir.resolve(MCP_EXTENSION_JSON);
         if (!Files.exists(descriptor)) {
             return null;
@@ -204,9 +211,11 @@ public class ExtensionRegistry {
         try (InputStream is = Files.newInputStream(descriptor);
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-            return json.has("name") ? json.get("name").getAsString() : null;
+            String name = json.has("name") ? json.get("name").getAsString() : null;
+            String description = json.has("description") ? json.get("description").getAsString() : null;
+            return new ExtensionMetadata(name, description);
         } catch (IOException e) {
-            LOG.warnf(e, "Failed to read extension name from %s", descriptor);
+            LOG.warnf(e, "Failed to read extension metadata from %s", descriptor);
             return null;
         }
     }
@@ -303,11 +312,19 @@ public class ExtensionRegistry {
     private Extension loadExtension(String extensionId, ServerConfigSource source, Application application) {
         Extension extension = new Extension(extensionId, source, application);
         String extensionName = bundledExtensionNames.get(extensionId);
+        String extensionDescription = bundledExtensionDescriptions.get(extensionId);
         if (extensionName == null) {
-            extensionName = readExtensionNameFromDir(pathManager.getExtensionDir(extensionId));
+            ExtensionMetadata metadata = readExtensionMetadataFromDir(pathManager.getExtensionDir(extensionId));
+            if (metadata != null) {
+                extensionName = metadata.name();
+                extensionDescription = metadata.description();
+            }
         }
         if (extensionName != null) {
             extension.setName(extensionName);
+        }
+        if (extensionDescription != null) {
+            extension.setDescription(extensionDescription);
         }
         Path extensionDir = pathManager.getExtensionDir(extensionId);
 

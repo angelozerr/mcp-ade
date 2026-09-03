@@ -1,4 +1,5 @@
 {
     "id": "clojure",
-    "name": "Clojure"
+    "name": "Clojure",
+    "description": "Clojure language support via clojure-lsp"
 }

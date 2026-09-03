@@ -1,4 +1,5 @@
 {
     "id": "dart",
-    "name": "Dart"
+    "name": "Dart",
+    "description": "Dart and Flutter language support via Dart Analysis Server"
 }

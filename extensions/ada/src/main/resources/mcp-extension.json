@@ -1,4 +1,5 @@
 {
     "id": "ada",
-    "name": "Ada"
+    "name": "Ada",
+    "description": "Ada language support via Ada Language Server (ALS)"
 }

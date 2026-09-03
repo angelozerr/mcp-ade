@@ -1,4 +1,5 @@
 {
     "id": "toml",
-    "name": "TOML"
+    "name": "TOML",
+    "description": "TOML language support via taplo"
 }

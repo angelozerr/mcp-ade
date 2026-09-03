@@ -58,6 +58,9 @@ public class ExtensionAdminResource {
             if (ext.getName() != null) {
                 dto.put("name", ext.getName());
             }
+            if (ext.getDescription() != null) {
+                dto.put("description", ext.getDescription());
+            }
             dto.put("source", ext.getSource().name());
             if (registry.isExtensionEnabled(ext.getId())) {
                 dto.put("enabled", true);

@@ -18,7 +18,7 @@ import com.google.gson.JsonObject;
 
 /**
  * Base class for installer task factories.
- * Handles generic parsing of {@code name} and {@code onSuccess} fields,
+ * Handles generic parsing of {@code name}, {@code onSuccess} and {@code onFail} fields,
  * so subclasses only need to parse their own task-specific configuration.
  */
 public abstract class InstallerTaskFactoryBase implements InstallerTaskFactory {
@@ -40,8 +40,9 @@ public abstract class InstallerTaskFactoryBase implements InstallerTaskFactory {
     public final InstallerTask createTask(JsonElement config) {
         JsonObject obj = config.getAsJsonObject();
         String name = obj.has("name") ? obj.get("name").getAsString() : getDefaultName();
-        InstallerTask onSuccess = loadOnSuccess(obj);
-        return create(name, onSuccess, obj);
+        InstallerTask onSuccess = loadChainedTask(obj, "onSuccess");
+        InstallerTask onFail = loadChainedTask(obj, "onFail");
+        return create(name, onSuccess, onFail, obj);
     }
 
     /**
@@ -49,21 +50,22 @@ public abstract class InstallerTaskFactoryBase implements InstallerTaskFactory {
      *
      * @param name      the task name
      * @param onSuccess the onSuccess task (may be null)
+     * @param onFail    the onFail task (may be null)
      * @param json      the full JSON config for task-specific fields
      * @return the created task
      */
-    protected abstract InstallerTask create(String name, InstallerTask onSuccess, JsonObject json);
+    protected abstract InstallerTask create(String name, InstallerTask onSuccess, InstallerTask onFail, JsonObject json);
 
     /**
      * Default name when "name" is not specified in JSON.
      */
     protected abstract String getDefaultName();
 
-    private InstallerTask loadOnSuccess(JsonObject json) {
-        if (!json.has("onSuccess")) {
+    private InstallerTask loadChainedTask(JsonObject json, String field) {
+        if (!json.has(field)) {
             return null;
         }
-        return parseTaskNode(json.get("onSuccess"));
+        return parseTaskNode(json.get(field));
     }
 
     /**

@@ -1,4 +1,5 @@
 {
     "id": "python",
-    "name": "Python"
+    "name": "Python",
+    "description": "Python language support via Pylsp or Pyright with debugging via debugpy"
 }

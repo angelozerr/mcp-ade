@@ -1,4 +1,5 @@
 {
     "id": "mock-test",
-    "name": "Mock Test"
+    "name": "Mock Test",
+    "description": "Mock extension for integration testing"
 }

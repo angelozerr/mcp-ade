@@ -1,4 +1,5 @@
 {
     "id": "dockerfile",
-    "name": "Dockerfile"
+    "name": "Dockerfile",
+    "description": "Dockerfile language support via dockerfile-language-server"
 }

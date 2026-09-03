@@ -1,4 +1,5 @@
 {
     "id": "markdown",
-    "name": "Markdown"
+    "name": "Markdown",
+    "description": "Markdown language support"
 }

@@ -27,7 +27,8 @@ public class OpenVsxAssetFetcherManager extends AssetFetcherCache<OpenVsxAssetFe
         return INSTANCE;
     }
 
-    public OpenVsxAssetFetcher getAssetFetcher(String namespace, String extensionName) {
-        return get(namespace, extensionName, OpenVsxAssetFetcher::new);
+    public OpenVsxAssetFetcher getAssetFetcher(String namespace, String extensionName, boolean targetPlatform) {
+        return get(namespace, extensionName,
+                (ns, ext) -> new OpenVsxAssetFetcher(ns, ext, targetPlatform));
     }
 }

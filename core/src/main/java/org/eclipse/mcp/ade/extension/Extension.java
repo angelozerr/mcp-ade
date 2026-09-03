@@ -30,6 +30,7 @@ public class Extension {
 
     private final String id;
     private String name;
+    private String description;
     private final ServerConfigSource source;
     private final Application application;
     private final List<LspServerConfig> lspServerConfigs;
@@ -55,6 +56,14 @@ public class Extension {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public ServerConfigSource getSource() {

@@ -21,7 +21,7 @@
     }
   ],
   "command": {
-    "windows": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server.exe --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}",
-    "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}"
+    "windows": "${serverHome}/bin/intellij-server.exe --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}",
+    "default": "${serverHome}/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}"
   }
 }

@@ -1,4 +1,5 @@
 {
     "id": "perl",
-    "name": "Perl"
+    "name": "Perl",
+    "description": "Perl language support via Perl Navigator"
 }

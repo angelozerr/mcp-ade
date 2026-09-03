@@ -1,4 +1,5 @@
 {
     "id": "nix",
-    "name": "Nix"
+    "name": "Nix",
+    "description": "Nix language support via nil or nixd"
 }

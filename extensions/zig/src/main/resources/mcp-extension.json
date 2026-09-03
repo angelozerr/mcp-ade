@@ -1,4 +1,5 @@
 {
     "id": "zig",
-    "name": "Zig"
+    "name": "Zig",
+    "description": "Zig language support via zls"
 }

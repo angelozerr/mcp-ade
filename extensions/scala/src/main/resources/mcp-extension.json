@@ -1,4 +1,5 @@
 {
     "id": "scala",
-    "name": "Scala"
+    "name": "Scala",
+    "description": "Scala language support via Metals"
 }

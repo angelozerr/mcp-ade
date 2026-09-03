@@ -49,7 +49,7 @@ public class ConfigureServerTask extends InstallerTask {
         }
 
         @Override
-        protected InstallerTask create(String name, InstallerTask onSuccess, JsonObject json) {
+        protected InstallerTask create(String name, InstallerTask onSuccess, InstallerTask onFail, JsonObject json) {
             String command = OSUtils.getStringFromOs(json, "command");
             return new ConfigureServerTask(name, onSuccess, command);
         }

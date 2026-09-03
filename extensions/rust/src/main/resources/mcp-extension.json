@@ -1,4 +1,5 @@
 {
     "id": "rust",
-    "name": "Rust"
+    "name": "Rust",
+    "description": "Rust language support via rust-analyzer"
 }

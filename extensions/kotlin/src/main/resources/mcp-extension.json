@@ -1,4 +1,5 @@
 {
     "id": "kotlin",
-    "name": "Kotlin"
+    "name": "Kotlin",
+    "description": "Kotlin language support via Kotlin Language Server"
 }

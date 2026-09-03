@@ -1,4 +1,5 @@
 {
     "id": "jakarta",
-    "name": "Jakarta EE"
+    "name": "Jakarta EE",
+    "description": "Jakarta EE language support via Eclipse LSP4Jakarta"
 }

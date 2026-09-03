@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.installer.download;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.eclipse.mcp.ade.utils.OSUtils;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -28,16 +29,22 @@ import java.util.function.Function;
  *
  * <p>Queries the Open VSX API at {@code https://open-vsx.org/api/{namespace}/{extensionName}}
  * and extracts the VSIX download URL from the {@code files.download} field.</p>
+ *
+ * <p>When {@code targetPlatform} is {@code true}, appends the current platform
+ * (e.g. {@code win32-x64}, {@code linux-arm64}) to the API URL to fetch a
+ * platform-specific VSIX.</p>
  */
 public class OpenVsxAssetFetcher implements AssetFetcher {
 
     private final String namespace;
     private final String extensionName;
+    private final boolean targetPlatform;
     private JsonObject extensionInfo;
 
-    public OpenVsxAssetFetcher(String namespace, String extensionName) {
+    public OpenVsxAssetFetcher(String namespace, String extensionName, boolean targetPlatform) {
         this.namespace = namespace;
         this.extensionName = extensionName;
+        this.targetPlatform = targetPlatform;
     }
 
     @Override
@@ -45,26 +52,46 @@ public class OpenVsxAssetFetcher implements AssetFetcher {
                                  Function<JsonObject, Boolean> assetMatcher,
                                  Reporter reporter) {
         try {
-            JsonObject info = getOrLoadExtensionInfo(reporter);
-            if (info == null) {
+            String vsixUrl = getVsixDownloadUrl(reporter);
+            if (vsixUrl == null) {
                 return null;
             }
-            reporter.setText("> Searching Open VSX asset to download...");
-
-            JsonObject files = info.getAsJsonObject("files");
-            if (files == null || !files.has("download")) {
-                reporter.setText("No download URL found in Open VSX response");
-                return null;
-            }
-
-            String downloadUrl = files.get("download").getAsString();
-            String version = info.has("version") ? info.get("version").getAsString() : "unknown";
-            reporter.setText("Asset found: " + extensionName + " v" + version + " - " + downloadUrl);
-            return downloadUrl;
+            return resolveDownloadUrl(vsixUrl, reporter);
         } catch (Exception e) {
             reporter.setText("Error while searching Open VSX asset", e);
         }
         return null;
+    }
+
+    /**
+     * Returns the VSIX download URL from the Open VSX API.
+     */
+    protected String getVsixDownloadUrl(Reporter reporter) throws Exception {
+        JsonObject info = getOrLoadExtensionInfo(reporter);
+        if (info == null) {
+            return null;
+        }
+        reporter.setText("> Searching Open VSX asset to download...");
+
+        JsonObject files = info.getAsJsonObject("files");
+        if (files == null || !files.has("download")) {
+            reporter.setText("No download URL found in Open VSX response");
+            return null;
+        }
+
+        String downloadUrl = files.get("download").getAsString();
+        String version = info.has("version") ? info.get("version").getAsString() : "unknown";
+        reporter.setText("Asset found: " + extensionName + " v" + version + " - " + downloadUrl);
+        return downloadUrl;
+    }
+
+    /**
+     * Resolves the final download URL from the VSIX URL.
+     * Subclasses can override to perform additional resolution
+     * (e.g. downloading the VSIX to extract a server bundle URL).
+     */
+    protected String resolveDownloadUrl(String vsixUrl, Reporter reporter) {
+        return vsixUrl;
     }
 
     /**
@@ -95,6 +122,9 @@ public class OpenVsxAssetFetcher implements AssetFetcher {
 
     private String fetchExtensionJson(Reporter reporter) {
         String urlStr = "https://open-vsx.org/api/" + namespace + "/" + extensionName;
+        if (targetPlatform) {
+            urlStr += "/" + getOpenVsxTargetPlatform();
+        }
         reporter.setText("> Loading Open VSX extension info: " + urlStr);
 
         try {
@@ -122,5 +152,23 @@ public class OpenVsxAssetFetcher implements AssetFetcher {
             reporter.setText("Error while loading Open VSX extension info: ", e);
         }
         return null;
+    }
+
+    static String getOpenVsxTargetPlatform() {
+        String os;
+        if (OSUtils.isWindows()) {
+            os = "win32";
+        } else if (OSUtils.isMac()) {
+            os = "darwin";
+        } else {
+            os = "linux";
+        }
+        String arch;
+        if ("arm64".equals(OSUtils.ARCH_KEY)) {
+            arch = "arm64";
+        } else {
+            arch = "x64";
+        }
+        return os + "-" + arch;
     }
 }

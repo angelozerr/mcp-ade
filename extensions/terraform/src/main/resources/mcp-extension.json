@@ -1,4 +1,5 @@
 {
     "id": "terraform",
-    "name": "Terraform"
+    "name": "Terraform",
+    "description": "Terraform language support via terraform-ls"
 }

@@ -427,6 +427,9 @@ public class TaskRegistryInstaller implements ServerInstaller {
         if (taskConfig.has("onSuccess")) {
             collectTaskSteps(taskConfig.get("onSuccess"), progress);
         }
+        if (taskConfig.has("onFail")) {
+            collectTaskSteps(taskConfig.get("onFail"), progress);
+        }
     }
 
     private static double getTaskWeight(String taskType) {

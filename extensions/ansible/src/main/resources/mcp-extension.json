@@ -1,4 +1,5 @@
 {
     "id": "ansible",
-    "name": "Ansible"
+    "name": "Ansible",
+    "description": "Ansible language support via ansible-language-server"
 }

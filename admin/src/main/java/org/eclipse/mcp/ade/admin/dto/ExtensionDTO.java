@@ -25,6 +25,7 @@ import java.util.List;
 public record ExtensionDTO(
         String id,
         String name,
+        String description,
         String source,
         Boolean enabled,
         List<ServerInfo> lspServers,
@@ -54,6 +55,7 @@ public record ExtensionDTO(
         return new ExtensionDTO(
                 ext.getId(),
                 ext.getName(),
+                ext.getDescription(),
                 ext.getSource().name(),
                 registry.isExtensionEnabled(ext.getId()) ? Boolean.TRUE : null,
                 lspServers,

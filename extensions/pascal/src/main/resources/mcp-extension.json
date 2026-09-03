@@ -1,4 +1,5 @@
 {
     "id": "pascal",
-    "name": "Pascal"
+    "name": "Pascal",
+    "description": "Pascal language support via pasls"
 }

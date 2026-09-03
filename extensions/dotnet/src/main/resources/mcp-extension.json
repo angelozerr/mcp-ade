@@ -1,4 +1,5 @@
 {
     "id": "dotnet",
-    "name": ".NET"
+    "name": ".NET",
+    "description": "C# and .NET language support via OmniSharp"
 }

@@ -1,4 +1,5 @@
 {
     "id": "julia",
-    "name": "Julia"
+    "name": "Julia",
+    "description": "Julia language support via LanguageServer.jl"
 }

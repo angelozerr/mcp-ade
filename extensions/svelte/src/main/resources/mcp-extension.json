@@ -1,4 +1,5 @@
 {
     "id": "svelte",
-    "name": "Svelte"
+    "name": "Svelte",
+    "description": "Svelte language support via svelte-language-server"
 }

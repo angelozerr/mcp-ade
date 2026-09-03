@@ -1,4 +1,5 @@
 {
     "id": "quarkus",
-    "name": "Quarkus"
+    "name": "Quarkus",
+    "description": "Quarkus framework support via Qute Language Server"
 }

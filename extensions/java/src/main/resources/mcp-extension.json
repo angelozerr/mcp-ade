@@ -1,4 +1,5 @@
 {
     "id": "java",
-    "name": "Java"
+    "name": "Java",
+    "description": "Java language support via Eclipse JDT Language Server (jdtls) with debugging via java-debug"
 }

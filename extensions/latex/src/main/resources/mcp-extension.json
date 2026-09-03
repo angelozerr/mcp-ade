@@ -1,4 +1,5 @@
 {
     "id": "latex",
-    "name": "LaTeX"
+    "name": "LaTeX",
+    "description": "LaTeX language support via texlab"
 }

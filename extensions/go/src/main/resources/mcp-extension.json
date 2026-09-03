@@ -1,4 +1,5 @@
 {
     "id": "go",
-    "name": "Go"
+    "name": "Go",
+    "description": "Go language support via gopls"
 }

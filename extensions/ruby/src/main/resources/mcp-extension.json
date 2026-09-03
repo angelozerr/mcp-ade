@@ -1,4 +1,5 @@
 {
     "id": "ruby",
-    "name": "Ruby"
+    "name": "Ruby",
+    "description": "Ruby language support via Solargraph"
 }

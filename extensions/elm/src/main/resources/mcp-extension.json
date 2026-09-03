@@ -1,4 +1,5 @@
 {
     "id": "elm",
-    "name": "Elm"
+    "name": "Elm",
+    "description": "Elm language support via elm-language-server"
 }
