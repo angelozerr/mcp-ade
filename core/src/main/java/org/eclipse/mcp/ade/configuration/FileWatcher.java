@@ -90,9 +90,11 @@ public class FileWatcher {
             running = true;
             watchService = FileSystems.getDefault().newWatchService();
             String threadName = "file-watcher-" + watchedFiles.get(0).targetFileName;
+            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
             executorService = Executors.newSingleThreadExecutor(r -> {
                 Thread t = new Thread(r, threadName);
                 t.setDaemon(true);
+                t.setContextClassLoader(contextClassLoader);
                 return t;
             });
 
