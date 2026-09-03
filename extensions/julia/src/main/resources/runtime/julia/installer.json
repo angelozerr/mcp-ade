@@ -18,15 +18,14 @@
       "name": "Download Julia",
       "julia": {},
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": true
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure Julia",
           "command": {
-            "windows": "${serverHome}/bin/julia.exe",
-            "default": "${serverHome}/bin/julia"
+            "windows": "${serverDist}/bin/julia.exe",
+            "default": "${serverDist}/bin/julia"
           }
         }
       }

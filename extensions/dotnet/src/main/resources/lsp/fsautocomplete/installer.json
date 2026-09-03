@@ -6,21 +6,21 @@
     "fileExists": {
       "name": "Check if fsautocomplete is installed",
       "file": {
-        "windows": "${serverHome}/fsautocomplete.cmd",
-        "default": "${serverHome}/fsautocomplete"
+        "windows": "${serverDist}/fsautocomplete.cmd",
+        "default": "${serverDist}/fsautocomplete"
       }
     }
   },
   "run": {
     "exec": {
       "name": "Install FsAutoComplete",
-      "command": "dotnet tool install fsautocomplete --tool-path ${serverHome}",
+      "command": "dotnet tool install fsautocomplete --tool-path ${serverDist}",
       "onSuccess": {
         "configureServer": {
           "name": "Configure fsautocomplete command",
           "command": {
-            "windows": "${serverHome}/fsautocomplete.cmd --adaptive-lsp-server-enabled",
-            "default": "${serverHome}/fsautocomplete --adaptive-lsp-server-enabled"
+            "windows": "${serverDist}/fsautocomplete.cmd --adaptive-lsp-server-enabled",
+            "default": "${serverDist}/fsautocomplete --adaptive-lsp-server-enabled"
           }
         }
       }

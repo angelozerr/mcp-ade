@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if LemMinX is installed",
-      "file": "${serverHome}/lemminx.jar"
+      "file": "${serverDist}/lemminx.jar"
     }
   },
   "run": {
@@ -12,7 +12,6 @@
       "name": "Download LemMinX",
       "url": "https://download.eclipse.org/lemminx/releases/0.31.2/org.eclipse.lemminx-uber.jar",
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": "lemminx.jar",
           "executable": true
@@ -21,7 +20,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure LemMinX server command",
-          "command": "java -cp \"${serverHome}/${output.file.name}\" org.eclipse.lemminx.XMLServerLauncher"
+          "command": "java -cp \"${serverDist}/${dist.file}\" org.eclipse.lemminx.XMLServerLauncher"
         }
       }
     }

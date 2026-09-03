@@ -4,18 +4,18 @@
   "check": {
     "fileExists": {
       "name": "Check if Jakarta EE LS is installed",
-      "file": "${serverHome}/lib/org.eclipse.lsp4jakarta.ls-uber.jar"
+      "file": "${serverDist}/lib/org.eclipse.lsp4jakarta.ls-uber.jar"
     }
   },
   "run": {
     "copy": {
       "name": "Copy Jakarta EE LS JAR",
       "source": "/lsp/jakarta/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
-      "destination": "${serverHome}/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
+      "destination": "${serverDist}/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
       "onSuccess": {
         "configureServer": {
           "name": "Configure Jakarta EE LS command",
-          "command": "java -jar ${serverHome}/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
+          "command": "java -jar ${serverDist}/lib/org.eclipse.lsp4jakarta.ls-uber.jar",
           "update": true
         }
       }

@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if rust-analyzer is installed",
       "file": {
-        "windows": "${serverHome}/rust-analyzer.exe",
-        "default": "${serverHome}/rust-analyzer"
+        "windows": "${serverDist}/rust-analyzer.exe",
+        "default": "${serverDist}/rust-analyzer"
       }
     }
   },
@@ -34,7 +34,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "rust-analyzer.exe",
@@ -54,14 +53,14 @@
         "configureServer": {
           "name": "Configure rust-analyzer server command",
           "command": {
-            "windows": "${serverHome}/rust-analyzer.exe",
+            "windows": "${serverDist}/rust-analyzer.exe",
             "unix": {
-              "x86_64": "${serverHome}/rust-analyzer-x86_64-unknown-linux-gnu",
-              "arm64": "${serverHome}/rust-analyzer-aarch64-unknown-linux-gnu"
+              "x86_64": "${serverDist}/rust-analyzer-x86_64-unknown-linux-gnu",
+              "arm64": "${serverDist}/rust-analyzer-aarch64-unknown-linux-gnu"
             },
             "mac": {
-              "x86_64": "${serverHome}/rust-analyzer-x86_64-apple-darwin",
-              "arm64": "${serverHome}/rust-analyzer-aarch64-apple-darwin"
+              "x86_64": "${serverDist}/rust-analyzer-x86_64-apple-darwin",
+              "arm64": "${serverDist}/rust-analyzer-aarch64-apple-darwin"
             }
           }
         }

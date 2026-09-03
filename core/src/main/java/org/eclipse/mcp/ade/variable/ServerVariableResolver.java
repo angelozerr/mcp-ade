@@ -22,12 +22,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Resolves server-related variables: {@code serverHome}, {@code userHome},
- * {@code mcpHome}, {@code workspaceFolder}, {@code workspaceRoot},
- * {@code workspaceStorageDir}.
+ * Resolves server-related variables: {@code extensionHome}, {@code serverHome},
+ * {@code serverDist}, {@code userHome}, {@code mcpHome}, {@code workspaceFolder},
+ * {@code workspaceRoot}, {@code workspaceStorageDir}.
  */
 @Singleton
 public class ServerVariableResolver implements VariableResolver {
+
+    public static final String EXTENSION_HOME = "extensionHome";
+    public static final String SERVER_HOME = "serverHome";
+    public static final String SERVER_DIST = "serverDist";
+    public static final String USER_HOME = "userHome";
+    public static final String MCP_HOME = "mcpHome";
+    public static final String WORKSPACE_FOLDER = "workspaceFolder";
+    public static final String WORKSPACE_ROOT = "workspaceRoot";
+    public static final String WORKSPACE_STORAGE_DIR = "workspaceStorageDir";
 
     @Override
     public String resolve(VariableExpression expression, VariableContext context) {
@@ -35,11 +44,13 @@ public class ServerVariableResolver implements VariableResolver {
             return null;
         }
         return switch (expression.name()) {
-            case "serverHome" -> resolveServerHome(context);
-            case "userHome" -> System.getProperty("user.home");
-            case "mcpHome" -> resolveMcpHome(context);
-            case "workspaceFolder", "workspaceRoot" -> resolveWorkspaceFolder(context);
-            case "workspaceStorageDir" -> resolveWorkspaceStorageDir(context);
+            case SERVER_HOME -> resolveServerHome(context);
+            case SERVER_DIST -> resolveServerDist(context);
+            case EXTENSION_HOME -> resolveExtensionHome(context);
+            case USER_HOME -> System.getProperty("user.home");
+            case MCP_HOME -> resolveMcpHome(context);
+            case WORKSPACE_FOLDER, WORKSPACE_ROOT -> resolveWorkspaceFolder(context);
+            case WORKSPACE_STORAGE_DIR -> resolveWorkspaceStorageDir(context);
             default -> null;
         };
     }
@@ -51,6 +62,24 @@ public class ServerVariableResolver implements VariableResolver {
         }
         Path serverHome = config.getServerHome();
         return serverHome != null ? serverHome.toString() : null;
+    }
+
+    private static String resolveServerDist(VariableContext context) {
+        InstallableConfig config = context.getServerConfig();
+        if (config == null) {
+            return null;
+        }
+        Path serverDist = config.getServerDist();
+        return serverDist != null ? serverDist.toString() : null;
+    }
+
+    private static String resolveExtensionHome(VariableContext context) {
+        InstallableConfig config = context.getServerConfig();
+        if (config == null) {
+            return null;
+        }
+        Path extensionHome = config.getExtensionHome();
+        return extensionHome != null ? extensionHome.toString() : null;
     }
 
     private static String resolveMcpHome(VariableContext context) {

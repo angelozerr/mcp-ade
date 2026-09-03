@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if texlab is installed",
       "file": {
-        "windows": "${serverHome}/texlab.exe",
-        "default": "${serverHome}/texlab"
+        "windows": "${serverDist}/texlab.exe",
+        "default": "${serverDist}/texlab"
       }
     }
   },
@@ -33,7 +33,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "texlab.exe",
@@ -46,8 +45,8 @@
         "configureServer": {
           "name": "Configure texlab command",
           "command": {
-            "windows": "${serverHome}/texlab.exe",
-            "default": "${serverHome}/texlab"
+            "windows": "${serverDist}/texlab.exe",
+            "default": "${serverDist}/texlab"
           }
         }
       }

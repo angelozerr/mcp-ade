@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if kotlin-language-server is installed",
       "file": {
-        "windows": "${serverHome}/server/bin/kotlin-language-server.bat",
-        "default": "${serverHome}/server/bin/kotlin-language-server"
+        "windows": "${serverDist}/server/bin/kotlin-language-server.bat",
+        "default": "${serverDist}/server/bin/kotlin-language-server"
       }
     }
   },
@@ -20,7 +20,6 @@
         "asset": "server.zip"
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "server/bin/kotlin-language-server.bat",
@@ -33,8 +32,8 @@
         "configureServer": {
           "name": "Configure kotlin-language-server command",
           "command": {
-            "windows": "${serverHome}/server/bin/kotlin-language-server.bat",
-            "default": "${serverHome}/server/bin/kotlin-language-server"
+            "windows": "${serverDist}/server/bin/kotlin-language-server.bat",
+            "default": "${serverDist}/server/bin/kotlin-language-server"
           }
         }
       }

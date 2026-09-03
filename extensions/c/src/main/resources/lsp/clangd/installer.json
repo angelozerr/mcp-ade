@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if Clangd is installed",
       "file": {
-        "windows": "${serverHome}/bin/clangd.exe",
-        "default": "${serverHome}/bin/clangd"
+        "windows": "${serverDist}/bin/clangd.exe",
+        "default": "${serverDist}/bin/clangd"
       }
     }
   },
@@ -24,7 +24,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": true,
         "file": {
           "name": {
@@ -37,7 +36,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure clangd server command",
-          "command": "${output.dir}/${output.file.name}"
+          "command": "${serverDist}/${dist.file}"
         }
       }
     }

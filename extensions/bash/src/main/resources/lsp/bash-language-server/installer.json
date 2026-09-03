@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if bash-language-server is installed",
-      "file": "${serverHome}/node_modules/.bin/bash-language-server*"
+      "file": "${serverDist}/node_modules/.bin/bash-language-server*"
     }
   },
   "run": {
     "exec": {
       "name": "Install bash-language-server",
-      "workingDir": "${serverHome}/node_modules",
+      "workingDir": "${serverDist}/node_modules",
       "command": {
         "windows": "npm.cmd install bash-language-server --force",
         "default": "npm install bash-language-server --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure bash-language-server command",
           "command": {
-            "windows": "${serverHome}/node_modules/.bin/bash-language-server.cmd start",
-            "default": "${serverHome}/node_modules/.bin/bash-language-server start"
+            "windows": "${serverDist}/node_modules/.bin/bash-language-server.cmd start",
+            "default": "${serverDist}/node_modules/.bin/bash-language-server start"
           }
         }
       }

@@ -127,9 +127,9 @@ class VariableParserTest {
 
     @Test
     void parseDottedVariableName() {
-        List<VariableExpression> result = VariableParser.parse("${output.file.name}");
+        List<VariableExpression> result = VariableParser.parse("${dist.file}");
         assertEquals(1, result.size());
         assertNull(result.get(0).prefix());
-        assertEquals("output.file.name", result.get(0).name());
+        assertEquals("dist.file", result.get(0).name());
     }
 }

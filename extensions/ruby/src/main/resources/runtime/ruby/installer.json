@@ -45,15 +45,14 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": true
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure Ruby",
           "command": {
-            "windows": "${serverHome}/bin/ruby.exe",
-            "default": "${serverHome}/bin/ruby"
+            "windows": "${serverDist}/bin/ruby.exe",
+            "default": "${serverDist}/bin/ruby"
           }
         }
       }

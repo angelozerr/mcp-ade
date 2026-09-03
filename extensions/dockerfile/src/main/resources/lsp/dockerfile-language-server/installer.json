@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if dockerfile-language-server is installed",
-      "file": "${serverHome}/node_modules/.bin/docker-langserver*"
+      "file": "${serverDist}/node_modules/.bin/docker-langserver*"
     }
   },
   "run": {
     "exec": {
       "name": "Install dockerfile-language-server",
-      "workingDir": "${serverHome}/node_modules",
+      "workingDir": "${serverDist}/node_modules",
       "command": {
         "windows": "npm.cmd install dockerfile-language-server-nodejs --force",
         "default": "npm install dockerfile-language-server-nodejs --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure dockerfile-language-server command",
           "command": {
-            "windows": "${serverHome}/node_modules/.bin/docker-langserver.cmd --stdio",
-            "default": "${serverHome}/node_modules/.bin/docker-langserver --stdio"
+            "windows": "${serverDist}/node_modules/.bin/docker-langserver.cmd --stdio",
+            "default": "${serverDist}/node_modules/.bin/docker-langserver --stdio"
           }
         }
       }

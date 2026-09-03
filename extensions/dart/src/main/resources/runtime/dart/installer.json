@@ -18,15 +18,14 @@
       "name": "Download Dart SDK",
       "dart": {},
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": true
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure Dart SDK",
           "command": {
-            "windows": "${serverHome}/bin/dart.exe",
-            "default": "${serverHome}/bin/dart"
+            "windows": "${serverDist}/bin/dart.exe",
+            "default": "${serverDist}/bin/dart"
           }
         }
       }

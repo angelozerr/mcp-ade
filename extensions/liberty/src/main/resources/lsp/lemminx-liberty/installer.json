@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if LemMinX Liberty plugin is installed",
-      "file": "${serverHome}/lib/liberty-langserver-lemminx.jar"
+      "file": "${serverDist}/lib/liberty-langserver-lemminx.jar"
     }
   },
   "run": {
@@ -12,9 +12,8 @@
       "name": "Download LemMinX Liberty plugin",
       "url": "https://repo1.maven.org/maven2/io/openliberty/tools/liberty-langserver-lemminx/2.4/liberty-langserver-lemminx-2.4-jar-with-dependencies.jar",
       "output": {
-        "dir": "${serverHome}/lib",
         "file": {
-          "name": "liberty-langserver-lemminx.jar"
+          "name": "lib/liberty-langserver-lemminx.jar"
         }
       }
     }

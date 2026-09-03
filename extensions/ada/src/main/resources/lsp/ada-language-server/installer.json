@@ -5,14 +5,14 @@
     "fileExists": {
       "name": "Check if Ada Language Server is installed",
       "file": {
-        "windows": "${serverHome}/integration/vscode/ada/x64/win32/ada_language_server.exe",
+        "windows": "${serverDist}/integration/vscode/ada/x64/win32/ada_language_server.exe",
         "unix": {
-          "x86_64": "${serverHome}/integration/vscode/ada/x64/linux/ada_language_server",
-          "arm64": "${serverHome}/integration/vscode/ada/arm64/linux/ada_language_server"
+          "x86_64": "${serverDist}/integration/vscode/ada/x64/linux/ada_language_server",
+          "arm64": "${serverDist}/integration/vscode/ada/arm64/linux/ada_language_server"
         },
         "mac": {
-          "x86_64": "${serverHome}/integration/vscode/ada/x64/darwin/ada_language_server",
-          "arm64": "${serverHome}/integration/vscode/ada/arm64/darwin/ada_language_server"
+          "x86_64": "${serverDist}/integration/vscode/ada/x64/darwin/ada_language_server",
+          "arm64": "${serverDist}/integration/vscode/ada/arm64/darwin/ada_language_server"
         }
       }
     }
@@ -37,7 +37,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "integration/vscode/ada/x64/win32/ada_language_server.exe",
@@ -56,7 +55,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure Ada Language Server command",
-          "command": "${output.dir}/${output.file.name}"
+          "command": "${serverDist}/${dist.file}"
         }
       }
     }

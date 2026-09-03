@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if ElixirLS is installed",
       "file": {
-        "windows": "${serverHome}/language_server.bat",
-        "default": "${serverHome}/language_server.sh"
+        "windows": "${serverDist}/language_server.bat",
+        "default": "${serverDist}/language_server.sh"
       }
     }
   },
@@ -32,7 +32,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "language_server.bat",
@@ -45,8 +44,8 @@
         "configureServer": {
           "name": "Configure ElixirLS command",
           "command": {
-            "windows": "${serverHome}/language_server.bat",
-            "default": "${serverHome}/language_server.sh"
+            "windows": "${serverDist}/language_server.bat",
+            "default": "${serverDist}/language_server.sh"
           }
         }
       }

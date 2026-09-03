@@ -4,7 +4,7 @@
   "description": ".NET SDK required by .NET-based language servers",
   "url": "https://dotnet.microsoft.com",
   "env": {
-    "DOTNET_ROOT": "${serverHome}",
+    "DOTNET_ROOT": "${serverDist}",
     "DOTNET_MULTILEVEL_LOOKUP": "0"
   },
   "check": {
@@ -25,15 +25,14 @@
         "component": "sdk"
       },
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": false
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure .NET SDK",
           "command": {
-            "windows": "${serverHome}/dotnet.exe",
-            "default": "${serverHome}/dotnet"
+            "windows": "${serverDist}/dotnet.exe",
+            "default": "${serverDist}/dotnet"
           }
         }
       }

@@ -17,7 +17,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.eclipse.mcp.ade.installer.InstallerContext;
 import org.eclipse.mcp.ade.installer.download.*;
-import org.eclipse.mcp.ade.installer.download.*;
 import org.eclipse.mcp.ade.progress.AbstractProgressMonitor;
 import org.eclipse.mcp.ade.progress.MultiProgressMonitor;
 import org.eclipse.mcp.ade.progress.NoOpProgressMonitor;
@@ -40,6 +39,8 @@ import java.util.ServiceLoader;
 public class DownloadTask extends InstallerTask {
     private static final Logger LOG = Logger.getLogger(DownloadTask.class);
 
+    public static final String DIST_FILE_VARIABLE = "dist.file";
+
     private final String url;  // Fallback URL if asset fetcher fails
     private final AssetFetcherInfo assetFetcherInfo;  // GitHub or Maven fetcher
     private final OutputInfo outputInfo;
@@ -55,7 +56,7 @@ public class DownloadTask extends InstallerTask {
     /**
      * Output information for download task.
      */
-    public record OutputInfo(String outputDir, String outputFileName, boolean executable, boolean stripRootDir) {
+    public record OutputInfo(String outputFileName, boolean executable, boolean stripRootDir) {
     }
 
     @Override
@@ -66,7 +67,7 @@ public class DownloadTask extends InstallerTask {
             throw new IllegalStateException("No download URL available for '" + getName() + "'");
         }
 
-        String resolvedOutputDir = context.resolveVariables(outputInfo.outputDir());
+        String resolvedOutputDir = context.getConfig().getServerDist().toString();
 
         context.traceInfo("Downloading from: " + resolvedUrl);
 
@@ -99,29 +100,29 @@ public class DownloadTask extends InstallerTask {
                             }
                     );
                     Path rootDir = decompressor.decompress(downloadedFile, outputPath, extractProgress);
-                    if (rootDir != null && outputInfo.stripRootDir()) {
+                    if (rootDir != null && outputInfo != null && outputInfo.stripRootDir()) {
                         stripRootDir(rootDir, outputPath, context);
                     }
                 } else {
                     context.getProgress().reportProgress("Installing " + getName());
                     context.traceUpdate("Installing " + getName());
 
-                    String targetFileName = outputInfo.outputFileName() != null ? context.resolveVariables(outputInfo.outputFileName()) : fileName;
+                    String targetFileName = outputInfo != null && outputInfo.outputFileName() != null
+                            ? context.resolveVariables(outputInfo.outputFileName()) : fileName;
                     Path targetFile = outputPath.resolve(targetFileName);
                     Files.createDirectories(targetFile.getParent());
                     Files.copy(downloadedFile, targetFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                     context.traceInfo("File copied to: " + targetFile);
 
-                    if (outputInfo.executable()) {
+                    if (outputInfo != null && outputInfo.executable()) {
                         context.traceInfo("Setting executable permission: " + targetFile);
                         targetFile.toFile().setExecutable(true, false);
                     }
                 }
 
-                context.setVariable("output.dir", resolvedOutputDir);
-                if (outputInfo.outputFileName() != null) {
+                if (outputInfo != null && outputInfo.outputFileName() != null) {
                     String resolvedFileName = context.resolveVariables(outputInfo.outputFileName());
-                    context.setVariable("output.file.name", resolvedFileName);
+                    context.setVariable(DIST_FILE_VARIABLE, resolvedFileName);
                 }
 
                 context.traceInfo("Downloaded and extracted to: " + resolvedOutputDir);
@@ -199,7 +200,6 @@ public class DownloadTask extends InstallerTask {
     public static class Factory extends InstallerTaskFactoryBase {
         private static final String URL_JSON_PROPERTY = "url";
         private static final String OUTPUT_JSON_PROPERTY = "output";
-        private static final String OUTPUT_DIR_JSON_PROPERTY = "dir";
         private static final String OUTPUT_FILE_JSON_PROPERTY = "file";
         private static final String OUTPUT_FILE_NAME_JSON_PROPERTY = "name";
         private static final String OUTPUT_FILE_EXECUTABLE_JSON_PROPERTY = "executable";
@@ -253,7 +253,6 @@ public class DownloadTask extends InstallerTask {
                 return null;
             }
             JsonObject outputObj = outputElement.getAsJsonObject();
-            String dir = OSUtils.getStringFromOs(outputObj, OUTPUT_DIR_JSON_PROPERTY);
 
             String fileName = null;
             boolean executable = false;
@@ -266,7 +265,7 @@ public class DownloadTask extends InstallerTask {
                 }
             }
             boolean stripRootDir = outputObj.has(OUTPUT_STRIP_ROOT_DIR_JSON_PROPERTY) && outputObj.get(OUTPUT_STRIP_ROOT_DIR_JSON_PROPERTY).getAsBoolean();
-            return new OutputInfo(dir, fileName, executable, stripRootDir);
+            return new OutputInfo(fileName, executable, stripRootDir);
         }
 
     }

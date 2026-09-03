@@ -20,15 +20,14 @@
         "release-type": "lts"
       },
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": true
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure Node.js",
           "command": {
-            "windows": "${serverHome}/node.exe",
-            "default": "${serverHome}/bin/node"
+            "windows": "${serverDist}/node.exe",
+            "default": "${serverDist}/bin/node"
           }
         }
       }

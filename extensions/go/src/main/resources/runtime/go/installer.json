@@ -4,8 +4,8 @@
   "description": "Go runtime required by Go-based language servers",
   "url": "https://go.dev",
   "env": {
-    "GOROOT": "${serverHome}",
-    "GOPATH": "${serverHome}/gopath"
+    "GOROOT": "${serverDist}",
+    "GOPATH": "${serverDist}/gopath"
   },
   "check": {
     "exec": {
@@ -22,15 +22,14 @@
       "name": "Download Go",
       "go": {},
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": true
       },
       "onSuccess": {
         "configureServer": {
           "name": "Configure Go",
           "command": {
-            "windows": "${serverHome}/bin/go.exe",
-            "default": "${serverHome}/bin/go"
+            "windows": "${serverDist}/bin/go.exe",
+            "default": "${serverDist}/bin/go"
           }
         }
       }

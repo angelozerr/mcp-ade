@@ -21,8 +21,8 @@
         "fileExists": {
           "name": "Check if already downloaded",
           "file": {
-            "windows": "${serverHome}/bin/intellij-server.exe",
-            "default": "${serverHome}/bin/intellij-server"
+            "windows": "${serverDist}/bin/intellij-server.exe",
+            "default": "${serverDist}/bin/intellij-server"
           }
         }
       }
@@ -37,7 +37,6 @@
         "targetPlatform": true
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "bin/intellij-server.exe",
@@ -50,8 +49,8 @@
         "configureServer": {
           "name": "Configure IntelliJ Language Server command",
           "command": {
-            "windows": "${serverHome}/bin/intellij-server.exe --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}",
-            "default": "${serverHome}/bin/intellij-server --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}"
+            "windows": "${serverDist}/bin/intellij-server.exe --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}",
+            "default": "${serverDist}/bin/intellij-server --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}"
           }
         }
       }

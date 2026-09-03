@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if yaml-language-server is installed",
-      "file": "${serverHome}/node_modules/.bin/yaml-language-server*"
+      "file": "${serverDist}/node_modules/.bin/yaml-language-server*"
     }
   },
   "run": {
     "exec": {
       "name": "Install yaml-language-server",
-      "workingDir": "${serverHome}/node_modules",
+      "workingDir": "${serverDist}/node_modules",
       "command": {
         "windows": "npm.cmd install yaml-language-server --force",
         "default": "npm install yaml-language-server --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure yaml-language-server command",
           "command": {
-            "windows": "${serverHome}/node_modules/.bin/yaml-language-server.cmd --stdio",
-            "default": "${serverHome}/node_modules/.bin/yaml-language-server --stdio"
+            "windows": "${serverDist}/node_modules/.bin/yaml-language-server.cmd --stdio",
+            "default": "${serverDist}/node_modules/.bin/yaml-language-server --stdio"
           }
         }
       }

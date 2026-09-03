@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if pasls is installed",
       "file": {
-        "windows": "${serverHome}/pasls.exe",
-        "default": "${serverHome}/pasls"
+        "windows": "${serverDist}/pasls.exe",
+        "default": "${serverDist}/pasls"
       }
     }
   },
@@ -32,7 +32,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "stripRootDir": true,
         "file": {
           "name": {
@@ -45,7 +44,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure pasls command",
-          "command": "${output.dir}/${output.file.name}"
+          "command": "${serverDist}/${dist.file}"
         }
       }
     }

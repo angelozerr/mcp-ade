@@ -85,9 +85,9 @@ class VariableResolverRegistryTest {
     void resolveExtraVariablesFallback() {
         VariableContext ctx = new VariableContext.Builder()
                 .serverConfig(new ServerConfigBase("test", Path.of("/opt/server"), null))
-                .extraVariable("output.dir", "/tmp/download")
+                .extraVariable("custom.path", "/tmp/download")
                 .build();
-        String result = registry.resolve("${serverHome}/${output.dir}/file.jar", ctx);
+        String result = registry.resolve("${serverHome}/${custom.path}/file.jar", ctx);
         assertEquals("/opt/server//tmp/download/file.jar", result.replace("\\", "/"));
     }
 

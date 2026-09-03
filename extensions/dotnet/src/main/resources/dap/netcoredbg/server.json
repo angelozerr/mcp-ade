@@ -10,7 +10,7 @@
     }
   ],
   "launch": {
-    "windows": "${serverHome}/netcoredbg/netcoredbg.exe --interpreter=vscode",
-    "default": "${serverHome}/netcoredbg/netcoredbg --interpreter=vscode"
+    "windows": "${serverDist}/netcoredbg/netcoredbg.exe --interpreter=vscode",
+    "default": "${serverDist}/netcoredbg/netcoredbg --interpreter=vscode"
   }
 }

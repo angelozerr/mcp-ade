@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if Angular Language Server is installed",
-      "file": "${serverHome}/node_modules/.bin/ngserver*"
+      "file": "${serverDist}/node_modules/.bin/ngserver*"
     }
   },
   "run": {
     "exec": {
       "name": "Install Angular Language Server",
-      "workingDir": "${serverHome}/node_modules",
+      "workingDir": "${serverDist}/node_modules",
       "command": {
         "windows": "npm.cmd install @angular/language-server @angular/language-service typescript@5 --force",
         "default": "npm install @angular/language-server @angular/language-service typescript@5 --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure Angular Language Server command",
           "command": {
-            "windows": "${serverHome}/node_modules/.bin/ngserver.cmd --stdio --tsProbeLocations ${serverHome}/node_modules/node_modules --ngProbeLocations ${serverHome}/node_modules/node_modules",
-            "default": "${serverHome}/node_modules/.bin/ngserver --stdio --tsProbeLocations ${serverHome}/node_modules/node_modules --ngProbeLocations ${serverHome}/node_modules/node_modules"
+            "windows": "${serverDist}/node_modules/.bin/ngserver.cmd --stdio --tsProbeLocations ${serverDist}/node_modules/node_modules --ngProbeLocations ${serverDist}/node_modules/node_modules",
+            "default": "${serverDist}/node_modules/.bin/ngserver --stdio --tsProbeLocations ${serverDist}/node_modules/node_modules --ngProbeLocations ${serverDist}/node_modules/node_modules"
           }
         }
       }

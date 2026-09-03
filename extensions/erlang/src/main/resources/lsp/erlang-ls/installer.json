@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if ELP is installed",
       "file": {
-        "windows": "${serverHome}/elp.exe",
-        "default": "${serverHome}/elp"
+        "windows": "${serverDist}/elp.exe",
+        "default": "${serverDist}/elp"
       }
     }
   },
@@ -30,7 +30,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "elp.exe",
@@ -42,7 +41,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure ELP server command",
-          "command": "${output.dir}/${output.file.name} server"
+          "command": "${serverDist}/${dist.file} server"
         }
       }
     }

@@ -4,7 +4,7 @@
 	"check": {
 		"fileExists": {
 			"name": "Check if Quarkus extension is installed",
-			"file": "${serverHome}/lib/com.redhat.quarkus.ls.jar"
+			"file": "${serverDist}/lib/com.redhat.quarkus.ls.jar"
 		}
 	},
 	"run": {
@@ -17,8 +17,7 @@
 				"asset": "com.redhat.quarkus.ls-*.jar"
 			},
 			"output": {
-				"dir": "${serverHome}/lib",
-				"file": { "name": "com.redhat.quarkus.ls.jar" }
+				"file": { "name": "lib/com.redhat.quarkus.ls.jar" }
 			},
 			"onSuccess": {
 				"download": {
@@ -30,8 +29,7 @@
 						"asset": "com.redhat.microprofile.jdt.quarkus_*.jar"
 					},
 					"output": {
-						"dir": "${serverHome}/plugins",
-						"file": { "name": "com.redhat.microprofile.jdt.quarkus.jar" }
+						"file": { "name": "plugins/com.redhat.microprofile.jdt.quarkus.jar" }
 					}
 				}
 			}

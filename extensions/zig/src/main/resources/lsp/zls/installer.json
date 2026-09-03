@@ -5,8 +5,8 @@
     "fileExists": {
       "name": "Check if zls is installed",
       "file": {
-        "windows": "${serverHome}/zls.exe",
-        "default": "${serverHome}/zls"
+        "windows": "${serverDist}/zls.exe",
+        "default": "${serverDist}/zls"
       }
     }
   },
@@ -33,7 +33,6 @@
         }
       },
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": {
             "windows": "zls.exe",
@@ -46,8 +45,8 @@
         "configureServer": {
           "name": "Configure zls command",
           "command": {
-            "windows": "${serverHome}/zls.exe",
-            "default": "${serverHome}/zls"
+            "windows": "${serverDist}/zls.exe",
+            "default": "${serverDist}/zls"
           }
         }
       }

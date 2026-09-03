@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if ansible-language-server is installed",
-      "file": "${serverHome}/node_modules/.bin/ansible-language-server*"
+      "file": "${serverDist}/node_modules/.bin/ansible-language-server*"
     }
   },
   "run": {
     "exec": {
       "name": "Install @ansible/ansible-language-server",
-      "workingDir": "${serverHome}/node_modules",
+      "workingDir": "${serverDist}/node_modules",
       "command": {
         "windows": "npm.cmd install @ansible/ansible-language-server --force",
         "default": "npm install @ansible/ansible-language-server --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure ansible-language-server command",
           "command": {
-            "windows": "${serverHome}/node_modules/.bin/ansible-language-server.cmd --stdio",
-            "default": "${serverHome}/node_modules/.bin/ansible-language-server --stdio"
+            "windows": "${serverDist}/node_modules/.bin/ansible-language-server.cmd --stdio",
+            "default": "${serverDist}/node_modules/.bin/ansible-language-server --stdio"
           }
         }
       }

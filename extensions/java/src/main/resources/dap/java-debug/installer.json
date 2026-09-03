@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if java-debug is installed",
-      "file": "${serverHome}/extension/server/com.microsoft.java.debug.plugin-*.jar"
+      "file": "${serverDist}/extension/server/com.microsoft.java.debug.plugin-*.jar"
     }
   },
   "run": {
@@ -13,9 +13,6 @@
       "openvsx": {
         "namespace": "vscjava",
         "extensionName": "vscode-java-debug"
-      },
-      "output": {
-        "dir": "${serverHome}"
       }
     }
   }

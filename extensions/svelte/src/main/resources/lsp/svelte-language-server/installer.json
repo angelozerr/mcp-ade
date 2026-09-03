@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if svelte-language-server is installed",
-      "file": "${serverHome}/node_modules/.bin/svelteserver*"
+      "file": "${serverDist}/node_modules/.bin/svelteserver*"
     }
   },
   "run": {
     "exec": {
       "name": "Install svelte-language-server",
-      "workingDir": "${serverHome}/node_modules",
+      "workingDir": "${serverDist}/node_modules",
       "command": {
         "windows": "npm.cmd install svelte-language-server --force",
         "default": "npm install svelte-language-server --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure svelte-language-server command",
           "command": {
-            "windows": "${serverHome}/node_modules/.bin/svelteserver.cmd --stdio",
-            "default": "${serverHome}/node_modules/.bin/svelteserver --stdio"
+            "windows": "${serverDist}/node_modules/.bin/svelteserver.cmd --stdio",
+            "default": "${serverDist}/node_modules/.bin/svelteserver --stdio"
           }
         }
       }

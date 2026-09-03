@@ -285,8 +285,8 @@ public class TaskRegistryInstaller implements ServerInstaller {
 
     /**
      * Walk the task tree to find a configureServer node and resolve its command.
-     * Also extracts variables from parent tasks (e.g. output.dir from download tasks)
-     * so that ${output.dir} can be resolved in the configureServer command.
+     * Extracts {@code dist.file} from download tasks so that {@code ${dist.file}}
+     * can be resolved in the configureServer command.
      */
     private static String findConfigureServerCommand(JsonElement taskNode, InstallerContext context) {
         if (taskNode == null || !taskNode.isJsonObject()) {
@@ -311,18 +311,14 @@ public class TaskRegistryInstaller implements ServerInstaller {
             }
         }
 
-        // Extract variables from download tasks so configureServer can reference them
         if ("download".equals(taskType) && taskConfig.has("output")) {
             JsonObject output = taskConfig.getAsJsonObject("output");
-            if (output.has("dir")) {
-                context.setVariable("output.dir", context.resolveVariables(output.get("dir").getAsString()));
-            }
             if (output.has("file")) {
                 JsonObject file = output.getAsJsonObject("file");
                 if (file.has("name")) {
                     String fileName = OSUtils.getStringFromOs(file, "name");
                     if (fileName != null) {
-                        context.setVariable("output.file.name", context.resolveVariables(fileName));
+                        context.setVariable(DownloadTask.DIST_FILE_VARIABLE, context.resolveVariables(fileName));
                     }
                 }
             }

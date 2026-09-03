@@ -42,6 +42,8 @@ public abstract class InstallableConfig {
 
     // --- Identity ---
 
+    private static final String DIST_DIR_NAME = "dist";
+
     private final String serverId;
     private final Path serverHome;
     private final Extension extension;
@@ -76,6 +78,15 @@ public abstract class InstallableConfig {
 
     public Path getServerHome() {
         return serverHome;
+    }
+
+    public Path getServerDist() {
+        return serverHome.resolve(DIST_DIR_NAME);
+    }
+
+    public Path getExtensionHome() {
+        Path parent = serverHome.getParent();
+        return parent != null ? parent.getParent() : null;
     }
 
     public Extension getExtension() {

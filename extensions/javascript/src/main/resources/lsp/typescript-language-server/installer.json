@@ -4,13 +4,13 @@
   "check": {
     "fileExists": {
       "name": "Check if TypeScript Language Server is installed",
-      "file": "${serverHome}/node_modules/.bin/typescript-language-server*"
+      "file": "${serverDist}/node_modules/.bin/typescript-language-server*"
     }
   },
   "run": {
     "exec": {
       "name": "Install TypeScript Language Server",
-      "workingDir": "${serverHome}/node_modules",
+      "workingDir": "${serverDist}/node_modules",
       "command": {
         "windows": "npm.cmd install typescript-language-server typescript@6.0 --force",
         "default": "npm install typescript-language-server typescript@6.0 --force"
@@ -19,8 +19,8 @@
         "configureServer": {
           "name": "Configure TypeScript Language Server command",
           "command": {
-            "windows": "${serverHome}/node_modules/.bin/typescript-language-server.cmd --stdio",
-            "default": "${serverHome}/node_modules/.bin/typescript-language-server --stdio"
+            "windows": "${serverDist}/node_modules/.bin/typescript-language-server.cmd --stdio",
+            "default": "${serverDist}/node_modules/.bin/typescript-language-server --stdio"
           }
         }
       }

@@ -7,7 +7,7 @@ MCP ADE (Agent Development Environment) supports variable substitution in `serve
 All variables use the `${name}` syntax:
 
 ```
-${serverHome}/bin/lemminx --stdio
+${serverDist}/bin/lemminx --stdio
 ```
 
 Prefixed variables use `${prefix:name}`:
@@ -16,21 +16,47 @@ Prefixed variables use `${prefix:name}`:
 ${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server
 ```
 
+## Directory Structure
+
+```
+<mcpHome>/                                  ← ${mcpHome}
+  extensions/
+    <extensionId>/                          ← ${extensionHome}
+      lsp/
+        <serverId>/                         ← ${serverHome}
+          server.json
+          installer.json
+          dist/                             ← ${serverDist}
+            bin/
+            lib/
+            node_modules/
+      dap/
+        <serverId>/                         ← ${serverHome}
+          server.json
+          installer.json
+          dist/                             ← ${serverDist}
+            ...
+  workspace-storage/
+    <serverId>/
+      <workspaceName>-<hash>/               ← ${workspaceStorageDir}
+```
+
 ## Built-in Variables
 
-| Variable | Description | Available in |
-|---|---|---|
-| `${serverHome}` | Root installation directory for the server | command, installer |
-| `${userHome}` | User's home directory | command, installer |
-| `${mcpHome}` | Root directory of the MCP ADE (Agent Development Environment) installation | installer |
-| `${workspaceFolder}` | Current project/workspace directory | installer, DAP launch config |
-| `${workspaceRoot}` | Deprecated alias for `${workspaceFolder}` | DAP launch config |
-| `${workspaceStorageDir}` | Per-server, per-workspace data directory (`<mcpHome>/workspace-storage/<serverId>/<workspaceName>-<hash>`) | command |
-| `${vscodeExtension:id}` | Path to a VS Code extension directory | command |
-| `${port}` | Auto-allocated TCP port for the DAP server | DAP command |
-| `${address}` | Extracted address from server output | DAP readyPattern |
-| `${output.dir}` | Output directory from the download step | installer onSuccess |
-| `${output.file.name}` | Output filename from the download step | installer onSuccess |
+| Variable | Description | Example path | Available in |
+|---|---|---|---|
+| `${mcpHome}` | Root directory of MCP ADE | `~/.mcp-ade` | installer |
+| `${extensionHome}` | Extension directory | `~/.mcp-ade/extensions/c` | installer |
+| `${serverHome}` | Server configuration directory (contains `server.json`, `installer.json`) | `~/.mcp-ade/extensions/c/lsp/clangd` | command, installer |
+| `${serverDist}` | Server distribution directory (installed binaries, libraries, modules) | `~/.mcp-ade/extensions/c/lsp/clangd/dist` | command, installer |
+| `${userHome}` | User's home directory | `~` | command, installer |
+| `${workspaceFolder}` | Current project/workspace directory | `/home/user/my-project` | installer, DAP launch config |
+| `${workspaceRoot}` | Deprecated alias for `${workspaceFolder}` | | DAP launch config |
+| `${workspaceStorageDir}` | Per-server, per-workspace data directory | `~/.mcp-ade/workspace-storage/jdtls/my-project-12345` | command |
+| `${vscodeExtension:id}` | Path to a VS Code extension directory | `~/.vscode/extensions/jetbrains.intellij-server-1.0.0` | command |
+| `${port}` | Auto-allocated TCP port for the DAP server | `12345` | DAP command |
+| `${address}` | Extracted address from server output | `127.0.0.1` | DAP readyPattern |
+| `${dist.file}` | Relative path to the main file within `${serverDist}` (set by the download task) | `bin/clangd` | installer onSuccess |
 
 ## Examples
 
@@ -39,31 +65,59 @@ ${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server
 ```json
 {
   "command": {
-    "windows": "${serverHome}/bin/lemminx.exe --stdio",
-    "default": "${serverHome}/bin/lemminx --stdio"
+    "windows": "${serverDist}/bin/lemminx.exe --stdio",
+    "default": "${serverDist}/bin/lemminx --stdio"
   }
 }
 ```
 
-### installer.json
+### installer.json — download with configureServer
 
 ```json
 {
   "check": {
     "fileExists": {
       "name": "Check server",
-      "file": "${serverHome}/bin/jdtls"
+      "file": "${serverDist}/bin/jdtls"
     }
   },
   "run": {
     "download": {
       "url": "https://example.com/server.tar.gz",
-      "output": { "dir": "${serverHome}" },
+      "output": {
+        "file": {
+          "name": { "windows": "bin/jdtls.bat", "default": "bin/jdtls" },
+          "executable": true
+        }
+      },
       "onSuccess": {
         "configureServer": {
-          "command": "\"${serverHome}/${output.file.name}\" -configuration \"${mcpHome}/.cache/jdtls\""
+          "command": "\"${serverDist}/${dist.file}\" -configuration \"${mcpHome}/.cache/jdtls\""
         }
       }
+    }
+  }
+}
+```
+
+### installer.json — npm install
+
+```json
+{
+  "check": {
+    "fileExists": {
+      "name": "Check if server is installed",
+      "file": {
+        "windows": "${serverDist}/node_modules/.bin/typescript-language-server.cmd",
+        "default": "${serverDist}/node_modules/.bin/typescript-language-server"
+      }
+    }
+  },
+  "run": {
+    "exec": {
+      "name": "Install server",
+      "command": "npm install --prefix ${serverDist} typescript-language-server typescript",
+      "workingDir": "${serverDist}/node_modules"
     }
   }
 }
@@ -74,7 +128,7 @@ ${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server
 ```json
 {
   "launch": {
-    "default": "${serverHome}/dlv dap --listen=127.0.0.1:${port}"
+    "default": "${serverDist}/dlv dap --listen=127.0.0.1:${port}"
   },
   "debugServerReadyPattern": "DAP server listening at: ${address}:${port}"
 }
@@ -97,9 +151,9 @@ You can add custom variables by implementing the `VariableResolver` SPI:
 ```java
 package com.example;
 
-import variable.org.eclipse.mcp.ade.VariableExpression;
-import variable.org.eclipse.mcp.ade.VariableContext;
-import variable.org.eclipse.mcp.ade.VariableResolver;
+import org.eclipse.mcp.ade.variable.VariableExpression;
+import org.eclipse.mcp.ade.variable.VariableContext;
+import org.eclipse.mcp.ade.variable.VariableResolver;
 
 public class MyVariableResolver implements VariableResolver {
 
@@ -114,7 +168,7 @@ public class MyVariableResolver implements VariableResolver {
 }
 ```
 
-Register it in `META-INF/services/com.ibm.mcp.languagetools.variable.VariableResolver`:
+Register it in `META-INF/services/org.eclipse.mcp.ade.variable.VariableResolver`:
 
 ```
 com.example.MyVariableResolver

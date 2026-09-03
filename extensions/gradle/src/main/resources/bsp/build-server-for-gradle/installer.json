@@ -2,7 +2,7 @@
   "check": {
     "fileExists": {
       "name": "Check if Gradle BSP server is installed",
-      "file": "${serverHome}/extension/lib/server.jar"
+      "file": "${serverDist}/extension/lib/server.jar"
     }
   },
   "run": {
@@ -12,13 +12,10 @@
         "namespace": "vscjava",
         "extensionName": "vscode-gradle"
       },
-      "output": {
-        "dir": "${serverHome}"
-      },
       "onSuccess": {
         "configureServer": {
           "name": "Configure Gradle BSP server command",
-          "command": "java -Dplugin.dir=\"${serverHome}/extension/server/plugins\" -cp \"${serverHome}/extension/lib/*\" com.microsoft.java.bs.core.Launcher",
+          "command": "java -Dplugin.dir=\"${serverDist}/extension/server/plugins\" -cp \"${serverDist}/extension/lib/*\" com.microsoft.java.bs.core.Launcher",
           "update": true
         }
       }

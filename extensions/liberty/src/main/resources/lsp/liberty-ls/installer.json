@@ -4,7 +4,7 @@
   "check": {
     "fileExists": {
       "name": "Check if Liberty LS is installed",
-      "file": "${serverHome}/liberty-langserver.jar"
+      "file": "${serverDist}/liberty-langserver.jar"
     }
   },
   "run": {
@@ -12,7 +12,6 @@
       "name": "Download Liberty Config Language Server",
       "url": "https://repo1.maven.org/maven2/io/openliberty/tools/liberty-langserver/2.4/liberty-langserver-2.4-jar-with-dependencies.jar",
       "output": {
-        "dir": "${serverHome}",
         "file": {
           "name": "liberty-langserver.jar"
         }
@@ -20,7 +19,7 @@
       "onSuccess": {
         "configureServer": {
           "name": "Configure Liberty LS command",
-          "command": "java -jar ${serverHome}/liberty-langserver.jar"
+          "command": "java -jar ${serverDist}/liberty-langserver.jar"
         }
       }
     }

@@ -15,7 +15,7 @@
     },
     "properties": {
       "type": "object",
-      "description": "Key-value properties with variable interpolation (e.g. {\"serverJar\": \"${serverHome}/server.jar\"})",
+      "description": "Key-value properties with variable interpolation (e.g. {\"serverJar\": \"${serverDist}/server.jar\"})",
       "additionalProperties": { "type": "string" }
     },
     "check": {
@@ -33,7 +33,7 @@
             },
             "file": {
               "$ref": "#/$defs/platformString",
-              "description": "Path to check. Supports ${serverHome} variable and glob patterns."
+              "description": "Path to check. Supports ${serverDist}, ${serverHome} variables and glob patterns."
             },
             "onSuccess": {
               "$ref": "#/$defs/onSuccess"
@@ -129,10 +129,6 @@
               "type": "object",
               "description": "Where to place the downloaded file",
               "properties": {
-                "dir": {
-                  "type": "string",
-                  "description": "Target directory (typically '${serverHome}')"
-                },
                 "stripRootDir": {
                   "type": "boolean",
                   "description": "Strip the root directory from the archive"
@@ -267,12 +263,13 @@
     }
   },
   "variables": {
-    "${serverHome}": "Root installation directory for the server",
+    "${serverHome}": "Server configuration directory (contains server.json, installer.json)",
+    "${serverDist}": "Installation directory for binaries and libraries (${serverHome}/dist)",
+    "${extensionHome}": "Extension directory (parent of server type directories)",
     "${userHome}": "User's home directory",
     "${mcpHome}": "Root directory of the MCP ADE (Agent Development Environment) installation",
     "${workspaceFolder}": "Current project/workspace directory",
-    "${output.file.name}": "Output filename from the download step",
-    "${output.dir}": "Output directory from the download step",
+    "${dist.file}": "Relative path to the main file within ${serverDist} (set by download task)",
     "${port}": "DAP server port"
   }
 }
