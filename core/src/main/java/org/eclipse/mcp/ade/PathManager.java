@@ -88,7 +88,7 @@ public class PathManager {
 
     // ----------------------- Runtimes
 
-    private static final String DIR_RUNTIMES = "runtime";
+    private static final String DIR_RUNTIMES = "runtimes";
 
     /**
      * Get the directory where runtimes are installed (~/.mcp-ade/runtime)
