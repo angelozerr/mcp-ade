@@ -9,6 +9,9 @@
   "documentSelector": [
     {
       "language": "java"
+    },
+    {
+      "language": "kotlin"
     }
   ],
   "settings": [
