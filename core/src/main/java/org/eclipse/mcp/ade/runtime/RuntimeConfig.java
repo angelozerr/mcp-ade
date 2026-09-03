@@ -44,6 +44,8 @@ public class RuntimeConfig extends InstallableConfig {
 
     private static final Logger LOG = Logger.getLogger(RuntimeConfig.class);
 
+    private static final String PATH_ENV = "PATH";
+
     private volatile InstallerContext activeInstallerContext;
 
     private final List<ServerConfigBase> dependentServers = Collections.synchronizedList(new ArrayList<>());
@@ -128,7 +130,7 @@ public class RuntimeConfig extends InstallableConfig {
      */
     public String getApplicationPath() {
         Supplier<String> supplier = applicationPathSupplier;
-        return supplier != null ? supplier.get() : System.getenv("PATH");
+        return supplier != null ? supplier.get() : System.getenv(PATH_ENV);
     }
 
     /**
@@ -171,7 +173,6 @@ public class RuntimeConfig extends InstallableConfig {
         if (pathResult != null) {
             resolvedPath = pathResult;
             activeSource = RuntimeSourceType.PATH;
-            fallbackUsed = false;
             return;
         }
 
@@ -192,11 +193,7 @@ public class RuntimeConfig extends InstallableConfig {
             return;
         }
 
-        // Build env with installer dir on PATH and resolve
-        Map<String, String> env = new HashMap<>();
-        String basePath = getApplicationPath();
-        env.put("PATH", commandDir + File.pathSeparator + (basePath != null ? basePath : ""));
-        String installerResult = OSUtils.resolveCommandPath(command, env);
+        String installerResult = OSUtils.resolveCommandPath(command, createEnvWithPath(commandDir));
         if (installerResult != null) {
             resolvedPath = installerResult;
             activeSource = RuntimeSourceType.INSTALLER;
@@ -205,6 +202,17 @@ public class RuntimeConfig extends InstallableConfig {
             activeSource = RuntimeSourceType.UNKNOWN;
             fallbackUsed = false;
         }
+    }
+
+    private Map<String, String> createEnvWithPath(String commandDir) {
+        Map<String, String> env = new HashMap<>();
+        if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
+            env.put(PATH_ENV, commandDir);
+        } else {
+            String basePath = getApplicationPath();
+            env.put(PATH_ENV, commandDir + File.pathSeparator + (basePath != null ? basePath : ""));
+        }
+        return env;
     }
 
     /**
@@ -223,7 +231,7 @@ public class RuntimeConfig extends InstallableConfig {
         InstallerContext tempCtx = new InstallerContext(this, ProgressMonitor.none());
         Map<String, String> result = new HashMap<>();
         for (var entry : envElement.getAsJsonObject().entrySet()) {
-            if (!"PATH".equals(entry.getKey())) {
+            if (!PATH_ENV.equals(entry.getKey())) {
                 result.put(entry.getKey(), tempCtx.resolveVariables(entry.getValue().getAsString()));
             }
         }
@@ -241,25 +249,16 @@ public class RuntimeConfig extends InstallableConfig {
         if (commandDir == null) {
             return;
         }
-        Path commandDirPath = Path.of(commandDir);
-        boolean dirExists = Files.isDirectory(commandDirPath);
-
-        String basePath = getApplicationPath();
+        boolean dirExists = Files.isDirectory(Path.of(commandDir));
 
         if (sourcePreference == RuntimeSourcePreference.INSTALLER) {
-            Map<String, String> env = new HashMap<>();
-            String path = dirExists ? commandDir + File.pathSeparator : "";
-            env.put("PATH", path + (basePath != null ? basePath : ""));
-            context.setEnv(env);
+            context.setEnv(createEnvWithPath(dirExists ? commandDir : ""));
             return;
         }
 
-        if (!dirExists) {
-            return;
+        if (dirExists) {
+            context.setEnv(createEnvWithPath(commandDir));
         }
-        Map<String, String> env = new HashMap<>();
-        env.put("PATH", commandDir + File.pathSeparator + (basePath != null ? basePath : ""));
-        context.setEnv(env);
     }
 
     /**
@@ -322,8 +321,7 @@ public class RuntimeConfig extends InstallableConfig {
      */
     public CompletableFuture<InstallResult> checkInstalled(ProgressMonitor progressMonitor) {
         return executeCheck(() -> {
-            InstallerContext context = createInstallerContext(
-                    progressMonitor != ProgressMonitor.none() ? progressMonitor : ProgressMonitor.none());
+            InstallerContext context = createInstallerContext(progressMonitor);
             addInstalledRuntimeToEnv(context);
             return context;
         }).whenComplete((result, error) -> {
