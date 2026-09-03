@@ -28,6 +28,9 @@ public interface AssetFetcher {
     interface Reporter {
         void setText(String text);
         void setText(String text, Exception e);
+        default void setUpdateText(String text) {
+            setText(text);
+        }
     }
 
     /**

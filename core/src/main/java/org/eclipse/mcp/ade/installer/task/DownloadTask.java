@@ -216,7 +216,7 @@ public class DownloadTask extends InstallerTask {
         }
 
         @Override
-        protected InstallerTask create(String name, InstallerTask onSuccess, JsonObject obj) {
+        protected InstallerTask create(String name, InstallerTask onSuccess, InstallerTask onFail, JsonObject obj) {
             String url = OSUtils.getStringFromOs(obj, URL_JSON_PROPERTY);
             AssetFetcherInfo assetFetcherInfo = getAssetFetcher(obj);
             OutputInfo outputInfo = getOutputInfo(obj);
@@ -355,6 +355,11 @@ public class DownloadTask extends InstallerTask {
         @Override
         public void setText(String text, Exception e) {
             context.traceError(text + ": " + e.getMessage());
+        }
+
+        @Override
+        public void setUpdateText(String text) {
+            context.traceUpdate(text);
         }
     }
 }
