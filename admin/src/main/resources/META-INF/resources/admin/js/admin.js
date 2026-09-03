@@ -194,7 +194,7 @@ function handleLspTrace(trace) {
     pushTrace(state.tracesByServer, tk, trace);
 
     if ((trace.messageType === 'INFO' || trace.messageType === 'UPDATE' || trace.messageType === 'ERROR') &&
-        !state.currentServerId && isOnWorkspacesTab()) {
+        !state.currentServerId && isOnWorkspacesTab() && state.currentWorkspaceTab === 'servers') {
         console.log('Auto-selecting server for installation:', trace.serverId);
 
         const workspace = trace.workspaceUri
@@ -404,12 +404,16 @@ function handleServerStatusChanged(event) {
     // DOM updates — only when viewing the workspaces tab for this workspace
     if (!onWorkspacesTab) return;
 
+    const isMatchingTab = serverType === 'BSP'
+        ? state.currentWorkspaceTab === 'build'
+        : state.currentWorkspaceTab === 'servers';
+
     console.log('Badge: updating badge for', event.serverId, 'status=', changedServer.status);
 
     const serverElement = findWorkspaceServerElement(event.serverId);
     if (serverElement) {
         updateServerStatusBadge(event.serverId, changedServer);
-    } else {
+    } else if (isMatchingTab) {
         refreshWorkspaceServers();
     }
 
@@ -419,7 +423,8 @@ function handleServerStatusChanged(event) {
 
     if (!state.userExplicitlySelectedServer
         && event.newStatus !== 'STOPPED'
-        && state.selectedServer?.id !== event.serverId) {
+        && state.selectedServer?.id !== event.serverId
+        && isMatchingTab) {
         const currentSelected = state.selectedServer
             ? servers?.find(s => s.id === state.selectedServer.id)
             : null;
