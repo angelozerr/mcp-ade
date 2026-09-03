@@ -73,7 +73,7 @@ public class RuntimeRegistry {
             runtime.setTraceCollector(traceCollector);
         }
         // Load persisted source mode
-        RuntimeSource pref = applicationConfiguration.getRuntimeSourceMode(runtime.getRuntimeId());
+        RuntimeSource pref = applicationConfiguration.getRuntimeSource(runtime.getRuntimeId());
         runtime.setSourceMode(pref);
         runtime.setApplicationEnvironment(applicationEnvironment);
         runtimes.put(runtime.getRuntimeId(), runtime);
@@ -170,7 +170,7 @@ public class RuntimeRegistry {
     }
 
     /**
-     * Changes the source preference for a runtime, persists it, and triggers a re-check.
+     * Changes the source mode for a runtime, persists it, and triggers a re-check.
      */
     public void setSourceMode(String runtimeId, RuntimeSource pref) {
         RuntimeConfig runtime = runtimes.get(runtimeId);
@@ -178,10 +178,10 @@ public class RuntimeRegistry {
             return;
         }
         runtime.setSourceMode(pref);
-        applicationConfiguration.setRuntimeSourceMode(runtimeId, pref);
+        applicationConfiguration.setRuntimeSource(runtimeId, pref);
         rebuildApplicationEnvironment();
         runtime.resetInstallState();
-        fireStatusChange(runtime);
+        fireStatusChange(runtime, InstallationStatus.CHECKING);
         checkRuntimeAsync(runtime);
     }
 

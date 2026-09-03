@@ -245,22 +245,20 @@ function buildRuntimeDetailHTML(runtime) {
         </div>
 
         <div class="detail-row">
-            <span class="detail-label">Source mode:</span>
-            <span class="detail-value">
+            <span class="detail-label">Source:</span>
+            <span class="detail-value d-flex align-center gap-sm">
                 <select class="select-field font-md" data-action="changeRuntimeSourceMode" data-runtime-id="${runtime.id}" style="padding: 0.2rem 0.4rem;">
                     <option value="AUTO" ${(runtime.sourceMode || 'AUTO') === 'AUTO' ? 'selected' : ''}>Auto (System first, then embedded)</option>
                     <option value="SYSTEM" ${runtime.sourceMode === 'SYSTEM' ? 'selected' : ''}>System</option>
                     <option value="EMBEDDED" ${runtime.sourceMode === 'EMBEDDED' ? 'selected' : ''}>Embedded</option>
                 </select>
+                <span id="runtime-fallback-banner">${runtime.fallbackUsed
+                    ? '<span class="text-warning">⚠ Not on PATH — using embedded</span>'
+                    : (runtime.sourceMode === 'EMBEDDED' && runtime.status === 'NOT_INSTALLED' && !runtime.resolvedPath && runtime.autoInstallable
+                        ? '<span class="text-warning">⚠ Not installed — <a href="#" class="link-accent" data-action="installRuntime" data-runtime-id="${runtime.id}">Install</a></span>'
+                        : '')}</span>
             </span>
         </div>
-
-        ${runtime.fallbackUsed ? `
-        <div id="runtime-fallback-banner" class="p-lg bg-panel rounded mt-lg border-left-warning">
-            <strong>Fallback Active:</strong>
-            <p class="mt-xs mb-0">You selected "System" but the runtime was not found on PATH. Using the embedded version instead.</p>
-        </div>
-        ` : '<div id="runtime-fallback-banner"></div>'}
 
         <div class="detail-row">
             <span class="detail-label">Type:</span>
@@ -384,12 +382,9 @@ function updateRuntimeDetailsPath(runtime) {
     const fallbackBanner = document.getElementById('runtime-fallback-banner');
     if (fallbackBanner) {
         if (runtime.fallbackUsed) {
-            fallbackBanner.innerHTML = `
-                <div class="p-lg bg-panel rounded border-left-warning">
-                    <strong>Fallback Active:</strong>
-                    <p class="mt-xs mb-0">You selected "System" but the runtime was not found on PATH. Using the embedded version instead.</p>
-                </div>
-            `;
+            fallbackBanner.innerHTML = '<span class="text-warning">⚠ System not found — using embedded instead</span>';
+        } else if (runtime.sourceMode === 'EMBEDDED' && runtime.status === 'NOT_INSTALLED' && !runtime.resolvedPath && runtime.autoInstallable) {
+            fallbackBanner.innerHTML = `<span class="text-warning">⚠ Not installed — <a href="#" class="link-accent" data-action="installRuntime" data-runtime-id="${runtime.id}">Install</a></span>`;
         } else {
             fallbackBanner.innerHTML = '';
         }

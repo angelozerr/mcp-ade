@@ -253,14 +253,14 @@ public class ApplicationConfiguration extends AbstractConfiguration {
         super.setDapTraceLevel(serverId, level);
     }
 
-    // ========== Runtime source mode ==========
+    // ========== Runtime source ==========
 
-    public RuntimeSource getRuntimeSourceMode(String runtimeId) {
+    public RuntimeSource getRuntimeSource(String runtimeId) {
         return RuntimeSource.fromValue(getString("runtime." + runtimeId + ".source"));
     }
 
-    public void setRuntimeSourceMode(String runtimeId, RuntimeSource pref) {
-        set("runtime." + runtimeId + ".source", pref.name().toLowerCase());
+    public void setRuntimeSource(String runtimeId, RuntimeSource source) {
+        set("runtime." + runtimeId + ".source", source.name().toLowerCase());
     }
 
     // ========== BSP trace (cached) ==========
