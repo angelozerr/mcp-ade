@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.dap.server;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.eclipse.mcp.ade.configuration.PathConfig;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
 import org.jboss.logging.Logger;
@@ -72,7 +73,7 @@ public class DapServerConfig extends ServerConfigBase {
 
     private static Path computeServerHome(String serverId, Extension extension) {
         return extension.getApplication().getPathManager()
-                .getExtensionServerHome(extension.getId(), "dap", serverId);
+                .getExtensionServerHome(extension.getId(), PathConfig.getDapDirName(), serverId);
     }
 
     // Getters and setters (id, name, description, command, env, workingDirectory, installer, documentSelector, trace inherited from ServerConfigBase)

@@ -86,15 +86,29 @@ public class PathManager {
         return getDapServersDir().resolve(serverId);
     }
 
-    // ----------------------- Runtimes
-
-    private static final String DIR_RUNTIMES = "runtimes";
+    // ----------------------- Workspace storage
 
     /**
-     * Get the directory where runtimes are installed (~/.mcp-ade/runtime)
+     * Get the workspace storage root directory (~/.mcp-ade/workspace-storage)
+     */
+    public Path getWorkspaceStorageDir() {
+        return getMcpAdeRoot().resolve(PathConfig.getWorkspaceStorageDirName());
+    }
+
+    /**
+     * Get the workspace storage directory for a specific server (~/.mcp-ade/workspace-storage/{serverId})
+     */
+    public Path getWorkspaceStorageDir(String serverId) {
+        return getWorkspaceStorageDir().resolve(serverId);
+    }
+
+    // ----------------------- Runtimes
+
+    /**
+     * Get the directory where runtimes are installed (~/.mcp-ade/runtimes)
      */
     public Path getRuntimesDir() {
-        return getMcpAdeRoot().resolve(DIR_RUNTIMES);
+        return getMcpAdeRoot().resolve(PathConfig.getRuntimesDirName());
     }
 
     /**
@@ -106,13 +120,11 @@ public class PathManager {
 
     // ----------------------- Extensions
 
-    private static final String DIR_EXTENSIONS = "extensions";
-
     /**
      * Get the extensions directory (~/.mcp-ade/extensions)
      */
     public Path getExtensionsDir() {
-        return getMcpAdeRoot().resolve(DIR_EXTENSIONS);
+        return getMcpAdeRoot().resolve(PathConfig.getExtensionsDirName());
     }
 
     /**
@@ -140,7 +152,7 @@ public class PathManager {
      * Get the config directory root (~/.mcp-ade/config)
      */
     public Path getConfigDir() {
-        return getMcpAdeRoot().resolve(pathConfig.getConfigDirName());
+        return getMcpAdeRoot().resolve(PathConfig.getConfigDirName());
     }
 
     /**

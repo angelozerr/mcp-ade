@@ -51,19 +51,19 @@ class PathManagerExtensionTest {
     @Test
     void getExtensionServerHome_lsp() {
         Path expected = Path.of("/home/user/.mcp-ade/extensions/jdtls/lsp/jdtls");
-        assertEquals(expected, pathManager.getExtensionServerHome("jdtls", "lsp", "jdtls"));
+        assertEquals(expected, pathManager.getExtensionServerHome("jdtls", PathConfig.getLspDirName(), "jdtls"));
     }
 
     @Test
     void getExtensionServerHome_dap() {
         Path expected = Path.of("/home/user/.mcp-ade/extensions/java-debug/dap/java-debug");
-        assertEquals(expected, pathManager.getExtensionServerHome("java-debug", "dap", "java-debug"));
+        assertEquals(expected, pathManager.getExtensionServerHome("java-debug", PathConfig.getDapDirName(), "java-debug"));
     }
 
     @Test
     void getExtensionServerHome_multiServer() {
         Path expected = Path.of("/home/user/.mcp-ade/extensions/python-tools/lsp/pyright");
-        assertEquals(expected, pathManager.getExtensionServerHome("python-tools", "lsp", "pyright"));
+        assertEquals(expected, pathManager.getExtensionServerHome("python-tools", PathConfig.getLspDirName(), "pyright"));
     }
 
     private static class TestPathConfig extends PathConfig {
@@ -78,14 +78,5 @@ class PathManagerExtensionTest {
             return root;
         }
 
-        @Override
-        public Path getMcpAdeDir() {
-            return root.resolve(".mcp-ade");
-        }
-
-        @Override
-        public String getConfigDirName() {
-            return "config";
-        }
     }
 }

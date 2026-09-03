@@ -29,14 +29,13 @@ import java.util.Map;
 public class WorkspaceConfiguration extends AbstractConfiguration {
 
     private static final Logger LOG = Logger.getLogger(WorkspaceConfiguration.class);
-    private static final String SETTINGS_DIR = ".mcp-ade";
     private static final String SETTINGS_FILE = "settings.json";
 
     private final Path settingsFile;
     private final Configuration globalConfiguration;
 
     public WorkspaceConfiguration(Path workspaceRoot, Configuration globalConfiguration) {
-        this.settingsFile = workspaceRoot.resolve(SETTINGS_DIR).resolve(SETTINGS_FILE);
+        this.settingsFile = workspaceRoot.resolve(PathConfig.getMcpAdeDirName()).resolve(SETTINGS_FILE);
         this.globalConfiguration = globalConfiguration;
         load();
     }

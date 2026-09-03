@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.variable;
 
+import org.eclipse.mcp.ade.configuration.PathConfig;
 import org.eclipse.mcp.ade.installer.InstallableConfig;
 import jakarta.inject.Singleton;
 
@@ -23,7 +24,7 @@ import java.nio.file.Path;
 /**
  * Resolves server-related variables: {@code serverHome}, {@code userHome},
  * {@code mcpHome}, {@code workspaceFolder}, {@code workspaceRoot},
- * {@code serverWorkspaceDir}.
+ * {@code workspaceStorageDir}.
  */
 @Singleton
 public class ServerVariableResolver implements VariableResolver {
@@ -38,7 +39,7 @@ public class ServerVariableResolver implements VariableResolver {
             case "userHome" -> System.getProperty("user.home");
             case "mcpHome" -> resolveMcpHome(context);
             case "workspaceFolder", "workspaceRoot" -> resolveWorkspaceFolder(context);
-            case "serverWorkspaceDir" -> resolveServerWorkspaceDir(context);
+            case "workspaceStorageDir" -> resolveWorkspaceStorageDir(context);
             default -> null;
         };
     }
@@ -77,7 +78,7 @@ public class ServerVariableResolver implements VariableResolver {
         return folder != null ? folder.toString() : null;
     }
 
-    private static String resolveServerWorkspaceDir(VariableContext context) {
+    private static String resolveWorkspaceStorageDir(VariableContext context) {
         String mcpHome = resolveMcpHome(context);
         if (mcpHome == null) {
             return null;
@@ -94,7 +95,8 @@ public class ServerVariableResolver implements VariableResolver {
         String workspaceName = workspaceFolder.getFileName().toString();
         int hash = workspaceFolder.toUri().hashCode() & 0x7FFFFFFF;
         Path dir = Path.of(mcpHome)
-                .resolve(serverId + "-workspaces")
+                .resolve(PathConfig.getWorkspaceStorageDirName())
+                .resolve(serverId)
                 .resolve(workspaceName + "-" + hash);
         try {
             Files.createDirectories(dir);

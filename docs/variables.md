@@ -25,7 +25,7 @@ ${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server
 | `${mcpHome}` | Root directory of the MCP ADE (Agent Development Environment) installation | installer |
 | `${workspaceFolder}` | Current project/workspace directory | installer, DAP launch config |
 | `${workspaceRoot}` | Deprecated alias for `${workspaceFolder}` | DAP launch config |
-| `${serverWorkspaceDir}` | Per-server, per-workspace data directory (`<mcpHome>/<serverId>-workspaces/<workspaceName>-<hash>`) | command |
+| `${workspaceStorageDir}` | Per-server, per-workspace data directory (`<mcpHome>/workspace-storage/<serverId>/<workspaceName>-<hash>`) | command |
 | `${vscodeExtension:id}` | Path to a VS Code extension directory | command |
 | `${port}` | Auto-allocated TCP port for the DAP server | DAP command |
 | `${address}` | Extracted address from server output | DAP readyPattern |
@@ -85,7 +85,7 @@ ${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server
 ```json
 {
   "command": {
-    "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\""
+    "default": "${vscodeExtension:jetbrains.intellij-server}/server/bin/intellij-server --stdio --system-path \"${workspaceStorageDir}\""
   }
 }
 ```

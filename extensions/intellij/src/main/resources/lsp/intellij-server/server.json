@@ -24,7 +24,7 @@
     }
   ],
   "command": {
-    "windows": "${serverHome}/bin/intellij-server.exe --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}",
-    "default": "${serverHome}/bin/intellij-server --stdio --system-path \"${serverWorkspaceDir}\" --eula ${setting:eula}"
+    "windows": "${serverHome}/bin/intellij-server.exe --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}",
+    "default": "${serverHome}/bin/intellij-server --stdio --system-path \"${workspaceStorageDir}\" --eula ${setting:eula}"
   }
 }

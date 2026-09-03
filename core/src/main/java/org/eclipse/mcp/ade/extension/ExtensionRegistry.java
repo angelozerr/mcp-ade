@@ -470,12 +470,12 @@ public class ExtensionRegistry {
 
             checkServerIdUnique(serverId, extensionId);
 
-            Path targetDir = pathManager.getExtensionServerHome(extensionId, "lsp", serverId);
+            Path targetDir = pathManager.getExtensionServerHome(extensionId, PathConfig.getLspDirName(), serverId);
             Files.createDirectories(targetDir.getParent());
             ExtensionExtractor.extract(source, targetDir);
 
             Extension extension = getOrCreateExtension(extensionId, ServerConfigSource.USER, application);
-            var loader = serverDescriptorRegistry.getLoader("lsp");
+            var loader = serverDescriptorRegistry.getLoader(PathConfig.getLspDirName());
             LspServerConfig config = (LspServerConfig) loader.load(targetDir, extension);
             extension.addLspServerConfig(config);
 
@@ -525,12 +525,12 @@ public class ExtensionRegistry {
 
             checkServerIdUnique(serverId, extensionId);
 
-            Path targetDir = pathManager.getExtensionServerHome(extensionId, "dap", serverId);
+            Path targetDir = pathManager.getExtensionServerHome(extensionId, PathConfig.getDapDirName(), serverId);
             Files.createDirectories(targetDir.getParent());
             ExtensionExtractor.extract(source, targetDir);
 
             Extension extension = getOrCreateExtension(extensionId, ServerConfigSource.USER, application);
-            var loader = serverDescriptorRegistry.getLoader("dap");
+            var loader = serverDescriptorRegistry.getLoader(PathConfig.getDapDirName());
             DapServerConfig config = (DapServerConfig) loader.load(targetDir, extension);
             extension.addDapServerConfig(config);
 
@@ -580,12 +580,12 @@ public class ExtensionRegistry {
 
             checkServerIdUnique(serverId, extensionId);
 
-            Path targetDir = pathManager.getExtensionServerHome(extensionId, "bsp", serverId);
+            Path targetDir = pathManager.getExtensionServerHome(extensionId, PathConfig.getBspDirName(), serverId);
             Files.createDirectories(targetDir.getParent());
             ExtensionExtractor.extract(source, targetDir);
 
             Extension extension = getOrCreateExtension(extensionId, ServerConfigSource.USER, application);
-            var loader = serverDescriptorRegistry.getLoader("bsp");
+            var loader = serverDescriptorRegistry.getLoader(PathConfig.getBspDirName());
             BspServerConfig config = (BspServerConfig) loader.load(targetDir, extension);
             extension.addBspServerConfig(config);
 
@@ -648,7 +648,7 @@ public class ExtensionRegistry {
 
         extension.removeLspServerConfig(serverId);
 
-        Path serverDir = pathManager.getExtensionServerHome(extension.getId(), "lsp", serverId);
+        Path serverDir = pathManager.getExtensionServerHome(extension.getId(), PathConfig.getLspDirName(), serverId);
         deleteRecursively(serverDir);
 
         if (extension.isEmpty()) {
@@ -672,7 +672,7 @@ public class ExtensionRegistry {
 
         extension.removeDapServerConfig(serverId);
 
-        Path serverDir = pathManager.getExtensionServerHome(extension.getId(), "dap", serverId);
+        Path serverDir = pathManager.getExtensionServerHome(extension.getId(), PathConfig.getDapDirName(), serverId);
         deleteRecursively(serverDir);
 
         if (extension.isEmpty()) {
@@ -696,7 +696,7 @@ public class ExtensionRegistry {
 
         extension.removeBspServerConfig(serverId);
 
-        Path serverDir = pathManager.getExtensionServerHome(extension.getId(), "bsp", serverId);
+        Path serverDir = pathManager.getExtensionServerHome(extension.getId(), PathConfig.getBspDirName(), serverId);
         deleteRecursively(serverDir);
 
         if (extension.isEmpty()) {

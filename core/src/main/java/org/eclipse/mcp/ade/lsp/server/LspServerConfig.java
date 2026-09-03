@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.lsp.server;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.eclipse.mcp.ade.configuration.PathConfig;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.lsp.client.LspCapability;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
@@ -78,7 +79,7 @@ public class LspServerConfig extends ServerConfigBase {
 
     private static Path computeServerHome(String serverId, Extension extension) {
         return extension.getApplication().getPathManager()
-                .getExtensionServerHome(extension.getId(), "lsp", serverId);
+                .getExtensionServerHome(extension.getId(), PathConfig.getLspDirName(), serverId);
     }
 
     /**

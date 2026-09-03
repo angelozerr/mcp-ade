@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.bsp.server;
 
+import org.eclipse.mcp.ade.configuration.PathConfig;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
 
@@ -47,7 +48,7 @@ public class BspServerConfig extends ServerConfigBase {
 
     private static Path computeServerHome(String serverId, Extension extension) {
         return extension.getApplication().getPathManager()
-                .getExtensionServerHome(extension.getId(), "bsp", serverId);
+                .getExtensionServerHome(extension.getId(), PathConfig.getBspDirName(), serverId);
     }
 
     public Map<String, Object> getInitializationOptions() {

@@ -17,6 +17,7 @@ import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
 import org.eclipse.mcp.ade.bsp.server.BspServerConfig;
 import org.eclipse.mcp.ade.configuration.ApplicationConfiguration;
+import org.eclipse.mcp.ade.configuration.PathConfig;
 import org.eclipse.mcp.ade.dap.server.DapServerConfig;
 import org.eclipse.mcp.ade.installer.InstallableConfig;
 import org.eclipse.mcp.ade.lsp.server.LspServerConfig;
@@ -67,9 +68,9 @@ public class SettingVariableResolver implements VariableResolver {
     }
 
     private static String getServerType(ServerConfigBase config) {
-        if (config instanceof LspServerConfig) return "lsp";
-        if (config instanceof DapServerConfig) return "dap";
-        if (config instanceof BspServerConfig) return "bsp";
-        return "lsp";
+        if (config instanceof LspServerConfig) return PathConfig.getLspDirName();
+        if (config instanceof DapServerConfig) return PathConfig.getDapDirName();
+        if (config instanceof BspServerConfig) return PathConfig.getBspDirName();
+        return PathConfig.getLspDirName();
     }
 }

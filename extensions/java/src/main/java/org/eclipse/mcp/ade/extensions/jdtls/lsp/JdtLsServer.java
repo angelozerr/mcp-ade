@@ -675,6 +675,6 @@ public class JdtLsServer extends LspServer implements InstallerListener {
     }
 
     public Path getJdtlsDataDir() {
-        return getServerWorkspaceDir();
+        return getWorkspaceStorageDir();
     }
 }

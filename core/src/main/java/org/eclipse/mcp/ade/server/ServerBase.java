@@ -254,13 +254,13 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
         return builder.build();
     }
 
-    public Path getServerWorkspaceDir() {
+    public Path getWorkspaceStorageDir() {
         VariableContext ctx = buildVariableContext();
-        String resolved = VariableResolverRegistry.getInstance().resolve("${serverWorkspaceDir}", ctx);
-        if (resolved != null && !resolved.equals("${serverWorkspaceDir}")) {
+        String resolved = VariableResolverRegistry.getInstance().resolve("${workspaceStorageDir}", ctx);
+        if (resolved != null && !resolved.equals("${workspaceStorageDir}")) {
             return Path.of(resolved);
         }
-        throw new RuntimeException("Failed to resolve serverWorkspaceDir for " + getConfig().getServerId());
+        throw new RuntimeException("Failed to resolve workspaceStorageDir for " + getConfig().getServerId());
     }
 
     /**

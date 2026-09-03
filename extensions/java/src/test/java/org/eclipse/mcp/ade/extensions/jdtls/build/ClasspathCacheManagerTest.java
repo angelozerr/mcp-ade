@@ -344,9 +344,5 @@ class ClasspathCacheManagerTest {
             return root;
         }
 
-        @Override
-        public String getConfigDirName() {
-            return "config";
-        }
     }
 }
