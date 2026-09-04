@@ -347,6 +347,23 @@ function handleTraceLevelUpdate(message) {
     }
 }
 
+function toInstallationStatus(serverStatus, currentInstallationStatus) {
+    switch (serverStatus) {
+        case 'INSTALLING':
+            return 'INSTALLING';
+        case 'INSTALL_FAILED':
+            return 'FAILED';
+        case 'STARTING':
+        case 'RUNNING':
+            if (currentInstallationStatus === 'NOT_INSTALLED' || currentInstallationStatus === 'INSTALLING') {
+                return 'INSTALLED';
+            }
+            return null;
+        default:
+            return null;
+    }
+}
+
 function handleServerStatusChanged(event) {
     console.log('Server status changed:', event);
 
@@ -383,6 +400,12 @@ function handleServerStatusChanged(event) {
     changedServer.installProgress = event.installProgress;
     changedServer.isReady = event.isReady;
 
+    const installationStatus = toInstallationStatus(event.newStatus, changedServer.installationStatus);
+    if (installationStatus) {
+        changedServer.installationStatus = installationStatus;
+        applyInstallationStatus(event.serverId, installationStatus);
+    }
+
     if (serverType === 'LSP') {
         const extensions = servers.filter(s => s.parentServerId === event.serverId);
         for (const ext of extensions) {
@@ -392,6 +415,10 @@ function handleServerStatusChanged(event) {
             ext.installProgress = event.installProgress;
             ext.pid = changedServer.pid;
             ext.command = changedServer.command;
+            if (installationStatus) {
+                ext.installationStatus = installationStatus;
+                applyInstallationStatus(ext.id, installationStatus);
+            }
         }
 
         if (onWorkspacesTab) {
@@ -476,15 +503,17 @@ function handleRuntimeStatusChanged(message) {
         message.resolvedPath, message.activeSource, message.fallbackUsed, message.sourceMode);
 }
 
-function handleInstallStatusChanged(message) {
-    const serverId = message.serverId;
-    const status = message.installationStatus;
-    state.installStatus[serverId] = status;
+function applyInstallationStatus(serverId, installationStatus) {
     const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId];
     if (config) {
-        config.installationStatus = status;
+        config.installationStatus = installationStatus;
     }
     updateInstallBadgeInList(serverId);
+}
+
+function handleInstallStatusChanged(message) {
+    state.installStatus[message.serverId] = message.installationStatus;
+    applyInstallationStatus(message.serverId, message.installationStatus);
 }
 
 function handleFileWatcherStatusChanged(message) {
