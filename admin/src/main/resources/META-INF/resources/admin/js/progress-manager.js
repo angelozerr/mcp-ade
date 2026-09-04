@@ -474,7 +474,7 @@ export function handleProgressUpdate(msg) {
             status: msg.status
         });
         if (taskCompletedCallback) {
-            taskCompletedCallback(msg.taskId, msg.status);
+            taskCompletedCallback(msg.taskId, msg.status, msg.command);
         }
         setTimeout(() => removeTask(msg.taskId), 2000);
     } else {

@@ -185,7 +185,7 @@ function buildServerSummaryHTML(details) {
 }
 
 function buildServerDetailHTML(details) {
-    let commandHTML = '<p class="text-secondary">None (contribution-only server)</p>';
+    let commandHTML;
     if (details.command) {
         if (typeof details.command === 'string') {
             commandHTML = `<code>${details.command}</code>`;
@@ -194,6 +194,10 @@ function buildServerDetailHTML(details) {
                 `<div class="mb-xs"><strong>${os}:</strong> <code>${cmd}</code></div>`
             ).join('');
         }
+    } else if (details.hasInstaller) {
+        commandHTML = '<p class="text-secondary">Requires installation</p>';
+    } else {
+        commandHTML = '<p class="text-secondary">None (contribution-only server)</p>';
     }
 
     return `
@@ -367,6 +371,16 @@ export function saveInstallerJson(serverId) {
 
 export function resetInstallerJson(serverId) {
     loadInstallerJsonEditor(serverId, 'installer-json-editor');
+}
+
+export function refreshServerDetailAfterInstall(serverId) {
+    if (selectedAllServer !== serverId) return;
+    const config = state.lspConfigs?.[serverId];
+    if (!config) return;
+    const detailSection = document.getElementById('server-detail-section');
+    if (detailSection) {
+        detailSection.innerHTML = buildServerDetailHTML(config);
+    }
 }
 
 // Register event delegation actions

@@ -23,6 +23,7 @@ public class ProgressUpdateWsMessage extends WsMessage {
     private final String status;
     private final String stepId;
     private final Double stepProgress;
+    private String command;
 
     public ProgressUpdateWsMessage(String taskId, String serverId, String title,
                                    Double progress, String message, String status,
@@ -46,4 +47,6 @@ public class ProgressUpdateWsMessage extends WsMessage {
     public String getStatus() { return status; }
     public String getStepId() { return stepId; }
     public Double getStepProgress() { return stepProgress; }
+    public String getCommand() { return command; }
+    public void setCommand(String command) { this.command = command; }
 }

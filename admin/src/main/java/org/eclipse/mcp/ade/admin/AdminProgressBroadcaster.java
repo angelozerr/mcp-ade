@@ -92,6 +92,15 @@ public class AdminProgressBroadcaster implements ProgressBroadcaster {
     }
 
     @Override
+    public void taskCompleted(String taskId, String serverId, String title, String command) {
+        ProgressUpdateWsMessage msg = new ProgressUpdateWsMessage(
+            taskId, serverId, title, 1.0, null, "completed", null, null);
+        msg.setCommand(command);
+        activeTasks.remove(taskId);
+        progressUpdateEvent.fire(msg);
+    }
+
+    @Override
     public void taskFailed(String taskId, String serverId, String title, String errorMessage) {
         sendProgress(taskId, serverId, title, 0.0, errorMessage, "failed");
     }

@@ -130,11 +130,15 @@ public class TraceProgressMonitor extends AbstractProgressMonitor {
 
     @Override
     public void setComplete() {
+        setComplete(null);
+    }
+
+    public void setComplete(String command) {
         setCurrent(total);
 
         // Broadcast completion
         if (broadcaster != null && taskId != null) {
-            broadcaster.taskCompleted(taskId, serverId, title);
+            broadcaster.taskCompleted(taskId, serverId, title, command);
         }
     }
 

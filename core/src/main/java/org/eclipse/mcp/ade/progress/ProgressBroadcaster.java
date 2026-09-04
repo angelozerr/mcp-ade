@@ -31,6 +31,10 @@ public interface ProgressBroadcaster {
 
     void taskCompleted(String taskId, String serverId, String title);
 
+    default void taskCompleted(String taskId, String serverId, String title, String command) {
+        taskCompleted(taskId, serverId, title);
+    }
+
     void taskFailed(String taskId, String serverId, String title, String errorMessage);
 
     void initTaskWithSteps(String taskId, String serverId, String title,

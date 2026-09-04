@@ -236,7 +236,7 @@ export function updateInstallerButtons(serverId, installing) {
     }
 }
 
-export function onInstallerTaskCompleted(taskId, status) {
+export function onInstallerTaskCompleted(taskId, status, command) {
     if (!taskId?.startsWith('install-')) return;
     const serverId = taskId.replace(/^install-/, '');
     state.installingServers.delete(serverId);
@@ -244,6 +244,9 @@ export function onInstallerTaskCompleted(taskId, status) {
     const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId] || state.runtimeConfigs?.[serverId];
     if (config) {
         config.installationStatus = status === 'completed' ? 'INSTALLED' : 'FAILED';
+        if (status === 'completed' && command) {
+            config.command = command;
+        }
     }
     updateInstallBadgeInList(serverId);
 }

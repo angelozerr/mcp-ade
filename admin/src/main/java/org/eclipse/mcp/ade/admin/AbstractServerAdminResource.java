@@ -184,7 +184,7 @@ public abstract class AbstractServerAdminResource {
                         LOG.errorf(ex, "Failed to install server '%s'", serverId);
                         progressMonitor.setFailed(cause.getMessage());
                     } else {
-                        progressMonitor.setComplete();
+                        progressMonitor.setComplete(result != null ? result.getCommand() : null);
                     }
                 });
 

@@ -17,7 +17,7 @@ import { renderWorkspaces, selectWorkspace, selectServer, selectDapSessionByServ
     setRenderDapTracesForSessionFn, setRenderMcpConsoleWithHighlightsFn,
     setCurrentTraceLevel, updateFileWatcherBadge } from './admin-workspace.js';
 import { loadAllLspServers, saveInstallerJson, resetInstallerJson, runInstaller,
-    loadInstallerJson } from './admin-lsp.js';
+    loadInstallerJson, refreshServerDetailAfterInstall } from './admin-lsp.js';
 import { loadAllDapServers, onDapSessionUpdate, renderDapTracesForSession,
     createSessionHTML, changeDapServerTraceLevel,
     setSelectDapSessionByServerIdCallback, setRefreshWorkspaceServersFn } from './admin-dap.js';
@@ -737,9 +737,12 @@ setDiagramCallbacks({
 });
 setInstallProgressCallback(updateInstallProgress);
 setTaskStartedCallback((taskId, workspaceUri) => onWorkspaceTaskStarted(taskId, workspaceUri));
-setTaskCompletedCallback((taskId, status) => {
+setTaskCompletedCallback((taskId, status, command) => {
     onWorkspaceTaskCompleted(taskId);
-    onInstallerTaskCompleted(taskId, status);
+    onInstallerTaskCompleted(taskId, status, command);
+    if (status === 'completed' && taskId?.startsWith('install-')) {
+        refreshServerDetailAfterInstall(taskId.replace(/^install-/, ''));
+    }
 });
 setInstallTaskRestoredCallback((serverId) => {
     updateInstallerButtons(serverId, true);
