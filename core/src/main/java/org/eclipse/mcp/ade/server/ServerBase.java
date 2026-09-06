@@ -353,6 +353,14 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
     public Path getServerHome() {
         return config.getServerHome();
     }
+
+    /**
+     * Returns the server distribution directory (serverHome/dist).
+     */
+    public Path getServerDist() {
+        return config.getServerDist();
+    }
+
     /**
      * Get the current server status.
      */

@@ -638,7 +638,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
      * Find the Eclipse Equinox launcher JAR and add to params.
      */
     private void addLauncherJar(List<String> params) throws IOException {
-        Path pluginsDir = getServerHome().resolve("plugins");
+        Path pluginsDir = getServerDist().resolve("plugins");
 
         try (var files = Files.walk(pluginsDir, 1)) {
             var launcher = files
@@ -671,7 +671,7 @@ public class JdtLsServer extends LspServer implements InstallerListener {
             configDir = "config_linux";
         }
 
-        return getServerHome().resolve(configDir);
+        return getServerDist().resolve(configDir);
     }
 
     public Path getJdtlsDataDir() {
