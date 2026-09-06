@@ -151,28 +151,35 @@ public class ContributionManager {
     }
 
     /**
-     * Resolve bundles from serverHome (installed directory).
+     * Resolve bundles from the contributor's directories.
+     * Checks serverDist first (for installed/downloaded bundles), then
+     * falls back to serverHome (for embedded bundles extracted from resources).
      */
     private List<String> resolveBundlesFromServerHome(ServerConfigBase contributorConfig, String normalizedPath) {
+        Path contributorDist = contributorConfig.getServerDist();
+        Path contributorHome = contributorConfig.getServerHome();
+
+        // Try serverDist first (installed bundles), then serverHome (embedded resources)
+        List<String> resolved = resolveBundlesFromDir(contributorConfig, contributorDist, normalizedPath);
+        if (!resolved.isEmpty()) {
+            return resolved;
+        }
+        return resolveBundlesFromDir(contributorConfig, contributorHome, normalizedPath);
+    }
+
+    private List<String> resolveBundlesFromDir(ServerConfigBase contributorConfig, Path baseDir, String normalizedPath) {
         List<String> resolved = new ArrayList<>();
 
-        Path contributorHome = contributorConfig.getServerHome();
-        if (contributorHome == null || !Files.exists(contributorHome)) {
-            LOG.debugf("Contributor server home not found: %s (looking for installed bundles)", contributorConfig.getServerId());
+        if (baseDir == null || !Files.exists(baseDir)) {
             return resolved;
         }
 
-        // Check for wildcards
         if (normalizedPath.contains("*") || normalizedPath.contains("?")) {
-            // Use Java glob pattern matching
-            // Extract the directory to search in
             int lastSlash = normalizedPath.lastIndexOf('/');
             String dirPart = lastSlash >= 0 ? normalizedPath.substring(0, lastSlash) : "";
             String filePattern = lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
 
-            Path searchDir = dirPart.isEmpty() ? contributorHome : contributorHome.resolve(dirPart);
-
-            // Build glob pattern for matching (just the filename part)
+            Path searchDir = dirPart.isEmpty() ? baseDir : baseDir.resolve(dirPart);
             String globPattern = "glob:" + filePattern;
 
             LOG.debugf("Expanding glob pattern: %s in directory: %s", globPattern, searchDir);
@@ -188,20 +195,15 @@ public class ContributionManager {
                                     LOG.infof("Resolved bundle: %s (from %s)", p, contributorConfig.getServerId());
                                 });
                     }
-                } else {
-                    LOG.warnf("Bundle directory not found: %s", searchDir);
                 }
             } catch (IOException e) {
                 LOG.warnf("Failed to expand glob pattern %s: %s", normalizedPath, e.getMessage());
             }
         } else {
-            // Simple path
-            Path bundlePath = contributorHome.resolve(normalizedPath);
+            Path bundlePath = baseDir.resolve(normalizedPath);
             if (Files.exists(bundlePath)) {
                 resolved.add(bundlePath.toAbsolutePath().toString());
                 LOG.debugf("Resolved bundle: %s (from %s)", bundlePath, contributorConfig.getServerId());
-            } else {
-                LOG.warnf("Bundle not found: %s (from server %s)", bundlePath, contributorConfig.getServerId());
             }
         }
 
