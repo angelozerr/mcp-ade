@@ -115,11 +115,17 @@ public class LspClientFeatures {
             String method = reg.getMethod();
             Object registerOptions = reg.getRegisterOptions();
 
-            if (!(registerOptions instanceof JsonObject jsonOptions)) {
-                return;
+            JsonObject jsonOptions;
+            if (registerOptions instanceof JsonObject jo) {
+                jsonOptions = jo;
+            } else {
+                jsonOptions = null;
             }
 
             if (LspRequestConstants.WORKSPACE_DID_CHANGE_WATCHED_FILES.equals(method)) {
+                if (jsonOptions == null) {
+                    return;
+                }
                 DidChangeWatchedFilesRegistrationOptions options =
                         JsonUtils.toModel(jsonOptions, DidChangeWatchedFilesRegistrationOptions.class);
                 if (options != null && options.getWatchers() != null) {
@@ -132,7 +138,8 @@ public class LspClientFeatures {
 
             var registry = registriesByMethod.get(method);
             if (registry != null) {
-                var options = registry.registerCapability(jsonOptions);
+                var effectiveOptions = jsonOptions != null ? jsonOptions : new JsonObject();
+                var options = registry.registerCapability(effectiveOptions);
                 dynamicRegistrations.put(id, () -> registry.unregisterCapability(options));
             }
         });
