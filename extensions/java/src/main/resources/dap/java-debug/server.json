@@ -18,7 +18,7 @@
 			},
 			{
 				"vscode.java.buildWorkspace": {
-					"args": ["{\"isFullBuild\":false}"]
+					"args": ["{\"isFullBuild\":${isFullBuild}}"]
 				}
 			},
 			{

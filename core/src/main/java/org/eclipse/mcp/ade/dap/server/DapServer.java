@@ -40,6 +40,7 @@ import org.jboss.logging.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -191,16 +192,22 @@ public class DapServer extends ServerBase<DapServerConfig> {
             }
         }
 
-        // Flush file watcher to ensure LSP server sees recent changes
+        // Flush file watcher before preparing target LSP server
         getWorkspace().flushFileWatcher();
 
         // Prepare the target LSP server (e.g., fast mode module setup in JDT.LS)
-        CompletableFuture<Void> prepareFuture = prepareTargetLspServer(launchConfig, progressMonitor);
+        CompletableFuture<Void> prepareFuture = prepareTargetLspServer(launchConfig, progressMonitor)
+                .thenRun(() -> {
+                    // Flush again after LSP server is ready so events accumulated
+                    // during startup are delivered to the now-ready server
+                    getWorkspace().flushFileWatcher();
+                });
 
         // Execute declarative resolve steps if configured
         String requestType = (String) launchConfig.getOrDefault("request", "launch");
         ResolveConfig resolveConfig = getConfig().getResolveConfig();
 
+        boolean wasFullBuild = getWorkspace().isNeedsFullBuild();
         CompletableFuture<Map<String, Object>> resolveFuture = prepareFuture.thenCompose(v -> {
             if (resolveConfig != null && resolveConfig.hasSteps(requestType)) {
                 List<ResolveStepConfig> steps = resolveConfig.getSteps(requestType);
@@ -208,12 +215,17 @@ public class DapServer extends ServerBase<DapServerConfig> {
                         this::routeRequest,
                         this::addTrace
                 );
-                Map<String, Object> resolveContext = Map.of(
-                        "workspaceUri", getWorkspace().getNormalizedUri()
-                );
+                Map<String, Object> resolveContext = new LinkedHashMap<>();
+                resolveContext.put("workspaceUri", getWorkspace().getNormalizedUri());
+                resolveContext.put("isFullBuild", wasFullBuild);
                 return executor.execute(steps, launchConfig, resolveContext);
             }
             return CompletableFuture.completedFuture(launchConfig);
+        }).thenApply(config -> {
+            if (wasFullBuild) {
+                getWorkspace().setNeedsFullBuild(false);
+            }
+            return config;
         });
 
         // After resolve steps, start embedded debug session if configured

@@ -13,9 +13,12 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.it;
 
+import org.eclipse.mcp.ade.extension.ExtensionRegistry;
+import org.eclipse.mcp.ade.lsp.server.LspServerConfig;
 import org.eclipse.mcp.ade.utils.UriUtils;
 import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.*;
 
@@ -23,6 +26,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,14 +36,27 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SymbolEditToolsTest {
 
+    @Inject
+    ExtensionRegistry extensionRegistry;
+
     private String cwd;
     private String testFileUri;
     private Path testFilePath;
     private String originalContent;
+    private final List<String> disabledServerIds = new ArrayList<>();
 
     @BeforeAll
     void setUp() throws Exception {
         Awaitility.setDefaultTimeout(Duration.ofSeconds(120));
+
+        // Disable all real LSP servers — only mock-lsp should be active
+        for (LspServerConfig config : extensionRegistry.getAllLspServerConfigs()) {
+            String serverId = config.getServerId();
+            if (!"mock-lsp".equals(serverId) && extensionRegistry.isServerEnabled(serverId)) {
+                extensionRegistry.disableServer(serverId);
+                disabledServerIds.add(serverId);
+            }
+        }
 
         URL url = Thread.currentThread().getContextClassLoader().getResource("test-workspace");
         assertNotNull(url, "test-workspace directory not found on classpath");
@@ -47,6 +65,13 @@ class SymbolEditToolsTest {
         testFilePath = workspacePath.resolve("test-symbol-edit.xml");
         testFileUri = UriUtils.toFileUriString(testFilePath.toUri());
         originalContent = Files.readString(testFilePath);
+    }
+
+    @AfterAll
+    void tearDownAll() {
+        for (String serverId : disabledServerIds) {
+            extensionRegistry.enableServer(serverId);
+        }
     }
 
     @AfterEach

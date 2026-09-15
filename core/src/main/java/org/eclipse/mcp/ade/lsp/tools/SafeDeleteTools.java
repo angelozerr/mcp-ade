@@ -154,9 +154,9 @@ public class SafeDeleteTools {
             if (results.isEmpty()) {
                 throw new ToolException("No document symbols found for: " + fileUri);
             }
-            return results.stream()
-                    .flatMap(List::stream)
-                    .toList();
+            // Use only the first server's results to avoid duplicate symbol trees
+            // when multiple servers handle the same file
+            return results.get(0);
         });
     }
 }

@@ -13,10 +13,14 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.it;
 
+import org.eclipse.mcp.ade.extension.ExtensionRegistry;
+import org.eclipse.mcp.ade.lsp.server.LspServerConfig;
 import org.eclipse.mcp.ade.utils.UriUtils;
 import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -24,6 +28,8 @@ import org.junit.jupiter.api.TestInstance;
 import java.net.URL;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,14 +38,27 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LspToolsTest {
 
+    @Inject
+    ExtensionRegistry extensionRegistry;
+
     private String cwd;
     private String testFileUri;
     private String testErrorFileUri;
     private String testTxtFileUri;
+    private final List<String> disabledServerIds = new ArrayList<>();
 
     @BeforeAll
     void setUp() throws Exception {
         Awaitility.setDefaultTimeout(Duration.ofSeconds(120));
+
+        // Disable all real LSP servers — only mock-lsp should be active
+        for (LspServerConfig config : extensionRegistry.getAllLspServerConfigs()) {
+            String serverId = config.getServerId();
+            if (!"mock-lsp".equals(serverId) && extensionRegistry.isServerEnabled(serverId)) {
+                extensionRegistry.disableServer(serverId);
+                disabledServerIds.add(serverId);
+            }
+        }
 
         URL url = Thread.currentThread().getContextClassLoader().getResource("test-workspace");
         assertNotNull(url, "test-workspace directory not found on classpath");
@@ -48,6 +67,13 @@ class LspToolsTest {
         testFileUri = UriUtils.toFileUriString(workspacePath.resolve("test.xml").toUri());
         testErrorFileUri = UriUtils.toFileUriString(workspacePath.resolve("test-error.xml").toUri());
         testTxtFileUri = UriUtils.toFileUriString(workspacePath.resolve("test.txt").toUri());
+    }
+
+    @AfterAll
+    void tearDown() {
+        for (String serverId : disabledServerIds) {
+            extensionRegistry.enableServer(serverId);
+        }
     }
 
     @Test

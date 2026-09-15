@@ -806,7 +806,11 @@ public class Workspace {
         String workspaceName = rootPath.getFileName().toString();
         String title = (fullBuild ? "Full Build " : "Build ") + workspaceName;
         return executeOnServers(taskId, title, "Building...",
-                server -> server.buildWorkspace(fullBuild), "Build");
+                server -> server.buildWorkspace(fullBuild), "Build")
+                .thenApply(result -> {
+                    needsFullBuild = false;
+                    return result;
+                });
     }
 
     private CompletableFuture<String> executeOnServers(String taskId, String title, String progressMessage,
