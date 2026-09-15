@@ -33,6 +33,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -84,6 +85,13 @@ public class ReferencesTools {
                 });
     }
 
+    /**
+     * Maximum number of concurrent documentSymbol requests during enrichment.
+     * Prevents overwhelming the language server with hundreds of simultaneous
+     * didOpen/documentSymbol/didClose cycles.
+     */
+    private static final int MAX_CONCURRENT_SYMBOL_REQUESTS = 5;
+
     private CompletableFuture<String> findReferencesWithContext(
             FilePositionRequestParams params, Cancellation cancellation, Progress progress) {
 
@@ -108,22 +116,38 @@ public class ReferencesTools {
                             LinkedHashMap::new,
                             Collectors.toList()));
 
-            List<CompletableFuture<Map<String, List<Either<SymbolInformation, DocumentSymbol>>>>> symbolFutures =
-                    byFile.keySet().stream()
-                            .map(fileUri -> fetchDocumentSymbols(params.getCwd(), fileUri, cancellation, progress)
-                                    .thenApply(symbols -> Map.of(fileUri, symbols))
-                                    .exceptionally(ex -> Map.of(fileUri, List.of())))
-                            .toList();
+            List<String> fileUris = new ArrayList<>(byFile.keySet());
+            Map<String, List<Either<SymbolInformation, DocumentSymbol>>> allSymbols = new ConcurrentHashMap<>();
 
-            return CompletableFuture.allOf(symbolFutures.toArray(new CompletableFuture[0]))
-                    .thenApply(v -> {
-                        Map<String, List<Either<SymbolInformation, DocumentSymbol>>> allSymbols = new HashMap<>();
-                        for (var future : symbolFutures) {
-                            allSymbols.putAll(future.join());
-                        }
-                        return formatEnrichedReferences(references, allSymbols, params.getCwd());
-                    });
+            return fetchSymbolsInBatches(fileUris, 0, allSymbols, params.getCwd(), cancellation, progress)
+                    .thenApply(v -> formatEnrichedReferences(references, allSymbols, params.getCwd()));
         });
+    }
+
+    /**
+     * Fetches document symbols in batches to avoid overwhelming the language server.
+     * Processes {@link #MAX_CONCURRENT_SYMBOL_REQUESTS} files concurrently,
+     * waiting for each batch to complete before starting the next.
+     */
+    private CompletableFuture<Void> fetchSymbolsInBatches(
+            List<String> fileUris, int fromIndex,
+            Map<String, List<Either<SymbolInformation, DocumentSymbol>>> allSymbols,
+            String cwd, Cancellation cancellation, Progress progress) {
+
+        if (fromIndex >= fileUris.size()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        int toIndex = Math.min(fromIndex + MAX_CONCURRENT_SYMBOL_REQUESTS, fileUris.size());
+
+        List<CompletableFuture<Void>> batch = fileUris.subList(fromIndex, toIndex).stream()
+                .map(fileUri -> fetchDocumentSymbols(cwd, fileUri, cancellation, progress)
+                        .thenAccept(symbols -> allSymbols.put(fileUri, symbols))
+                        .exceptionally(ex -> null))
+                .toList();
+
+        return CompletableFuture.allOf(batch.toArray(new CompletableFuture[0]))
+                .thenCompose(v -> fetchSymbolsInBatches(fileUris, toIndex, allSymbols, cwd, cancellation, progress));
     }
 
     private CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> fetchDocumentSymbols(

@@ -521,6 +521,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
     }
 
     private static final long DIAGNOSTICS_TIMEOUT_MS = 3_000;
+    private static final long DID_OPEN_TIMEOUT_SECONDS = 30;
 
     /**
      * Get diagnostics for a file URI.
@@ -566,20 +567,22 @@ public class LspServer extends ServerBase<LspServerConfig> {
             return CompletableFuture.completedFuture(Collections.emptyList());
         }
 
-        ensureFileOpened(uri, languageId);
+        return runAsync(() -> ensureFileOpened(uri, languageId))
+                .orTimeout(DID_OPEN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .thenCompose(v -> {
+                    List<String> identifiers = getDiagnosticIdentifiers();
 
-        List<String> identifiers = getDiagnosticIdentifiers();
-
-        if (!identifiers.isEmpty()) {
-            return pullAllIdentifiers(uri, identifiers);
-        }
-
-        return pullDiagnostics(uri, null)
-                .thenApply(diags -> {
-                    if (!diags.isEmpty()) {
-                        diagnosticsCache.put(uri, diags);
+                    if (!identifiers.isEmpty()) {
+                        return pullAllIdentifiers(uri, identifiers);
                     }
-                    return diags;
+
+                    return pullDiagnostics(uri, null)
+                            .thenApply(diags -> {
+                                if (!diags.isEmpty()) {
+                                    diagnosticsCache.put(uri, diags);
+                                }
+                                return diags;
+                            });
                 });
     }
 
@@ -684,20 +687,16 @@ public class LspServer extends ServerBase<LspServerConfig> {
         textDocument.setText(content);
         openParams.setTextDocument(textDocument);
 
-        languageServer.getTextDocumentService().didOpen(openParams);
-        markFileOpened(uri);
-
-        return diagnosticsFuture
+        LanguageServer ls = languageServer;
+        return runAsync(() -> {
+                    ls.getTextDocumentService().didOpen(openParams);
+                    markFileOpened(uri);
+                })
+                .orTimeout(DID_OPEN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .thenCompose(v -> diagnosticsFuture)
                 .whenComplete((diags, ex) -> {
                     if (autoClose) {
-                        try {
-                            DidCloseTextDocumentParams closeParams = new DidCloseTextDocumentParams();
-                            closeParams.setTextDocument(new TextDocumentIdentifier(uri));
-                            languageServer.getTextDocumentService().didClose(closeParams);
-                            markFileClosed(uri);
-                        } catch (Exception e) {
-                            LOG.warnf(e, "Failed to send didClose for %s", uri);
-                        }
+                        closeFile(uri);
                     }
                 });
     }
@@ -817,15 +816,22 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     } catch (Exception e) {
                         LOG.warnf("Graceful shutdown failed for %s: %s", config.getServerId(), e.getMessage());
                     }
-                    try {
-                        languageServer.exit();
-                    } catch (Exception e) {
-                        LOG.warnf("Failed to send exit to %s: %s", config.getServerId(), e.getMessage());
-                    }
+                    // Fire-and-forget exit notification — may block if LS stdin pipe is full
+                    LanguageServer ls = languageServer;
                     languageServer = null;
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            ls.exit();
+                        } catch (Exception e) {
+                            // Expected if streams are already closed
+                        }
+                    });
                 }
 
+                // Close process streams to unblock any thread stuck writing
+                // to the LS (didOpen, didChange, exit, etc.)
                 cancelListeningFuture();
+                closeProcessStreams();
 
                 // Close socket connection if connected via socket
                 if (isSocketConnection && socket != null) {
@@ -837,15 +843,13 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     }
                 }
 
-                // Wait for process to exit after LSP exit notification.
-                // On Windows, process.destroy() is a hard kill (no SIGTERM),
-                // so we must wait for the process to exit on its own first.
+                // Wait for process to exit.
                 if (!isSocketConnection) {
                     Process process = getServerProcess();
                     if (process != null && process.isAlive()) {
-                        boolean exited = process.waitFor(10, TimeUnit.SECONDS);
+                        boolean exited = process.waitFor(5, TimeUnit.SECONDS);
                         if (!exited) {
-                            LOG.warnf("Server process did not exit after LSP exit, forcing kill (PID: %d)",
+                            LOG.warnf("Server process did not exit after shutdown, forcing kill (PID: %d)",
                                     process.pid());
                             process.destroyForcibly();
                             process.waitFor(3, TimeUnit.SECONDS);
@@ -995,14 +999,17 @@ public class LspServer extends ServerBase<LspServerConfig> {
         if (!isFileOpened(uri) || languageServer == null) {
             return;
         }
-        try {
-            DidCloseTextDocumentParams closeParams = new DidCloseTextDocumentParams();
-            closeParams.setTextDocument(new TextDocumentIdentifier(uri));
-            languageServer.getTextDocumentService().didClose(closeParams);
-            markFileClosed(uri);
-        } catch (Exception e) {
-            LOG.warnf(e, "Failed to send didClose for %s", uri);
-        }
+        markFileClosed(uri);
+        LanguageServer ls = languageServer;
+        runAsync(() -> {
+            try {
+                DidCloseTextDocumentParams closeParams = new DidCloseTextDocumentParams();
+                closeParams.setTextDocument(new TextDocumentIdentifier(uri));
+                ls.getTextDocumentService().didClose(closeParams);
+            } catch (Exception e) {
+                LOG.warnf(e, "Failed to send didClose for %s", uri);
+            }
+        });
     }
 
     /**
@@ -1041,13 +1048,18 @@ public class LspServer extends ServerBase<LspServerConfig> {
         if (getConfig().isSkipDidOpen(capability)) {
             return request.get();
         }
+        if (languageServer == null) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("Server " + getConfig().getServerId() + " is not running"));
+        }
         boolean wasAlreadyOpened = isFileOpened(fileUri);
         if (!wasAlreadyOpened) {
             CompletableFuture<?> parsingDone = languageClient != null
                     ? languageClient.waitForDiagnostics(fileUri, DIAGNOSTICS_TIMEOUT_MS)
                     : CompletableFuture.completedFuture(null);
-            openFile(fileUri, languageId);
-            return parsingDone
+            return runAsync(() -> openFile(fileUri, languageId))
+                    .orTimeout(DID_OPEN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .thenCompose(v -> parsingDone)
                     .thenCompose(diags -> request.get())
                     .whenComplete((result, ex) -> {
                         if (!isExplicitlyOpened(fileUri)) {
@@ -1100,10 +1112,17 @@ public class LspServer extends ServerBase<LspServerConfig> {
             LOG.infof("Stopping our own server process to switch to IDE instance");
             try {
                 languageServer.shutdown().get(2, TimeUnit.SECONDS);
-                languageServer.exit();
             } catch (Exception e) {
                 LOG.warnf("Error stopping our server: %s", e.getMessage());
             }
+            // Fire-and-forget exit, then close streams and kill process
+            LanguageServer ls = languageServer;
+            if (ls != null) {
+                CompletableFuture.runAsync(() -> {
+                    try { ls.exit(); } catch (Exception e) { /* expected */ }
+                });
+            }
+            closeProcessStreams();
             destroyProcess(0, 2000);
         }
 
@@ -1261,9 +1280,16 @@ public class LspServer extends ServerBase<LspServerConfig> {
         if (languageServer == null || changes == null || changes.isEmpty()) {
             return;
         }
+        LanguageServer ls = languageServer;
         DidChangeWatchedFilesParams params = new DidChangeWatchedFilesParams();
         params.setChanges(changes);
-        languageServer.getWorkspaceService().didChangeWatchedFiles(params);
+        runAsync(() -> {
+            try {
+                ls.getWorkspaceService().didChangeWatchedFiles(params);
+            } catch (Exception e) {
+                LOG.warnf(e, "Failed to send didChangeWatchedFiles");
+            }
+        });
     }
 
     /**

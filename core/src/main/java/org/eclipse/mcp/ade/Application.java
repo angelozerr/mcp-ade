@@ -270,6 +270,7 @@ public class Application {
 
         Path basePath = workspace.getRootPath();
         List<LspServerConfig> configsToStart = new ArrayList<>();
+        List<LspServer> serversToWaitFor = new ArrayList<>();
         for (LspServerConfig config : extensionRegistry.getEnabledLspServerConfigs()) {
             if (config.isContributionOnly()) {
                 continue;
@@ -283,6 +284,8 @@ public class Application {
                 LspServer existingServer = workspace.getLspServer(config.getServerId());
                 if (existingServer == null || existingServer.getStatus() == ServerStatus.STOPPED) {
                     configsToStart.add(config);
+                } else if (!existingServer.isReady()) {
+                    serversToWaitFor.add(existingServer);
                 }
             }
         }
@@ -294,7 +297,7 @@ public class Application {
             }
         }
 
-        if (configsToStart.isEmpty()) {
+        if (configsToStart.isEmpty() && serversToWaitFor.isEmpty()) {
             return CompletableFuture.completedFuture(null);
         }
 
@@ -322,6 +325,12 @@ public class Application {
                         return null;
                     });
             serverFutures.add(future);
+        }
+
+        for (LspServer server : serversToWaitFor) {
+            LOG.infof("Waiting for %s to be ready in workspace: %s",
+                    server.getConfig().getServerId(), workspace.getNormalizedUri());
+            serverFutures.add(server.waitForReady().thenAccept(v -> {}));
         }
 
         return CompletableFuture.allOf(serverFutures.toArray(new CompletableFuture[0]));

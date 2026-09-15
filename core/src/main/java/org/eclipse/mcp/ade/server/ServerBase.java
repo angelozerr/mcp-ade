@@ -151,6 +151,15 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
     }
 
     /**
+     * Run a task asynchronously on this server's executor.
+     * Use this for blocking I/O operations (e.g., writing to the server process stdin)
+     * to avoid blocking the calling thread (Vert.x worker, lsp4j reader, etc.).
+     */
+    protected CompletableFuture<Void> runAsync(Runnable task) {
+        return CompletableFuture.runAsync(task, executorService);
+    }
+
+    /**
      * Returns the OS process running the server, or {@code null} if not started.
      */
     protected Process getServerProcess() {
@@ -748,6 +757,33 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
                     LOG.warnf(e, "Error in status change listener for %s", config.getServerId());
                 }
             }
+        }
+    }
+
+    /**
+     * Close the server process streams (stdin/stdout/stderr).
+     * This unblocks any thread stuck writing to the process stdin
+     * (e.g., blocked in StreamMessageConsumer.consume() on a full pipe).
+     */
+    protected void closeProcessStreams() {
+        Process process = this.serverProcess;
+        if (process == null) {
+            return;
+        }
+        try {
+            process.getOutputStream().close();
+        } catch (IOException e) {
+            // expected if already closed
+        }
+        try {
+            process.getInputStream().close();
+        } catch (IOException e) {
+            // expected if already closed
+        }
+        try {
+            process.getErrorStream().close();
+        } catch (IOException e) {
+            // expected if already closed
         }
     }
 

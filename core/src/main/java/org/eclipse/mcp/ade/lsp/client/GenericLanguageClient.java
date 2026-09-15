@@ -339,7 +339,18 @@ public class GenericLanguageClient extends ServerRequestRouter implements Langua
 
     public void shutdown() {
         diagnosticsScheduler.shutdownNow();
+        cancelPendingDiagnosticsWaiters();
         cancelActiveProgresses();
+    }
+
+    private void cancelPendingDiagnosticsWaiters() {
+        for (DiagnosticsWait wait : diagnosticsWaiters.values()) {
+            if (wait != null && !wait.future.isDone()) {
+                wait.future.completeExceptionally(
+                        new java.util.concurrent.CancellationException("Server shutting down"));
+            }
+        }
+        diagnosticsWaiters.clear();
     }
 
     private void cancelActiveProgresses() {
