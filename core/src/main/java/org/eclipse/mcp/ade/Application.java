@@ -471,6 +471,18 @@ public class Application {
     }
 
     /**
+     * Find an existing workspace for the given path without creating one.
+     * Returns null if no workspace exists for this path.
+     */
+    public Workspace findWorkspaceForPath(String cwd) {
+        if (cwd == null || cwd.isEmpty()) {
+            return null;
+        }
+        URI workspaceUri = normalizeUri(UriUtils.toUri(cwd));
+        return workspaces.get(workspaceUri);
+    }
+
+    /**
      * Get all active workspaces.
      */
     public Collection<Workspace> getWorkspaces() {
