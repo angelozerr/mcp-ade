@@ -550,6 +550,11 @@ body {
     color: var(--text-bright);
 }
 
+.fw-badge-slot {
+    flex-shrink: 0;
+    margin-left: 0.3rem;
+}
+
 .close-workspace-btn {
     background: transparent;
     border: none;

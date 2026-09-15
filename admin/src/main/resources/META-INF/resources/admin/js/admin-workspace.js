@@ -161,7 +161,7 @@ import { showToast } from './toast.js';
                 return `
                 <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
                     <div class="d-flex justify-between align-center">
-                        <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName} <span class="fw-badge-slot">${fwBadgeHtml}</span></div>
+                        <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div><span class="fw-badge-slot">${fwBadgeHtml}</span>
                         <button class="close-workspace-btn" data-action="openWorkspaceSettings" data-uri="${ws.rootUri}" data-stop-propagation title="Workspace settings" style="font-size:0.9rem">⚙</button>
                         <button class="close-workspace-btn" data-action="buildWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Build workspace" style="font-size:0.9rem">🔨</button>
                         <button class="close-workspace-btn" data-action="refreshWorkspaceFromList" data-uri="${ws.rootUri}" data-stop-propagation title="Refresh workspace" style="font-size:1.1rem">↻</button>
