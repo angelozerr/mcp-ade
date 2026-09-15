@@ -128,7 +128,7 @@ public class WorkspaceTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
         {
             Workspace workspace = (cwd != null && !cwd.isEmpty())
-                    ? application.getWorkspaceForPath(cwd)
+                    ? application.findWorkspaceForPath(cwd)
                     : null;
             var configs = application.getLspServerConfigs();
             List<Map<String, Object>> result = new ArrayList<>();
