@@ -61,7 +61,7 @@ public class BspBuildTools {
             @ToolArg(description = ToolArgDescriptions.CWD, required = false) String cwd) {
         try {
             Workspace workspace = (cwd != null && !cwd.isEmpty())
-                    ? application.getWorkspaceForPath(cwd)
+                    ? application.findWorkspaceForPath(cwd)
                     : null;
 
             var configs = application.getBspServerConfigs();
