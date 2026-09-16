@@ -64,6 +64,7 @@
         <module>extensions/maven</module>
         <module>extensions/gradle</module>
         <module>extensions/intellij</module>
+        <module>extensions/java-ls</module>
         <module>dev</module>
         <module>integration-tests</module>
     </modules>
