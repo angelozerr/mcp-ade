@@ -790,6 +790,13 @@ public class ExtensionRegistry {
     }
 
     /**
+     * Returns all registered extension IDs.
+     */
+    public Set<String> getExtensionIds() {
+        return Collections.unmodifiableSet(extensions.keySet());
+    }
+
+    /**
      * All LSP server configs (enabled + disabled) — for admin, listing.
      */
     public Collection<LspServerConfig> getAllLspServerConfigs() {
