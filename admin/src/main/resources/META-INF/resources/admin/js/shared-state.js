@@ -30,6 +30,8 @@ export const state = {
     currentWorkspaceDiagramServerId: null,
     modalResolve: null,
     userExplicitlySelectedServer: false,
+    extensionsData: [],
+    selectedExtension: null,
 };
 
 export function isOnWorkspacesTab() {

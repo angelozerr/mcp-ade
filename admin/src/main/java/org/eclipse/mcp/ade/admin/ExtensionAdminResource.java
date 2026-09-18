@@ -232,7 +232,7 @@ public class ExtensionAdminResource {
     @Path("/{id}/enable")
     public Response enableExtension(@PathParam("id") String id) {
         try {
-            application.getExtensionRegistry().enableExtension(id);
+            application.enableExtension(id);
             return Response.ok(Map.of("success", true, "message", "Extension '" + id + "' enabled")).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -245,7 +245,7 @@ public class ExtensionAdminResource {
     @Path("/{id}/disable")
     public Response disableExtension(@PathParam("id") String id) {
         try {
-            application.getExtensionRegistry().disableExtension(id);
+            application.disableExtension(id);
             return Response.ok(Map.of("success", true, "message", "Extension '" + id + "' disabled")).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_FOUND)

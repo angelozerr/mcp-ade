@@ -13,8 +13,6 @@ import { showToast } from './toast.js';
 let switchTabCallback = null;
 export function setSwitchTabCallback(cb) { switchTabCallback = cb; }
 
-let selectedExtension = null;
-let extensionsData = [];
 
 /**
  * Render the extensions list (without fetching).
@@ -25,14 +23,14 @@ function renderExtensionsList() {
 
     let html = '';
 
-    if (extensionsData.length === 0) {
+    if (state.extensionsData.length === 0) {
         html += '<div class="servers-placeholder">No extensions installed</div>';
         container.innerHTML = html;
         return;
     }
 
-    html += extensionsData.map(ext => {
-        const isActive = selectedExtension === ext.id ? 'active' : '';
+    html += state.extensionsData.map(ext => {
+        const isActive = state.selectedExtension === ext.id ? 'active' : '';
         const disabledClass = !ext.enabled ? 'extension-disabled' : '';
         const sourceBadge = `<span class="extension-source-badge ${ext.source.toLowerCase()}">${ext.source}</span>`;
         const counts = [];
@@ -74,18 +72,18 @@ export async function loadAllExtensions(extensionIdToSelect) {
         }
 
         await ensureExtensionConfigs();
-        extensionsData = state.extensionConfigs || [];
+        state.extensionsData = state.extensionConfigs || [];
 
         if (extensionIdToSelect) {
-            selectedExtension = extensionIdToSelect;
+            state.selectedExtension = extensionIdToSelect;
         }
 
         renderExtensionsList();
 
-        if (extensionsData.length > 0) {
+        if (state.extensionsData.length > 0) {
             const toSelect = extensionIdToSelect
-                || (selectedExtension && extensionsData.find(e => e.id === selectedExtension) ? selectedExtension : null)
-                || extensionsData[0].id;
+                || (state.selectedExtension && state.extensionsData.find(e => e.id === state.selectedExtension) ? state.selectedExtension : null)
+                || state.extensionsData[0].id;
             showExtensionDetails(toSelect, true);
         }
     } catch (error) {
@@ -97,8 +95,8 @@ export async function loadAllExtensions(extensionIdToSelect) {
  * Show details for an extension in the console panel.
  */
 export async function showExtensionDetails(extensionId, scroll) {
-    const previousExtension = selectedExtension;
-    selectedExtension = extensionId;
+    const previousExtension = state.selectedExtension;
+    state.selectedExtension = extensionId;
 
     selectListItem(document.getElementById('extensions-list'),
         '.extension-item[data-extension-id', previousExtension, extensionId, scroll);
@@ -109,7 +107,7 @@ export async function showExtensionDetails(extensionId, scroll) {
     contentArea.style.gridTemplateColumns = '400px 1fr';
     consoleColumn.style.gridColumn = '2';
 
-    const ext = extensionsData.find(e => e.id === extensionId);
+    const ext = state.extensionsData.find(e => e.id === extensionId);
     if (!ext) return;
 
     const sourceBadge = `<span class="extension-source-badge ${ext.source.toLowerCase()}">${ext.source}</span>`;
@@ -153,7 +151,7 @@ export async function showExtensionDetails(extensionId, scroll) {
 
     if (!ext._detailLoaded) {
         await ensureExtensionConfigDetail(extensionId);
-        if (selectedExtension !== extensionId) return;
+        if (state.selectedExtension !== extensionId) return;
         const detailSection = document.getElementById('extension-detail-section');
         if (detailSection) {
             detailSection.innerHTML = buildExtensionDetailHTML(ext);
@@ -218,7 +216,7 @@ function buildExtensionDetailHTML(ext) {
  * Show the add extension form in the console panel.
  */
 export function showAddExtensionForm() {
-    selectedExtension = null;
+    state.selectedExtension = null;
     renderExtensionsList();
 
     const contentArea = document.querySelector('.content-area');
@@ -378,7 +376,7 @@ function upsertExtension(ext) {
         else state.extensionConfigs.push(ext);
         state.extensionConfigs.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
     }
-    extensionsData = state.extensionConfigs;
+    state.extensionsData = state.extensionConfigs;
 }
 
 function setupDropZone() {
@@ -588,7 +586,7 @@ async function removeExtension(extensionId) {
         const result = await response.json();
 
         if (response.ok) {
-            selectedExtension = null;
+            state.selectedExtension = null;
             state.extensionConfigs = null;
             state.languageConfigs = null;
             await loadLspConfigs();
@@ -611,11 +609,11 @@ async function toggleExtensionEnabled(extensionId, enabled) {
     try {
         const response = await fetch(`/api/admin/extensions/${encodeURIComponent(extensionId)}/${action}`, { method: 'POST' });
         if (response.ok) {
-            const ext = extensionsData.find(e => e.id === extensionId);
+            const ext = state.extensionsData.find(e => e.id === extensionId);
             if (ext) ext.enabled = enabled;
             showToast('Settings saved');
             renderExtensionsList();
-            if (selectedExtension === extensionId) showExtensionDetails(extensionId);
+            if (state.selectedExtension === extensionId) showExtensionDetails(extensionId);
         }
     } catch (error) {
         console.error(`Failed to ${action} extension:`, error);
@@ -630,13 +628,13 @@ async function toggleExtensionServerEnabled(type, serverId, enabled) {
     try {
         const response = await fetch(`/api/admin/extensions/${type}/servers/${serverId}/${action}`, { method: 'POST' });
         if (response.ok) {
-            for (const ext of extensionsData) {
+            for (const ext of state.extensionsData) {
                 const serverList = type === 'lsp' ? ext.lspServers : type === 'dap' ? ext.dapServers : ext.bspServers;
                 const srv = serverList?.find(s => s.id === serverId);
                 if (srv) { srv.enabled = enabled; break; }
             }
             showToast('Settings saved');
-            if (selectedExtension) showExtensionDetails(selectedExtension);
+            if (state.selectedExtension) showExtensionDetails(state.selectedExtension);
         }
     } catch (error) {
         console.error(`Failed to ${action} ${type} server:`, error);

@@ -28,6 +28,7 @@ public enum WsMessageType {
     DAP_SESSION_UPDATE("dap-session-update"),
     TRACE_LEVEL_UPDATE("trace-level-update"),
     SERVER_ENABLED_CHANGED("server-enabled-changed"),
+    EXTENSION_ENABLED_CHANGED("extension-enabled-changed"),
     OPERATION_UPDATE("operation-update"),
     ACTIVITY_STATE("activity-state"),
     RUNTIME_STATUS_CHANGED("runtime-status-changed"),

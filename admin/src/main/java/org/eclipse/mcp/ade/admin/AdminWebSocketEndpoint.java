@@ -22,6 +22,7 @@ import org.eclipse.mcp.ade.dap.session.DapSessionEvent;
 import org.eclipse.mcp.ade.dap.session.DapSessionManager;
 import org.eclipse.mcp.ade.runtime.RuntimeRegistry;
 import org.eclipse.mcp.ade.runtime.RuntimeStatusChangeEvent;
+import org.eclipse.mcp.ade.event.ExtensionEnabledChangeEvent;
 import org.eclipse.mcp.ade.event.ServerEnabledChangeEvent;
 import org.eclipse.mcp.ade.server.ServerBase;
 import org.eclipse.mcp.ade.server.ServerStatusChangeEvent;
@@ -533,6 +534,14 @@ public class AdminWebSocketEndpoint {
 
     void onInstallStatusChange(@Observes InstallStatusChangeEvent event) {
         broadcast(new InstallStatusChangedWsMessage(event.serverId(), event.installationStatus()));
+    }
+
+    void onExtensionEnabledChange(@Observes ExtensionEnabledChangeEvent event) {
+        LOG.infof("WebSocket: Extension enabled changed: %s -> %s (broadcasting to %d clients)",
+                event.extensionId(), event.enabled(), sessions.size());
+        ExtensionEnabledChangedWsMessage msg = new ExtensionEnabledChangedWsMessage(
+                event.extensionId(), event.enabled());
+        broadcast(msg);
     }
 
     void onServerEnabledChange(@Observes ServerEnabledChangeEvent event) {

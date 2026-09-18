@@ -1,0 +1,3 @@
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+java -jar "$SCRIPT_DIR/target/mcp-ade-cli-0.1.0-SNAPSHOT.jar" "$@"

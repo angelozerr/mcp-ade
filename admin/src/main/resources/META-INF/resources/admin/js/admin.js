@@ -129,6 +129,9 @@ function handleWebSocketMessage(message) {
         case 'server-enabled-changed':
             handleServerEnabledChanged(message);
             break;
+        case 'extension-enabled-changed':
+            handleExtensionEnabledChanged(message);
+            break;
         case 'operation-update':
             handleOperationUpdate(message);
             break;
@@ -492,6 +495,33 @@ function handleServerEnabledChanged(event) {
             serverElement.classList.add('server-disabled');
         }
         const checkbox = serverElement.querySelector('.toggle-switch input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.checked = enabled;
+        }
+    }
+}
+
+function handleExtensionEnabledChanged(event) {
+    const enabled = event.enabled;
+    const extensionId = event.extensionId;
+
+    // Update data model
+    const ext = state.extensionsData.find(e => e.id === extensionId);
+    if (ext) {
+        ext.enabled = enabled;
+    }
+
+    // Direct DOM update (same pattern as handleServerEnabledChanged)
+    const extElements = document.querySelectorAll(
+        `.extension-item[data-extension-id="${extensionId}"]`
+    );
+    for (const el of extElements) {
+        if (enabled) {
+            el.classList.remove('extension-disabled');
+        } else {
+            el.classList.add('extension-disabled');
+        }
+        const checkbox = el.querySelector('.toggle-switch input[type="checkbox"]');
         if (checkbox) {
             checkbox.checked = enabled;
         }

@@ -94,7 +94,7 @@ public class McpToolsResource {
             String sub = className.startsWith("Java") ? className.substring(4) : className;
             return new String[]{"Java", toReadable(sub)};
         }
-        // Core tools package (RootsTools, WorkspaceTools, ExtensionTools)
+        // Core tools package (RootsTools, WorkspaceTools)
         return new String[]{"Admin", toReadable(className)};
     }
 

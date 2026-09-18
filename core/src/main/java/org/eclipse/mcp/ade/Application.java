@@ -26,6 +26,7 @@ import org.eclipse.mcp.ade.language.LanguageRegistry;
 import org.eclipse.mcp.ade.lsp.server.LspServer;
 import org.eclipse.mcp.ade.lsp.server.LspServerConfig;
 import org.eclipse.mcp.ade.server.ServerStatusChangeEvent;
+import org.eclipse.mcp.ade.event.ExtensionEnabledChangeEvent;
 import org.eclipse.mcp.ade.event.ServerEnabledChangeEvent;
 import org.eclipse.mcp.ade.operation.OperationContext;
 import org.eclipse.mcp.ade.operation.OperationEntry;
@@ -103,6 +104,9 @@ public class Application {
 
     @Inject
     Event<ServerEnabledChangeEvent> serverEnabledChangeEvent;
+
+    @Inject
+    Event<ExtensionEnabledChangeEvent> extensionEnabledChangeEvent;
 
     // ----------- MCP servers
 
@@ -487,6 +491,16 @@ public class Application {
      */
     public Collection<Workspace> getWorkspaces() {
         return workspaces.values();
+    }
+
+    public void enableExtension(String extensionId) {
+        extensionRegistry.enableExtension(extensionId);
+        extensionEnabledChangeEvent.fire(new ExtensionEnabledChangeEvent(extensionId, true));
+    }
+
+    public void disableExtension(String extensionId) {
+        extensionRegistry.disableExtension(extensionId);
+        extensionEnabledChangeEvent.fire(new ExtensionEnabledChangeEvent(extensionId, false));
     }
 
     public void enableServer(String serverId) {
