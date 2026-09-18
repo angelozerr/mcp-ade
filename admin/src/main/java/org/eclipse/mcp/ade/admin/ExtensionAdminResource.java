@@ -17,6 +17,8 @@ import org.eclipse.mcp.ade.Application;
 import org.eclipse.mcp.ade.admin.dto.ExtensionDTO;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.extension.ExtensionRegistry;
+import org.eclipse.mcp.ade.runtime.RuntimeConfig;
+import org.eclipse.mcp.ade.runtime.RuntimeRegistry;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
 import org.eclipse.mcp.ade.variable.VariableContext;
 import org.eclipse.mcp.ade.variable.VariableResolverRegistry;
@@ -48,10 +50,18 @@ public class ExtensionAdminResource {
     @Inject
     VariableResolverRegistry variableResolverRegistry;
 
+    @Inject
+    RuntimeRegistry runtimeRegistry;
 
     @GET
     public List<Map<String, Object>> listExtensions() {
         ExtensionRegistry registry = application.getExtensionRegistry();
+        Map<String, Integer> runtimeCountByExtension = new HashMap<>();
+        for (RuntimeConfig rt : runtimeRegistry.getAll().values()) {
+            if (rt.getExtensionId() != null) {
+                runtimeCountByExtension.merge(rt.getExtensionId(), 1, Integer::sum);
+            }
+        }
         List<Map<String, Object>> result = new ArrayList<>();
         for (Extension ext : registry.getExtensions()) {
             Map<String, Object> dto = new LinkedHashMap<>();
@@ -69,9 +79,11 @@ public class ExtensionAdminResource {
             int lspCount = ext.getLspServerConfigs().size();
             int dapCount = ext.getDapServerConfigs().size();
             int bspCount = ext.getBspServerConfigs().size();
+            int runtimeCount = runtimeCountByExtension.getOrDefault(ext.getId(), 0);
             if (lspCount > 0) dto.put("lspCount", lspCount);
             if (dapCount > 0) dto.put("dapCount", dapCount);
             if (bspCount > 0) dto.put("bspCount", bspCount);
+            if (runtimeCount > 0) dto.put("runtimeCount", runtimeCount);
 
             Set<String> languages = new LinkedHashSet<>();
             for (ServerConfigBase config : ext.getLspServerConfigs()) {
@@ -92,6 +104,8 @@ public class ExtensionAdminResource {
             if (!languages.isEmpty()) {
                 dto.put("languages", new ArrayList<>(languages));
             }
+            int toolsCount = ext.getToolsCount();
+            if (toolsCount > 0) dto.put("toolsCount", toolsCount);
             result.add(dto);
         }
         return result;
@@ -107,7 +121,7 @@ public class ExtensionAdminResource {
                     .entity(Map.of("error", "Extension '" + id + "' not found"))
                     .build();
         }
-        return Response.ok(ExtensionDTO.fromExtension(ext, registry)).build();
+        return Response.ok(ExtensionDTO.fromExtension(ext, registry, runtimeRegistry)).build();
     }
 
     @POST
@@ -128,7 +142,7 @@ public class ExtensionAdminResource {
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("extension", ExtensionDTO.fromExtension(ext, registry));
+            result.put("extension", ExtensionDTO.fromExtension(ext, registry, runtimeRegistry));
             return Response.status(Response.Status.CREATED).entity(result).build();
         } catch (Exception e) {
             LOG.error("Failed to add extension", e);
@@ -166,7 +180,7 @@ public class ExtensionAdminResource {
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("extension", ExtensionDTO.fromExtension(ext, registry));
+            result.put("extension", ExtensionDTO.fromExtension(ext, registry, runtimeRegistry));
             return Response.status(Response.Status.CREATED).entity(result).build();
         } catch (Exception e) {
             LOG.error("Failed to upload extension", e);
@@ -210,7 +224,7 @@ public class ExtensionAdminResource {
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("extension", ExtensionDTO.fromExtension(ext, registry));
+            result.put("extension", ExtensionDTO.fromExtension(ext, registry, runtimeRegistry));
             return Response.status(Response.Status.CREATED).entity(result).build();
         } catch (Exception e) {
             LOG.error("Failed to add server from JSON", e);

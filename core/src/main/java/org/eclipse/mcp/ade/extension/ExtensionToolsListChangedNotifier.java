@@ -21,6 +21,10 @@ import io.quarkus.runtime.StartupEvent;
 import org.jboss.logging.Logger;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Listens to extension enable/disable events and sends the MCP
@@ -69,6 +73,7 @@ public class ExtensionToolsListChangedNotifier implements ExtensionListener {
     void onStart(@Observes StartupEvent ev) {
         extensionRegistry.addExtensionListener(this);
         resolveReflectionTargets();
+        updateExtensionToolNames();
     }
 
     /**
@@ -127,6 +132,19 @@ public class ExtensionToolsListChangedNotifier implements ExtensionListener {
     public void onRemoved(ExtensionRemovedEvent event) {
         if (hasExtensionTools(event.getExtension().getId())) {
             notifyToolsListChanged();
+        }
+    }
+
+    private void updateExtensionToolNames() {
+        Map<String, List<String>> toolsByExtension = new HashMap<>();
+        for (ToolManager.ToolInfo tool : toolManager) {
+            String extId = extensionRegistry.getToolExtensionId(tool.name());
+            if (extId != null) {
+                toolsByExtension.computeIfAbsent(extId, k -> new ArrayList<>()).add(tool.name());
+            }
+        }
+        for (Extension ext : extensionRegistry.getExtensions()) {
+            ext.setToolNames(toolsByExtension.getOrDefault(ext.getId(), List.of()));
         }
     }
 

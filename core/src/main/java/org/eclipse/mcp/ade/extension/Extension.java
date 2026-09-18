@@ -36,6 +36,7 @@ public class Extension {
     private final List<LspServerConfig> lspServerConfigs;
     private final List<DapServerConfig> dapServerConfigs;
     private final List<BspServerConfig> bspServerConfigs;
+    private List<String> toolNames = Collections.emptyList();
 
     public Extension(String id, ServerConfigSource source, Application application) {
         this.id = id;
@@ -129,6 +130,18 @@ public class Extension {
                 .filter(c -> c.getServerId().equals(serverId))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public List<String> getToolNames() {
+        return toolNames;
+    }
+
+    public void setToolNames(List<String> toolNames) {
+        this.toolNames = toolNames != null ? toolNames : Collections.emptyList();
+    }
+
+    public int getToolsCount() {
+        return toolNames.size();
     }
 
     public boolean isEmpty() {

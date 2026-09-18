@@ -16,6 +16,8 @@ package org.eclipse.mcp.ade.admin.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.extension.ExtensionRegistry;
+import org.eclipse.mcp.ade.runtime.RuntimeConfig;
+import org.eclipse.mcp.ade.runtime.RuntimeRegistry;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.util.List;
@@ -30,13 +32,17 @@ public record ExtensionDTO(
         Boolean enabled,
         List<ServerInfo> lspServers,
         List<ServerInfo> dapServers,
-        List<ServerInfo> bspServers
+        List<ServerInfo> bspServers,
+        List<RuntimeInfo> runtimes
 ) {
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public record ServerInfo(String id, String name, Boolean enabled) {}
 
-    public static ExtensionDTO fromExtension(Extension ext, ExtensionRegistry registry) {
+    @RegisterForReflection
+    public record RuntimeInfo(String id, String name) {}
+
+    public static ExtensionDTO fromExtension(Extension ext, ExtensionRegistry registry, RuntimeRegistry runtimeRegistry) {
         List<ServerInfo> lspServers = ext.getLspServerConfigs().stream()
                 .map(c -> new ServerInfo(c.getServerId(), c.getName(),
                         registry.isServerEnabled(c.getServerId()) ? Boolean.TRUE : null))
@@ -52,6 +58,11 @@ public record ExtensionDTO(
                         registry.isServerEnabled(c.getServerId()) ? Boolean.TRUE : null))
                 .toList();
 
+        List<RuntimeInfo> runtimes = runtimeRegistry.getAll().values().stream()
+                .filter(rt -> ext.getId().equals(rt.getExtensionId()))
+                .map(rt -> new RuntimeInfo(rt.getRuntimeId(), rt.getName()))
+                .toList();
+
         return new ExtensionDTO(
                 ext.getId(),
                 ext.getName(),
@@ -60,7 +71,8 @@ public record ExtensionDTO(
                 registry.isExtensionEnabled(ext.getId()) ? Boolean.TRUE : null,
                 lspServers,
                 dapServers,
-                bspServers
+                bspServers,
+                runtimes
         );
     }
 }

@@ -55,11 +55,13 @@ function renderExtensionsList() {
         const lspCount = ext.lspCount ?? ext.lspServers?.length ?? 0;
         const dapCount = ext.dapCount ?? ext.dapServers?.length ?? 0;
         const bspCount = ext.bspCount ?? ext.bspServers?.length ?? 0;
-        const runtimeCount = Object.values(state.runtimeConfigs || {}).filter(rt => rt.extensionId === ext.id).length;
+        const runtimeCount = ext.runtimeCount ?? 0;
         if (lspCount > 0) counts.push(`${lspCount} lsp`);
         if (dapCount > 0) counts.push(`${dapCount} dap`);
         if (bspCount > 0) counts.push(`${bspCount} bsp`);
         if (runtimeCount > 0) counts.push(`${runtimeCount} runtime${runtimeCount !== 1 ? 's' : ''}`);
+        const toolsCount = ext.toolsCount ?? 0;
+        if (toolsCount > 0) counts.push(`${toolsCount} tool${toolsCount !== 1 ? 's' : ''}`);
 
         return `
             <div class="extension-item ${isActive} ${disabledClass}" data-action="showExtensionDetails" data-extension-id="${ext.id}">
@@ -222,11 +224,10 @@ function buildExtensionDetailHTML(ext) {
         serversHTML += ext.bspServers.map(server => buildServerItemHTML(ext, server, 'bsp')).join('');
     }
 
-    const extRuntimes = Object.values(state.runtimeConfigs || {}).filter(rt => rt.extensionId === ext.id);
     let runtimesHTML = '';
-    if (extRuntimes.length > 0) {
+    if (ext.runtimes && ext.runtimes.length > 0) {
         runtimesHTML += '<h4 class="text-label mt-xl">Runtimes</h4>';
-        runtimesHTML += extRuntimes.map(rt => {
+        runtimesHTML += ext.runtimes.map(rt => {
             return `<div class="extension-server-item">
                 <span>${renderRuntimeLink(rt.id, rt.name)}</span>
             </div>`;
