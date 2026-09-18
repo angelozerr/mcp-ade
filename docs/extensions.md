@@ -6,21 +6,16 @@ An **extension** groups one or more LSP servers and/or DAP servers under a singl
 
 The simplest way to add a server is at runtime, without writing any code.
 
-### Via MCP tools (AI assistant)
+### Via mcpade CLI
 
-Ask your AI assistant:
+Use the `mcpade` command-line tool to add servers:
 
+```bash
+mcpade extension add --id ruby --source /path/to/ruby-extension
+mcpade lsp add --source /path/to/solargraph
 ```
-Add a new LSP server for Ruby using solargraph
-```
 
-The assistant will use the `add_lsp_server` or `add_extension` tools to register the server.
-
-Available tools:
-- `add_extension` — Create a new extension
-- `add_lsp_server` — Add an LSP server to an extension
-- `add_dap_server` — Add a DAP server to an extension
-- `get_extension_schemas` — Get the JSON schemas for server.json and installer.json
+See [CLI documentation](cli.md) for all commands.
 
 ### Via Admin UI
 
@@ -155,17 +150,24 @@ This groups all LSP and DAP servers under this directory into the "ruby" extensi
 
 Then add the module to the root `pom.xml` and as a dependency in `dev/pom.xml`.
 
-## Extension Management Tools
+## Extension Management
 
-| Tool | Description |
-|------|-------------|
-| `list_extensions` | List all installed extensions with their servers |
-| `add_extension` | Add a new extension |
-| `remove_extension` | Remove an extension and its servers |
-| `enable_extension` / `disable_extension` | Enable or disable an extension |
-| `enable_lsp_server` / `disable_lsp_server` | Enable or disable a single LSP server |
-| `enable_dap_server` / `disable_dap_server` | Enable or disable a single DAP server |
-| `get_extension_schemas` | Get JSON schemas for server.json and installer.json |
+Extension management is done via the `mcpade` CLI:
+
+| Command | Description |
+|---------|-------------|
+| `mcpade extension list` | List all installed extensions with their servers |
+| `mcpade extension add --id <id> --source <path>` | Add a new extension |
+| `mcpade extension remove --id <id>` | Remove an extension and its servers |
+| `mcpade extension enable --id <id>` | Enable an extension |
+| `mcpade extension disable --id <id>` | Disable an extension |
+| `mcpade lsp enable --id <id>` | Enable a single LSP server |
+| `mcpade lsp disable --id <id>` | Disable a single LSP server |
+| `mcpade dap enable --id <id>` | Enable a single DAP server |
+| `mcpade dap disable --id <id>` | Disable a single DAP server |
+| `mcpade extension schemas` | Get JSON schemas for server.json and installer.json |
+
+See [CLI documentation](cli.md) for complete usage.
 
 ## Next Steps
 
