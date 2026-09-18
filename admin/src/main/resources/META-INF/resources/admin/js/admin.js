@@ -485,8 +485,15 @@ function handleServerEnabledChanged(event) {
         }
     }
 
+    for (const ext of state.extensionsData || []) {
+        for (const list of [ext.lspServers, ext.dapServers, ext.bspServers]) {
+            const srv = list?.find(s => s.id === serverId);
+            if (srv) { srv.enabled = enabled; break; }
+        }
+    }
+
     const serverElements = document.querySelectorAll(
-        `.server-item[data-server-id="${serverId}"], .server-item[data-dap-server="${serverId}"]`
+        `.server-item[data-server-id="${serverId}"], .server-item[data-dap-server="${serverId}"], .extension-server-item[data-server-id="${serverId}"]`
     );
     for (const serverElement of serverElements) {
         if (enabled) {
@@ -499,19 +506,26 @@ function handleServerEnabledChanged(event) {
             checkbox.checked = enabled;
         }
     }
+
+    // Update status toggle in server detail view
+    const detailRow = document.querySelector(`.detail-status-row[data-server-id="${serverId}"]`);
+    if (detailRow) {
+        const toggle = detailRow.querySelector('.toggle-switch input[type="checkbox"]');
+        if (toggle) {
+            toggle.checked = enabled;
+        }
+    }
 }
 
 function handleExtensionEnabledChanged(event) {
     const enabled = event.enabled;
     const extensionId = event.extensionId;
 
-    // Update data model
     const ext = state.extensionsData.find(e => e.id === extensionId);
     if (ext) {
         ext.enabled = enabled;
     }
 
-    // Direct DOM update (same pattern as handleServerEnabledChanged)
     const extElements = document.querySelectorAll(
         `.extension-item[data-extension-id="${extensionId}"]`
     );
@@ -524,6 +538,82 @@ function handleExtensionEnabledChanged(event) {
         const checkbox = el.querySelector('.toggle-switch input[type="checkbox"]');
         if (checkbox) {
             checkbox.checked = enabled;
+        }
+    }
+
+    // Update extension detail view status toggle
+    if (state.selectedExtension === extensionId) {
+        const detailToggle = document.querySelector('.details-panel input[data-action="toggleExtensionEnabled"]');
+        if (detailToggle) {
+            detailToggle.checked = enabled;
+        }
+    }
+
+    // Update extensionEnabled in server configs + collect affected server IDs
+    const serverIds = new Set();
+    for (const configs of [state.lspConfigs, state.dapConfigs, state.bspConfigs]) {
+        if (!configs) continue;
+        for (const [id, config] of Object.entries(configs)) {
+            if (config.extensionId === extensionId) {
+                config.extensionEnabled = enabled ? undefined : false;
+                serverIds.add(id);
+            }
+        }
+    }
+    if (ext) {
+        for (const list of [ext.lspServers, ext.dapServers, ext.bspServers]) {
+            if (list) {
+                for (const srv of list) serverIds.add(srv.id);
+            }
+        }
+    }
+    const tooltip = `Disabled because extension '${extensionId}' is disabled`;
+    for (const serverId of serverIds) {
+        const elements = document.querySelectorAll(
+            `.server-item[data-server-id="${serverId}"], .extension-server-item[data-server-id="${serverId}"]`
+        );
+        const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId];
+        const extServer = ext && [ext.lspServers, ext.dapServers, ext.bspServers]
+            .flatMap(l => l || []).find(s => s.id === serverId);
+        const serverEnabled = config ? config.enabled : (extServer ? extServer.enabled : true);
+        for (const el of elements) {
+            const checkbox = el.querySelector('.toggle-switch input[type="checkbox"]');
+            if (enabled) {
+                el.classList.remove('server-disabled-by-extension');
+                el.removeAttribute('title');
+                if (!serverEnabled) {
+                    el.classList.add('server-disabled');
+                } else if (checkbox) {
+                    checkbox.checked = true;
+                }
+            } else {
+                el.classList.remove('server-disabled');
+                el.classList.add('server-disabled-by-extension');
+                el.setAttribute('title', tooltip);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+            }
+        }
+    }
+
+    // Update status toggle in server detail views
+    const detailStatusRows = document.querySelectorAll(`.detail-status-row[data-extension-id="${extensionId}"]`);
+    for (const row of detailStatusRows) {
+        const toggle = row.querySelector('.toggle-switch input[type="checkbox"]');
+        if (toggle) {
+            if (enabled) {
+                const serverId = row.dataset.serverId;
+                const config = state.lspConfigs?.[serverId] || state.dapConfigs?.[serverId] || state.bspConfigs?.[serverId];
+                toggle.checked = config ? config.enabled : true;
+            } else {
+                toggle.checked = false;
+            }
+        }
+        if (enabled) {
+            row.classList.remove('server-disabled-by-extension');
+        } else {
+            row.classList.add('server-disabled-by-extension');
         }
     }
 }

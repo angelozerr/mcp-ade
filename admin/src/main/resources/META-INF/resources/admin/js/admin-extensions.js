@@ -140,7 +140,12 @@ export async function showExtensionDetails(extensionId, scroll) {
 
             <div class="detail-row">
                 <span class="detail-label">Status:</span>
-                <span class="detail-value ${ext.enabled ? 'text-success' : 'text-error'}">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
+                <span class="detail-value">
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${ext.enabled ? 'checked' : ''} data-action="toggleExtensionEnabled" data-extension-id="${ext.id}">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </span>
             </div>
 
             <div id="extension-detail-section">
@@ -159,30 +164,35 @@ export async function showExtensionDetails(extensionId, scroll) {
     }
 }
 
+function buildServerItemHTML(ext, server, serverType) {
+    const extensionDisabled = !ext.enabled;
+    let cssClass = '';
+    if (extensionDisabled) {
+        cssClass = 'server-disabled-by-extension';
+    } else if (!server.enabled) {
+        cssClass = 'server-disabled';
+    }
+    const title = extensionDisabled ? `Disabled because extension '${ext.id}' is disabled` : '';
+    const checked = server.enabled && !extensionDisabled ? 'checked' : '';
+    const toggle = `<label class="toggle-switch"><input type="checkbox" ${checked} data-action="toggleExtensionServerEnabled" data-server-type="${serverType}" data-server-id="${server.id}"><span class="toggle-slider"></span></label>`;
+    return renderServerLink(serverType, server.id, { name: server.name, cssClass, extra: toggle, title });
+}
+
 function buildExtensionDetailHTML(ext) {
     let serversHTML = '';
     if (ext.lspServers && ext.lspServers.length > 0) {
         serversHTML += '<h4 class="text-label mt-xl">LSP Servers</h4>';
-        serversHTML += ext.lspServers.map(server => {
-            const toggle = `<label class="toggle-switch"><input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="lsp" data-server-id="${server.id}"><span class="toggle-slider"></span></label>`;
-            return renderServerLink('lsp', server.id, { name: server.name, cssClass: !server.enabled ? 'server-disabled' : '', extra: toggle });
-        }).join('');
+        serversHTML += ext.lspServers.map(server => buildServerItemHTML(ext, server, 'lsp')).join('');
     }
 
     if (ext.dapServers && ext.dapServers.length > 0) {
         serversHTML += '<h4 class="text-label mt-xl">DAP Servers</h4>';
-        serversHTML += ext.dapServers.map(server => {
-            const toggle = `<label class="toggle-switch"><input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="dap" data-server-id="${server.id}"><span class="toggle-slider"></span></label>`;
-            return renderServerLink('dap', server.id, { name: server.name, cssClass: !server.enabled ? 'server-disabled' : '', extra: toggle });
-        }).join('');
+        serversHTML += ext.dapServers.map(server => buildServerItemHTML(ext, server, 'dap')).join('');
     }
 
     if (ext.bspServers && ext.bspServers.length > 0) {
         serversHTML += '<h4 class="text-label mt-xl">BSP Servers</h4>';
-        serversHTML += ext.bspServers.map(server => {
-            const toggle = `<label class="toggle-switch"><input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="toggleExtensionServerEnabled" data-server-type="bsp" data-server-id="${server.id}"><span class="toggle-slider"></span></label>`;
-            return renderServerLink('bsp', server.id, { name: server.name, cssClass: !server.enabled ? 'server-disabled' : '', extra: toggle });
-        }).join('');
+        serversHTML += ext.bspServers.map(server => buildServerItemHTML(ext, server, 'bsp')).join('');
     }
 
     const extRuntimes = Object.values(state.runtimeConfigs || {}).filter(rt => rt.extensionId === ext.id);
@@ -609,11 +619,7 @@ async function toggleExtensionEnabled(extensionId, enabled) {
     try {
         const response = await fetch(`/api/admin/extensions/${encodeURIComponent(extensionId)}/${action}`, { method: 'POST' });
         if (response.ok) {
-            const ext = state.extensionsData.find(e => e.id === extensionId);
-            if (ext) ext.enabled = enabled;
             showToast('Settings saved');
-            renderExtensionsList();
-            if (state.selectedExtension === extensionId) showExtensionDetails(extensionId);
         }
     } catch (error) {
         console.error(`Failed to ${action} extension:`, error);
@@ -624,17 +630,31 @@ async function toggleExtensionEnabled(extensionId, enabled) {
  * Toggle enable/disable for an individual server within an extension.
  */
 async function toggleExtensionServerEnabled(type, serverId, enabled) {
+    if (enabled) {
+        const parentExt = state.extensionsData.find(e => {
+            const serverList = type === 'lsp' ? e.lspServers : type === 'dap' ? e.dapServers : e.bspServers;
+            return serverList?.some(s => s.id === serverId);
+        });
+        if (parentExt && !parentExt.enabled) {
+            const confirmed = await confirmAction(
+                'Enable Extension',
+                `This server belongs to the disabled extension "${parentExt.name || parentExt.id}".\n\nEnabling this server will also enable the extension.`,
+                'Enable'
+            );
+            if (!confirmed) {
+                const checkbox = document.querySelector(`input[data-action="toggleExtensionServerEnabled"][data-server-id="${serverId}"]`);
+                if (checkbox) checkbox.checked = false;
+                return;
+            }
+            await fetch(`/api/admin/extensions/${encodeURIComponent(parentExt.id)}/enable`, { method: 'POST' });
+        }
+    }
+
     const action = enabled ? 'enable' : 'disable';
     try {
         const response = await fetch(`/api/admin/extensions/${type}/servers/${serverId}/${action}`, { method: 'POST' });
         if (response.ok) {
-            for (const ext of state.extensionsData) {
-                const serverList = type === 'lsp' ? ext.lspServers : type === 'dap' ? ext.dapServers : ext.bspServers;
-                const srv = serverList?.find(s => s.id === serverId);
-                if (srv) { srv.enabled = enabled; break; }
-            }
             showToast('Settings saved');
-            if (state.selectedExtension) showExtensionDetails(state.selectedExtension);
         }
     } catch (error) {
         console.error(`Failed to ${action} ${type} server:`, error);

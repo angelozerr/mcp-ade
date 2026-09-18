@@ -21,9 +21,11 @@ let bspLanguageFilter = null;
 
 function renderBspServerItem(server) {
     const isActive = selectedBspServer === server.id ? 'active' : '';
-    const disabledClass = !server.enabled ? 'server-disabled' : '';
+    const extDisabled = server.extensionEnabled === false;
+    const disabledClass = extDisabled ? 'server-disabled-by-extension' : (!server.enabled ? 'server-disabled' : '');
+    const extDisabledTitle = extDisabled ? `Disabled because extension '${server.extensionId}' is disabled` : '';
     return `
-        <div class="server-item ${isActive} ${disabledClass}" data-action="showBspServerDetails" data-server-id="${server.id}">
+        <div class="server-item ${isActive} ${disabledClass}" data-action="showBspServerDetails" data-server-id="${server.id}"${extDisabledTitle ? ` title="${extDisabledTitle}"` : ''}>
             ${renderServerNameHeader(server, { icon: '🔨', toggleAction: 'toggleBspServerEnabled' })}
             <div class="server-id">${server.id}</div>
         </div>
@@ -172,7 +174,7 @@ function buildBspServerDetailHTML(server) {
         </div>
         ` : ''}
 
-        ${renderExtensionSection(server)}
+        ${renderExtensionSection(server, 'bsp')}
 
         ${server.installDir ? `
         <div class="detail-row">
@@ -210,7 +212,7 @@ async function installBspServer(serverId) {
 }
 
 async function toggleBspServerEnabled(serverId, enabled) {
-    toggleServerEnabled('bsp', serverId, enabled, bspServerConfigs, () => loadAllBspServers(selectedBspServer));
+    toggleServerEnabled('bsp', serverId, enabled, bspServerConfigs);
 }
 
 // Register event delegation actions

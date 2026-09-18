@@ -599,9 +599,11 @@ let dapLanguageFilter = null;
  */
 function renderDapServerItem(server) {
     const isActive = selectedDapServer === server.id ? 'active' : '';
-    const disabledClass = !server.enabled ? 'server-disabled' : '';
+    const extDisabled = server.extensionEnabled === false;
+    const disabledClass = extDisabled ? 'server-disabled-by-extension' : (!server.enabled ? 'server-disabled' : '');
+    const extDisabledTitle = extDisabled ? `Disabled because extension '${server.extensionId}' is disabled` : '';
     return `
-        <div class="server-item ${isActive} ${disabledClass}" data-action="showDapServerDetails" data-server-id="${server.id}">
+        <div class="server-item ${isActive} ${disabledClass}" data-action="showDapServerDetails" data-server-id="${server.id}"${extDisabledTitle ? ` title="${extDisabledTitle}"` : ''}>
             ${renderServerNameHeader(server, { icon: '🐛', toggleAction: 'toggleDapServerEnabled' })}
             <div class="server-id">${server.id}</div>
         </div>
@@ -770,7 +772,7 @@ function buildDapServerDetailHTML(server) {
 
         ${renderRuntimeSection(server)}
 
-        ${renderExtensionSection(server)}
+        ${renderExtensionSection(server, 'dap')}
 
         ${server.installDir ? `
         <div class="detail-row">
@@ -1418,7 +1420,7 @@ export function applyLaunchTemplate(sessionId, templateIndex) {
 }
 
 export async function toggleDapServerEnabled(serverId, enabled) {
-    toggleServerEnabled('dap', serverId, enabled, dapServerConfigs, () => loadAllDapServers(selectedDapServer));
+    toggleServerEnabled('dap', serverId, enabled, dapServerConfigs);
 }
 
 // Register event delegation actions

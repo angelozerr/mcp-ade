@@ -101,6 +101,9 @@ public class BspAdminResource extends AbstractServerAdminResource {
         }
         if (config.getExtensionId() != null) {
             dto.put("extensionId", config.getExtensionId());
+            if (!application.getExtensionRegistry().isExtensionEnabled(config.getExtensionId())) {
+                dto.put("extensionEnabled", false);
+            }
         }
         if (config.getExtensionName() != null) {
             dto.put("extensionName", config.getExtensionName());

@@ -24,11 +24,13 @@ let lspLanguageFilter = null;
 function renderLspServerItem(server) {
     const isActive = selectedAllServer === server.id ? 'active' : '';
     const extensionClass = server.isExtension ? 'server-extension' : '';
-    const disabledClass = !server.enabled ? 'server-disabled' : '';
+    const extDisabled = server.extensionEnabled === false;
+    const disabledClass = extDisabled ? 'server-disabled-by-extension' : (!server.enabled ? 'server-disabled' : '');
+    const extDisabledTitle = extDisabled ? `Disabled because extension '${server.extensionId}' is disabled` : '';
     const extensionBadge = server.isExtension ? ' <span class="text-secondary font-md">(Extension)</span>' : '';
     const serverIcon = server.isExtension ? '🧩' : '🚀';
     return `
-        <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" data-action="showServerDetails" data-server-id="${server.id}">
+        <div class="server-item ${isActive} ${extensionClass} ${disabledClass}" data-action="showServerDetails" data-server-id="${server.id}"${extDisabledTitle ? ` title="${extDisabledTitle}"` : ''}>
             ${renderServerNameHeader(server, { icon: serverIcon, nameExtra: extensionBadge, toggleAction: 'toggleLspServerEnabled' })}
             <div class="server-id">${server.id}</div>
         </div>
@@ -229,7 +231,7 @@ function buildServerDetailHTML(details) {
 
         ${renderRuntimeSection(details)}
 
-        ${renderExtensionSection(details)}
+        ${renderExtensionSection(details, 'lsp')}
 
         ${details.installDir ? `
         <div class="detail-row">
@@ -358,7 +360,7 @@ async function changeLspServerTraceLevel(serverId, level) {
 }
 
 async function toggleLspServerEnabled(serverId, enabled) {
-    toggleServerEnabled('lsp', serverId, enabled, state.lspConfigs, () => loadAllLspServers(selectedAllServer));
+    toggleServerEnabled('lsp', serverId, enabled, state.lspConfigs);
 }
 
 export function loadInstallerJson(serverId) {

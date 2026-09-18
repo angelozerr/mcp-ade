@@ -107,6 +107,12 @@ public class DapAdminResource extends AbstractServerAdminResource {
         return config.getExtensionName();
     }
 
+    private Boolean extensionEnabled(DapServerConfig config) {
+        String extId = config.getExtensionId();
+        if (extId == null) return null;
+        return extensionRegistry.isExtensionEnabled(extId) ? null : Boolean.FALSE;
+    }
+
     private DapConfigDTO toDTO(DapServerConfig config) {
         boolean hasInstaller = config.getInstaller() != null;
         return new DapConfigDTO(
@@ -122,6 +128,7 @@ public class DapAdminResource extends AbstractServerAdminResource {
             config.getRuntimeStatusName(),
             config.getExtensionId(),
             extensionName(config),
+            extensionEnabled(config),
             trueOrNull(hasInstaller),
             hasInstaller ? config.getStatus().name() : null,
             hasInstaller ? config.getServerHome().toString() : null
@@ -141,8 +148,9 @@ public class DapAdminResource extends AbstractServerAdminResource {
             null,
             null,
             null,
+            config.getExtensionId(),
             null,
-            null,
+            extensionEnabled(config),
             trueOrNull(hasInstaller),
             hasInstaller ? config.getStatus().name() : null,
             null

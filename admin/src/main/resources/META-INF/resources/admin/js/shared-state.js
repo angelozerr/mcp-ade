@@ -287,6 +287,7 @@ export async function loadExtensionConfigs() {
         const response = await fetch('/api/admin/extensions');
         if (!response.ok) throw new Error('Failed to load extensions');
         state.extensionConfigs = (await response.json()).sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+        state.extensionsData = state.extensionConfigs;
         console.log('Loaded', state.extensionConfigs.length, 'extension configs');
     } catch (error) {
         console.error('Failed to load extension configs:', error);

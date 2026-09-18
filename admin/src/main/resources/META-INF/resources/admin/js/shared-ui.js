@@ -30,7 +30,8 @@ export function renderServerLink(serverType, serverId, opts = {}) {
     const name = opts.name || getServerName(serverId);
     const extraClass = opts.cssClass || '';
     const extraHTML = opts.extra || '';
-    return `<div class="extension-server-item cursor-pointer ${extraClass}" data-action="${action}" data-server-id="${serverId}"><span><span class="server-source-icon">${icon}</span> <span class="nav-link">${name}</span> <span class="text-dimmed font-sm">(${serverId})</span></span>${extraHTML}</div>`;
+    const titleAttr = opts.title ? ` title="${opts.title}"` : '';
+    return `<div class="extension-server-item cursor-pointer ${extraClass}" data-action="${action}" data-server-id="${serverId}"${titleAttr}><span><span class="server-source-icon">${icon}</span> <span class="nav-link">${name}</span> <span class="text-dimmed font-sm">(${serverId})</span></span>${extraHTML}</div>`;
 }
 
 export function renderRuntimeLink(runtimeId, runtimeName) {
@@ -120,12 +121,24 @@ export function renderRuntimeSection(data) {
 /**
  * Renders the extension section HTML for server overview pages (LSP/DAP/BSP).
  */
-export function renderExtensionSection(data) {
+export function renderExtensionSection(data, serverType) {
     if (!data.extensionId) return '';
+    const extDisabled = data.extensionEnabled === false;
+    const toggleAction = `toggle${serverType.charAt(0).toUpperCase() + serverType.slice(1)}ServerEnabled`;
+    const checked = data.enabled && !extDisabled ? 'checked' : '';
     return `
         <div class="detail-row">
             <span class="detail-label">Extension:</span>
             <span class="detail-value">${renderExtensionLink(data.extensionId, data.extensionName)}</span>
+        </div>
+        <div class="detail-row detail-status-row${extDisabled ? ' server-disabled-by-extension' : ''}" data-server-id="${data.id}" data-extension-id="${data.extensionId}">
+            <span class="detail-label">Status:</span>
+            <span class="detail-value">
+                <label class="toggle-switch">
+                    <input type="checkbox" ${checked} data-action="${toggleAction}" data-server-id="${data.id}">
+                    <span class="toggle-slider"></span>
+                </label>
+            </span>
         </div>
     `;
 }
@@ -515,7 +528,7 @@ export function renderServerNameHeader(server, opts = {}) {
                 <span class="install-badge-container">${installBadgeHTML}</span>
                 ${toggleAction ? `
                 <label class="toggle-switch" onclick="event.stopPropagation()">
-                    <input type="checkbox" ${server.enabled ? 'checked' : ''} data-action="${toggleAction}" data-server-id="${server.id}">
+                    <input type="checkbox" ${server.enabled && server.extensionEnabled !== false ? 'checked' : ''} data-action="${toggleAction}" data-server-id="${server.id}">
                     <span class="toggle-slider"></span>
                 </label>
                 ` : ''}
@@ -585,14 +598,30 @@ export function switchServerTabs(panelPrefix, tab, onSwitch) {
     if (onSwitch) onSwitch(tab);
 }
 
-export async function toggleServerEnabled(serverType, serverId, enabled, configs, reloadFn) {
+export async function toggleServerEnabled(serverType, serverId, enabled, configs) {
+    if (enabled) {
+        const config = configs[serverId];
+        if (config?.extensionEnabled === false) {
+            const extName = config.extensionName || config.extensionId;
+            const confirmed = await confirmAction(
+                'Enable Extension',
+                `This server belongs to the disabled extension "${extName}".\n\nEnabling this server will also enable the extension.`,
+                'Enable'
+            );
+            if (!confirmed) {
+                const checkboxes = document.querySelectorAll(`.server-item[data-server-id="${serverId}"] .toggle-switch input[type="checkbox"], .detail-status-row[data-server-id="${serverId}"] .toggle-switch input[type="checkbox"]`);
+                for (const cb of checkboxes) cb.checked = false;
+                return;
+            }
+            await fetch(`/api/admin/extensions/${encodeURIComponent(config.extensionId)}/enable`, { method: 'POST' });
+        }
+    }
+
     const action = enabled ? 'enable' : 'disable';
     try {
         const response = await fetch(`/api/admin/extensions/${serverType}/servers/${serverId}/${action}`, { method: 'POST' });
         if (response.ok) {
-            if (configs[serverId]) configs[serverId].enabled = enabled;
             showToast('Settings saved');
-            reloadFn();
         }
     } catch (error) {
         console.error(`Failed to ${action} ${serverType.toUpperCase()} server:`, error);

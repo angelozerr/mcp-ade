@@ -57,6 +57,12 @@ public class ServerDTOBuilder {
         return config.getExtensionName();
     }
 
+    private Boolean extensionEnabled(ServerConfigBase config) {
+        String extId = config.getExtensionId();
+        if (extId == null) return null;
+        return extensionRegistry.isExtensionEnabled(extId) ? null : Boolean.FALSE;
+    }
+
     public LspConfigDTO buildConfig(LspServerConfig config) {
         boolean hasInstaller = config.getInstaller() != null;
 
@@ -79,6 +85,7 @@ public class ServerDTOBuilder {
             config.getRuntimeStatusName(),
             config.getExtensionId(),
             extensionName(config),
+            extensionEnabled(config),
             trueOrNull(hasInstaller),
             hasInstaller ? config.getStatus().name() : null,
             hasInstaller ? config.getServerHome().toString() : null
@@ -105,8 +112,9 @@ public class ServerDTOBuilder {
             null,
             null,
             null,
+            config.getExtensionId(),
             null,
-            null,
+            extensionEnabled(config),
             trueOrNull(hasInstaller),
             hasInstaller ? config.getStatus().name() : null,
             null

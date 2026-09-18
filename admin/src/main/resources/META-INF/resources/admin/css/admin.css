@@ -2428,6 +2428,10 @@ body {
     opacity: 0.45;
 }
 
+.server-item.server-disabled-by-extension {
+    opacity: 0.45;
+}
+
 /* Extension list items */
 .extension-item {
     padding: 0.75rem 1rem;
@@ -2498,6 +2502,14 @@ body {
 
 .extension-server-item.server-disabled {
     opacity: 0.45;
+}
+
+.extension-server-item.server-disabled-by-extension {
+    opacity: 0.45;
+}
+
+.server-disabled-by-extension .toggle-switch .toggle-slider {
+    background-color: #c0392b80;
 }
 
 .add-extension-bar {
