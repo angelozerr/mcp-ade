@@ -1489,7 +1489,8 @@ body {
 /* ── Language filter (chips + autocomplete) ── */
 
 #lsp-servers-list.language-filter-active,
-#dap-servers-list.language-filter-active {
+#dap-servers-list.language-filter-active,
+#extensions-list.language-filter-active {
     display: flex;
     flex-direction: column;
     overflow: hidden;

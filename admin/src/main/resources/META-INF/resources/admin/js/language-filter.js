@@ -1,11 +1,13 @@
 export class LanguageFilter {
 
-    constructor(parentContainer, getConfigs, onFilterChange) {
+    constructor(parentContainer, getConfigs, onFilterChange, options) {
         this._parent = parentContainer;
         this._getConfigs = getConfigs;
         this._onFilterChange = onFilterChange;
         this._selectedLanguages = [];
         this._highlightedIndex = -1;
+        this._customExtractLanguages = options?.extractLanguages;
+        this._customFilterItem = options?.filterItem;
         this._createDOM();
     }
 
@@ -13,9 +15,12 @@ export class LanguageFilter {
         return this._itemsContainer;
     }
 
-    filterServers(servers) {
-        if (this._selectedLanguages.length === 0) return servers;
-        return servers.filter(server => {
+    filterItems(items) {
+        if (this._selectedLanguages.length === 0) return items;
+        if (this._customFilterItem) {
+            return items.filter(item => this._customFilterItem(item, this._selectedLanguages));
+        }
+        return items.filter(server => {
             if (!server.documentSelector || server.documentSelector.length === 0) {
                 return false;
             }
@@ -25,6 +30,10 @@ export class LanguageFilter {
             }
             return this._selectedLanguages.some(l => langs.has(l));
         });
+    }
+
+    filterServers(servers) {
+        return this.filterItems(servers);
     }
 
     _createDOM() {
@@ -110,6 +119,7 @@ export class LanguageFilter {
     }
 
     _extractAllLanguages() {
+        if (this._customExtractLanguages) return this._customExtractLanguages();
         const configs = this._getConfigs();
         const langs = new Set();
         for (const cfg of Object.values(configs || {})) {

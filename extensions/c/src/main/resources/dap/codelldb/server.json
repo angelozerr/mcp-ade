@@ -29,31 +29,13 @@
       "language": "crystal"
     },
     {
-      "language": "d"
+      "language": "fortran-modern"
     },
     {
       "language": "fortran"
     },
     {
-      "language": "fortran-modern"
-    },
-    {
-      "language": "haskell"
-    },
-    {
       "language": "jai"
-    },
-    {
-      "language": "java"
-    },
-    {
-      "language": "julia"
-    },
-    {
-      "language": "kotlin"
-    },
-    {
-      "language": "lldb.disassembly"
     },
     {
       "language": "nim"
@@ -68,25 +50,13 @@
       "language": "objectpascal"
     },
     {
-      "language": "ocaml"
-    },
-    {
       "language": "odin"
-    },
-    {
-      "language": "opencl"
     },
     {
       "language": "pascal"
     },
     {
       "language": "rust"
-    },
-    {
-      "language": "swift"
-    },
-    {
-      "language": "zig"
     }
   ]
 }

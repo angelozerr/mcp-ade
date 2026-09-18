@@ -17,6 +17,7 @@ import org.eclipse.mcp.ade.Application;
 import org.eclipse.mcp.ade.admin.dto.ExtensionDTO;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.extension.ExtensionRegistry;
+import org.eclipse.mcp.ade.server.ServerConfigBase;
 import org.eclipse.mcp.ade.variable.VariableContext;
 import org.eclipse.mcp.ade.variable.VariableResolverRegistry;
 import jakarta.inject.Inject;
@@ -71,6 +72,26 @@ public class ExtensionAdminResource {
             if (lspCount > 0) dto.put("lspCount", lspCount);
             if (dapCount > 0) dto.put("dapCount", dapCount);
             if (bspCount > 0) dto.put("bspCount", bspCount);
+
+            Set<String> languages = new LinkedHashSet<>();
+            for (ServerConfigBase config : ext.getLspServerConfigs()) {
+                if (config.getDocumentSelector() != null) {
+                    languages.addAll(config.getDocumentSelector().getLanguages());
+                }
+            }
+            for (ServerConfigBase config : ext.getDapServerConfigs()) {
+                if (config.getDocumentSelector() != null) {
+                    languages.addAll(config.getDocumentSelector().getLanguages());
+                }
+            }
+            for (ServerConfigBase config : ext.getBspServerConfigs()) {
+                if (config.getDocumentSelector() != null) {
+                    languages.addAll(config.getDocumentSelector().getLanguages());
+                }
+            }
+            if (!languages.isEmpty()) {
+                dto.put("languages", new ArrayList<>(languages));
+            }
             result.add(dto);
         }
         return result;

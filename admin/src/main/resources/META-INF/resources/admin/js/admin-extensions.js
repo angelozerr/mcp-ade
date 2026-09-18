@@ -10,9 +10,12 @@ import { state, loadLspConfigs, loadDapConfigs, loadBspConfigs, ensureExtensionC
 import { registerActions } from './event-delegation.js';
 import { showToast } from './toast.js';
 import { ensureToolsLoaded, getToolsForExtension, renderToolsPanel } from './shared-tools.js';
+import { LanguageFilter } from './language-filter.js';
 
 let switchTabCallback = null;
 export function setSwitchTabCallback(cb) { switchTabCallback = cb; }
+
+let extLanguageFilter = null;
 
 
 /**
@@ -22,15 +25,29 @@ function renderExtensionsList() {
     const container = document.getElementById('extensions-list');
     if (!container) return;
 
-    let html = '';
+    if (!extLanguageFilter) {
+        extLanguageFilter = new LanguageFilter(container, null, () => renderExtensionsList(), {
+            extractLanguages: () => {
+                const langs = new Set();
+                for (const ext of state.extensionsData) {
+                    if (ext.languages) ext.languages.forEach(l => langs.add(l));
+                }
+                return [...langs].sort();
+            },
+            filterItem: (ext, selectedLanguages) => {
+                return ext.languages && selectedLanguages.some(l => ext.languages.includes(l));
+            }
+        });
+    }
 
-    if (state.extensionsData.length === 0) {
-        html += '<div class="servers-placeholder">No extensions installed</div>';
-        container.innerHTML = html;
+    const extensions = extLanguageFilter.filterItems(state.extensionsData);
+
+    if (extensions.length === 0) {
+        extLanguageFilter.getItemsContainer().innerHTML = '<div class="servers-placeholder">No extensions installed</div>';
         return;
     }
 
-    html += state.extensionsData.map(ext => {
+    extLanguageFilter.getItemsContainer().innerHTML = extensions.map(ext => {
         const isActive = state.selectedExtension === ext.id ? 'active' : '';
         const disabledClass = !ext.enabled ? 'extension-disabled' : '';
         const sourceBadge = `<span class="extension-source-badge ${ext.source.toLowerCase()}">${ext.source}</span>`;
@@ -58,8 +75,6 @@ function renderExtensionsList() {
             </div>
         `;
     }).join('');
-
-    container.innerHTML = html;
 }
 
 /**
@@ -69,7 +84,8 @@ export async function loadAllExtensions(extensionIdToSelect) {
     try {
         const container = document.getElementById('extensions-list');
         if (!state.extensionConfigs) {
-            if (container) container.innerHTML = renderLoadingPlaceholder();
+            const target = extLanguageFilter ? extLanguageFilter.getItemsContainer() : container;
+            if (target) target.innerHTML = renderLoadingPlaceholder();
         }
 
         await ensureExtensionConfigs();
