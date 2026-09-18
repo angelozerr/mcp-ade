@@ -6,6 +6,7 @@ import {
 import { registerActions } from './event-delegation.js';
 import { renderActivity, updateActivityToggleUI } from './admin-activity.js';
 import { showToast } from './toast.js';
+import { ensureToolsLoaded, renderToolsPanel } from './shared-tools.js';
 
 let mcpTraces = [];
 let mcpTraceLevel = 'off';
@@ -14,9 +15,6 @@ let mcpAllFolded = true;
 let selectedMcpClient = null;
 let mcpTracesByClient = {};
 let mcpTracesLoaded = false;
-let mcpTools = [];
-let mcpToolsLoaded = false;
-let mcpToolsFilter = '';
 let currentMcpConsoleTab = 'traces';
 
 export async function loadMcpClients() {
@@ -135,15 +133,8 @@ export function loadMcpTracesConsole() {
                         &#8592; Select an AI client to view MCP traces
                     </div>
                 </div>
-                <div id="mcp-tools-tab" class="tab-panel${tab === 'tools' ? ' active' : ''}">
-                    <div class="mcp-tools-panel">
-                        <div class="mcp-tools-toolbar">
-                            <input type="text" class="input-field mcp-tools-search" placeholder="Filter tools..."
-                                   data-action="filterMcpTools" />
-                            <span class="mcp-tools-count" id="mcp-tools-count"></span>
-                        </div>
-                        <div class="mcp-tools-list" id="mcp-tools-list"></div>
-                    </div>
+                <div id="tools-tab" class="tab-panel${tab === 'tools' ? ' active' : ''}">
+                    <div id="mcp-tools-container"></div>
                 </div>
                 <div id="mcp-activity-tab" class="tab-panel${tab === 'activity' ? ' active' : ''}">
                     <div class="activity-list" id="mcp-activity-content">
@@ -199,15 +190,8 @@ export function loadMcpConsole(clientId) {
                 <div id="mcp-traces-tab" class="tab-panel${tab === 'traces' ? ' active' : ''}">
                     <div class="console" id="mcp-console-output" tabindex="0"></div>
                 </div>
-                <div id="mcp-tools-tab" class="tab-panel${tab === 'tools' ? ' active' : ''}">
-                    <div class="mcp-tools-panel">
-                        <div class="mcp-tools-toolbar">
-                            <input type="text" class="input-field mcp-tools-search" placeholder="Filter tools..."
-                                   data-action="filterMcpTools" />
-                            <span class="mcp-tools-count" id="mcp-tools-count"></span>
-                        </div>
-                        <div class="mcp-tools-list" id="mcp-tools-list"></div>
-                    </div>
+                <div id="tools-tab" class="tab-panel${tab === 'tools' ? ' active' : ''}">
+                    <div id="mcp-tools-container"></div>
                 </div>
                 <div id="mcp-activity-tab" class="tab-panel${tab === 'activity' ? ' active' : ''}">
                     <div class="activity-list" id="mcp-activity-content">
@@ -269,7 +253,7 @@ function switchMcpConsoleTab(tab, clickedBtn) {
         if (activityControls) activityControls.style.display = 'none';
         updateSearchBoxVisibility(true);
     } else if (tab === 'tools') {
-        document.getElementById('mcp-tools-tab').classList.add('active');
+        document.getElementById('tools-tab').classList.add('active');
         if (tracesControls) tracesControls.style.display = 'none';
         if (activityControls) activityControls.style.display = 'none';
         updateSearchBoxVisibility(false);
@@ -376,186 +360,16 @@ export function setMcpTraceLevel(level) {
 // ========== MCP Tools ==========
 
 async function loadMcpTools() {
-    if (mcpToolsLoaded) {
-        renderMcpTools();
-        return;
-    }
     try {
-        const response = await fetch('/api/admin/mcp/tools');
-        mcpTools = await response.json();
-        mcpToolsLoaded = true;
-        renderMcpTools();
+        const tools = await ensureToolsLoaded();
+        renderToolsPanel('mcp-tools-container', tools, { showGroupExtensionBadge: true });
     } catch (e) {
         console.error('Failed to load MCP tools:', e);
-        const list = document.getElementById('mcp-tools-list');
-        if (list) {
-            list.innerHTML = '<div class="text-secondary p-lg">Failed to load tools</div>';
+        const container = document.getElementById('mcp-tools-container');
+        if (container) {
+            container.innerHTML = '<div class="text-secondary p-lg">Failed to load tools</div>';
         }
     }
-}
-
-function filterMcpTools(query) {
-    mcpToolsFilter = query.toLowerCase();
-    renderMcpTools();
-}
-
-function renderMcpTools() {
-    const list = document.getElementById('mcp-tools-list');
-    const countEl = document.getElementById('mcp-tools-count');
-    if (!list) return;
-
-    const filtered = mcpTools.filter(tool => {
-        if (!mcpToolsFilter) return true;
-        return tool.name.toLowerCase().includes(mcpToolsFilter)
-            || (tool.description && tool.description.toLowerCase().includes(mcpToolsFilter))
-            || (tool.group && tool.group.toLowerCase().includes(mcpToolsFilter))
-            || (tool.subGroup && tool.subGroup.toLowerCase().includes(mcpToolsFilter));
-    });
-
-    if (countEl) {
-        countEl.textContent = mcpToolsFilter
-            ? `${filtered.length} / ${mcpTools.length} tools`
-            : `${mcpTools.length} tools`;
-    }
-
-    if (filtered.length === 0) {
-        list.innerHTML = mcpToolsFilter
-            ? '<div class="text-secondary p-lg">No tools matching filter</div>'
-            : '<div class="text-secondary p-lg">No MCP tools registered</div>';
-        return;
-    }
-
-    const hierarchy = {};
-    for (const tool of filtered) {
-        const g = tool.group || 'Other';
-        const sg = tool.subGroup || null;
-        if (!hierarchy[g]) hierarchy[g] = {};
-        const subKey = sg || '_ungrouped';
-        if (!hierarchy[g][subKey]) hierarchy[g][subKey] = [];
-        hierarchy[g][subKey].push(tool);
-    }
-
-    const esc = escapeHtml;
-    const expanded = !!mcpToolsFilter;
-    const toggleIcon = expanded ? '&#9660;' : '&#9654;';
-    const collapsedClass = expanded ? '' : ' collapsed';
-    const bodyDisplay = expanded ? '' : ' style="display: none;"';
-
-    list.innerHTML = Object.entries(hierarchy).map(([group, subGroups]) => {
-        const groupToolCount = Object.values(subGroups).reduce((sum, arr) => sum + arr.length, 0);
-        const subGroupEntries = Object.entries(subGroups);
-        const hasSubGroups = !(subGroupEntries.length === 1 && subGroupEntries[0][0] === '_ungrouped');
-
-        let bodyHtml;
-        if (hasSubGroups) {
-            bodyHtml = subGroupEntries.map(([subKey, tools]) => {
-                const subName = subKey === '_ungrouped' ? 'Other' : subKey;
-                const toolsHtml = tools.map(tool => renderMcpToolItem(tool)).join('');
-                return `
-                    <div class="mcp-tool-subgroup${collapsedClass}">
-                        <div class="mcp-tool-subgroup-header" data-action="toggleMcpToolGroup">
-                            <span class="mcp-tool-group-toggle">${toggleIcon}</span>
-                            <span class="mcp-tool-subgroup-name">${esc(subName)}</span>
-                            <span class="mcp-tool-subgroup-count">${tools.length}</span>
-                        </div>
-                        <div class="mcp-tool-group-body"${bodyDisplay}>
-                            ${toolsHtml}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            bodyHtml = subGroupEntries[0][1].map(tool => renderMcpToolItem(tool)).join('');
-        }
-
-        return `
-            <div class="mcp-tool-group${collapsedClass}">
-                <div class="mcp-tool-group-header" data-action="toggleMcpToolGroup">
-                    <span class="mcp-tool-group-toggle">${toggleIcon}</span>
-                    <span class="mcp-tool-group-name">${esc(group)}</span>
-                    <span class="mcp-tool-group-count">${groupToolCount}</span>
-                </div>
-                <div class="mcp-tool-group-body"${bodyDisplay}>
-                    ${bodyHtml}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function renderMcpToolItem(tool) {
-    const esc = escapeHtml;
-    const argCount = tool.args ? tool.args.length : 0;
-    const argsHtml = argCount > 0
-        ? tool.args.map(arg =>
-            `<span class="mcp-tool-arg ${arg.required ? 'mcp-tool-arg-required' : 'mcp-tool-arg-optional'}" title="${esc(arg.description || '')}&#10;Type: ${esc(arg.type)}${arg.required ? '' : ' (optional)'}">${esc(arg.name)}</span>`
-        ).join('')
-        : '<span class="text-dimmed font-sm">No arguments</span>';
-
-    return `
-        <div class="mcp-tool-item" data-action="toggleMcpToolDetail">
-            <div class="mcp-tool-header">
-                <div class="mcp-tool-name">${esc(tool.name)}</div>
-                <div class="mcp-tool-arg-count">${argCount === 0 ? 'No args' : argCount === 1 ? '1 arg' : argCount + ' args'}</div>
-            </div>
-            <div class="mcp-tool-description">${esc(tool.description || '')}</div>
-            <div class="mcp-tool-args">${argsHtml}</div>
-            <div class="mcp-tool-detail" style="display: none;">
-                ${renderMcpToolDetail(tool)}
-            </div>
-        </div>
-    `;
-}
-
-function renderMcpToolDetail(tool) {
-    const esc = escapeHtml;
-    if (!tool.args || tool.args.length === 0) {
-        return '<div class="text-dimmed py-sm">No arguments</div>';
-    }
-    return `
-        <table class="mcp-tool-args-table">
-            <thead>
-                <tr>
-                    <th>Argument</th>
-                    <th>Type</th>
-                    <th>Required</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${tool.args.map(arg => `
-                    <tr>
-                        <td class="text-code">${esc(arg.name)}</td>
-                        <td><span class="mcp-tool-type-badge">${esc(arg.type)}</span></td>
-                        <td>${arg.required ? '<span class="text-success">Yes</span>' : '<span class="text-dimmed">No</span>'}</td>
-                        <td class="text-secondary">${esc(arg.description || '')}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-}
-
-function toggleMcpToolDetail(el) {
-    const item = el.closest('.mcp-tool-item');
-    if (!item) return;
-    const detail = item.querySelector('.mcp-tool-detail');
-    if (!detail) return;
-    const isVisible = detail.style.display !== 'none';
-    detail.style.display = isVisible ? 'none' : 'block';
-    item.classList.toggle('expanded', !isVisible);
-}
-
-function toggleMcpToolGroup(headerEl) {
-    const group = headerEl.closest('.mcp-tool-group, .mcp-tool-subgroup');
-    if (!group) return;
-    const body = group.querySelector('.mcp-tool-group-body');
-    const toggle = headerEl.querySelector('.mcp-tool-group-toggle');
-    if (!body) return;
-    const isCollapsed = body.style.display === 'none';
-    body.style.display = isCollapsed ? '' : 'none';
-    toggle.innerHTML = isCollapsed ? '&#9660;' : '&#9654;';
-    group.classList.toggle('collapsed', !isCollapsed);
 }
 
 registerActions('click', {
@@ -571,14 +385,9 @@ registerActions('click', {
         }
     },
     clearMcpConsole: () => clearMcpConsole(),
-    toggleMcpToolDetail: (el) => toggleMcpToolDetail(el),
-    toggleMcpToolGroup: (el) => toggleMcpToolGroup(el),
 });
 
 registerActions('change', {
     changeMcpTraceLevel: (el) => changeMcpTraceLevel(el.value),
 });
 
-registerActions('input', {
-    filterMcpTools: (el) => filterMcpTools(el.value),
-});

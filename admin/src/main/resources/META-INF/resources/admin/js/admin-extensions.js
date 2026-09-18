@@ -9,6 +9,7 @@ import { confirmAction, showAlert, renderLoadingPlaceholder, renderServerLink, r
 import { state, loadLspConfigs, loadDapConfigs, loadBspConfigs, ensureExtensionConfigs, ensureExtensionConfigDetail } from './shared-state.js';
 import { registerActions } from './event-delegation.js';
 import { showToast } from './toast.js';
+import { ensureToolsLoaded, getToolsForExtension, renderToolsPanel } from './shared-tools.js';
 
 let switchTabCallback = null;
 export function setSwitchTabCallback(cb) { switchTabCallback = cb; }
@@ -148,8 +149,18 @@ export async function showExtensionDetails(extensionId, scroll) {
                 </span>
             </div>
 
-            <div id="extension-detail-section">
-                ${ext._detailLoaded ? buildExtensionDetailHTML(ext) : renderLoadingPlaceholder()}
+            <div class="extension-detail-tabs">
+                <button class="tab-button active" data-action="switchExtDetailTab" data-tab="servers">Servers</button>
+                <button class="tab-button" data-action="switchExtDetailTab" data-tab="tools">Tools</button>
+            </div>
+
+            <div id="extension-detail-servers" class="extension-detail-tab-panel active">
+                <div id="extension-detail-section">
+                    ${ext._detailLoaded ? buildExtensionDetailHTML(ext) : renderLoadingPlaceholder()}
+                </div>
+            </div>
+            <div id="extension-detail-tools" class="extension-detail-tab-panel" style="display: none;">
+                ${renderLoadingPlaceholder()}
             </div>
         </div>
     `;
@@ -1011,6 +1022,52 @@ async function resolvePreviewCommands(json) {
     } catch (_) { /* ignore network errors */ }
 }
 
+// ========== Extension detail tabs ==========
+
+function switchExtDetailTab(tab, clickedBtn) {
+    const tabsContainer = clickedBtn?.closest('.details-panel');
+    if (!tabsContainer) return;
+
+    tabsContainer.querySelectorAll('.extension-detail-tabs .tab-button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    tabsContainer.querySelectorAll('.extension-detail-tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+        panel.style.display = 'none';
+    });
+
+    if (tab === 'servers') {
+        const serversPanel = document.getElementById('extension-detail-servers');
+        if (serversPanel) { serversPanel.classList.add('active'); serversPanel.style.display = ''; }
+    } else if (tab === 'tools') {
+        const toolsPanel = document.getElementById('extension-detail-tools');
+        if (toolsPanel) { toolsPanel.classList.add('active'); toolsPanel.style.display = ''; }
+        loadExtensionTools();
+    }
+}
+
+async function loadExtensionTools() {
+    const toolsPanel = document.getElementById('extension-detail-tools');
+    if (!toolsPanel || !state.selectedExtension) return;
+
+    try {
+        await ensureToolsLoaded();
+        if (!state.selectedExtension) return;
+        const extTools = getToolsForExtension(state.selectedExtension);
+
+        if (extTools.length === 0) {
+            toolsPanel.innerHTML = '<div class="text-secondary p-lg">No tools provided by this extension</div>';
+            return;
+        }
+
+        renderToolsPanel('extension-detail-tools', extTools, {});
+    } catch (e) {
+        console.error('Failed to load extension tools:', e);
+        toolsPanel.innerHTML = '<div class="text-secondary p-lg">Failed to load tools</div>';
+    }
+}
+
 registerActions('click', {
     showExtensionDetails: (el) => showExtensionDetails(el.dataset.extensionId),
     removeExtension: (el) => removeExtension(el.dataset.extensionId),
@@ -1022,6 +1079,7 @@ registerActions('click', {
     triggerFileInput: () => document.getElementById('add-ext-file').click(),
     showAddExtensionForm: () => showAddExtensionForm(),
     switchAddExtTab: (el) => switchAddExtTab(el.dataset.tab),
+    switchExtDetailTab: (el) => switchExtDetailTab(el.dataset.tab, el),
     finishImport: () => finishImport(),
     addServerEntry: (el) => addServerEntry(el.dataset.type),
     removeServerEntry: (el) => removeServerEntry(parseInt(el.dataset.index)),

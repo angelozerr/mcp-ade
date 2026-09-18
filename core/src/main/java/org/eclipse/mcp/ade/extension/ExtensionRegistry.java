@@ -797,6 +797,23 @@ public class ExtensionRegistry {
     }
 
     /**
+     * Returns the extension ID that owns the given tool, based on the naming
+     * convention {@code <extensionId>_<toolName>}, or {@code null} if the tool
+     * does not belong to any registered extension.
+     *
+     * @param toolName the MCP tool name
+     * @return the owning extension ID, or {@code null}
+     */
+    public String getToolExtensionId(String toolName) {
+        for (String extensionId : extensions.keySet()) {
+            if (toolName.startsWith(extensionId + "_")) {
+                return extensionId;
+            }
+        }
+        return null;
+    }
+
+    /**
      * All LSP server configs (enabled + disabled) — for admin, listing.
      */
     public Collection<LspServerConfig> getAllLspServerConfigs() {

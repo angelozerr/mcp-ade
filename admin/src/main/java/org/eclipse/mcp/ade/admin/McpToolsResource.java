@@ -13,7 +13,9 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.admin;
 
-import org.eclipse.mcp.ade.admin.dto.McpToolDTO;
+import org.eclipse.mcp.ade.admin.dto.ToolDTO;
+import org.eclipse.mcp.ade.extension.Extension;
+import org.eclipse.mcp.ade.extension.ExtensionRegistry;
 import io.quarkiverse.mcp.server.ToolManager;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -39,30 +41,47 @@ public class McpToolsResource {
     @Inject
     ToolManager toolManager;
 
+    @Inject
+    ExtensionRegistry extensionRegistry;
+
     @GET
-    public List<McpToolDTO> getTools() {
-        List<McpToolDTO> tools = new ArrayList<>();
+    public List<ToolDTO> getTools() {
+        List<ToolDTO> tools = new ArrayList<>();
         for (ToolManager.ToolInfo tool : toolManager) {
-            List<McpToolDTO.McpToolArgumentDTO> args = new ArrayList<>();
-            for (ToolManager.ToolArgument arg : tool.arguments()) {
-                args.add(new McpToolDTO.McpToolArgumentDTO(
-                        arg.name(),
-                        arg.description(),
-                        arg.required(),
-                        toJsonSchemaType(arg.type())
-                ));
-            }
-            String[] groupInfo = resolveGroup(tool);
-            tools.add(new McpToolDTO(
-                    tool.name(),
-                    tool.description(),
-                    groupInfo[0],
-                    groupInfo[1],
-                    tool.serverNames(),
-                    args
-            ));
+            tools.add(buildToolDTO(tool));
         }
         return tools;
+    }
+
+    ToolDTO buildToolDTO(ToolManager.ToolInfo tool) {
+        List<ToolDTO.ToolArgumentDTO> args = new ArrayList<>();
+        for (ToolManager.ToolArgument arg : tool.arguments()) {
+            args.add(new ToolDTO.ToolArgumentDTO(
+                    arg.name(),
+                    arg.description(),
+                    arg.required(),
+                    toJsonSchemaType(arg.type())
+            ));
+        }
+        String[] groupInfo = resolveGroup(tool);
+        String extensionId = extensionRegistry.getToolExtensionId(tool.name());
+        String extensionName = null;
+        if (extensionId != null) {
+            Extension ext = extensionRegistry.getExtension(extensionId);
+            if (ext != null && ext.getName() != null) {
+                extensionName = ext.getName();
+            }
+        }
+        return new ToolDTO(
+                tool.name(),
+                tool.description(),
+                groupInfo[0],
+                groupInfo[1],
+                tool.serverNames(),
+                extensionId,
+                extensionName,
+                args
+        );
     }
 
     private static String[] resolveGroup(ToolManager.ToolInfo tool) {

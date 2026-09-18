@@ -13,23 +13,28 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.admin.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.util.List;
 import java.util.Set;
 
 @RegisterForReflection
-public record McpToolDTO(
+public record ToolDTO(
         String name,
         String description,
         String group,
         String subGroup,
         Set<String> serverNames,
-        List<McpToolArgumentDTO> args
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String extensionId,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String extensionName,
+        List<ToolArgumentDTO> args
 ) {
 
     @RegisterForReflection
-    public record McpToolArgumentDTO(
+    public record ToolArgumentDTO(
             String name,
             String description,
             boolean required,

@@ -57,13 +57,10 @@ public class ExtensionToolFilter implements ToolFilter {
      */
     @Override
     public boolean test(ToolInfo tool, FilterContext context) {
-        String toolName = tool.name();
-        for (String extensionId : extensionRegistry.getExtensionIds()) {
-            if (toolName.startsWith(extensionId + "_")) {
-                return extensionRegistry.isExtensionEnabled(extensionId);
-            }
+        String extensionId = extensionRegistry.getToolExtensionId(tool.name());
+        if (extensionId != null) {
+            return extensionRegistry.isExtensionEnabled(extensionId);
         }
-        // Tool does not belong to any extension — always visible
         return true;
     }
 }

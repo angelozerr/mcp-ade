@@ -11,7 +11,7 @@
     padding: 0.5rem 0;
 }
 
-/* ── Setting Item (same card style as .mcp-tool-item) ── */
+/* ── Setting Item (same card style as .tool-item) ── */
 
 .setting-item {
     background: var(--bg-card);

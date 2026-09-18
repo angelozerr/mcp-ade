@@ -130,17 +130,9 @@ public class ExtensionToolsListChangedNotifier implements ExtensionListener {
         }
     }
 
-    /**
-     * Checks whether the given extension has any registered MCP tools.
-     * An extension has tools if any tool name starts with {@code <extensionId>_}.
-     *
-     * @param extensionId the extension ID to check
-     * @return {@code true} if at least one tool belongs to this extension
-     */
     private boolean hasExtensionTools(String extensionId) {
-        String prefix = extensionId + "_";
         for (ToolManager.ToolInfo tool : toolManager) {
-            if (tool.name().startsWith(prefix)) {
+            if (extensionId.equals(extensionRegistry.getToolExtensionId(tool.name()))) {
                 return true;
             }
         }

@@ -24,18 +24,18 @@ export function renderSettingsPanel(opts) {
     const count = itemsHtml.length;
 
     const filterHtml = filterAction
-        ? `<div class="settings-panel-filter"><input type="text" class="input-field mcp-tools-search" placeholder="Filter ${title.toLowerCase()}..." data-action="${filterAction}" />
-           <span class="mcp-tools-count" ${countId ? `id="${countId}"` : ''}>${count} ${title.toLowerCase()}</span></div>`
+        ? `<div class="settings-panel-filter"><input type="text" class="input-field tools-search" placeholder="Filter ${title.toLowerCase()}..." data-action="${filterAction}" />
+           <span class="tools-count" ${countId ? `id="${countId}"` : ''}>${count} ${title.toLowerCase()}</span></div>`
         : '';
 
     return `
-        <div class="mcp-tool-group settings-panel-group">
-            <div class="mcp-tool-group-header" data-action="toggleMcpToolGroup">
-                <span class="mcp-tool-group-toggle">▼</span>
-                <span class="mcp-tool-group-name">${title}</span>
-                <span class="mcp-tool-group-count">${count}</span>
+        <div class="tool-group settings-panel-group">
+            <div class="tool-group-header" data-action="toggleToolGroup">
+                <span class="tool-group-toggle">▼</span>
+                <span class="tool-group-name">${title}</span>
+                <span class="tool-group-count">${count}</span>
             </div>
-            <div class="mcp-tool-group-body" ${listId ? `id="${listId}"` : ''}>
+            <div class="tool-group-body" ${listId ? `id="${listId}"` : ''}>
                 ${filterHtml}
                 ${itemsHtml.join('')}
             </div>
