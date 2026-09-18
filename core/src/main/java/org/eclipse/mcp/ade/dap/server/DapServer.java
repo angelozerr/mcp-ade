@@ -26,7 +26,7 @@ import org.eclipse.mcp.ade.progress.ProgressMonitor;
 import org.eclipse.mcp.ade.progress.ProgressStep;
 import org.eclipse.mcp.ade.server.ServerBase;
 import org.eclipse.mcp.ade.server.ServerStatus;
-import org.eclipse.mcp.ade.server.ServerType;
+
 import org.eclipse.mcp.ade.variable.VariableContext;
 import org.eclipse.mcp.ade.variable.VariableResolverRegistry;
 import org.eclipse.mcp.ade.configuration.ServerTrace;
@@ -84,11 +84,6 @@ public class DapServer extends ServerBase<DapServerConfig> {
     @Override
     public ServerTrace getServerTrace() {
         return getWorkspace().getWorkspaceConfiguration().getDapTraceLevel(getConfig().getServerId());
-    }
-
-    @Override
-    public ServerType getServerType() {
-        return ServerType.DAP;
     }
 
     /**

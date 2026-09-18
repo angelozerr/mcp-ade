@@ -19,6 +19,7 @@ import com.google.gson.JsonParser;
 import org.eclipse.mcp.ade.configuration.PathConfig;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
+import org.eclipse.mcp.ade.server.ServerType;
 import org.jboss.logging.Logger;
 
 import org.eclipse.mcp.ade.dap.server.resolve.ResolveConfig;
@@ -65,6 +66,11 @@ public class DapServerConfig extends ServerConfigBase {
 
     public DapServerConfig(String serverId, Extension extension) {
         super(serverId, computeServerHome(serverId, extension), extension);
+    }
+
+    @Override
+    public ServerType getServerType() {
+        return ServerType.DAP;
     }
 
     protected DapServerConfig(String serverId, Path serverHome, Extension extension) {

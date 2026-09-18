@@ -4,7 +4,7 @@
  * Handles DAP session creation, launching, and management
  */
 
-import { state, updateSearchBoxVisibility, ensureDapConfigs, ensureDapConfigDetail, isOnDebuggersTab } from './shared-state.js';
+import { state, updateSearchBoxVisibility, getServerName, ensureDapConfigs, ensureDapConfigDetail, isOnDebuggersTab } from './shared-state.js';
 import {
     confirmAction, showAlert, renderLoadingPlaceholder, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
@@ -827,14 +827,21 @@ async function refreshDapContributionsTab() {
 }
 
 function buildDiagramServersFromContributions(serverId, data) {
+    const info = data.serverInfo || {};
+    const serverEntry = (id, extra) => ({
+        id, name: info[id]?.name || getServerName(id),
+        isDap: info[id]?.type === 'dap',
+        isBsp: info[id]?.type === 'bsp',
+        ...extra
+    });
     const serversMap = new Map();
-    serversMap.set(serverId, { id: serverId, contributions: data.contributesTo || {} });
+    serversMap.set(serverId, serverEntry(serverId, { contributions: data.contributesTo || {} }));
     for (const [contributorId, contribData] of Object.entries(data.contributedBy || {})) {
-        serversMap.set(contributorId, { id: contributorId, contributions: { [serverId]: contribData } });
+        serversMap.set(contributorId, serverEntry(contributorId, { contributions: { [serverId]: contribData } }));
     }
     for (const targetId of Object.keys(data.contributesTo || {})) {
         if (!serversMap.has(targetId)) {
-            serversMap.set(targetId, { id: targetId });
+            serversMap.set(targetId, serverEntry(targetId));
         }
     }
     return Array.from(serversMap.values());

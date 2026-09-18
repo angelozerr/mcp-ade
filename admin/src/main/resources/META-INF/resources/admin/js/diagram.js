@@ -255,6 +255,8 @@ export function renderServerDiagram(servers, currentServerId) {
             const clickedServer = servers.find(s => s.id === clickedServerId);
             if (clickedServer?.isDap) {
                 diagramCallbacks.switchTab?.('dap-servers', null, { serverId: clickedServerId });
+            } else if (clickedServer?.isBsp) {
+                diagramCallbacks.switchTab?.('bsp-servers', null, { serverId: clickedServerId });
             } else {
                 diagramCallbacks.switchTab?.('lsp-servers', null, { serverId: clickedServerId });
             }

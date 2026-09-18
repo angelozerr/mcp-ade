@@ -278,6 +278,12 @@ public class ServerConfigBase extends InstallableConfig {
         return documentSelector != null && documentSelector.matches(uri, language, basePath);
     }
 
+    // --- Server type ---
+
+    public ServerType getServerType() {
+        return ServerType.LSP;
+    }
+
     // --- Resource path ---
 
     public String getResourceBasePath() {

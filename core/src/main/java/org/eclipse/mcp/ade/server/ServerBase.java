@@ -958,7 +958,9 @@ public abstract class ServerBase<T extends ServerConfigBase> extends ServerReque
      */
     public abstract ServerTrace getServerTrace();
 
-    public abstract ServerType getServerType();
+    public final ServerType getServerType() {
+        return config.getServerType();
+    }
 
     /**
      * Creates and returns the trace collector for this server type.

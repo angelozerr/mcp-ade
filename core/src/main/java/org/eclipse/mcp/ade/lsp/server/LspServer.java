@@ -24,7 +24,7 @@ import org.eclipse.mcp.ade.operation.OperationEntry;
 import org.eclipse.mcp.ade.progress.ProgressMonitor;
 import org.eclipse.mcp.ade.server.ServerBase;
 import org.eclipse.mcp.ade.server.ServerStatus;
-import org.eclipse.mcp.ade.server.ServerType;
+
 import org.eclipse.mcp.ade.configuration.ServerTrace;
 import org.eclipse.mcp.ade.trace.TraceCollector;
 import org.eclipse.mcp.ade.utils.JsonUtils;
@@ -1237,11 +1237,6 @@ public class LspServer extends ServerBase<LspServerConfig> {
     @Override
     public ServerTrace getServerTrace() {
         return getWorkspace().getWorkspaceConfiguration().getLspTraceLevel(getConfig().getServerId());
-    }
-
-    @Override
-    public ServerType getServerType() {
-        return ServerType.LSP;
     }
 
     /**

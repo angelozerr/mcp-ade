@@ -1,4 +1,4 @@
-import { state, buildWorkspaceContributedByMap } from './shared-state.js';
+import { state, buildWorkspaceContributedByMap, getServerName } from './shared-state.js';
 import { escapeHtml } from './trace-renderer.js';
 
 /**
@@ -50,7 +50,7 @@ export function formatContributionsSection(serverOrData, allServers = null) {
         for (const targetServerId of contributesToKeys) {
             const contributionData = contributesToMap[targetServerId];
             html += `<div class="contribution-target mb-lg">`;
-            html += `<div class="text-label-alt mb-xs font-bold">${targetServerId}</div>`;
+            html += `<div class="text-label-alt mb-xs font-bold">${getServerName(targetServerId)}</div>`;
 
             for (const [type, items] of Object.entries(contributionData)) {
                 if (items && items.length > 0) {
@@ -107,7 +107,7 @@ export function formatContributionsSection(serverOrData, allServers = null) {
                 const valueStyle = isError ? 'word-break: break-all; font-weight: bold; cursor: help;' : 'word-break: break-all;';
                 const title = isError ? 'File not found or pattern did not match any files' : '';
                 html += `<div class="text-secondary font-base mb-xs">`;
-                html += `<span class="text-label-alt d-inline-block contribution-label">${contrib.server}</span>`;
+                html += `<span class="text-label-alt d-inline-block contribution-label">${getServerName(contrib.server)}</span>`;
                 html += `<span class="text-label">•</span> `;
                 html += `<span class="${valueClass}" style="${valueStyle}" ${title ? `title="${title}"` : ''}>${escapeHtml(cleanValue)}</span>`;
                 html += `</div>`;

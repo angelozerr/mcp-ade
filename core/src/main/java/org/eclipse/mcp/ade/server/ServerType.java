@@ -16,5 +16,11 @@ package org.eclipse.mcp.ade.server;
 public enum ServerType {
     LSP,
     DAP,
-    BSP
+    BSP;
+
+    private final String id = name().toLowerCase();
+
+    public String getId() {
+        return id;
+    }
 }

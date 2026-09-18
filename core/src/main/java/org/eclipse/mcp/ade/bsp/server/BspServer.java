@@ -31,7 +31,7 @@ import org.eclipse.mcp.ade.utils.UriUtils;
 import org.eclipse.mcp.ade.progress.ProgressMonitor;
 import org.eclipse.mcp.ade.server.ServerBase;
 import org.eclipse.mcp.ade.server.ServerStatus;
-import org.eclipse.mcp.ade.server.ServerType;
+
 import org.eclipse.mcp.ade.trace.TraceCollector;
 import org.eclipse.mcp.ade.workspace.Workspace;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
@@ -75,11 +75,6 @@ public class BspServer extends ServerBase<BspServerConfig> {
     @Override
     public ServerTrace getServerTrace() {
         return getWorkspace().getWorkspaceConfiguration().getBspTraceLevel(getConfig().getServerId());
-    }
-
-    @Override
-    public ServerType getServerType() {
-        return ServerType.BSP;
     }
 
     /**

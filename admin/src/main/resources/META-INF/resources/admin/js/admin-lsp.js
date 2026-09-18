@@ -4,7 +4,7 @@
  * Handles global LSP server listing with Overview/Contributions/Settings tabs
  */
 
-import { state, getServerApiBase, ensureLspConfigs, ensureLspConfigDetail } from './shared-state.js';
+import { state, getServerApiBase, getServerName, ensureLspConfigs, ensureLspConfigDetail } from './shared-state.js';
 import {
     renderLoadingPlaceholder, renderDocumentSelector, renderRuntimeSection, renderExtensionSection, runServerInstaller,
     switchServerTabs, toggleServerEnabled, changeServerTraceLevel, buildServerSettingsHTML,
@@ -310,14 +310,21 @@ async function refreshContributionsTab() {
 }
 
 function buildDiagramServersFromContributions(serverId, data) {
+    const info = data.serverInfo || {};
+    const serverEntry = (id, extra) => ({
+        id, name: info[id]?.name || getServerName(id),
+        isDap: info[id]?.type === 'dap',
+        isBsp: info[id]?.type === 'bsp',
+        ...extra
+    });
     const serversMap = new Map();
-    serversMap.set(serverId, { id: serverId, contributions: data.contributesTo || {} });
+    serversMap.set(serverId, serverEntry(serverId, { contributions: data.contributesTo || {} }));
     for (const [contributorId, contribData] of Object.entries(data.contributedBy || {})) {
-        serversMap.set(contributorId, { id: contributorId, contributions: { [serverId]: contribData } });
+        serversMap.set(contributorId, serverEntry(contributorId, { contributions: { [serverId]: contribData } }));
     }
     for (const targetId of Object.keys(data.contributesTo || {})) {
         if (!serversMap.has(targetId)) {
-            serversMap.set(targetId, { id: targetId });
+            serversMap.set(targetId, serverEntry(targetId));
         }
     }
     return Array.from(serversMap.values());

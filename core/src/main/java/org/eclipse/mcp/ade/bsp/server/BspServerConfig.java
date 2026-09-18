@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.bsp.server;
 import org.eclipse.mcp.ade.configuration.PathConfig;
 import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.server.ServerConfigBase;
+import org.eclipse.mcp.ade.server.ServerType;
 
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -40,6 +41,11 @@ public class BspServerConfig extends ServerConfigBase {
 
     public BspServerConfig(String serverId, Extension extension) {
         super(serverId, computeServerHome(serverId, extension), extension);
+    }
+
+    @Override
+    public ServerType getServerType() {
+        return ServerType.BSP;
     }
 
     protected BspServerConfig(String serverId, Path serverHome, Extension extension) {

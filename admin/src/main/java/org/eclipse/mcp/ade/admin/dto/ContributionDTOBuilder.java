@@ -208,6 +208,22 @@ public class ContributionDTOBuilder {
             result.put("contributedBy", contributedBy);
         }
 
+        Map<String, Map<String, String>> serverInfo = new LinkedHashMap<>();
+        Set<String> referencedIds = new HashSet<>();
+        referencedIds.addAll(contributesTo.keySet());
+        referencedIds.addAll(contributedBy.keySet());
+        for (ServerConfigBase config : allConfigs) {
+            if (referencedIds.contains(config.getServerId())) {
+                Map<String, String> info = new LinkedHashMap<>();
+                info.put("name", config.getName() != null ? config.getName() : config.getServerId());
+                info.put("type", config.getServerType().getId());
+                serverInfo.put(config.getServerId(), info);
+            }
+        }
+        if (!serverInfo.isEmpty()) {
+            result.put("serverInfo", serverInfo);
+        }
+
         return result;
     }
 
