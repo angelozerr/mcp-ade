@@ -13,7 +13,6 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.admin;
 
-import org.eclipse.mcp.ade.progress.ProgressBroadcaster;
 import org.eclipse.mcp.ade.progress.ProgressContext;
 import org.eclipse.mcp.ade.progress.ProgressMonitor;
 import org.eclipse.mcp.ade.progress.ProgressMonitorContributor;
@@ -31,7 +30,7 @@ public class AdminProgressMonitorContributor implements ProgressMonitorContribut
     private static final Logger LOG = Logger.getLogger(AdminProgressMonitorContributor.class);
 
     @Inject
-    ProgressBroadcaster broadcaster;
+    AdminProgressBroadcaster adminBroadcaster;
 
     @Override
     public ProgressMonitor createMonitor(ProgressContext context) {
@@ -42,9 +41,10 @@ public class AdminProgressMonitorContributor implements ProgressMonitorContribut
         LOG.infof("Creating WebSocketProgressMonitor for task '%s' (title=%s)", taskId, title);
 
         return new WebSocketProgressMonitor(
-            broadcaster,
+            adminBroadcaster,
+            adminBroadcaster,
             taskId,
-            serverId,  // Can be null for global operations
+            serverId,
             title
         );
     }

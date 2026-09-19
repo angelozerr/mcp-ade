@@ -18,7 +18,9 @@ import org.jboss.logging.Logger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -130,9 +132,30 @@ public class MultiProgressMonitor implements ProgressMonitor {
 
     @Override
     public <T> CompletableFuture<T> executeWithCancellation(CompletableFuture<T> future) {
-        // Use the first delegate's cancellation logic
-        // (they should all behave the same for cancellation)
-        return delegates.get(0).executeWithCancellation(future);
+        // Each delegate wraps the SAME original future so any delegate
+        // can cancel the original operation directly (not just a wrapper).
+        CompletableFuture<T> merged = new CompletableFuture<>();
+
+        for (ProgressMonitor delegate : delegates) {
+            CompletableFuture<T> wrapped = delegate.executeWithCancellation(future);
+            wrapped.whenComplete((value, error) -> {
+                if (error != null) {
+                    if (!merged.isDone()) {
+                        Throwable cause = error instanceof CompletionException ? error.getCause() : error;
+                        if (cause instanceof CancellationException) {
+                            merged.cancel(true);
+                        } else {
+                            merged.completeExceptionally(error);
+                        }
+                    }
+                    future.cancel(true);
+                } else if (!merged.isDone()) {
+                    merged.complete(value);
+                }
+            });
+        }
+
+        return merged;
     }
 
     @Override

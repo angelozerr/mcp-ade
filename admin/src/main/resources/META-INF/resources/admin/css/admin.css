@@ -2373,10 +2373,16 @@ body {
     transition: all 0.2s;
 }
 
-.progress-task-cancel:hover {
+.progress-task-cancel:hover:not(:disabled) {
     border-color: var(--progress-cancel-hover-border);
     color: var(--progress-cancel-hover-color);
     background: var(--progress-cancel-hover-bg);
+}
+
+.progress-task-cancel.cancelling {
+    opacity: 0.6;
+    cursor: default;
+    font-style: italic;
 }
 
 /* Toggle switch */

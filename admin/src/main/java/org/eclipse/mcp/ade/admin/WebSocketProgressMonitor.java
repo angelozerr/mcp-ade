@@ -18,29 +18,40 @@ import org.eclipse.mcp.ade.progress.ProgressBroadcaster;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Progress monitor that broadcasts progress updates via WebSocket to Admin UI.
- * Does NOT send trace messages (use TraceProgressMonitor for that).
+ * Supports cancellation from the Admin UI via a cancellation signal that
+ * propagates to all wrapped CompletableFutures.
  */
 public class WebSocketProgressMonitor extends AbstractProgressMonitor {
 
     private final ProgressBroadcaster broadcaster;
+    private final AdminProgressBroadcaster adminBroadcaster;
     private final String taskId;
     private final String serverId;
     private final String title;
     private boolean stepsInitialized = false;
+    private final CompletableFuture<Void> cancellationSignal = new CompletableFuture<>();
 
     public WebSocketProgressMonitor(
             ProgressBroadcaster broadcaster,
+            AdminProgressBroadcaster adminBroadcaster,
             String taskId,
             String serverId,
             String title) {
         super(100.0);
         this.broadcaster = broadcaster;
+        this.adminBroadcaster = adminBroadcaster;
         this.taskId = taskId;
         this.serverId = serverId;
         this.title = title;
+
+        if (adminBroadcaster != null) {
+            adminBroadcaster.registerCancellableMonitor(taskId, this);
+        }
     }
 
     @Override
@@ -59,14 +70,17 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
             ));
         }
 
-        if (!stepInfos.isEmpty()) {
-            broadcaster.initTaskWithSteps(taskId, serverId, title, stepInfos, false);
-            stepsInitialized = true;
-        }
+        broadcaster.initTaskWithSteps(taskId, serverId, title, stepInfos, true);
+        stepsInitialized = true;
+    }
+
+    private void ensureInitialized() {
+        initializeSteps();
     }
 
     @Override
     public void reportProgress(double progress, String message) {
+        ensureInitialized();
         double scaled = scaleToActiveStep(progress);
         setCurrent(scaled);
         if (broadcaster != null) {
@@ -84,6 +98,7 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
 
     @Override
     public void reportProgress(String message) {
+        ensureInitialized();
         if (broadcaster != null) {
             String stepId = getCurrentStepId();
             Double stepProgress = null;
@@ -103,6 +118,9 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
         if (broadcaster != null) {
             broadcaster.taskCompleted(taskId, serverId, title);
         }
+        if (adminBroadcaster != null) {
+            adminBroadcaster.unregisterCancellableMonitor(taskId);
+        }
     }
 
     @Override
@@ -111,14 +129,41 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
     }
 
     @Override
-    public void checkCancelled() {
-        // No cancellation support in WebSocket monitor
+    public void cancel(String taskId) {
+        super.cancel(taskId);
+        if (this.taskId.equals(taskId)) {
+            cancellationSignal.complete(null);
+        }
     }
 
     @Override
-    public <T> java.util.concurrent.CompletableFuture<T> executeWithCancellation(
-            java.util.concurrent.CompletableFuture<T> future) {
-        // No cancellation support in WebSocket monitor - just pass through
-        return future;
+    public boolean isCancelled() {
+        return cancellationSignal.isDone() || super.isCancelled();
+    }
+
+    @Override
+    public void checkCancelled() {
+        if (isCancelled()) {
+            throw new CancellationException("Task cancelled from admin");
+        }
+    }
+
+    @Override
+    public <T> CompletableFuture<T> executeWithCancellation(CompletableFuture<T> future) {
+        CompletableFuture<T> result = new CompletableFuture<>();
+
+        cancellationSignal.thenRun(() -> {
+            result.cancel(true);
+            future.cancel(true);
+        });
+
+        future.whenComplete((value, error) -> {
+            if (error != null) {
+                result.completeExceptionally(error);
+            } else if (!result.isDone()) {
+                result.complete(value);
+            }
+        });
+        return result;
     }
 }

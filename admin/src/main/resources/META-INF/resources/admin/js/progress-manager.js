@@ -155,8 +155,11 @@ function renderTaskContent(task) {
         stepsHtml = `<div class="progress-steps-list">${stepsListHtml}</div>`;
     }
 
-    const cancellable = stepDefs?.cancellable || false;
-    const cancelBtn = cancellable
+    const cancelling = task.status === 'cancelling';
+    const cancellable = !cancelling && (stepDefs ? stepDefs.cancellable : true);
+    const cancelBtn = cancelling
+        ? `<button class="progress-task-cancel cancelling" disabled>Cancelling…</button>`
+        : cancellable
         ? `<button class="progress-task-cancel" data-action="cancelProgressTask" data-task-id="${task.id}" title="Cancel this task">Cancel</button>`
         : '';
 
@@ -188,7 +191,7 @@ function renderTaskContent(task) {
 function getTaskFingerprint(task) {
     const stepDefs = taskSteps.get(task.id);
     const stepCount = stepDefs?.steps?.length || 0;
-    const cancellable = stepDefs?.cancellable || false;
+    const cancellable = stepDefs ? stepDefs.cancellable : true;
     const expanded = taskDetailExpanded.has(task.id);
     return `${task.title}|${task.stepId || ''}|${stepCount}|${cancellable}|${task.status || ''}|${expanded}`;
 }
@@ -508,7 +511,7 @@ export async function cancelProgressTask(taskId) {
             console.error('Cannot cancel LSP progress: task not found', taskId);
             return;
         }
-    } else {
+    } else if (/^(install|start|restart)-/.test(taskId)) {
         const serverId = taskId.replace(/^(install|start|restart)-/, '');
         if (state.runtimeConfigs?.[serverId]) {
             apiPath = `/api/admin/runtimes/progress/${encodeURIComponent(taskId)}/cancel`;
@@ -516,6 +519,9 @@ export async function cancelProgressTask(taskId) {
             const apiType = state.bspConfigs?.[serverId] ? 'bsp' : state.dapConfigs?.[serverId] ? 'dap' : 'lsp';
             apiPath = `/api/admin/${apiType}/progress/${encodeURIComponent(taskId)}/cancel`;
         }
+    } else {
+        // Generic task cancellation (MCP tool tasks, etc.)
+        apiPath = `/api/admin/progress/${encodeURIComponent(taskId)}/cancel`;
     }
 
     try {
