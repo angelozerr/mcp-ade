@@ -48,6 +48,9 @@ export function updateTask(task) {
     if (!task || !task.id) return;
 
     const existing = activeTasks.get(task.id);
+    if (existing?.status === 'cancelling' && task.status !== 'completed' && task.status !== 'failed') {
+        task.status = 'cancelling';
+    }
     activeTasks.set(task.id, {
         ...task,
         createdAt: existing?.createdAt || Date.now(),
@@ -524,14 +527,29 @@ export async function cancelProgressTask(taskId) {
         apiPath = `/api/admin/progress/${encodeURIComponent(taskId)}/cancel`;
     }
 
+    const task = activeTasks.get(taskId);
+    const previousStatus = task?.status;
+    if (task) {
+        task.status = 'cancelling';
+        scheduleRefresh();
+    }
+
     try {
         const response = await fetch(apiPath, { method: 'POST' });
         if (!response.ok) {
             const error = await response.json();
             console.error('Failed to cancel task:', error);
+            if (task) {
+                task.status = previousStatus;
+                scheduleRefresh();
+            }
         }
     } catch (e) {
         console.error('Failed to cancel task:', e);
+        if (task) {
+            task.status = previousStatus;
+            scheduleRefresh();
+        }
     }
 }
 

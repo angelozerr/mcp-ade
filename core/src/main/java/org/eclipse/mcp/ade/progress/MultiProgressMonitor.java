@@ -107,6 +107,17 @@ public class MultiProgressMonitor implements ProgressMonitor {
     }
 
     @Override
+    public void setCancelled() {
+        for (ProgressMonitor delegate : delegates) {
+            try {
+                delegate.setCancelled();
+            } catch (Exception e) {
+                LOG.warnf(e, "Progress delegate failed");
+            }
+        }
+    }
+
+    @Override
     public double getTotal() {
         return total;
     }
@@ -131,10 +142,20 @@ public class MultiProgressMonitor implements ProgressMonitor {
     }
 
     @Override
+    public void onCancelled(Runnable callback) {
+        for (ProgressMonitor delegate : delegates) {
+            delegate.onCancelled(callback);
+        }
+    }
+
+    @Override
     public <T> CompletableFuture<T> executeWithCancellation(CompletableFuture<T> future) {
-        // Each delegate wraps the SAME original future so any delegate
-        // can cancel the original operation directly (not just a wrapper).
         CompletableFuture<T> merged = new CompletableFuture<>();
+
+        onCancelled(() -> {
+            merged.cancel(true);
+            future.cancel(true);
+        });
 
         for (ProgressMonitor delegate : delegates) {
             CompletableFuture<T> wrapped = delegate.executeWithCancellation(future);
@@ -150,7 +171,12 @@ public class MultiProgressMonitor implements ProgressMonitor {
                     }
                     future.cancel(true);
                 } else if (!merged.isDone()) {
-                    merged.complete(value);
+                    if (isCancelled()) {
+                        merged.cancel(true);
+                        future.cancel(true);
+                    } else {
+                        merged.complete(value);
+                    }
                 }
             });
         }

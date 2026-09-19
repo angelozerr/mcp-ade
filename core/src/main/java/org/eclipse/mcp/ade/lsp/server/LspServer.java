@@ -48,6 +48,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -1071,6 +1072,18 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     });
         }
         return request.get();
+    }
+
+    public <T> CompletableFuture<T> withAutoDidOpen(
+            LspCapability capability, String fileUri, String languageId,
+            Supplier<CompletableFuture<T>> request, ProgressMonitor progressMonitor) {
+        Supplier<CompletableFuture<T>> cancellableRequest = () -> {
+            if (progressMonitor.isCancelled()) {
+                return CompletableFuture.failedFuture(new CancellationException("Operation cancelled"));
+            }
+            return progressMonitor.executeWithCancellation(request.get());
+        };
+        return withAutoDidOpen(capability, fileUri, languageId, cancellableRequest);
     }
 
     /**

@@ -132,6 +132,13 @@ public class McpProgressMonitor extends AbstractProgressMonitor {
     }
 
     @Override
+    public void onCancelled(Runnable callback) {
+        if (cancellation != null) {
+            cancellation.onCancelled(reason -> callback.run());
+        }
+    }
+
+    @Override
     public <T> CompletableFuture<T> executeWithCancellation(CompletableFuture<T> future) {
         if (cancellation == null) {
             return future;
@@ -140,12 +147,17 @@ public class McpProgressMonitor extends AbstractProgressMonitor {
         CompletableFuture<T> result = new CompletableFuture<>();
 
         // Listen for cancellation
-        cancellation.onCancelled(reason -> result.cancel(true));
+        cancellation.onCancelled(reason -> {
+            result.cancel(true);
+            future.cancel(true);
+        });
 
         // Forward the original future result or exception
         future.whenComplete((value, error) -> {
             if (error != null) {
                 result.completeExceptionally(error);
+            } else if (isCancelled()) {
+                result.completeExceptionally(new java.util.concurrent.CancellationException("Operation cancelled"));
             } else if (!result.isDone()) {
                 result.complete(value);
             }

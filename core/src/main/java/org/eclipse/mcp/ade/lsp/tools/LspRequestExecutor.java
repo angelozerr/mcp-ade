@@ -134,11 +134,6 @@ public class LspRequestExecutor {
             Progress progress,
             OperationContext operationContext) {
 
-        var workspace = application.getWorkspaceForPath(params.getCwd());
-        if (workspace != null) {
-            workspace.flushFileWatcher();
-        }
-
         ProgressMonitor progressMonitor = progressMonitorManager.createProgressMonitor(
                 progress, cancellation, ProgressContext.forOperation(strategy.getCapability().name(), strategy.getTitle()));
 
@@ -152,7 +147,36 @@ public class LspRequestExecutor {
         progressMonitor.beginStep(ProgressStep.INSTALLING_RUNTIME);
         progressMonitor.reportProgress(0.0, "Installing language server");
 
-        return strategy.resolveServers(serverResolver, params, progressMonitor, operationContext)
+        return executeWithMonitor(params, strategy, progressMonitor, operationContext)
+                .whenComplete((result, ex) -> {
+                    progressMonitor.setComplete();
+                });
+    }
+
+    /**
+     * Execute an LSP request using a caller-provided {@link ProgressMonitor}
+     * and {@link OperationContext}. The caller is responsible for creating the
+     * monitor (with steps), starting the first step, and completing the monitor
+     * after all phases are done.
+     *
+     * <p>Steps {@link ProgressStep#INSTALLING_RUNTIME}, {@link ProgressStep#INSTALLING},
+     * {@link ProgressStep#STARTING}, {@link ProgressStep#INDEXING}, and
+     * {@link ProgressStep#EXECUTING} must be declared on the monitor before calling.
+     * The first step must already be begun by the caller.</p>
+     */
+    public <TRequestParams extends LspRequestParams, TLspParams, TResult> CompletableFuture<List<TResult>> executeWithMonitor(
+            TRequestParams params,
+            LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
+            ProgressMonitor progressMonitor,
+            OperationContext operationContext) {
+
+        var workspace = application.getWorkspaceForPath(params.getCwd());
+        if (workspace != null) {
+            workspace.flushFileWatcher();
+        }
+
+        return progressMonitor.executeWithCancellation(
+                        strategy.resolveServers(serverResolver, params, progressMonitor, operationContext))
                 .thenCompose(servers -> {
                     if (servers.isEmpty()) {
                         return CompletableFuture.completedFuture(List.<TResult>of());
@@ -208,9 +232,6 @@ public class LspRequestExecutor {
                                     .map(CompletableFuture::join)
                                     .filter(strategy::isValidResult)
                                     .toList());
-                })
-                .whenComplete((result, ex) -> {
-                    progressMonitor.setComplete();
                 });
     }
 

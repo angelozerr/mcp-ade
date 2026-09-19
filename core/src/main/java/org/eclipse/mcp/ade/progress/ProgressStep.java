@@ -24,7 +24,8 @@ public enum ProgressStep {
     STARTING("Starting"),
     INITIALIZING("Initializing"),
     INDEXING("Indexing"),
-    EXECUTING("Executing");
+    EXECUTING("Executing"),
+    ENRICHING("Enriching");
 
     private final String label;
 

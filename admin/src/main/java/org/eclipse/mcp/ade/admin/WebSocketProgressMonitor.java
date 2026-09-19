@@ -35,6 +35,8 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
     private final String title;
     private boolean stepsInitialized = false;
     private final CompletableFuture<Void> cancellationSignal = new CompletableFuture<>();
+    private volatile boolean terminated;
+    private volatile boolean cancelRequested;
 
     public WebSocketProgressMonitor(
             ProgressBroadcaster broadcaster,
@@ -80,6 +82,9 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
 
     @Override
     public void reportProgress(double progress, String message) {
+        if (terminated) {
+            return;
+        }
         ensureInitialized();
         double scaled = scaleToActiveStep(progress);
         setCurrent(scaled);
@@ -98,6 +103,9 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
 
     @Override
     public void reportProgress(String message) {
+        if (terminated) {
+            return;
+        }
         ensureInitialized();
         if (broadcaster != null) {
             String stepId = getCurrentStepId();
@@ -114,9 +122,31 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
 
     @Override
     public void setComplete() {
+        if (terminated) {
+            return;
+        }
+        if (cancelRequested) {
+            setCancelled();
+            return;
+        }
+        terminated = true;
         setCurrent(total);
         if (broadcaster != null) {
             broadcaster.taskCompleted(taskId, serverId, title);
+        }
+        if (adminBroadcaster != null) {
+            adminBroadcaster.unregisterCancellableMonitor(taskId);
+        }
+    }
+
+    @Override
+    public void setCancelled() {
+        if (terminated) {
+            return;
+        }
+        terminated = true;
+        if (broadcaster != null) {
+            broadcaster.taskFailed(taskId, serverId, title, "Cancelled");
         }
         if (adminBroadcaster != null) {
             adminBroadcaster.unregisterCancellableMonitor(taskId);
@@ -130,6 +160,7 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
 
     @Override
     public void cancel(String taskId) {
+        cancelRequested = true;
         super.cancel(taskId);
         if (this.taskId.equals(taskId)) {
             cancellationSignal.complete(null);
@@ -138,7 +169,8 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
 
     @Override
     public boolean isCancelled() {
-        return cancellationSignal.isDone() || super.isCancelled();
+        boolean result = cancellationSignal.isDone() || super.isCancelled();
+        return result;
     }
 
     @Override
@@ -146,6 +178,11 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
         if (isCancelled()) {
             throw new CancellationException("Task cancelled from admin");
         }
+    }
+
+    @Override
+    public void onCancelled(Runnable callback) {
+        cancellationSignal.thenRun(callback);
     }
 
     @Override
@@ -160,6 +197,8 @@ public class WebSocketProgressMonitor extends AbstractProgressMonitor {
         future.whenComplete((value, error) -> {
             if (error != null) {
                 result.completeExceptionally(error);
+            } else if (isCancelled()) {
+                result.completeExceptionally(new CancellationException("Cancelled from admin"));
             } else if (!result.isDone()) {
                 result.complete(value);
             }

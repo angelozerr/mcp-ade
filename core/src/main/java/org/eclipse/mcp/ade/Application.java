@@ -18,7 +18,10 @@ import org.eclipse.mcp.ade.bsp.server.BspServerConfig;
 import org.eclipse.mcp.ade.dap.server.DapServerConfig;
 import org.eclipse.mcp.ade.tools.ToolException;
 import org.eclipse.mcp.ade.utils.UriUtils;
+import org.eclipse.mcp.ade.extension.Extension;
+import org.eclipse.mcp.ade.extension.ExtensionListener;
 import org.eclipse.mcp.ade.extension.ExtensionRegistry;
+import org.eclipse.mcp.ade.extension.ExtensionRemovedEvent;
 import org.eclipse.mcp.ade.installer.InstallResult;
 import org.eclipse.mcp.ade.installer.InstallerListener;
 import org.eclipse.mcp.ade.installer.TraceProgressMonitor;
@@ -169,6 +172,14 @@ public class Application {
 
         // Wire runtime trace collector before extensions are loaded
         runtimeRegistry.setTraceCollector(runtimeTraceCollector);
+
+        // Stop running servers when their extension is disabled
+        extensionRegistry.addExtensionListener(new ExtensionListener() {
+            @Override
+            public void onRemoved(ExtensionRemovedEvent event) {
+                stopServersForExtension(event.getExtension());
+            }
+        });
 
         // Initialize extension registry: deploy bundled configs + scan extensions/
         extensionRegistry.initialize(this);
@@ -507,6 +518,33 @@ public class Application {
         extensionEnabledChangeEvent.fire(new ExtensionEnabledChangeEvent(extensionId, false));
     }
 
+    private void stopServersForExtension(Extension extension) {
+        for (LspServerConfig config : extension.getLspServerConfigs()) {
+            stopLspServerInAllWorkspaces(config.getServerId());
+        }
+        for (BspServerConfig config : extension.getBspServerConfigs()) {
+            stopBspServerInAllWorkspaces(config.getServerId());
+        }
+    }
+
+    private void stopLspServerInAllWorkspaces(String serverId) {
+        for (Workspace ws : getWorkspaces()) {
+            LspServer server = ws.getLspServer(serverId);
+            if (server != null && server.getStatus() != ServerStatus.STOPPED) {
+                server.shutdown();
+            }
+        }
+    }
+
+    private void stopBspServerInAllWorkspaces(String serverId) {
+        for (Workspace ws : getWorkspaces()) {
+            BspServer server = ws.getBspServer(serverId);
+            if (server != null && server.getStatus() != ServerStatus.STOPPED) {
+                server.shutdown();
+            }
+        }
+    }
+
     public void enableServer(String serverId) {
         extensionRegistry.enableServer(serverId);
         serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, true));
@@ -514,12 +552,7 @@ public class Application {
 
     public void disableLspServer(String serverId) {
         extensionRegistry.disableServer(serverId);
-        for (Workspace ws : getWorkspaces()) {
-            LspServer server = ws.getLspServer(serverId);
-            if (server != null && server.getStatus() != ServerStatus.STOPPED) {
-                server.shutdown();
-            }
-        }
+        stopLspServerInAllWorkspaces(serverId);
         serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, false));
     }
 
@@ -530,12 +563,7 @@ public class Application {
 
     public void disableBspServer(String serverId) {
         extensionRegistry.disableServer(serverId);
-        for (Workspace ws : getWorkspaces()) {
-            BspServer server = ws.getBspServer(serverId);
-            if (server != null && server.getStatus() != ServerStatus.STOPPED) {
-                server.shutdown();
-            }
-        }
+        stopBspServerInAllWorkspaces(serverId);
         serverEnabledChangeEvent.fire(new ServerEnabledChangeEvent(serverId, false));
     }
 

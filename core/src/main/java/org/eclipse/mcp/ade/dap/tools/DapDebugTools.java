@@ -362,8 +362,7 @@ public class DapDebugTools {
                     "Use get_debug_templates() to see available configuration parameters. " +
                     "Set debugMode=false to run without debugging (no breakpoints). " +
                     "Optionally specify breakpoints to set before launching (avoids race conditions). " +
-                    "After starting, use get_console_output(sessionId) to see program output (stdout/stderr/console.log).",
-            structuredContent = true
+                    "After starting, use get_console_output(sessionId) to see program output (stdout/stderr/console.log)."
     )
     public Map<String, Object> startDebuggingSync(
             @ToolArg(description = "ID of the debug adapter (e.g., 'java-debug', 'vscode-js-debug', 'debugpy')") String debuggerId,
@@ -637,7 +636,7 @@ public class DapDebugTools {
 
     // ========== Inspection ==========
 
-    @Tool(description = "Get the current call stack (stack trace) showing function calls and line numbers.", structuredContent = true)
+    @Tool(description = "Get the current call stack (stack trace) showing function calls and line numbers.")
     public Map<String, Object> get_stack_trace(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -674,8 +673,8 @@ public class DapDebugTools {
             description = "Disassemble instructions at a memory address. " +
                     "Use instructionPointerReference from get_stack_trace as the memoryReference. " +
                     "Returns disassembled instructions with addresses, instruction text, and source locations. " +
-                    "Requires adapter support (supportsDisassembleRequest capability).",
-            structuredContent = true)
+                    "Requires adapter support (supportsDisassembleRequest capability)."
+    )
     public Map<String, Object> disassembleSync(
             @ToolArg(description = "Debug session ID") String sessionId,
             @ToolArg(description = "Memory reference to disassemble from (use instructionPointerReference from stack frame)") String memoryReference,
@@ -752,7 +751,7 @@ public class DapDebugTools {
         });
     }
 
-    @Tool(description = "List all threads in the debugged program.", structuredContent = true)
+    @Tool(description = "List all threads in the debugged program.")
     public Map<String, Object> list_threads(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -774,7 +773,7 @@ public class DapDebugTools {
         });
     }
 
-    @Tool(description = "Get variable scopes (Locals, Globals, etc.) for a specific stack frame.", structuredContent = true)
+    @Tool(description = "Get variable scopes (Locals, Globals, etc.) for a specific stack frame.")
     public Map<String, Object> get_scopes(
             String sessionId,
             int frameId) {
@@ -800,8 +799,8 @@ public class DapDebugTools {
     }
 
     @Tool(description = "Get variables from a scope or expandable variable. " +
-            "Use variablesReference from get_scopes or a variable's variablesReference.",
-            structuredContent = true)
+            "Use variablesReference from get_scopes or a variable's variablesReference."
+    )
     public Map<String, Object> get_variables(
             String sessionId,
             int variablesReference) {
@@ -832,7 +831,7 @@ public class DapDebugTools {
         );
     }
 
-    @Tool(description = "Shortcut to get local variables in the current stack frame (top of stack).", structuredContent = true)
+    @Tool(description = "Shortcut to get local variables in the current stack frame (top of stack).")
     public Map<String, Object> get_local_variables(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -865,8 +864,8 @@ public class DapDebugTools {
 
     @Tool(
             name = "evaluate_expression",
-            description = "Evaluate an expression in the current debug context (e.g., 'x + y', 'myFunction()').",
-            structuredContent = true)
+            description = "Evaluate an expression in the current debug context (e.g., 'x + y', 'myFunction()')."
+    )
     public EvaluateResponse evaluateExpressionSync(
             @ToolArg(description = "The debug session ID") String sessionId,
             @ToolArg(description = "Expression to evaluate (e.g., 'x + y', 'myFunction()')") String expression,
@@ -912,8 +911,7 @@ public class DapDebugTools {
             name = "get_debug_templates",
             description = "Get debug configuration templates for a specific debug adapter. " +
                     "Returns templates grouped by type (launch, attach) from the debug adapter's configuration. " +
-                    "Use the adapter ID from list_debug_adapters.",
-            structuredContent = true
+                    "Use the adapter ID from list_debug_adapters."
     )
     public DebugTemplatesResult getDebugTemplates(
             @ToolArg(description = "ID of the debug adapter (e.g., 'java-debug', 'vscode-js-debug')") String debuggerId) {

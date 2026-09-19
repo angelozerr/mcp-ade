@@ -46,6 +46,14 @@ public interface ProgressMonitor {
     void setComplete();
 
     /**
+     * Mark the operation as cancelled.
+     * Sends a "failed" / "Cancelled" status instead of "completed".
+     */
+    default void setCancelled() {
+        setComplete();
+    }
+
+    /**
      * Get the total expected progress value.
      *
      * @return The total progress value
@@ -152,6 +160,15 @@ public interface ProgressMonitor {
      * @param taskId Task identifier
      */
     void cancel(String taskId);
+
+    /**
+     * Register a callback that fires when cancellation is requested.
+     * If already cancelled, the callback fires immediately.
+     *
+     * @param callback Runnable to execute on cancellation
+     */
+    default void onCancelled(Runnable callback) {
+    }
 
     /**
      * Create a sub-monitor that scales progress to a portion of the parent.

@@ -9,7 +9,6 @@ const collapsedWorkspaces = new Set();
 const collapsedSessions = new Set();
 let allFolded = false;
 let tickHandle = null;
-let mcpToolsMap = null;
 let activityEnabled = false;
 const activeReplays = new Map();
 const toggledSections = new Set();
@@ -48,25 +47,6 @@ function observeOperation(opEl) {
     getVisibilityObserver().observe(opEl);
 }
 
-async function ensureToolsLoaded() {
-    if (mcpToolsMap) return;
-    try {
-        const response = await fetch('/api/admin/mcp/tools');
-        const tools = await response.json();
-        mcpToolsMap = {};
-        for (const tool of tools) {
-            mcpToolsMap[tool.name] = tool;
-        }
-    } catch (e) {
-        mcpToolsMap = {};
-    }
-}
-
-function getToolDescription(toolName) {
-    if (!mcpToolsMap) return null;
-    const tool = mcpToolsMap[toolName];
-    return tool ? tool.description : null;
-}
 
 function scheduleTick() {
     if (tickHandle) return;
@@ -141,7 +121,7 @@ export function handleOperationUpdate(msg) {
     if (!updateRAF) {
         updateRAF = requestAnimationFrame(() => {
             updateRAF = null;
-            ensureToolsLoaded().then(() => flushUpdates());
+            flushUpdates();
         });
     }
 
@@ -495,8 +475,7 @@ function renderOperation(op, esc) {
     const statusIcon = getStatusIcon(op.status);
     const duration = formatDuration(liveDuration(op));
     const hasEntries = op.entries && op.entries.length > 0;
-    const desc = getToolDescription(op.name);
-    const titleAttr = desc ? ` title="${esc(desc)}"` : '';
+    const titleAttr = '';
     const argsSummary = formatArgsSummary(op.arguments);
 
     const statusClass = op.status === 'RUNNING' ? ' running' : op.status === 'FAILED' ? ' failed' : ' completed';
@@ -601,45 +580,19 @@ function renderSection(opId, section, label, content, esc) {
 }
 
 function renderArgsForm(op, esc) {
-    const tool = mcpToolsMap ? mcpToolsMap[op.name] : null;
-    const argDefs = tool ? tool.args : null;
     const args = op.arguments || {};
 
     let html = `<div class="activity-args-form" data-op-id="${op.id}">`;
-
-    if (argDefs && argDefs.length > 0) {
-        for (const argDef of argDefs) {
-            const value = args[argDef.name];
-            const displayValue = value !== undefined && value !== null
-                ? (typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value))
-                : '';
-            const requiredMark = argDef.required ? '<span class="activity-arg-required">*</span>' : '';
-            const titleAttr = argDef.description ? ` title="${esc(argDef.description)}"` : '';
-
-            html += `<div class="activity-arg-field"${titleAttr}>`;
-            html += `<label class="activity-arg-label">${esc(argDef.name)}${requiredMark}</label>`;
-
-            if (typeof value === 'object' && value !== null) {
-                html += `<textarea class="activity-arg-input" data-arg-name="${esc(argDef.name)}" rows="3">${esc(displayValue)}</textarea>`;
-            } else if (displayValue.length > 60) {
-                html += `<textarea class="activity-arg-input" data-arg-name="${esc(argDef.name)}" rows="2">${esc(displayValue)}</textarea>`;
-            } else {
-                html += `<input class="activity-arg-input" data-arg-name="${esc(argDef.name)}" type="text" value="${esc(displayValue)}" />`;
-            }
-            html += `</div>`;
+    for (const [key, value] of Object.entries(args)) {
+        const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+        html += `<div class="activity-arg-field">`;
+        html += `<label class="activity-arg-label">${esc(key)}</label>`;
+        if (typeof value === 'object' && value !== null) {
+            html += `<textarea class="activity-arg-input" data-arg-name="${esc(key)}" rows="3">${esc(displayValue)}</textarea>`;
+        } else {
+            html += `<input class="activity-arg-input" data-arg-name="${esc(key)}" type="text" value="${esc(displayValue)}" />`;
         }
-    } else {
-        for (const [key, value] of Object.entries(args)) {
-            const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
-            html += `<div class="activity-arg-field">`;
-            html += `<label class="activity-arg-label">${esc(key)}</label>`;
-            if (typeof value === 'object' && value !== null) {
-                html += `<textarea class="activity-arg-input" data-arg-name="${esc(key)}" rows="3">${esc(displayValue)}</textarea>`;
-            } else {
-                html += `<input class="activity-arg-input" data-arg-name="${esc(key)}" type="text" value="${esc(displayValue)}" />`;
-            }
-            html += `</div>`;
-        }
+        html += `</div>`;
     }
     html += `</div>`;
     return html;
