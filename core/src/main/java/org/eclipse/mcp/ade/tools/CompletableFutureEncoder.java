@@ -18,8 +18,11 @@ import io.quarkiverse.mcp.server.ToolResponseEncoder;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Encoder for async tool responses (CompletableFuture / Uni).
@@ -38,18 +41,22 @@ public class CompletableFutureEncoder implements ToolResponseEncoder<Object> {
                 || CompletableFuture.class.isAssignableFrom(runtimeType);
     }
 
+    private static final Duration TIMEOUT = Duration.ofMinutes(2);
+
     @Override
     public ToolResponse encode(Object value) {
         try {
             Object result;
             if (value instanceof Uni<?> uni) {
-                result = uni.await().indefinitely();
+                result = uni.await().atMost(TIMEOUT);
             } else if (value instanceof CompletableFuture<?> cf) {
-                result = cf.join();
+                result = cf.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             } else {
                 result = value;
             }
             return ToolResponse.success(result.toString());
+        } catch (TimeoutException ex) {
+            return ToolResponse.error("Tool execution timed out after " + TIMEOUT.toSeconds() + "s");
         } catch (CompletionException ex) {
             Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
             return ToolResponse.error(cause.getMessage());

@@ -14,7 +14,7 @@
 package org.eclipse.mcp.ade.admin;
 
 import org.eclipse.mcp.ade.admin.dto.McpClientDTO;
-import io.quarkiverse.mcp.server.runtime.ConnectionManager;
+import org.eclipse.mcp.ade.mcp.McpClientTracker;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -31,10 +31,10 @@ import java.util.List;
 public class McpClientsResource {
 
     @Inject
-    ConnectionManager connectionManager;
+    McpClientTracker mcpClientTracker;
 
     @GET
     public List<McpClientDTO> getClients() {
-        return McpClientDTO.fromConnections(connectionManager);
+        return McpClientDTO.fromTrackedClients(mcpClientTracker.getTrackedClients());
     }
 }

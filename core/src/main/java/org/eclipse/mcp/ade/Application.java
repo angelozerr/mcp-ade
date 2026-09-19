@@ -193,7 +193,11 @@ public class Application {
 
     void onShutdown(@Observes ShutdownEvent ev) {
         LOG.info("Shutting down all workspaces...");
-        shutdownAll().join();
+        try {
+            shutdownAll().get(10, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOG.warn("Shutdown timed out after 10s, forcing cleanup");
+        }
     }
 
     /**
@@ -229,14 +233,14 @@ public class Application {
         // Clean up disconnected MCP clients before adding the new one
         cleanupDisconnectedMcpClients(workspace);
 
-        // Add current MCP client to this workspace
+        // Add current MCP client to this workspace (keyed by name to avoid
+        // accumulating entries for transient Streamable HTTP connections)
         String clientName = mcpClientTracker.getCurrentClientName();
-        String connectionId = mcpClientTracker.getCurrentConnectionId();
 
-        LOG.infof("Adding MCP client to workspace %s: name=%s, connectionId=%s",
-                workspaceUri, clientName, connectionId);
+        LOG.infof("Adding MCP client to workspace %s: name=%s",
+                workspaceUri, clientName);
 
-        boolean isNewClient = workspace.addMcpClient(connectionId, clientName);
+        boolean isNewClient = workspace.addMcpClient(clientName, clientName);
 
         // Fire event if a new client was added
         if (isNewClient) {
@@ -726,9 +730,11 @@ public class Application {
             return;
         }
         boolean changed = false;
-        for (String connectionId : clients.keySet()) {
-            if (!connectionManager.has(connectionId)) {
-                workspace.removeMcpClient(connectionId);
+        for (var entry : new java.util.ArrayList<>(clients.entrySet())) {
+            String key = entry.getKey();
+            String name = entry.getValue().name();
+            if (!connectionManager.has(key) && !mcpClientTracker.isActiveClient(name)) {
+                workspace.removeMcpClient(key);
                 changed = true;
             }
         }

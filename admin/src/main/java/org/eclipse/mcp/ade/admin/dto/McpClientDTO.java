@@ -13,10 +13,13 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.admin.dto;
 
+import org.eclipse.mcp.ade.mcp.McpClientTracker;
 import io.quarkiverse.mcp.server.runtime.McpConnectionBase;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @RegisterForReflection
@@ -46,11 +49,27 @@ public record McpClientDTO(
         return new McpClientDTO(connection.id(), name, version, protocolVersion, null);
     }
 
+    public static McpClientDTO fromTrackedClient(McpClientTracker.TrackedClient tracked) {
+        return new McpClientDTO(
+                tracked.lastConnectionId,
+                tracked.name,
+                tracked.version,
+                tracked.protocolVersion,
+                DateTimeFormatter.ISO_INSTANT.format(tracked.firstSeen)
+        );
+    }
+
     public static List<McpClientDTO> fromConnections(Iterable<McpConnectionBase> connections) {
         List<McpClientDTO> clients = new ArrayList<>();
         for (McpConnectionBase connection : connections) {
             clients.add(fromConnection(connection));
         }
         return clients;
+    }
+
+    public static List<McpClientDTO> fromTrackedClients(Collection<McpClientTracker.TrackedClient> tracked) {
+        return tracked.stream()
+                .map(McpClientDTO::fromTrackedClient)
+                .toList();
     }
 }

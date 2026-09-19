@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.mcp.trace;
 import org.eclipse.mcp.ade.Application;
 import org.eclipse.mcp.ade.configuration.ApplicationConfiguration;
 import org.eclipse.mcp.ade.configuration.ServerTrace;
+import org.eclipse.mcp.ade.mcp.McpClientTracker;
 import io.quarkiverse.mcp.server.McpConnection;
 import io.quarkiverse.mcp.server.McpTrafficListener;
 import io.quarkiverse.mcp.server.RawMessage;
@@ -31,8 +32,12 @@ public class McpTraceTrafficListener implements McpTrafficListener {
     @Inject
     ApplicationConfiguration applicationConfiguration;
 
+    @Inject
+    McpClientTracker mcpClientTracker;
+
     @Override
     public void onMessageReceived(RawMessage message, McpConnection connection) {
+        mcpClientTracker.trackConnection(connection);
         McpTraceCollector traceCollector = application.getMcpTraceCollector();
         if (traceCollector.isEnabled() && applicationConfiguration.getMcpTraceLevel() != ServerTrace.off) {
             traceCollector.addTrace(McpTraceDirection.RECEIVED, message, connection);

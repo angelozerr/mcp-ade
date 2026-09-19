@@ -30,6 +30,8 @@ import org.eclipse.mcp.ade.server.ServerStatus;
 import org.eclipse.mcp.ade.configuration.ApplicationConfiguration;
 import org.eclipse.mcp.ade.operation.OperationTracker;
 import org.eclipse.mcp.ade.trace.TraceMessage;
+import org.eclipse.mcp.ade.mcp.McpClientChangeEvent;
+import org.eclipse.mcp.ade.mcp.McpClientTracker;
 import org.eclipse.mcp.ade.workspace.WorkspaceChangeEvent;
 import io.quarkiverse.mcp.server.runtime.ConnectionManager;
 import jakarta.annotation.PostConstruct;
@@ -63,6 +65,9 @@ public class AdminWebSocketEndpoint {
 
     @Inject
     ConnectionManager connectionManager;
+
+    @Inject
+    McpClientTracker mcpClientTracker;
 
     @Inject
     ObjectMapper objectMapper;
@@ -431,6 +436,13 @@ public class AdminWebSocketEndpoint {
         broadcast(msg);
     }
 
+    void onMcpClientChange(@Observes McpClientChangeEvent event) {
+        McpClientsUpdateWsMessage clientsMsg = new McpClientsUpdateWsMessage(
+                getCurrentMcpClients()
+        );
+        broadcast(clientsMsg);
+    }
+
     /**
      * CDI observer for workspace changes (created/closed).
      */
@@ -670,7 +682,7 @@ public class AdminWebSocketEndpoint {
     }
 
     private List<McpClientDTO> getCurrentMcpClients() {
-        return McpClientDTO.fromConnections(connectionManager);
+        return McpClientDTO.fromTrackedClients(mcpClientTracker.getTrackedClients());
     }
 
     private static ServerTraceWsMessage toDapTraceWsMessage(TraceMessage trace) {
