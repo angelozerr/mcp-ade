@@ -15,28 +15,45 @@ package org.eclipse.mcp.ade.tools;
 
 import io.quarkiverse.mcp.server.ToolResponse;
 import io.quarkiverse.mcp.server.ToolResponseEncoder;
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 /**
- * Encoder for CompletableFuture<String> tool responses.
- * Allows tools to return CompletableFuture<String> instead of blocking with .join().
+ * Encoder for async tool responses (CompletableFuture / Uni).
+ *
+ * <p>quarkus-mcp-server 2.0.1 wraps CompletableFuture returns into
+ * {@code Uni<CompletionStage>} before reaching the encoder, so we
+ * must handle both {@link Uni} and {@link CompletableFuture} types.</p>
  */
 @ApplicationScoped
-public class CompletableFutureEncoder implements ToolResponseEncoder<CompletableFuture> {
+@SuppressWarnings("rawtypes")
+public class CompletableFutureEncoder implements ToolResponseEncoder<Object> {
 
     @Override
     public boolean supports(Class<?> runtimeType) {
-        return CompletableFuture.class.equals(runtimeType);
+        return Uni.class.isAssignableFrom(runtimeType)
+                || CompletableFuture.class.isAssignableFrom(runtimeType);
     }
 
     @Override
-    public ToolResponse encode(CompletableFuture value) {
+    public ToolResponse encode(Object value) {
         try {
-            return ToolResponse.success(value.join().toString());
+            Object result;
+            if (value instanceof Uni<?> uni) {
+                result = uni.await().indefinitely();
+            } else if (value instanceof CompletableFuture<?> cf) {
+                result = cf.join();
+            } else {
+                result = value;
+            }
+            return ToolResponse.success(result.toString());
         } catch (CompletionException ex) {
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            return ToolResponse.error(cause.getMessage());
+        } catch (Exception ex) {
             Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
             return ToolResponse.error(cause.getMessage());
         }

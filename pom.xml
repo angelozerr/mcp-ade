@@ -78,7 +78,7 @@
         <quarkus.version>3.33.2</quarkus.version>
         <lsp4j.version>1.0.0</lsp4j.version>
         <bsp4j.version>2.2.0-M2</bsp4j.version>
-        <quarkus-mcp-server.version>2.0.0.Beta2</quarkus-mcp-server.version>
+        <quarkus-mcp-server.version>2.0.1</quarkus-mcp-server.version>
     </properties>
 
     <dependencyManagement>
