@@ -42,6 +42,7 @@ public class McpClientTracker {
     private volatile String currentConnectionId = null;
 
     private final ConcurrentHashMap<String, TrackedClient> trackedClients = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> connectionToClientKey = new ConcurrentHashMap<>();
 
     public void trackConnection(McpConnection connection) {
         String id = connection.id();
@@ -84,8 +85,17 @@ public class McpClientTracker {
                 existing.lastConnectionId = id;
                 return existing;
             }
-            return new TrackedClient(n, v, pv, ai, id);
+            return new TrackedClient(k, n, v, pv, ai, id);
         });
+
+        connectionToClientKey.put(id, key);
+    }
+
+    /**
+     * Resolve a transient connectionId to the stable client key.
+     */
+    public String getClientKey(String connectionId) {
+        return connectionToClientKey.getOrDefault(connectionId, connectionId);
     }
 
     public Collection<TrackedClient> getTrackedClients() {
@@ -113,6 +123,7 @@ public class McpClientTracker {
     }
 
     public static class TrackedClient {
+        public final String clientKey;
         public final String name;
         public final String version;
         public final String protocolVersion;
@@ -121,8 +132,9 @@ public class McpClientTracker {
         public volatile Instant lastSeen;
         public volatile String lastConnectionId;
 
-        TrackedClient(String name, String version, String protocolVersion,
+        TrackedClient(String clientKey, String name, String version, String protocolVersion,
                       boolean autoInitialized, String connectionId) {
+            this.clientKey = clientKey;
             this.name = name;
             this.version = version;
             this.protocolVersion = protocolVersion;

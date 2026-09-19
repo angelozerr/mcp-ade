@@ -31,7 +31,7 @@ public record McpClientDTO(
 
     public static McpClientDTO fromTrackedClient(McpClientTracker.TrackedClient tracked) {
         return new McpClientDTO(
-                tracked.lastConnectionId,
+                tracked.clientKey,
                 tracked.name,
                 tracked.version,
                 tracked.protocolVersion,

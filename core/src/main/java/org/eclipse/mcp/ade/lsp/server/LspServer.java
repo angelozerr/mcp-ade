@@ -1054,9 +1054,12 @@ public class LspServer extends ServerBase<LspServerConfig> {
         }
         boolean wasAlreadyOpened = isFileOpened(fileUri);
         if (!wasAlreadyOpened) {
-            CompletableFuture<?> parsingDone = languageClient != null
-                    ? languageClient.waitForDiagnostics(fileUri, DIAGNOSTICS_TIMEOUT_MS)
-                    : CompletableFuture.completedFuture(null);
+            CompletableFuture<?> parsingDone;
+            if (capability.needsDiagnosticsWait() && languageClient != null) {
+                parsingDone = languageClient.waitForDiagnostics(fileUri, DIAGNOSTICS_TIMEOUT_MS);
+            } else {
+                parsingDone = CompletableFuture.completedFuture(null);
+            }
             return runAsync(() -> openFile(fileUri, languageId))
                     .orTimeout(DID_OPEN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .thenCompose(v -> parsingDone)

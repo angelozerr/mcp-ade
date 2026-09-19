@@ -227,7 +227,7 @@ public class AdminWebSocketEndpoint {
 
             for (var trace : traces) {
                 McpTraceWsMessage msg = new McpTraceWsMessage(
-                        trace.contextId(),
+                        mcpClientTracker.getClientKey(trace.contextId()),
                         trace.content()
                 );
                 sendToSession(session, msg);
@@ -388,7 +388,7 @@ public class AdminWebSocketEndpoint {
                     trace.content(), trace.messageType()));
             case DAP -> broadcast(toDapTraceWsMessage(trace));
             case MCP -> broadcast(new McpTraceWsMessage(
-                    trace.contextId(), trace.content()));
+                    mcpClientTracker.getClientKey(trace.contextId()), trace.content()));
             case BSP -> broadcast(new ServerTraceWsMessage(
                     WsMessageType.BSP_TRACE,
                     trace.workspaceUri(), trace.contextId(),
