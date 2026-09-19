@@ -14,11 +14,9 @@
 package org.eclipse.mcp.ade.admin.dto;
 
 import org.eclipse.mcp.ade.mcp.McpClientTracker;
-import io.quarkiverse.mcp.server.runtime.McpConnectionBase;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -31,24 +29,6 @@ public record McpClientDTO(
         String connectedAt      // ISO timestamp
 ) {
 
-    public static McpClientDTO fromConnection(McpConnectionBase connection) {
-        var initialRequest = connection.initialRequest();
-
-        String name = "Unknown";
-        String version = null;
-        String protocolVersion = null;
-
-        if (initialRequest != null) {
-            if (initialRequest.implementation() != null) {
-                name = initialRequest.implementation().name();
-                version = initialRequest.implementation().version();
-            }
-            protocolVersion = initialRequest.protocolVersion().toString();
-        }
-
-        return new McpClientDTO(connection.id(), name, version, protocolVersion, null);
-    }
-
     public static McpClientDTO fromTrackedClient(McpClientTracker.TrackedClient tracked) {
         return new McpClientDTO(
                 tracked.lastConnectionId,
@@ -57,14 +37,6 @@ public record McpClientDTO(
                 tracked.protocolVersion,
                 DateTimeFormatter.ISO_INSTANT.format(tracked.firstSeen)
         );
-    }
-
-    public static List<McpClientDTO> fromConnections(Iterable<McpConnectionBase> connections) {
-        List<McpClientDTO> clients = new ArrayList<>();
-        for (McpConnectionBase connection : connections) {
-            clients.add(fromConnection(connection));
-        }
-        return clients;
     }
 
     public static List<McpClientDTO> fromTrackedClients(Collection<McpClientTracker.TrackedClient> tracked) {

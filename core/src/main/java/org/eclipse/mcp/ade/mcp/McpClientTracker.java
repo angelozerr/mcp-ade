@@ -16,7 +16,6 @@ package org.eclipse.mcp.ade.mcp;
 import io.quarkiverse.mcp.server.InitialRequest;
 import io.quarkiverse.mcp.server.McpConnection;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
@@ -43,12 +42,6 @@ public class McpClientTracker {
     private volatile String currentConnectionId = null;
 
     private final ConcurrentHashMap<String, TrackedClient> trackedClients = new ConcurrentHashMap<>();
-
-    void onClientConnected(@Observes McpClientConnectedEvent event) {
-        this.currentClientName = event.getClientName();
-        this.currentConnectionId = event.getConnectionId();
-        LOG.infof("Updated current MCP client: %s [%s]", currentClientName, currentConnectionId);
-    }
 
     public void trackConnection(McpConnection connection) {
         String id = connection.id();
