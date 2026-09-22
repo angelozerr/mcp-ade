@@ -36,9 +36,7 @@ public class CodeActionTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_code_actions",
-          description = "Get available code actions (quick fixes, refactorings) at a specific position in a file. " +
-                        "Returns the list of actions that can be applied. " +
-                        "Example: get_code_actions(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.java', line=10, character=5)")
+          description = "Get available code actions (quick fixes, refactorings) at a position.")
     public CompletableFuture<String> getCodeActions(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

@@ -76,13 +76,8 @@ public class ReferencesTools {
 
     @Tool(
             name="find_references",
-            description = "Find all references to a symbol. " +
-                        "Accepts either symbolName (e.g., 'myMethod', 'MyClass.myMethod') or uri+line+character position. " +
-                        "Returns all locations where the symbol is used across the workspace. " +
-                        "Set includeEnclosingSymbol=true to enrich each reference with its enclosing symbol (method, class, etc.). " +
-                        "Example with symbolName: find_references(cwd='/home/user/project', symbolName='myMethod') " +
-                        "Example with position: find_references(cwd='/home/user/project', uri='file:///src/Main.java', line=10, character=5)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+            description = "Find all references to a symbol across the workspace. " +
+                        "Use symbolName (e.g. 'MyClass.myMethod') or uri+line+character.")
     public CompletableFuture<String> findReferences(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,

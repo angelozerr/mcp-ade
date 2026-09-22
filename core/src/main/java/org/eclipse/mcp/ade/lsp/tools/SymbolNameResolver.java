@@ -60,11 +60,12 @@ public class SymbolNameResolver {
      * Resolve a symbol name to a file position.
      *
      * @param cwd        workspace root path
-     * @param symbolName symbol name or qualified path (e.g., "myMethod", "MyClass.myMethod", "MyClass/myMethod")
+     * @param symbolName symbol name or qualified path (e.g., "getChildren", "DOMNode.getChildren", "DOMNode.getChildren()")
      * @return resolved file position, or failed future if not found
      */
     public CompletableFuture<FilePositionRequestParams> resolve(String cwd, String symbolName) {
-        String query = extractQueryName(symbolName);
+        String queryName = extractQueryName(symbolName);
+        String containerName = extractContainerName(symbolName);
 
         return serverResolver.getLspServersForWorkspace(cwd,
                         server -> server.isEnabled() && server.supportsCapability(LspCapability.WORKSPACE_SYMBOL))
@@ -74,39 +75,120 @@ public class SymbolNameResolver {
                                 new IllegalStateException("No language server supports workspace symbol search"));
                     }
 
-                    WorkspaceSymbolParams params = new WorkspaceSymbolParams(query);
-
-                    List<CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>>> futures =
-                            servers.stream()
-                                    .map(server -> queryServer(server, params))
-                                    .toList();
-
-                    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                            .thenApply(v -> {
-                                List<SymbolInformation> allSymbols = futures.stream()
-                                        .map(CompletableFuture::join)
-                                        .filter(Objects::nonNull)
-                                        .flatMap(either -> toSymbolInformations(either).stream())
-                                        .toList();
-
+                    return queryWorkspaceSymbols(servers, queryName)
+                            .thenCompose(allSymbols -> {
                                 SymbolInformation match = findBestMatch(allSymbols, symbolName);
-                                if (match == null || match.getLocation() == null) {
-                                    throw new IllegalArgumentException("Symbol not found: " + symbolName);
+                                if (match != null && match.getLocation() != null) {
+                                    return CompletableFuture.completedFuture(toResolvedParams(cwd, symbolName, match));
                                 }
-
-                                Location loc = match.getLocation();
-                                LOG.infof("Resolved symbol '%s' to %s:%d:%d",
-                                        symbolName, loc.getUri(),
-                                        loc.getRange().getStart().getLine(),
-                                        loc.getRange().getStart().getCharacter());
-
-                                return new FilePositionRequestParams(
-                                        cwd,
-                                        loc.getUri(),
-                                        loc.getRange().getStart().getLine(),
-                                        loc.getRange().getStart().getCharacter());
+                                // Fallback: some LS (e.g. JDT.LS) only support type names in workspace/symbol.
+                                // Retry with the container name, then resolve the member via documentSymbol.
+                                if (containerName != null) {
+                                    return queryWorkspaceSymbols(servers, containerName)
+                                            .thenCompose(containerSymbols -> {
+                                                SymbolInformation containerMatch = findBestMatch(containerSymbols, containerName);
+                                                if (containerMatch == null || containerMatch.getLocation() == null) {
+                                                    return CompletableFuture.failedFuture(
+                                                            new IllegalArgumentException("Symbol not found: " + symbolName));
+                                                }
+                                                return resolveMethodInFile(cwd, symbolName, queryName, containerMatch, servers);
+                                            });
+                                }
+                                return CompletableFuture.failedFuture(
+                                        new IllegalArgumentException("Symbol not found: " + symbolName));
                             });
                 });
+    }
+
+    private CompletableFuture<List<SymbolInformation>> queryWorkspaceSymbols(
+            List<LspServer> servers, String query) {
+        WorkspaceSymbolParams params = new WorkspaceSymbolParams(query);
+        List<CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>>> futures =
+                servers.stream()
+                        .map(server -> queryServer(server, params))
+                        .toList();
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .filter(Objects::nonNull)
+                        .flatMap(either -> toSymbolInformations(either).stream())
+                        .toList());
+    }
+
+    private CompletableFuture<FilePositionRequestParams> resolveMethodInFile(
+            String cwd, String symbolName, String memberName, SymbolInformation containerMatch,
+            List<LspServer> servers) {
+        String fileUri = containerMatch.getLocation().getUri();
+        TextDocumentIdentifier docId = new TextDocumentIdentifier(fileUri);
+        DocumentSymbolParams docParams = new DocumentSymbolParams(docId);
+
+        List<CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>>> docFutures =
+                servers.stream()
+                        .filter(s -> s.supportsCapability(LspCapability.DOCUMENT_SYMBOL))
+                        .map(server -> server.getLanguageServer()
+                                .getTextDocumentService()
+                                .documentSymbol(docParams)
+                                .exceptionally(ex -> {
+                                    LOG.debugf("documentSymbol failed on %s: %s", server.getConfig().getServerId(), ex.getMessage());
+                                    return null;
+                                }))
+                        .toList();
+
+        return CompletableFuture.allOf(docFutures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> {
+                    for (var future : docFutures) {
+                        List<Either<SymbolInformation, DocumentSymbol>> result = future.join();
+                        if (result == null) continue;
+                        Position pos = findMemberPosition(result, memberName);
+                        if (pos != null) {
+                            LOG.infof("Resolved symbol '%s' via documentSymbol to %s:%d:%d",
+                                    symbolName, fileUri, pos.getLine(), pos.getCharacter());
+                            return new FilePositionRequestParams(cwd, fileUri, pos.getLine(), pos.getCharacter());
+                        }
+                    }
+                    // Member not found in documentSymbol — fall back to class position
+                    return toResolvedParams(cwd, symbolName, containerMatch);
+                });
+    }
+
+    private static Position findMemberPosition(List<Either<SymbolInformation, DocumentSymbol>> symbols, String memberName) {
+        for (var either : symbols) {
+            if (either.isRight()) {
+                Position pos = findInDocumentSymbol(either.getRight(), memberName);
+                if (pos != null) return pos;
+            } else if (either.isLeft()) {
+                SymbolInformation si = either.getLeft();
+                if (memberName.equals(si.getName()) && si.getLocation() != null) {
+                    return si.getLocation().getRange().getStart();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Position findInDocumentSymbol(DocumentSymbol symbol, String memberName) {
+        if (memberName.equals(symbol.getName())) {
+            return symbol.getSelectionRange().getStart();
+        }
+        if (symbol.getChildren() != null) {
+            for (DocumentSymbol child : symbol.getChildren()) {
+                Position pos = findInDocumentSymbol(child, memberName);
+                if (pos != null) return pos;
+            }
+        }
+        return null;
+    }
+
+    private static FilePositionRequestParams toResolvedParams(String cwd, String symbolName, SymbolInformation match) {
+        Location loc = match.getLocation();
+        LOG.infof("Resolved symbol '%s' to %s:%d:%d",
+                symbolName, loc.getUri(),
+                loc.getRange().getStart().getLine(),
+                loc.getRange().getStart().getCharacter());
+        return new FilePositionRequestParams(
+                cwd, loc.getUri(),
+                loc.getRange().getStart().getLine(),
+                loc.getRange().getStart().getCharacter());
     }
 
     private CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> queryServer(
@@ -121,10 +203,17 @@ public class SymbolNameResolver {
     }
 
     private static String extractQueryName(String symbolName) {
+        symbolName = stripParentheses(symbolName);
         int dotIdx = symbolName.lastIndexOf('.');
         int slashIdx = symbolName.lastIndexOf('/');
         int separatorIdx = Math.max(dotIdx, slashIdx);
         return separatorIdx >= 0 ? symbolName.substring(separatorIdx + 1) : symbolName;
+    }
+
+    // AI models often pass "DOMNode.getChildren()" with parentheses — strip them before matching.
+    private static String stripParentheses(String name) {
+        int parenIdx = name.indexOf('(');
+        return parenIdx >= 0 ? name.substring(0, parenIdx) : name;
     }
 
     static SymbolInformation findBestMatch(List<SymbolInformation> symbols, String symbolName) {
@@ -139,7 +228,7 @@ public class SymbolNameResolver {
         if (containerName != null) {
             for (SymbolInformation sym : symbols) {
                 if (simpleName.equals(sym.getName())
-                        && containerName.equals(sym.getContainerName())
+                        && matchesContainerName(containerName, sym.getContainerName())
                         && sym.getLocation() != null) {
                     return sym;
                 }
@@ -167,7 +256,19 @@ public class SymbolNameResolver {
                 .orElse(null);
     }
 
+    // LSP returns fully qualified names (e.g. "org.eclipse.lemminx.dom.DOMNode") but AI passes simple names ("DOMNode").
+    private static boolean matchesContainerName(String expected, String actual) {
+        if (actual == null) {
+            return false;
+        }
+        if (expected.equals(actual)) {
+            return true;
+        }
+        return actual.endsWith("." + expected) || actual.endsWith("/" + expected);
+    }
+
     private static String extractContainerName(String symbolName) {
+        symbolName = stripParentheses(symbolName);
         int dotIdx = symbolName.lastIndexOf('.');
         int slashIdx = symbolName.lastIndexOf('/');
         int separatorIdx = Math.max(dotIdx, slashIdx);

@@ -40,9 +40,7 @@ public class DiagnosticsTools {
 
     @Tool(
             name = "get_diagnostics",
-            description = "Get diagnostics (errors, warnings) for a file from all language servers. " +
-            "The workspace is auto-detected and initialized if needed. " +
-            "Example: getDiagnostics(cwd='/home/user/projects/my-app', fileUri='file:///home/user/projects/my-app/src/Main.java')")
+            description = "Get diagnostics (errors, warnings) for a file.")
     public CompletableFuture<String> getDiagnostics(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

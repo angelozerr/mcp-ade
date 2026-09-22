@@ -35,25 +35,38 @@ public class RenameTools {
     @Inject
     LanguageRegistry languageRegistry;
 
+    @Inject
+    SymbolNameResolver symbolNameResolver;
+
     @Tool(name = "rename",
-          description = "Rename a symbol at a specific position across the entire workspace. " +
-                        "Returns the list of file edits that would be applied. " +
-                        "Example: rename(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.java', line=10, character=5, newName='newMethodName')" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+          description = "Rename a symbol across the entire workspace and apply all changes to disk automatically. " +
+                        "Use symbolName (e.g. 'DOMNode.getChildren') or uri+line+character.")
     public CompletableFuture<String> rename(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = ToolArgDescriptions.URI) String uri,
-            @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
-            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
+            @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,
+            @ToolArg(description = ToolArgDescriptions.URI, required = false) String uri,
+            @ToolArg(description = ToolArgDescriptions.POSITION_LINE, required = false) Integer line,
+            @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = "The new name for the symbol") String newName,
+            @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
-        RenameRequestParams params = new RenameRequestParams(cwd, uri, line, character, newName);
-        return requestExecutor.executeAsString(
-                params,
-                new RenameStrategy(languageRegistry),
-                cancellation,
-                progress
-        );
+
+        boolean doApply = apply == null || apply;
+        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character)
+                .thenCompose(resolvedParams -> {
+                    RenameRequestParams params = new RenameRequestParams(
+                            resolvedParams.getCwd(),
+                            resolvedParams.getFileUri(),
+                            resolvedParams.getLine(),
+                            resolvedParams.getCharacter(),
+                            newName,
+                            doApply);
+                    return requestExecutor.executeAsString(
+                            params,
+                            new RenameStrategy(languageRegistry),
+                            cancellation,
+                            progress);
+                });
     }
 }

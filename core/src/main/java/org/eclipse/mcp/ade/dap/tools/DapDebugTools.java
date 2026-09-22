@@ -129,12 +129,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "list_debug_adapters",
-            description = "List available debug adapters with their IDs and supported languages. " +
-                    "Optionally filter by file URI to get adapters suitable for that file. " +
-                    "Without cwd: returns available debug adapter configurations. " +
-                    "With cwd: returns debug adapter configurations enriched with installation status " +
-                    "and error details to help diagnose adapter issues. " +
-                    "Use the adapter ID with start_debugging.")
+            description = "List available debug adapters. With cwd: includes installation status.")
     public List<Map<String, Object>> listDebugAdapters(
             @ToolArg(description = ToolArgDescriptions.CWD, required = false) String cwd,
             @ToolArg(description = "Optional file URI to filter adapters (e.g., 'file:///path/to/Main.java')", required = false) String uri) {
@@ -179,7 +174,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "list_debug_sessions",
-            description = "List all active debug sessions with their state (CREATED, RUNNING, PAUSED, etc).")
+            description = "List all active debug sessions with their state.")
     public List<Map<String, Object>> getListDebugSessions() {
         return tracked(buildArgs(), () -> sessionManager.listSessions());
     }
@@ -198,9 +193,7 @@ public class DapDebugTools {
 
     // ========== Breakpoints ==========
 
-    @Tool(description = "Set a breakpoint at a specific file and line number. " +
-            "File path should be absolute or relative to workspace root. " +
-            "Optionally add a condition (e.g., 'x > 10') to break only when true.")
+    @Tool(description = "Set a breakpoint at a file and line. Optional condition expression.")
     public Map<String, Object> set_breakpoint(
             String sessionId,
             String file,
@@ -267,9 +260,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "set_instruction_breakpoint",
-            description = "Set a breakpoint at a memory instruction address. " +
-                    "Use instructionPointerReference from get_stack_trace or address from disassemble output. " +
-                    "Requires adapter support (supportsInstructionBreakpoints capability).")
+            description = "Set a breakpoint at a memory instruction address.")
     public Map<String, Object> setInstructionBreakpointSync(
             String sessionId,
             @ToolArg(description = "Instruction memory reference (e.g., from stack frame's instructionPointerReference)") String instructionReference,
@@ -356,13 +347,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "start_debugging",
-            description = "Start debugging (launch or attach) based on configuration.request. " +
-                    "Creates a debug session automatically and starts the program. " +
-                    "Returns sessionId to use in other debug operations. " +
-                    "Use get_debug_templates() to see available configuration parameters. " +
-                    "Set debugMode=false to run without debugging (no breakpoints). " +
-                    "Optionally specify breakpoints to set before launching (avoids race conditions). " +
-                    "After starting, use get_console_output(sessionId) to see program output (stdout/stderr/console.log)."
+            description = "Start debugging (launch or attach). Returns sessionId for other debug operations."
     )
     public Map<String, Object> startDebuggingSync(
             @ToolArg(description = "ID of the debug adapter (e.g., 'java-debug', 'vscode-js-debug', 'debugpy')") String debuggerId,
@@ -553,7 +538,7 @@ public class DapDebugTools {
 
     // ========== Execution Control ==========
 
-    @Tool(description = "Continue program execution after hitting a breakpoint or pause. Returns console output (stdout/stderr) accumulated during execution.")
+    @Tool(description = "Continue program execution after a breakpoint or pause.")
     public Map<String, Object> continue_execution(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -561,7 +546,7 @@ public class DapDebugTools {
         });
     }
 
-    @Tool(description = "Pause the running program at the current line.")
+    @Tool(description = "Pause the running program.")
     public Map<String, Object> pause_execution(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -575,9 +560,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "step_over",
-            description = "Step over the current line (execute without entering function calls). " +
-                    "Optionally specify granularity: 'statement' (default) or 'instruction' for assembly-level stepping. " +
-                    "Returns console output if any was printed during execution.")
+            description = "Step over the current line without entering function calls.")
     public Map<String, Object> stepOverSync(
             String sessionId,
             @ToolArg(description = "Optional stepping granularity: 'statement' (default), 'line', or 'instruction'", required = false) String granularity) {
@@ -592,8 +575,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "step_in",
-            description = "Step into a function call on the current line. " +
-                    "Optionally specify granularity: 'statement' (default) or 'instruction' for assembly-level stepping.")
+            description = "Step into a function call on the current line.")
     public Map<String, Object> stepInSync(
             String sessionId,
             @ToolArg(description = "Optional stepping granularity: 'statement' (default), 'line', or 'instruction'", required = false) String granularity) {
@@ -608,8 +590,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "step_out",
-            description = "Step out of the current function, returning to the caller. " +
-                    "Optionally specify granularity: 'statement' (default) or 'instruction' for assembly-level stepping.")
+            description = "Step out of the current function, returning to the caller.")
     public Map<String, Object> stepOutSync(
             String sessionId,
             @ToolArg(description = "Optional stepping granularity: 'statement' (default), 'line', or 'instruction'", required = false) String granularity) {
@@ -636,7 +617,7 @@ public class DapDebugTools {
 
     // ========== Inspection ==========
 
-    @Tool(description = "Get the current call stack (stack trace) showing function calls and line numbers.")
+    @Tool(description = "Get the current call stack (stack trace).")
     public Map<String, Object> get_stack_trace(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -670,10 +651,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "disassemble",
-            description = "Disassemble instructions at a memory address. " +
-                    "Use instructionPointerReference from get_stack_trace as the memoryReference. " +
-                    "Returns disassembled instructions with addresses, instruction text, and source locations. " +
-                    "Requires adapter support (supportsDisassembleRequest capability)."
+            description = "Disassemble instructions at a memory address."
     )
     public Map<String, Object> disassembleSync(
             @ToolArg(description = "Debug session ID") String sessionId,
@@ -727,7 +705,7 @@ public class DapDebugTools {
                 });
     }
 
-    @Tool(description = "Get the console output (stdout/stderr/console.log) from the debugged program. Use this to see what the program has printed or logged. Very useful to understand program behavior without re-running. Returns up to 200 recent lines.")
+    @Tool(description = "Get console output (stdout/stderr) from the debugged program.")
     public Map<String, Object> get_console_output(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -773,7 +751,7 @@ public class DapDebugTools {
         });
     }
 
-    @Tool(description = "Get variable scopes (Locals, Globals, etc.) for a specific stack frame.")
+    @Tool(description = "Get variable scopes for a stack frame.")
     public Map<String, Object> get_scopes(
             String sessionId,
             int frameId) {
@@ -798,8 +776,7 @@ public class DapDebugTools {
         });
     }
 
-    @Tool(description = "Get variables from a scope or expandable variable. " +
-            "Use variablesReference from get_scopes or a variable's variablesReference."
+    @Tool(description = "Get variables from a scope or expandable variable."
     )
     public Map<String, Object> get_variables(
             String sessionId,
@@ -831,7 +808,7 @@ public class DapDebugTools {
         );
     }
 
-    @Tool(description = "Shortcut to get local variables in the current stack frame (top of stack).")
+    @Tool(description = "Get local variables in the current stack frame.")
     public Map<String, Object> get_local_variables(String sessionId) {
         return tracked(buildArgs("sessionId", sessionId), () -> {
             DapSession session = sessionManager.getSession(sessionId);
@@ -900,7 +877,7 @@ public class DapDebugTools {
 
     // ========== Statistics ==========
 
-    @Tool(description = "Get statistics about active debug sessions (total count, states, supported languages).")
+    @Tool(description = "Get statistics about active debug sessions.")
     public Map<String, Object> get_debug_statistics() {
         return tracked(buildArgs(), () -> sessionManager.getStatistics());
     }
@@ -909,9 +886,7 @@ public class DapDebugTools {
 
     @Tool(
             name = "get_debug_templates",
-            description = "Get debug configuration templates for a specific debug adapter. " +
-                    "Returns templates grouped by type (launch, attach) from the debug adapter's configuration. " +
-                    "Use the adapter ID from list_debug_adapters."
+            description = "Get debug configuration templates (launch, attach) for a debug adapter."
     )
     public DebugTemplatesResult getDebugTemplates(
             @ToolArg(description = "ID of the debug adapter (e.g., 'java-debug', 'vscode-js-debug')") String debuggerId) {

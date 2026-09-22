@@ -42,11 +42,7 @@ public class DeclarationTools {
 
     @Tool(name = "go_to_declaration",
           description = "Go to the declaration of a symbol. " +
-                        "Accepts either symbolName (e.g., 'myMethod', 'MyClass.myMethod') or uri+line+character position. " +
-                        "Returns the location where the symbol is declared (different from definition for forward declarations). " +
-                        "Example with symbolName: go_to_declaration(cwd='/home/user/project', symbolName='myMethod') " +
-                        "Example with position: go_to_declaration(cwd='/home/user/project', uri='file:///src/Main.cpp', line=10, character=5)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+                        "Use symbolName (e.g. 'MyClass.myMethod') or uri+line+character.")
     public CompletableFuture<String> goToDeclaration(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,

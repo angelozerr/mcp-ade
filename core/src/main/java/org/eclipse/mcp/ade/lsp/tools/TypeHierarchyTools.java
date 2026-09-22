@@ -37,10 +37,7 @@ public class TypeHierarchyTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_type_hierarchy_supertypes",
-          description = "Get supertypes (parent classes/interfaces) for a type at a specific position. " +
-                        "Returns the list of supertypes in the type hierarchy. " +
-                        "Example: get_type_hierarchy_supertypes(cwd='/home/user/project', fileUri='file:///home/user/project/src/MyClass.java', line=5, character=15)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+          description = "Get supertypes (parent classes/interfaces) for a type at a position.")
     public CompletableFuture<String> getTypeHierarchySupertypes(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
@@ -58,10 +55,7 @@ public class TypeHierarchyTools {
     }
 
     @Tool(name = "get_type_hierarchy_subtypes",
-          description = "Get subtypes (child classes/implementations) for a type at a specific position. " +
-                        "Returns the list of subtypes in the type hierarchy. " +
-                        "Example: get_type_hierarchy_subtypes(cwd='/home/user/project', fileUri='file:///home/user/project/src/MyInterface.java', line=5, character=15)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+          description = "Get subtypes (child classes/implementations) for a type at a position.")
     public CompletableFuture<String> getTypeHierarchySubtypes(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

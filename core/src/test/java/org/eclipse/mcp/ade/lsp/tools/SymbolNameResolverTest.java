@@ -135,6 +135,54 @@ class SymbolNameResolverTest {
         assertEquals(10, withoutContainer.getLocation().getRange().getStart().getLine());
     }
 
+    @Test
+    void findBestMatchWithFullyQualifiedContainerName() {
+        var symbols = List.of(
+                symbolInfo("getChildren", "org.eclipse.lemminx.dom.DOMNode", SymbolKind.Method, "file:///DOMNode.java", 603, 5),
+                symbolInfo("getChildren", "org.eclipse.lemminx.dom.DOMElement", SymbolKind.Method, "file:///DOMElement.java", 42, 5)
+        );
+
+        SymbolInformation result = SymbolNameResolver.findBestMatch(symbols, "DOMNode.getChildren");
+        assertNotNull(result);
+        assertEquals("org.eclipse.lemminx.dom.DOMNode", result.getContainerName());
+        assertEquals(603, result.getLocation().getRange().getStart().getLine());
+    }
+
+    @Test
+    void findBestMatchWithParentheses() {
+        var symbols = List.of(
+                symbolInfo("getChildren", "org.eclipse.lemminx.dom.DOMNode", SymbolKind.Method, "file:///DOMNode.java", 603, 5)
+        );
+
+        SymbolInformation result = SymbolNameResolver.findBestMatch(symbols, "DOMNode.getChildren()");
+        assertNotNull(result);
+        assertEquals("getChildren", result.getName());
+        assertEquals(603, result.getLocation().getRange().getStart().getLine());
+    }
+
+    @Test
+    void findBestMatchWithParenthesesAndParams() {
+        var symbols = List.of(
+                symbolInfo("findNodeAt", "org.eclipse.lemminx.dom.DOMNode", SymbolKind.Method, "file:///DOMNode.java", 120, 5)
+        );
+
+        SymbolInformation result = SymbolNameResolver.findBestMatch(symbols, "DOMNode.findNodeAt(int)");
+        assertNotNull(result);
+        assertEquals("findNodeAt", result.getName());
+        assertEquals(120, result.getLocation().getRange().getStart().getLine());
+    }
+
+    @Test
+    void findBestMatchSimpleNameWithParentheses() {
+        var symbols = List.of(
+                symbolInfo("toString", null, SymbolKind.Method, "file:///MyClass.java", 50, 5)
+        );
+
+        SymbolInformation result = SymbolNameResolver.findBestMatch(symbols, "toString()");
+        assertNotNull(result);
+        assertEquals("toString", result.getName());
+    }
+
     // --- helpers ---
 
     private static SymbolInformation symbolInfo(String name, String containerName,

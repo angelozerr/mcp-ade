@@ -39,10 +39,7 @@ public class SignatureHelpTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_signature_help",
-          description = "Get signature help for a function/method call at a specific position. " +
-                        "Returns parameter information for the function being called. " +
-                        "Example: get_signature_help(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py', line=10, character=15)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+          description = "Get parameter information for a function/method call at a position.")
     public CompletableFuture<String> getSignatureHelp(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

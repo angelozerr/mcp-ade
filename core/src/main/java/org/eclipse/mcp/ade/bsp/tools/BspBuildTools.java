@@ -53,10 +53,7 @@ public class BspBuildTools {
 
     @Tool(
             name = "list_build_servers",
-            description = "Get information about configured BSP build servers (ID, name, description). " +
-                    "Without cwd: returns available server configurations. " +
-                    "With cwd: returns server configurations enriched with runtime state " +
-                    "(status, ready, statusMessage).")
+            description = "List configured BSP build servers. With cwd: includes runtime state.")
     public List<Map<String, Object>> listBuildServers(
             @ToolArg(description = ToolArgDescriptions.CWD, required = false) String cwd) {
         try {
@@ -119,9 +116,7 @@ public class BspBuildTools {
 
     @Tool(
             name = "get_build_targets",
-            description = "Get all build targets in the workspace. " +
-                    "A build target represents a unit of compilation " +
-                    "(e.g., a Maven module, Gradle subproject, sbt project).")
+            description = "Get all build targets (modules, subprojects) in the workspace.")
     public CompletableFuture<String> getBuildTargets(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
         return ensureBspServerReady(cwd)
@@ -133,8 +128,7 @@ public class BspBuildTools {
 
     @Tool(
             name = "compile_build_target",
-            description = "Compile one or more build targets. " +
-                    "Returns compilation status and any diagnostics.")
+            description = "Compile one or more build targets.")
     public CompletableFuture<String> compileBuildTarget(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "List of build target URIs to compile") List<String> targetIds) {

@@ -42,11 +42,7 @@ public class DefinitionTools {
 
     @Tool(name = "go_to_definition",
           description = "Go to the definition of a symbol. " +
-                        "Accepts either symbolName (e.g., 'myMethod', 'MyClass.myMethod') or uri+line+character position. " +
-                        "Returns the location where the symbol is defined. " +
-                        "Example with symbolName: go_to_definition(cwd='/home/user/project', symbolName='myMethod') " +
-                        "Example with position: go_to_definition(cwd='/home/user/project', uri='file:///src/Main.java', line=10, character=5)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+                        "Use symbolName (e.g. 'MyClass.myMethod') or uri+line+character.")
     public CompletableFuture<String> goToDefinition(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,

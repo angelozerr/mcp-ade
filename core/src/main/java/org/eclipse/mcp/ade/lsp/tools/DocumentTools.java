@@ -39,10 +39,7 @@ public class DocumentTools {
     @Inject
     LanguageRegistry languageRegistry;
 
-    @Tool(description = "Open a document in language servers to keep it active for multiple LSP operations (references, definition, rename...). "
-            + "The file stays open until you call close_document. "
-            + "If you don't call open_document, LSP tools will auto-open and auto-close the file for each request. "
-            + "Use this when you plan to execute several LSP features on the same file to avoid repeated open/close cycles.")
+    @Tool(description = "Open a document in language servers for multiple LSP operations. Close with close_document when done.")
     public CompletableFuture<String> open_document(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri) {
@@ -53,8 +50,7 @@ public class DocumentTools {
                 .thenCompose(servers -> waitForReadyAndOpen(servers, uri, languageId));
     }
 
-    @Tool(description = "Close a document previously opened with open_document. "
-            + "Always close documents when you're done with multiple LSP operations on a file.")
+    @Tool(description = "Close a document previously opened with open_document.")
     public CompletableFuture<String> close_document(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri) {

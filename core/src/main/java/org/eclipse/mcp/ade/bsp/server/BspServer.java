@@ -112,7 +112,7 @@ public class BspServer extends ServerBase<BspServerConfig> {
                                         .setExecutorService(getExecutorService())
                                         .wrapMessages(consumer -> message -> {
                                             try {
-                                                getTracing().log(message, consumer);
+                                                getTracing().logAsync(message, consumer);
                                             } catch (Exception e) {
                                                 LOG.warnf(e, "Error tracing BSP message: %s", e.getMessage());
                                             }

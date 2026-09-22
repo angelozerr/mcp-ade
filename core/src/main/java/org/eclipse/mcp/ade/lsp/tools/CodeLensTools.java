@@ -36,8 +36,7 @@ public class CodeLensTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_code_lenses",
-          description = "Get code lenses for a document. Code lenses are actionable annotations like 'Run Test', reference counts, etc. " +
-                        "Example: get_code_lenses(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py')")
+          description = "Get code lenses for a document (run test, reference counts, etc.).")
     public CompletableFuture<String> getCodeLenses(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

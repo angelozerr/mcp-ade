@@ -14,9 +14,15 @@
 package org.eclipse.mcp.ade.trace;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -24,11 +30,20 @@ import java.util.function.Predicate;
 public class DefaultTraceCollector implements TraceCollector {
 
     private static final int MAX_TRACE_MESSAGES = 1000;
+    private static final long FLUSH_INTERVAL_MS = 100;
 
     private final TraceKind traceKind;
     private final ConcurrentLinkedDeque<TraceMessage> traces = new ConcurrentLinkedDeque<>();
     private final AtomicInteger traceCount = new AtomicInteger();
     private final List<Consumer<TraceMessage>> listeners = new CopyOnWriteArrayList<>();
+    private final ConcurrentLinkedQueue<TraceMessage> pendingNotifications = new ConcurrentLinkedQueue<>();
+    private final AtomicBoolean flushScheduled = new AtomicBoolean(false);
+    private static final ScheduledExecutorService FLUSH_EXECUTOR =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "trace-flush");
+                t.setDaemon(true);
+                return t;
+            });
 
     public DefaultTraceCollector(TraceKind traceKind) {
         this.traceKind = traceKind;
@@ -63,8 +78,26 @@ public class DefaultTraceCollector implements TraceCollector {
                 traceCount.decrementAndGet();
             }
         }
-        for (Consumer<TraceMessage> listener : listeners) {
-            listener.accept(message);
+        if (listeners.isEmpty()) {
+            return;
+        }
+        pendingNotifications.add(message);
+        if (flushScheduled.compareAndSet(false, true)) {
+            FLUSH_EXECUTOR.schedule(this::flushNotifications, FLUSH_INTERVAL_MS, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void flushNotifications() {
+        flushScheduled.set(false);
+        List<TraceMessage> batch = new ArrayList<>();
+        TraceMessage msg;
+        while ((msg = pendingNotifications.poll()) != null) {
+            batch.add(msg);
+        }
+        for (TraceMessage m : batch) {
+            for (Consumer<TraceMessage> listener : listeners) {
+                listener.accept(m);
+            }
         }
     }
 

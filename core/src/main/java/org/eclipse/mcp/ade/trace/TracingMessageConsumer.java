@@ -27,6 +27,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Traces LSP messages in a format similar to lsp4ij.
@@ -35,6 +37,12 @@ import java.util.Collections;
 public class TracingMessageConsumer {
 
     private static volatile MessageJsonHandler toStringInstance;
+    private static final ExecutorService TRACE_EXECUTOR =
+            Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "trace-serializer");
+                t.setDaemon(true);
+                return t;
+            });
 
     private final TraceCollector collector;
     private final String workspaceUri;
@@ -83,6 +91,31 @@ public class TracingMessageConsumer {
         }
 
         collector.addTrace(workspaceUri, contextId, logContent);
+    }
+
+    /**
+     * Async version of {@link #log} — serialization and trace collection
+     * happen off the LSP I/O thread.
+     */
+    public void logAsync(Message message, MessageConsumer messageConsumer) {
+        if (!collector.isEnabled()) {
+            return;
+        }
+        final Instant now = clock.instant();
+        final boolean sending = messageConsumer instanceof StreamMessageConsumer;
+        final boolean receiving = messageConsumer instanceof RemoteEndpoint;
+        TRACE_EXECUTOR.execute(() -> {
+            String date = dateTimeFormatter.format(now);
+            String logContent;
+            if (sending) {
+                logContent = consumeMessageSending(message, now, date);
+            } else if (receiving) {
+                logContent = consumeMessageReceiving(message, now, date);
+            } else {
+                logContent = String.format("Unknown MessageConsumer type: %s", messageConsumer);
+            }
+            collector.addTrace(workspaceUri, contextId, logContent);
+        });
     }
 
     private String consumeMessageSending(Message message, Instant now, String date) {

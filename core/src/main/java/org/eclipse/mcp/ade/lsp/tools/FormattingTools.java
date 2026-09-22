@@ -38,9 +38,7 @@ public class FormattingTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "format_document",
-          description = "Format an entire document using the language server's formatting capabilities. " +
-                        "Returns the text edits to apply, or applies them directly when apply=true. " +
-                        "Example: format_document(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py', tabSize=4, insertSpaces=true)")
+          description = "Format an entire document. Set apply=true to apply edits directly.")
     public CompletableFuture<String> formatDocument(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
@@ -59,9 +57,7 @@ public class FormattingTools {
     }
 
     @Tool(name = "format_document_range",
-          description = "Format a specific range in a document using the language server's formatting capabilities. " +
-                        "Returns the text edits to apply, or applies them directly when apply=true. " +
-                        "Example: format_document_range(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py', tabSize=4, insertSpaces=true, startLine=5, startCharacter=0, endLine=15, endCharacter=0)")
+          description = "Format a specific range in a document. Set apply=true to apply edits directly.")
     public CompletableFuture<String> formatDocumentRange(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

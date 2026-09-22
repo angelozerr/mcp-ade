@@ -35,10 +35,7 @@ public class WorkspaceSymbolTools {
     LspRequestExecutor requestExecutor;
 
     @Tool(name = "search_workspace_symbols",
-          description = "Search for symbols across the entire workspace with optional filtering. " +
-                        "Returns symbols (classes, methods, variables, etc.) matching the query string. " +
-                        "Results can be filtered by symbol kind, file path pattern, and container name. " +
-                        "Example: search_workspace_symbols(cwd='/home/user/project', query='MyClass', kind='Class', pathPattern='*.java')")
+          description = "Search for symbols across the workspace. Filter by kind, pathPattern, or containerName.")
     public CompletableFuture<String> searchWorkspaceSymbols(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "The search query string to match against symbol names") String query,

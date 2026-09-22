@@ -42,11 +42,7 @@ public class ImplementationTools {
 
     @Tool(name = "find_implementations",
           description = "Find all implementations of an interface or abstract class. " +
-                        "Accepts either symbolName (e.g., 'MyInterface') or uri+line+character position. " +
-                        "Returns the locations where the symbol is implemented. " +
-                        "Example with symbolName: find_implementations(cwd='/home/user/project', symbolName='MyInterface') " +
-                        "Example with position: find_implementations(cwd='/home/user/project', uri='file:///src/MyInterface.java', line=5, character=15)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+                        "Use symbolName (e.g. 'MyInterface') or uri+line+character.")
     public CompletableFuture<String> findImplementations(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,

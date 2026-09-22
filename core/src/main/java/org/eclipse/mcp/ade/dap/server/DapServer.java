@@ -475,7 +475,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
                 getExecutorService(),
                 consumer -> message -> {
                     try {
-                        getTracing().log(message, consumer);
+                        getTracing().logAsync(message, consumer);
                     } catch (Exception e) {
                         LOG.warnf(e, "Error tracing DAP message: %s", e.getMessage());
                     }
@@ -556,7 +556,7 @@ public class DapServer extends ServerBase<DapServerConfig> {
                     consumer -> message -> {
                         if (getServerTrace() != ServerTrace.off) {
                             try {
-                                getTracing().log(message, consumer);
+                                getTracing().logAsync(message, consumer);
                             } catch (Exception e) {
                                 LOG.warnf(e, "Error tracing DAP message: %s", e.getMessage());
                             }

@@ -18,20 +18,27 @@ import java.util.Map;
 public class RenameRequestParams extends FilePositionRequestParams {
 
     private final String newName;
+    private final boolean apply;
 
-    public RenameRequestParams(String cwd, String fileUri, int line, int character, String newName) {
+    public RenameRequestParams(String cwd, String fileUri, int line, int character, String newName, boolean apply) {
         super(cwd, fileUri, line, character);
         this.newName = newName;
+        this.apply = apply;
     }
 
     public String getNewName() {
         return newName;
     }
 
+    public boolean isApply() {
+        return apply;
+    }
+
     @Override
     public Map<String, Object> toArgumentsMap() {
         Map<String, Object> map = super.toArgumentsMap();
         map.put("newName", newName);
+        map.put("apply", apply);
         return map;
     }
 }

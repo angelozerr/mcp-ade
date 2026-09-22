@@ -36,9 +36,7 @@ public class DocumentSymbolTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_document_symbols",
-          description = "Get all symbols (classes, methods, variables, etc.) in a document. " +
-                        "Returns a hierarchical list of symbols with their kind and location. " +
-                        "Example: get_document_symbols(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py')")
+          description = "Get all symbols (classes, methods, variables) in a document.")
     public CompletableFuture<String> getDocumentSymbols(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

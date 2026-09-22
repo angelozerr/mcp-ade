@@ -32,11 +32,7 @@ import java.util.List;
 public class ApplyWorkspaceEditTools {
 
     @Tool(name = "apply_workspace_edit",
-          description = "Apply text edits to a file on disk. " +
-                        "Each edit replaces a range (startLine:startCharacter to endLine:endCharacter) with new text. " +
-                        "Use this after tools that return edit previews (formatting, code actions, etc.) to apply the changes. " +
-                        "Example: apply_workspace_edit(fileUri='file:///home/user/project/src/main.py', " +
-                        "startLines=[5,10], startCharacters=[0,0], endLines=[5,12], endCharacters=[10,0], newTexts=['replacement',''])")
+          description = "Apply text edits to a file on disk.")
     public String applyWorkspaceEdit(
             @ToolArg(description = ToolArgDescriptions.URI) String fileUri,
             @ToolArg(description = "Start line numbers of each edit (0-based)") List<Integer> startLines,

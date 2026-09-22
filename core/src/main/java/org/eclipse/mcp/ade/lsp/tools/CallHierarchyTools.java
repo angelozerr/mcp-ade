@@ -37,10 +37,7 @@ public class CallHierarchyTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_call_hierarchy_incoming",
-          description = "Get incoming calls (callers) for a symbol at a specific position. " +
-                        "Returns the list of functions/methods that call the symbol. " +
-                        "Example: get_call_hierarchy_incoming(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.java', line=10, character=5)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+          description = "Get incoming calls (callers) for a symbol at a position.")
     public CompletableFuture<String> getCallHierarchyIncoming(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
@@ -58,10 +55,7 @@ public class CallHierarchyTools {
     }
 
     @Tool(name = "get_call_hierarchy_outgoing",
-          description = "Get outgoing calls (callees) from a symbol at a specific position. " +
-                        "Returns the list of functions/methods that are called by the symbol. " +
-                        "Example: get_call_hierarchy_outgoing(cwd='/home/user/project', fileUri='file:///home/user/project/src/Main.java', line=10, character=5)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+          description = "Get outgoing calls (callees) from a symbol at a position.")
     public CompletableFuture<String> getCallHierarchyOutgoing(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

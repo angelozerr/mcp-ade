@@ -54,13 +54,7 @@ public class SymbolEditTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "insert_before_symbol",
-            description = "Insert code before a symbol identified by name path. " +
-                    "The name path uses '/' to navigate the symbol hierarchy (e.g., 'MyClass/myMethod'). " +
-                    "Use [index] to disambiguate when multiple symbols share the same name (e.g., 'MyClass/method[1]'). " +
-                    "Use get_document_symbols first to discover available symbols. " +
-                    "Returns the text edits to apply, or applies them directly when apply=true. " +
-                    "Example: insert_before_symbol(cwd='/project', uri='file:///project/src/Main.java', " +
-                    "namePath='MyClass/myMethod', body='    private int newField;\\n')")
+            description = "Insert code before a symbol identified by namePath (e.g. 'MyClass/myMethod').")
     public CompletableFuture<String> insertBeforeSymbol(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
@@ -87,13 +81,7 @@ public class SymbolEditTools {
     }
 
     @Tool(name = "insert_after_symbol",
-            description = "Insert code after a symbol identified by name path. " +
-                    "The name path uses '/' to navigate the symbol hierarchy (e.g., 'MyClass/myMethod'). " +
-                    "Use [index] to disambiguate when multiple symbols share the same name (e.g., 'MyClass/method[1]'). " +
-                    "Use get_document_symbols first to discover available symbols. " +
-                    "Returns the text edits to apply, or applies them directly when apply=true. " +
-                    "Example: insert_after_symbol(cwd='/project', uri='file:///project/src/Main.java', " +
-                    "namePath='MyClass/myMethod', body='    public void newMethod() {}\\n')")
+            description = "Insert code after a symbol identified by namePath (e.g. 'MyClass/myMethod').")
     public CompletableFuture<String> insertAfterSymbol(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
@@ -120,13 +108,7 @@ public class SymbolEditTools {
     }
 
     @Tool(name = "replace_symbol_body",
-            description = "Replace the entire body of a symbol identified by name path. " +
-                    "The name path uses '/' to navigate the symbol hierarchy (e.g., 'MyClass/myMethod'). " +
-                    "Use [index] to disambiguate when multiple symbols share the same name (e.g., 'MyClass/method[1]'). " +
-                    "Use get_document_symbols first to see available symbols and their ranges. " +
-                    "Returns the text edits to apply, or applies them directly when apply=true. " +
-                    "Example: replace_symbol_body(cwd='/project', uri='file:///project/src/Main.java', " +
-                    "namePath='MyClass/myMethod', body='    public void myMethod() {\\n        // new impl\\n    }')")
+            description = "Replace the body of a symbol identified by namePath (e.g. 'MyClass/myMethod').")
     public CompletableFuture<String> replaceSymbolBody(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

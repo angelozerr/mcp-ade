@@ -57,15 +57,9 @@ public class SafeDeleteTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "safe_delete_symbol",
-            description = "Safely delete a symbol after checking for external references. " +
-                    "The name path uses '/' to navigate the symbol hierarchy (e.g., 'MyClass/myMethod'). " +
-                    "Use [index] to disambiguate when multiple symbols share the same name (e.g., 'MyClass/method[1]'). " +
-                    "Use get_document_symbols first to discover available symbols. " +
-                    "First checks for references outside the symbol's own range. " +
-                    "If external references exist, reports them and blocks deletion. " +
-                    "If no external references: returns a preview of the deletion, or applies it when apply=true. " +
-                    "Example: safe_delete_symbol(cwd='/project', uri='file:///project/src/Main.java', " +
-                    "namePath='MyClass/unusedMethod')")
+            description = "Delete a symbol after checking for external references. " +
+                    "Uses namePath (e.g. 'MyClass/myMethod') to identify the symbol. " +
+                    "Blocks deletion if external references exist.")
     public CompletableFuture<String> safeDeleteSymbol(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

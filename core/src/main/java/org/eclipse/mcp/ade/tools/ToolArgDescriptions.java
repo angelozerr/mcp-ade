@@ -56,5 +56,5 @@ public final class ToolArgDescriptions {
 
     // Refactoring arguments
     public static final String APPLY =
-        "Whether to apply the changes to disk (true) or just return a preview (false, default)";
+        "Whether to apply the changes to disk (default: true) or just return a preview (false)";
 }

@@ -39,10 +39,7 @@ public class CompletionTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_completions",
-          description = "Get code completion suggestions at a specific position in a file. " +
-                        "Returns available completions with their kind and details. " +
-                        "Example: get_completions(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py', line=10, character=5)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+          description = "Get code completion suggestions at a position.")
     public CompletableFuture<String> getCompletions(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

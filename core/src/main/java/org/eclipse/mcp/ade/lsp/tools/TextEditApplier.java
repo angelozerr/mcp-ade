@@ -85,6 +85,8 @@ public final class TextEditApplier {
                     }
                     int count = applyTextEdits(uri, textEdits);
                     summary.put(uri, count);
+                } else {
+                    applyResourceOperation(change.getRight(), summary);
                 }
             }
         } else if (edit.getChanges() != null) {
@@ -95,6 +97,31 @@ public final class TextEditApplier {
         }
 
         return summary;
+    }
+
+    private static void applyResourceOperation(ResourceOperation operation, Map<String, Integer> summary) {
+        try {
+            if (operation instanceof RenameFile renameFile) {
+                Path oldPath = Path.of(URI.create(renameFile.getOldUri()));
+                Path newPath = Path.of(URI.create(renameFile.getNewUri()));
+                Files.createDirectories(newPath.getParent());
+                Files.move(oldPath, newPath);
+                summary.put(renameFile.getNewUri(), 1);
+            } else if (operation instanceof CreateFile createFile) {
+                Path path = Path.of(URI.create(createFile.getUri()));
+                Files.createDirectories(path.getParent());
+                if (!Files.exists(path)) {
+                    Files.createFile(path);
+                }
+                summary.put(createFile.getUri(), 1);
+            } else if (operation instanceof DeleteFile deleteFile) {
+                Path path = Path.of(URI.create(deleteFile.getUri()));
+                Files.deleteIfExists(path);
+                summary.put(deleteFile.getUri(), 1);
+            }
+        } catch (IOException e) {
+            throw new ToolException("Failed to apply resource operation: " + operation, e);
+        }
     }
 
     /**

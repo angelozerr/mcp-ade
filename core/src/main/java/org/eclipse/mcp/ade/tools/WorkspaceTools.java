@@ -46,8 +46,7 @@ public class WorkspaceTools {
 
     @Tool(
             name="list_workspaces",
-            description = "Get information about all active workspaces, including root URIs and language server count. " +
-                        "Workspaces are initialized automatically when using diagnostics tools.")
+            description = "List all active workspaces.")
     public String listWorkspaces() {
         try {
             Collection<Workspace> workspaces = application.getWorkspaces();
@@ -69,10 +68,7 @@ public class WorkspaceTools {
 
     @Tool(
             name = "refresh_workspace",
-            description = "Refresh all running language servers in a workspace to synchronize with file system changes. " +
-                        "Call this after creating, modifying or deleting files (e.g., new Java classes) " +
-                        "so that language servers detect the changes and update their internal model. " +
-                        "This is essential before debugging or building when files were created outside of LSP.")
+            description = "Refresh language servers to synchronize with file system changes.")
     public String refreshWorkspace(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
         try {
@@ -94,11 +90,7 @@ public class WorkspaceTools {
 
     @Tool(
             name = "build_workspace",
-            description = "Build all running language servers in a workspace. " +
-                        "Automatically chooses between full and incremental build: " +
-                        "incremental if the file watcher has been tracking changes continuously, " +
-                        "full if changes may have been missed (file watcher was disabled, server just started, etc.). " +
-                        "Call this before debugging to ensure all sources are compiled.")
+            description = "Build the workspace (auto-selects full or incremental).")
     public String buildWorkspace(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
         try {
@@ -120,10 +112,7 @@ public class WorkspaceTools {
 
     @Tool(
             name = "list_language_servers",
-            description = "Get information about configured language servers (ID, name, description, supported languages). " +
-                        "Without cwd: returns available server configurations. " +
-                        "With cwd: returns server configurations enriched with runtime state for the given workspace " +
-                        "(status, ready, statusMessage) to help diagnose server issues.")
+            description = "List configured language servers. With cwd: includes runtime state.")
     public List<Map<String, Object>> listLanguageServers(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd) {
         {
@@ -192,10 +181,7 @@ public class WorkspaceTools {
 
     @Tool(
             name = "notify_file_changes",
-            description = "Notify language servers about file changes on the file system. " +
-                        "Use this when you have created, modified, or deleted files and want to " +
-                        "inform language servers immediately without waiting for the file watcher. " +
-                        "Each change should specify the file path and change type (created/changed/deleted).")
+            description = "Notify language servers about file changes (created/changed/deleted).")
     public String notifyFileChanges(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "List of file changes. Each entry: 'path:type' where type is 'created', 'changed', or 'deleted'. Example: 'src/Main.java:created'") List<String> changes) {

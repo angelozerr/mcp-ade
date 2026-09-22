@@ -40,8 +40,7 @@ public class RootsTools {
     @Inject
     Application application;
 
-    @Tool(description = "List all workspace roots provided by the MCP client. " +
-                        "NOTE: This feature is deprecated, prefer using cwd parameter in other tools.")
+    @Tool(description = "List workspace roots from the MCP client (deprecated, use cwd).")
     public String listRoots(Roots roots) {
         if (!roots.isSupported()) {
             return "MCP Roots not supported by this client. Use cwd parameter instead.";
@@ -69,9 +68,7 @@ public class RootsTools {
         }
     }
 
-    @Tool(description = "Initialize all workspaces from MCP client roots. " +
-                        "This will start language servers for each root directory. " +
-                        "NOTE: This feature is deprecated, prefer using initialize_workspace with cwd parameter.")
+    @Tool(description = "Initialize workspaces from MCP client roots (deprecated, use cwd).")
     public String initializeAllRoots(Roots roots) {
         if (!roots.isSupported()) {
             return "MCP Roots not supported by this client. Use initialize_workspace with cwd parameter instead.";

@@ -42,11 +42,7 @@ public class TypeDefinitionTools {
 
     @Tool(name = "go_to_type_definition",
           description = "Go to the type definition of a symbol. " +
-                        "Accepts either symbolName (e.g., 'myVar', 'MyClass.myVar') or uri+line+character position. " +
-                        "Returns the location where the type of the symbol is defined. " +
-                        "Example with symbolName: go_to_type_definition(cwd='/home/user/project', symbolName='myVar') " +
-                        "Example with position: go_to_type_definition(cwd='/home/user/project', uri='file:///src/main.py', line=10, character=5)" +
-                        ToolArgDescriptions.OPEN_DOCUMENT_HINT)
+                        "Use symbolName (e.g. 'MyClass.myVar') or uri+line+character.")
     public CompletableFuture<String> goToTypeDefinition(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,

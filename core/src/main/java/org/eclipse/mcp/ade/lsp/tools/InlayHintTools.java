@@ -36,8 +36,7 @@ public class InlayHintTools {
     LanguageRegistry languageRegistry;
 
     @Tool(name = "get_inlay_hints",
-          description = "Get inlay hints for a range in a document. Inlay hints show inferred types, parameter names, and other inline annotations. " +
-                        "Example: get_inlay_hints(cwd='/home/user/project', fileUri='file:///home/user/project/src/main.py', startLine=0, startCharacter=0, endLine=50, endCharacter=0)")
+          description = "Get inlay hints (inferred types, parameter names) for a range.")
     public CompletableFuture<String> getInlayHints(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,

@@ -271,7 +271,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                         }
                     }
                     if (getServerTrace() != ServerTrace.off) {
-                        getTracing().log(message, consumer);
+                        getTracing().logAsync(message, consumer);
                     }
                     consumer.consume(message);
                 })

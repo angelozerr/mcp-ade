@@ -19,6 +19,7 @@ import org.eclipse.mcp.ade.lsp.client.LspCapability;
 import org.eclipse.mcp.ade.lsp.server.LspServer;
 import org.eclipse.mcp.ade.lsp.server.LspServerResolver;
 import org.eclipse.mcp.ade.lsp.tools.LspRequestExecutor;
+import org.eclipse.mcp.ade.lsp.tools.TextEditApplier;
 import org.eclipse.mcp.ade.lsp.tools.params.RenameRequestParams;
 import org.eclipse.mcp.ade.operation.OperationContext;
 import org.eclipse.mcp.ade.progress.ProgressMonitor;
@@ -26,6 +27,7 @@ import org.eclipse.lsp4j.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class RenameStrategy implements LspRequestExecutor.LspRequestStrategy<RenameRequestParams, RenameParams, WorkspaceEdit> {
@@ -96,6 +98,17 @@ public class RenameStrategy implements LspRequestExecutor.LspRequestStrategy<Ren
 
     @Override
     public String formatResults(RenameRequestParams params, List<WorkspaceEdit> results) {
+        if (params.isApply()) {
+            int totalFiles = 0;
+            int totalEdits = 0;
+            for (WorkspaceEdit edit : results) {
+                Map<String, Integer> summary = TextEditApplier.applyWorkspaceEdit(edit);
+                totalFiles += summary.size();
+                totalEdits += summary.values().stream().mapToInt(Integer::intValue).sum();
+            }
+            return String.format("Renamed '%s' in %d file(s) (%d edit(s) applied).",
+                    params.getNewName(), totalFiles, totalEdits);
+        }
         String cwdUri = LspJsonFormatter.cwdToUriPrefix(params.getCwd());
         return LspJsonFormatter.toJson(LspJsonFormatter.workspaceEdits(results, cwdUri));
     }
