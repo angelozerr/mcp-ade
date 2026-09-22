@@ -1,5 +1,6 @@
 {
     "id": "swift",
     "name": "Swift",
-    "description": "Swift language support via SourceKit-LSP"
+    "description": "Swift language support via SourceKit-LSP",
+    "profiles": ["swift-pm", "xcode"]
 }

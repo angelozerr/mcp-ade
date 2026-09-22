@@ -1,5 +1,6 @@
 {
     "id": "latex",
     "name": "LaTeX",
-    "description": "LaTeX language support via texlab"
+    "description": "LaTeX language support via texlab",
+    "profiles": ["latex"]
 }

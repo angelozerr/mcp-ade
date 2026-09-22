@@ -22,6 +22,7 @@ import org.eclipse.mcp.ade.extension.Extension;
 import org.eclipse.mcp.ade.extension.ExtensionListener;
 import org.eclipse.mcp.ade.extension.ExtensionRegistry;
 import org.eclipse.mcp.ade.extension.ExtensionRemovedEvent;
+import org.eclipse.mcp.ade.profile.ProjectProfileRegistry;
 import org.eclipse.mcp.ade.installer.InstallResult;
 import org.eclipse.mcp.ade.installer.InstallerListener;
 import org.eclipse.mcp.ade.installer.TraceProgressMonitor;
@@ -63,6 +64,7 @@ import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -90,6 +92,9 @@ public class Application {
 
     @Inject
     ExtensionRegistry extensionRegistry;
+
+    @Inject
+    ProjectProfileRegistry projectProfileRegistry;
 
     // Workspace
     @Inject
@@ -360,8 +365,11 @@ public class Application {
      * Used by workspace-level operations (e.g., workspace/symbol) that need
      * servers to be running without a specific file to trigger lazy startup.
      * <p>
-     * Scans the workspace directory for files, detects their languages,
-     * and starts only servers whose documentSelector matches a detected language.
+     * Scans the workspace directory for files, detects both languages and
+     * project profiles (e.g., {@code pom.xml} &rarr; profile {@code "maven"})
+     * in a single {@code Files.walk} pass. Starts servers whose
+     * documentSelector matches a detected language <b>or</b> whose extension
+     * declares a matching profile.
      *
      * @param workspace       the workspace to start servers for
      * @param progressMonitor the progress monitor
@@ -369,8 +377,8 @@ public class Application {
      */
     public CompletableFuture<Void> ensureServersForWorkspace(Workspace workspace,
                                                               ProgressMonitor progressMonitor) {
-        Set<String> detectedLanguages = scanWorkspaceLanguages(workspace.getRootPath());
-        if (detectedLanguages.isEmpty()) {
+        WorkspaceScanResult scan = scanWorkspace(workspace.getRootPath());
+        if (scan.languages().isEmpty() && scan.profiles().isEmpty()) {
             return CompletableFuture.completedFuture(null);
         }
 
@@ -386,8 +394,11 @@ public class Application {
             if (existingServer != null && existingServer.getStatus() != ServerStatus.STOPPED) {
                 continue;
             }
-            if (config.getDocumentSelector() != null
-                    && !Collections.disjoint(config.getDocumentSelector().getLanguages(), detectedLanguages)) {
+            boolean matchesLanguage = config.getDocumentSelector() != null
+                    && !Collections.disjoint(config.getDocumentSelector().getLanguages(), scan.languages());
+            boolean matchesProfile = !scan.profiles().isEmpty()
+                    && matchesExtensionProfile(config.getExtensionId(), scan.profiles());
+            if (matchesLanguage || matchesProfile) {
                 configsToStart.add(config);
             }
         }
@@ -414,24 +425,30 @@ public class Application {
         return CompletableFuture.allOf(serverFutures.toArray(new CompletableFuture[0]));
     }
 
+    record WorkspaceScanResult(Set<String> languages, Set<String> profiles) {}
+
     /**
-     * Scan the workspace directory for files and detect their languages.
-     * Walks the directory tree up to depth 3, skipping hidden directories.
+     * Scan the workspace directory for files and detect both languages and project profiles
+     * in a single pass. Walks the directory tree up to depth 3, skipping hidden directories.
      *
      * @param rootPath the workspace root path
-     * @return set of detected language identifiers
+     * @return detected language identifiers and project profile IDs
      */
-    private Set<String> scanWorkspaceLanguages(Path rootPath) {
+    private WorkspaceScanResult scanWorkspace(Path rootPath) {
         Set<String> languages = new HashSet<>();
-        try (var files = java.nio.file.Files.walk(rootPath, 3)) {
-            files.filter(java.nio.file.Files::isRegularFile)
+        Set<String> profiles = new HashSet<>();
+        try (var files = Files.walk(rootPath, 3)) {
+            files.filter(Files::isRegularFile)
                     .filter(p -> !isHiddenPath(p, rootPath))
-                    .forEach(file -> languageRegistry.detectLanguage(file.toUri())
-                            .ifPresent(languages::add));
+                    .forEach(file -> {
+                        languageRegistry.detectLanguage(file.toUri())
+                                .ifPresent(languages::add);
+                        profiles.addAll(projectProfileRegistry.detectProfiles(file));
+                    });
         } catch (Exception e) {
-            LOG.warnf(e, "Failed to scan workspace languages in: %s", rootPath);
+            LOG.warnf(e, "Failed to scan workspace in: %s", rootPath);
         }
-        return languages;
+        return new WorkspaceScanResult(languages, profiles);
     }
 
     private static boolean isHiddenPath(Path file, Path root) {
@@ -442,6 +459,14 @@ public class Application {
             }
         }
         return false;
+    }
+
+    private boolean matchesExtensionProfile(String extensionId, Set<String> detectedProfiles) {
+        if (extensionId == null) {
+            return false;
+        }
+        Extension extension = extensionRegistry.getExtension(extensionId);
+        return extension != null && extension.hasAnyProfile(detectedProfiles);
     }
 
     /**

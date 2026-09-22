@@ -1,5 +1,6 @@
 {
     "id": "python",
     "name": "Python",
-    "description": "Python language support via Pylsp or Pyright with debugging via debugpy"
+    "description": "Python language support via Pylsp or Pyright with debugging via debugpy",
+    "profiles": ["pip", "setuptools", "pyproject"]
 }

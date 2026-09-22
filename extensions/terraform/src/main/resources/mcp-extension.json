@@ -1,5 +1,6 @@
 {
     "id": "terraform",
     "name": "Terraform",
-    "description": "Terraform language support via terraform-ls"
+    "description": "Terraform language support via terraform-ls",
+    "profiles": ["terraform"]
 }

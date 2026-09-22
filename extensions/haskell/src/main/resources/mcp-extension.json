@@ -1,5 +1,6 @@
 {
     "id": "haskell",
     "name": "Haskell",
-    "description": "Haskell language support via Haskell Language Server (HLS)"
+    "description": "Haskell language support via Haskell Language Server (HLS)",
+    "profiles": ["cabal", "stack"]
 }

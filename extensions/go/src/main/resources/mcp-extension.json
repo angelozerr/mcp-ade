@@ -1,5 +1,6 @@
 {
     "id": "go",
     "name": "Go",
-    "description": "Go language support via gopls"
+    "description": "Go language support via gopls",
+    "profiles": ["go-mod"]
 }

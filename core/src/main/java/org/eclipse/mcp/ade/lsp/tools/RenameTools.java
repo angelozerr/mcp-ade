@@ -49,11 +49,12 @@ public class RenameTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = "The new name for the symbol") String newName,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
+            @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
         boolean doApply = apply == null || apply;
-        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character)
+        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character, fileExt)
                 .thenCompose(resolvedParams -> {
                     RenameRequestParams params = new RenameRequestParams(
                             resolvedParams.getCwd(),

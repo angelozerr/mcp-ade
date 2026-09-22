@@ -1,5 +1,7 @@
 {
     "id": "java",
     "name": "Java",
-    "description": "Java language support via Eclipse JDT Language Server (jdtls) with debugging via java-debug"
+    "description": "Java language support via Eclipse JDT Language Server (jdtls) with debugging via java-debug",
+    "profiles": ["maven", "gradle"],
+    "projectDetectors": [".classpath"]
 }

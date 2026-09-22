@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.lsp.tools;
 
+import org.eclipse.mcp.ade.language.LanguageRegistry;
 import org.eclipse.mcp.ade.lsp.client.LspCapability;
 import org.eclipse.mcp.ade.lsp.server.LspServer;
 import org.eclipse.mcp.ade.lsp.server.LspServerResolver;
@@ -39,15 +40,19 @@ public class SymbolNameResolver {
     @Inject
     LspServerResolver serverResolver;
 
+    @Inject
+    LanguageRegistry languageRegistry;
+
     /**
      * Resolve params from either symbolName or position.
      * When symbolName is provided, resolves it via workspace/symbol.
      * Otherwise uses the provided uri+line+character.
      */
     public CompletableFuture<FilePositionRequestParams> resolveParams(
-            String cwd, String symbolName, String uri, Integer line, Integer character) {
+            String cwd, String symbolName, String uri, Integer line, Integer character,
+            String fileExt) {
         if (symbolName != null && !symbolName.isEmpty()) {
-            return resolve(cwd, symbolName);
+            return resolve(cwd, symbolName, fileExt);
         }
         if (uri == null || line == null || character == null) {
             return CompletableFuture.failedFuture(
@@ -61,14 +66,18 @@ public class SymbolNameResolver {
      *
      * @param cwd        workspace root path
      * @param symbolName symbol name or qualified path (e.g., "getChildren", "DOMNode.getChildren", "DOMNode.getChildren()")
+     * @param fileExt    optional file extension hint (e.g., ".java") to filter servers
      * @return resolved file position, or failed future if not found
      */
-    public CompletableFuture<FilePositionRequestParams> resolve(String cwd, String symbolName) {
+    public CompletableFuture<FilePositionRequestParams> resolve(String cwd, String symbolName, String fileExt) {
         String queryName = extractQueryName(symbolName);
         String containerName = extractContainerName(symbolName);
+        String languageId = resolveLanguageId(fileExt);
 
         return serverResolver.getLspServersForWorkspace(cwd,
-                        server -> server.isEnabled() && server.supportsCapability(LspCapability.WORKSPACE_SYMBOL))
+                        server -> server.isEnabled()
+                                && server.supportsCapability(LspCapability.WORKSPACE_SYMBOL)
+                                && matchesLanguage(server, languageId))
                 .thenCompose(servers -> {
                     if (servers.isEmpty()) {
                         return CompletableFuture.failedFuture(
@@ -249,11 +258,7 @@ public class SymbolNameResolver {
             }
         }
 
-        // 4. First result with a location
-        return symbols.stream()
-                .filter(sym -> sym.getLocation() != null)
-                .findFirst()
-                .orElse(null);
+        return null;
     }
 
     // LSP returns fully qualified names (e.g. "org.eclipse.lemminx.dom.DOMNode") but AI passes simple names ("DOMNode").
@@ -296,5 +301,24 @@ public class SymbolNameResolver {
                 })
                 .filter(info -> info.getLocation() != null)
                 .toList();
+    }
+
+    private String resolveLanguageId(String fileExt) {
+        if (fileExt == null || fileExt.isEmpty()) {
+            return null;
+        }
+        String ext = fileExt.startsWith(".") ? fileExt : "." + fileExt;
+        return languageRegistry.detectLanguage(java.net.URI.create("file:///dummy" + ext)).orElse(null);
+    }
+
+    private static boolean matchesLanguage(LspServer server, String languageId) {
+        if (languageId == null) {
+            return true;
+        }
+        var selector = server.getConfig().getDocumentSelector();
+        if (selector == null) {
+            return true;
+        }
+        return selector.getLanguages().contains(languageId);
     }
 }

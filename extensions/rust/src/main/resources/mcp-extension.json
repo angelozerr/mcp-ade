@@ -1,5 +1,6 @@
 {
     "id": "rust",
     "name": "Rust",
-    "description": "Rust language support via rust-analyzer"
+    "description": "Rust language support via rust-analyzer",
+    "profiles": ["cargo"]
 }

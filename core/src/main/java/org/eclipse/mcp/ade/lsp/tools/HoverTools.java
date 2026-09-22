@@ -49,10 +49,11 @@ public class HoverTools {
             @ToolArg(description = ToolArgDescriptions.URI, required = false) String uri,
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE, required = false) Integer line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
+            @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
-        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character)
+        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character, fileExt)
                 .thenCompose(params -> requestExecutor.executeAsString(
                         params,
                         new HoverStrategy(languageRegistry),

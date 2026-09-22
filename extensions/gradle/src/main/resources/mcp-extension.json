@@ -1,5 +1,6 @@
 {
     "id": "gradle",
     "name": "Gradle",
-    "description": "Gradle build support via Gradle Build Server"
+    "description": "Gradle build support via Gradle Build Server",
+    "profiles": ["gradle"]
 }

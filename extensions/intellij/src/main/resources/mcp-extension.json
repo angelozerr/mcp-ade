@@ -2,5 +2,6 @@
   "id": "intellij",
   "name": "IntelliJ",
   "description": "IntelliJ IDEA integration for extended Java support",
+  "profiles": ["maven", "gradle"],
   "enabled": false
 }

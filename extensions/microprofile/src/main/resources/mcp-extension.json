@@ -1,5 +1,6 @@
 {
     "id": "microprofile",
     "name": "MicroProfile",
-    "description": "MicroProfile language support via Eclipse LSP4MP"
+    "description": "MicroProfile language support via Eclipse LSP4MP",
+    "profiles": ["maven", "gradle"]
 }

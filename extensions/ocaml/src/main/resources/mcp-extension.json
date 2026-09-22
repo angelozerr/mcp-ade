@@ -1,5 +1,6 @@
 {
     "id": "ocaml",
     "name": "OCaml",
-    "description": "OCaml language support via ocaml-lsp"
+    "description": "OCaml language support via ocaml-lsp",
+    "profiles": ["dune", "opam"]
 }

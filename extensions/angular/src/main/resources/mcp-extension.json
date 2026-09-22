@@ -1,5 +1,6 @@
 {
     "id": "angular",
     "name": "Angular",
-    "description": "Angular language support via Angular Language Service"
+    "description": "Angular language support via Angular Language Service",
+    "profiles": ["npm"]
 }

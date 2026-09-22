@@ -1,0 +1,147 @@
+[
+  {
+    "id": "maven",
+    "name": "Maven",
+    "projectDetectors": ["pom.xml"]
+  },
+  {
+    "id": "gradle",
+    "name": "Gradle",
+    "projectDetectors": ["build.gradle", "build.gradle.kts"]
+  },
+  {
+    "id": "dotnet",
+    "name": ".NET",
+    "projectDetectors": ["*.csproj", "*.sln"]
+  },
+  {
+    "id": "npm",
+    "name": "npm",
+    "projectDetectors": ["package.json", "tsconfig.json"]
+  },
+  {
+    "id": "go-mod",
+    "name": "Go Modules",
+    "projectDetectors": ["go.mod"]
+  },
+  {
+    "id": "cargo",
+    "name": "Cargo",
+    "projectDetectors": ["Cargo.toml"]
+  },
+  {
+    "id": "pub",
+    "name": "Dart Pub",
+    "projectDetectors": ["pubspec.yaml"]
+  },
+  {
+    "id": "pip",
+    "name": "pip",
+    "projectDetectors": ["requirements.txt"]
+  },
+  {
+    "id": "setuptools",
+    "name": "Setuptools",
+    "projectDetectors": ["setup.py"]
+  },
+  {
+    "id": "pyproject",
+    "name": "Python Project",
+    "projectDetectors": ["pyproject.toml"]
+  },
+  {
+    "id": "bundler",
+    "name": "Bundler",
+    "projectDetectors": ["Gemfile"]
+  },
+  {
+    "id": "rubygems",
+    "name": "RubyGems",
+    "projectDetectors": ["*.gemspec"]
+  },
+  {
+    "id": "sbt",
+    "name": "sbt",
+    "projectDetectors": ["build.sbt"]
+  },
+  {
+    "id": "swift-pm",
+    "name": "Swift PM",
+    "projectDetectors": ["Package.swift"]
+  },
+  {
+    "id": "xcode",
+    "name": "Xcode",
+    "projectDetectors": ["*.xcodeproj"]
+  },
+  {
+    "id": "mix",
+    "name": "Mix",
+    "projectDetectors": ["mix.exs"]
+  },
+  {
+    "id": "cabal",
+    "name": "Cabal",
+    "projectDetectors": ["*.cabal"]
+  },
+  {
+    "id": "stack",
+    "name": "Stack",
+    "projectDetectors": ["stack.yaml"]
+  },
+  {
+    "id": "leiningen",
+    "name": "Leiningen",
+    "projectDetectors": ["project.clj"]
+  },
+  {
+    "id": "deps-edn",
+    "name": "Clojure Deps",
+    "projectDetectors": ["deps.edn"]
+  },
+  {
+    "id": "latex",
+    "name": "LaTeX",
+    "projectDetectors": ["*.tex"]
+  },
+  {
+    "id": "terraform",
+    "name": "Terraform",
+    "projectDetectors": ["*.tf"]
+  },
+  {
+    "id": "nix",
+    "name": "Nix",
+    "projectDetectors": ["flake.nix", "default.nix"]
+  },
+  {
+    "id": "zig-build",
+    "name": "Zig Build",
+    "projectDetectors": ["build.zig"]
+  },
+  {
+    "id": "dune",
+    "name": "Dune",
+    "projectDetectors": ["dune-project"]
+  },
+  {
+    "id": "opam",
+    "name": "opam",
+    "projectDetectors": ["*.opam"]
+  },
+  {
+    "id": "fortran",
+    "name": "Fortran",
+    "projectDetectors": ["*.f90", "*.f95"]
+  },
+  {
+    "id": "gpr",
+    "name": "Ada GPR",
+    "projectDetectors": ["*.gpr"]
+  },
+  {
+    "id": "elm",
+    "name": "Elm",
+    "projectDetectors": ["elm.json"]
+  }
+]

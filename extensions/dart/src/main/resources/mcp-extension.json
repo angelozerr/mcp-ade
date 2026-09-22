@@ -1,5 +1,6 @@
 {
     "id": "dart",
     "name": "Dart",
-    "description": "Dart and Flutter language support via Dart Analysis Server"
+    "description": "Dart and Flutter language support via Dart Analysis Server",
+    "profiles": ["pub"]
 }

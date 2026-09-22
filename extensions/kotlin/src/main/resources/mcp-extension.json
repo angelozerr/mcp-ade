@@ -1,5 +1,6 @@
 {
     "id": "kotlin",
     "name": "Kotlin",
-    "description": "Kotlin language support via Kotlin Language Server"
+    "description": "Kotlin language support via Kotlin Language Server",
+    "profiles": ["gradle"]
 }

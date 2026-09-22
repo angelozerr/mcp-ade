@@ -54,6 +54,11 @@ public final class ToolArgDescriptions {
         "When true, each reference includes the name and kind of its enclosing symbol (e.g., 'processOrder' Method). " +
         "Requires an extra documentSymbol request per file. Default: false.";
 
+    // File extension hint for symbol resolution
+    public static final String FILE_EXT =
+        "File extension of the symbol (e.g., '.java', '.py', '.ts'). " +
+        "When provided, only language servers matching this file type are queried.";
+
     // Refactoring arguments
     public static final String APPLY =
         "Whether to apply the changes to disk (default: true) or just return a preview (false)";

@@ -30,6 +30,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
+import org.eclipse.mcp.ade.profile.ProjectProfileRegistry;
+
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -63,6 +66,9 @@ public class ExtensionRegistry {
 
     @Inject
     ApplicationConfiguration applicationConfiguration;
+
+    @Inject
+    ProjectProfileRegistry projectProfileRegistry;
 
     private final Map<String, Extension> extensions = new ConcurrentHashMap<>();
     private final Set<String> disabledExtensions = ConcurrentHashMap.newKeySet();
@@ -144,25 +150,33 @@ public class ExtensionRegistry {
 
     private final Map<String, String> bundledExtensionNames = new ConcurrentHashMap<>();
     private final Map<String, String> bundledExtensionDescriptions = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> bundledExtensionProfiles = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> bundledExtensionDetectors = new ConcurrentHashMap<>();
 
     private void deployBundledExtension(URL descriptorUrl) {
         try {
             ExtensionDescriptor descriptor = readExtensionDescriptor(descriptorUrl);
-            String extensionId = descriptor.id();
+            String extensionId = descriptor.id;
             if (extensionId == null || extensionId.isBlank()) {
                 LOG.warnf("mcp-extension.json has no 'id' field: %s", descriptorUrl);
                 return;
             }
 
             bundledExtensionIds.add(extensionId);
-            if (Boolean.FALSE.equals(descriptor.enabled())) {
+            if (Boolean.FALSE.equals(descriptor.enabled)) {
                 defaultDisabledBundledExtensions.add(extensionId);
             }
-            if (descriptor.name() != null) {
-                bundledExtensionNames.put(extensionId, descriptor.name());
+            if (descriptor.name != null) {
+                bundledExtensionNames.put(extensionId, descriptor.name);
             }
-            if (descriptor.description() != null) {
-                bundledExtensionDescriptions.put(extensionId, descriptor.description());
+            if (descriptor.description != null) {
+                bundledExtensionDescriptions.put(extensionId, descriptor.description);
+            }
+            if (descriptor.profiles != null && !descriptor.profiles.isEmpty()) {
+                bundledExtensionProfiles.put(extensionId, descriptor.profiles);
+            }
+            if (descriptor.projectDetectors != null && !descriptor.projectDetectors.isEmpty()) {
+                bundledExtensionDetectors.put(extensionId, descriptor.projectDetectors);
             }
             Path basePath = resolveBasePath(descriptorUrl);
 
@@ -187,33 +201,35 @@ public class ExtensionRegistry {
         }
     }
 
-    private record ExtensionDescriptor(String id, String name, String description, Boolean enabled) {}
+    /**
+     * POJO for Gson deserialization of {@code mcp-extension.json}.
+     */
+    private static class ExtensionDescriptor {
+        String id;
+        String name;
+        String description;
+        Boolean enabled;
+        List<String> profiles;
+        List<String> projectDetectors;
+    }
+
+    private static final Gson GSON = new Gson();
 
     private ExtensionDescriptor readExtensionDescriptor(URL descriptorUrl) throws IOException {
         try (InputStream is = descriptorUrl.openStream();
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
-            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-            String id = json.has("id") ? json.get("id").getAsString() : null;
-            String name = json.has("name") ? json.get("name").getAsString() : null;
-            String description = json.has("description") ? json.get("description").getAsString() : null;
-            Boolean enabled = json.has("enabled") ? json.get("enabled").getAsBoolean() : null;
-            return new ExtensionDescriptor(id, name, description, enabled);
+            return GSON.fromJson(reader, ExtensionDescriptor.class);
         }
     }
 
-    private record ExtensionMetadata(String name, String description) {}
-
-    private ExtensionMetadata readExtensionMetadataFromDir(Path extensionDir) {
+    private ExtensionDescriptor readExtensionMetadataFromDir(Path extensionDir) {
         Path descriptor = extensionDir.resolve(MCP_EXTENSION_JSON);
         if (!Files.exists(descriptor)) {
             return null;
         }
         try (InputStream is = Files.newInputStream(descriptor);
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
-            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-            String name = json.has("name") ? json.get("name").getAsString() : null;
-            String description = json.has("description") ? json.get("description").getAsString() : null;
-            return new ExtensionMetadata(name, description);
+            return GSON.fromJson(reader, ExtensionDescriptor.class);
         } catch (IOException e) {
             LOG.warnf(e, "Failed to read extension metadata from %s", descriptor);
             return null;
@@ -313,11 +329,19 @@ public class ExtensionRegistry {
         Extension extension = new Extension(extensionId, source, application);
         String extensionName = bundledExtensionNames.get(extensionId);
         String extensionDescription = bundledExtensionDescriptions.get(extensionId);
+        List<String> extensionProfiles = bundledExtensionProfiles.get(extensionId);
+        List<String> extensionDetectors = bundledExtensionDetectors.get(extensionId);
         if (extensionName == null) {
-            ExtensionMetadata metadata = readExtensionMetadataFromDir(pathManager.getExtensionDir(extensionId));
+            ExtensionDescriptor metadata = readExtensionMetadataFromDir(pathManager.getExtensionDir(extensionId));
             if (metadata != null) {
-                extensionName = metadata.name();
-                extensionDescription = metadata.description();
+                extensionName = metadata.name;
+                extensionDescription = metadata.description;
+                if (extensionProfiles == null) {
+                    extensionProfiles = metadata.profiles;
+                }
+                if (extensionDetectors == null) {
+                    extensionDetectors = metadata.projectDetectors;
+                }
             }
         }
         if (extensionName != null) {
@@ -325,6 +349,14 @@ public class ExtensionRegistry {
         }
         if (extensionDescription != null) {
             extension.setDescription(extensionDescription);
+        }
+        if (extensionProfiles != null) {
+            extension.setProfiles(extensionProfiles);
+        }
+        if (extensionDetectors != null && !extensionDetectors.isEmpty()) {
+            for (String profileId : extension.getProfiles()) {
+                projectProfileRegistry.contributeDetectors(profileId, extensionName, extensionDetectors);
+            }
         }
         Path extensionDir = pathManager.getExtensionDir(extensionId);
 

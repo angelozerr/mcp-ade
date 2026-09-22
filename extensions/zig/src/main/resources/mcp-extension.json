@@ -1,5 +1,6 @@
 {
     "id": "zig",
     "name": "Zig",
-    "description": "Zig language support via zls"
+    "description": "Zig language support via zls",
+    "profiles": ["zig-build"]
 }

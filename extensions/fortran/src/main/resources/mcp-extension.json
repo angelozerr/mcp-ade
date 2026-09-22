@@ -1,5 +1,6 @@
 {
     "id": "fortran",
     "name": "Fortran",
-    "description": "Fortran language support via fortls"
+    "description": "Fortran language support via fortls",
+    "profiles": ["fortran"]
 }

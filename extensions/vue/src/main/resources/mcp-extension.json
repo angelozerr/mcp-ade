@@ -1,5 +1,6 @@
 {
     "id": "vue",
     "name": "Vue",
-    "description": "Vue.js language support via Volar"
+    "description": "Vue.js language support via Volar",
+    "profiles": ["npm"]
 }

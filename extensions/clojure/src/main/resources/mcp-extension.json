@@ -1,5 +1,6 @@
 {
     "id": "clojure",
     "name": "Clojure",
-    "description": "Clojure language support via clojure-lsp"
+    "description": "Clojure language support via clojure-lsp",
+    "profiles": ["leiningen", "deps-edn"]
 }

@@ -1,5 +1,6 @@
 {
     "id": "javascript",
     "name": "JavaScript",
-    "description": "JavaScript and TypeScript language support via TypeScript Language Server"
+    "description": "JavaScript and TypeScript language support via TypeScript Language Server",
+    "profiles": ["npm"]
 }

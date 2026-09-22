@@ -1,5 +1,6 @@
 {
     "id": "quarkus",
     "name": "Quarkus",
-    "description": "Quarkus framework support via Qute Language Server"
+    "description": "Quarkus framework support via Qute Language Server",
+    "profiles": ["maven", "gradle"]
 }

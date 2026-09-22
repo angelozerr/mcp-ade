@@ -21,6 +21,7 @@ import org.eclipse.mcp.ade.lsp.server.LspServerConfig;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * An extension groups N LSP server configs + N DAP server configs + N BSP server configs under a single id.
@@ -37,6 +38,7 @@ public class Extension {
     private final List<DapServerConfig> dapServerConfigs;
     private final List<BspServerConfig> bspServerConfigs;
     private List<String> toolNames = Collections.emptyList();
+    private List<String> profiles = Collections.emptyList();
 
     public Extension(String id, ServerConfigSource source, Application application) {
         this.id = id;
@@ -142,6 +144,43 @@ public class Extension {
 
     public int getToolsCount() {
         return toolNames.size();
+    }
+
+    /**
+     * Returns the build-system profile IDs this extension supports.
+     * E.g., JDT.LS returns {@code ["maven", "gradle"]}, java-ls returns {@code ["maven"]}.
+     */
+    public List<String> getProfiles() {
+        return profiles;
+    }
+
+    /**
+     * Sets the build-system profiles this extension supports.
+     * Loaded from the {@code "profiles"} field in {@code mcp-extension.json}.
+     */
+    public void setProfiles(List<String> profiles) {
+        this.profiles = profiles != null ? profiles : Collections.emptyList();
+    }
+
+    /**
+     * Returns {@code true} if this extension supports the given profile.
+     */
+    public boolean hasProfile(String profileId) {
+        return profiles.contains(profileId);
+    }
+
+    /**
+     * Returns {@code true} if this extension supports any of the given profiles.
+     * Used during workspace scan: detected profiles (e.g., {@code {"maven"}})
+     * are checked against each extension to decide which servers to start.
+     */
+    public boolean hasAnyProfile(Set<String> profileIds) {
+        for (String profileId : profiles) {
+            if (profileIds.contains(profileId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isEmpty() {

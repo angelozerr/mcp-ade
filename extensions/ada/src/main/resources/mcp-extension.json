@@ -1,5 +1,6 @@
 {
     "id": "ada",
     "name": "Ada",
-    "description": "Ada language support via Ada Language Server (ALS)"
+    "description": "Ada language support via Ada Language Server (ALS)",
+    "profiles": ["gpr"]
 }

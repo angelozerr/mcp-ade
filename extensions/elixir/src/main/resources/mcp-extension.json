@@ -1,5 +1,6 @@
 {
     "id": "elixir",
     "name": "Elixir",
-    "description": "Elixir language support via ElixirLS"
+    "description": "Elixir language support via ElixirLS",
+    "profiles": ["mix"]
 }

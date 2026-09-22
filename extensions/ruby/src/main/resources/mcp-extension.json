@@ -1,5 +1,6 @@
 {
     "id": "ruby",
     "name": "Ruby",
-    "description": "Ruby language support via Solargraph"
+    "description": "Ruby language support via Solargraph",
+    "profiles": ["bundler", "rubygems"]
 }

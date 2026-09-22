@@ -1,5 +1,7 @@
 {
     "id": "bazel",
     "name": "Bazel",
-    "description": "Bazel build system support via Starlark Language Server"
+    "description": "Bazel build system support via Starlark Language Server",
+    "profiles": ["bazel"],
+    "projectDetectors": ["BUILD", "BUILD.bazel", "WORKSPACE", "WORKSPACE.bazel"]
 }

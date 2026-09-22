@@ -1,5 +1,6 @@
 {
     "id": "java-ls",
     "name": "Java LS",
-    "description": "Lightweight Java language support via java-ls (Turbine-based indexer with ECJ compiler)"
+    "description": "Lightweight Java language support via java-ls (Turbine-based indexer with ECJ compiler)",
+    "profiles": ["maven"]
 }

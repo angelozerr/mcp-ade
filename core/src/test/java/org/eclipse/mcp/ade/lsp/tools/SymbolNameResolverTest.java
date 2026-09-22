@@ -90,15 +90,14 @@ class SymbolNameResolverTest {
     }
 
     @Test
-    void findBestMatchFallsBackToFirst() {
+    void findBestMatchReturnsNullForNonMatching() {
         var symbols = List.of(
                 symbolInfo("something", null, SymbolKind.Field, "file:///test.xml", 3, 0),
                 symbolInfo("other", null, SymbolKind.Field, "file:///test.xml", 7, 0)
         );
 
         SymbolInformation result = SymbolNameResolver.findBestMatch(symbols, "nonexistent");
-        assertNotNull(result);
-        assertEquals("something", result.getName());
+        assertNull(result);
     }
 
     @Test

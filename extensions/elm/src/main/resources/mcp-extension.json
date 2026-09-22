@@ -1,5 +1,6 @@
 {
     "id": "elm",
     "name": "Elm",
-    "description": "Elm language support via elm-language-server"
+    "description": "Elm language support via elm-language-server",
+    "profiles": ["elm"]
 }

@@ -1,5 +1,6 @@
 {
     "id": "liberty",
     "name": "Liberty",
-    "description": "Open Liberty and WebSphere Liberty support via Liberty Language Server"
+    "description": "Open Liberty and WebSphere Liberty support via Liberty Language Server",
+    "profiles": ["maven", "gradle"]
 }

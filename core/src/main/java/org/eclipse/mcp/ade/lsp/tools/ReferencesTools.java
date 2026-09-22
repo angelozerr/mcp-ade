@@ -85,12 +85,13 @@ public class ReferencesTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE, required = false) Integer line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = ToolArgDescriptions.INCLUDE_ENCLOSING_SYMBOL, required = false) Boolean includeEnclosingSymbol,
+            @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
         boolean enrich = includeEnclosingSymbol != null && includeEnclosingSymbol;
 
-        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character)
+        return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character, fileExt)
                 .thenCompose(params -> {
                     if (!enrich) {
                         return requestExecutor.executeAsString(

@@ -1,5 +1,6 @@
 {
     "id": "svelte",
     "name": "Svelte",
-    "description": "Svelte language support via svelte-language-server"
+    "description": "Svelte language support via svelte-language-server",
+    "profiles": ["npm"]
 }

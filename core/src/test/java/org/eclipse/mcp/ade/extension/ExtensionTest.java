@@ -18,6 +18,8 @@ import org.eclipse.mcp.ade.dap.server.DapServerConfig;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -123,6 +125,74 @@ class ExtensionTest {
 
         assertThrows(UnsupportedOperationException.class,
                 () -> ext.getDapServerConfigs().add(new TestDapServerConfig("other", ext)));
+    }
+
+    // --- Profile tests ---
+
+    @Test
+    void profilesDefaultToEmpty() {
+        Extension ext = new Extension("test", ServerConfigSource.USER, null);
+        assertTrue(ext.getProfiles().isEmpty());
+        assertFalse(ext.hasProfile("maven"));
+        assertFalse(ext.hasAnyProfile(Set.of("maven", "npm")));
+    }
+
+    @Test
+    void setProfiles_jdtlsSupportsMavenAndGradle() {
+        Extension ext = new Extension("java", ServerConfigSource.BUNDLED, null);
+        ext.setProfiles(List.of("maven", "gradle"));
+
+        assertEquals(List.of("maven", "gradle"), ext.getProfiles());
+        assertTrue(ext.hasProfile("maven"));
+        assertTrue(ext.hasProfile("gradle"));
+        assertFalse(ext.hasProfile("npm"));
+    }
+
+    @Test
+    void setProfiles_javaLsOnlyMaven() {
+        Extension ext = new Extension("java-ls", ServerConfigSource.BUNDLED, null);
+        ext.setProfiles(List.of("maven"));
+
+        assertTrue(ext.hasProfile("maven"));
+        assertFalse(ext.hasProfile("gradle"),
+                "java-ls should NOT support gradle");
+    }
+
+    @Test
+    void hasAnyProfileMatchesIntersection() {
+        Extension ext = new Extension("java", ServerConfigSource.BUNDLED, null);
+        ext.setProfiles(List.of("maven", "gradle"));
+
+        assertTrue(ext.hasAnyProfile(Set.of("maven")));
+        assertTrue(ext.hasAnyProfile(Set.of("gradle")));
+        assertTrue(ext.hasAnyProfile(Set.of("maven", "npm")));
+        assertFalse(ext.hasAnyProfile(Set.of("npm", "cargo")));
+        assertFalse(ext.hasAnyProfile(Set.of()));
+    }
+
+    @Test
+    void hasAnyProfileSelectiveActivation() {
+        Extension jdtls = new Extension("java", ServerConfigSource.BUNDLED, null);
+        jdtls.setProfiles(List.of("maven", "gradle"));
+
+        Extension javaLs = new Extension("java-ls", ServerConfigSource.BUNDLED, null);
+        javaLs.setProfiles(List.of("maven"));
+
+        Set<String> gradleWorkspace = Set.of("gradle");
+        assertTrue(jdtls.hasAnyProfile(gradleWorkspace), "JDT.LS supports gradle");
+        assertFalse(javaLs.hasAnyProfile(gradleWorkspace), "java-ls does NOT support gradle");
+
+        Set<String> mavenWorkspace = Set.of("maven");
+        assertTrue(jdtls.hasAnyProfile(mavenWorkspace), "JDT.LS supports maven");
+        assertTrue(javaLs.hasAnyProfile(mavenWorkspace), "java-ls supports maven");
+    }
+
+    @Test
+    void setProfilesNullDefaultsToEmpty() {
+        Extension ext = new Extension("test", ServerConfigSource.USER, null);
+        ext.setProfiles(List.of("maven"));
+        ext.setProfiles(null);
+        assertTrue(ext.getProfiles().isEmpty());
     }
 
     private static class TestLspServerConfig extends LspServerConfig {
