@@ -126,6 +126,23 @@ public class ApplicationConfiguration extends AbstractConfiguration {
     }
 
     /**
+     * Get extension IDs whose tools are disabled by scanning "extension.{id}.toolsEnabled" = false entries.
+     */
+    public List<String> getToolsDisabledExtensionIds() {
+        List<String> result = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : getSettings().entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith("extension.") && key.endsWith(".toolsEnabled")) {
+                if (Boolean.FALSE.equals(entry.getValue())) {
+                    String id = key.substring("extension.".length(), key.length() - ".toolsEnabled".length());
+                    result.add(id);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * Get disabled server IDs by scanning "lsp.{id}.enabled" = false entries.
      */
     public List<String> getDisabledServerIds() {
@@ -161,6 +178,26 @@ public class ApplicationConfiguration extends AbstractConfiguration {
 
     public synchronized void setExtensionExplicitlyEnabled(String extensionId) {
         getSettings().put("extension." + extensionId + ".enabled", true);
+        save();
+    }
+
+    public synchronized void setToolsDisabledExtensionIds(List<String> ids) {
+        getSettings().entrySet().removeIf(e ->
+                e.getKey().startsWith("extension.") && e.getKey().endsWith(".toolsEnabled")
+                && Boolean.FALSE.equals(e.getValue()));
+        for (String id : ids) {
+            getSettings().put("extension." + id + ".toolsEnabled", false);
+        }
+        save();
+    }
+
+    public boolean isExtensionToolsExplicitlyEnabled(String extensionId) {
+        Object value = get("extension." + extensionId + ".toolsEnabled");
+        return Boolean.TRUE.equals(value);
+    }
+
+    public synchronized void setExtensionToolsExplicitlyEnabled(String extensionId) {
+        getSettings().put("extension." + extensionId + ".toolsEnabled", true);
         save();
     }
 

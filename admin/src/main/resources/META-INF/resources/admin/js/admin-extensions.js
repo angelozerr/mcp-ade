@@ -9,7 +9,7 @@ import { confirmAction, showAlert, renderLoadingPlaceholder, renderServerLink, r
 import { state, loadLspConfigs, loadDapConfigs, loadBspConfigs, ensureExtensionConfigs, ensureExtensionConfigDetail } from './shared-state.js';
 import { registerActions } from './event-delegation.js';
 import { showToast } from './toast.js';
-import { ensureToolsLoaded, getToolsForExtension, renderToolsPanel } from './shared-tools.js';
+import { ensureToolsLoaded, invalidateToolsCache, getToolsForExtension, renderToolsPanel } from './shared-tools.js';
 import { LanguageFilter } from './language-filter.js';
 
 let switchTabCallback = null;
@@ -61,7 +61,10 @@ function renderExtensionsList() {
         if (bspCount > 0) counts.push(`${bspCount} bsp`);
         if (runtimeCount > 0) counts.push(`${runtimeCount} runtime${runtimeCount !== 1 ? 's' : ''}`);
         const toolsCount = ext.toolsCount ?? 0;
-        if (toolsCount > 0) counts.push(`${toolsCount} tool${toolsCount !== 1 ? 's' : ''}`);
+        if (toolsCount > 0) {
+            const toolsLabel = `${toolsCount} tool${toolsCount !== 1 ? 's' : ''}`;
+            counts.push(ext.toolsEnabled === false ? `<span class="text-dimmed" title="Tools disabled">${toolsLabel} (off)</span>` : toolsLabel);
+        }
 
         return `
             <div class="extension-item ${isActive} ${disabledClass}" data-action="showExtensionDetails" data-extension-id="${ext.id}">
@@ -167,6 +170,7 @@ export async function showExtensionDetails(extensionId, scroll) {
                 </span>
             </div>
 
+
             <div class="extension-detail-tabs">
                 <button class="tab-button active" data-action="switchExtDetailTab" data-tab="servers">Servers</button>
                 <button class="tab-button" data-action="switchExtDetailTab" data-tab="tools">Tools</button>
@@ -178,7 +182,8 @@ export async function showExtensionDetails(extensionId, scroll) {
                 </div>
             </div>
             <div id="extension-detail-tools" class="extension-detail-tab-panel" style="display: none;">
-                ${renderLoadingPlaceholder()}
+                <div id="extension-tools-toggle"></div>
+                <div id="extension-tools-content">${renderLoadingPlaceholder()}</div>
             </div>
         </div>
     `;
@@ -655,6 +660,26 @@ async function toggleExtensionEnabled(extensionId, enabled) {
 }
 
 /**
+ * Toggle enable/disable for extension tools.
+ */
+async function toggleExtensionToolsEnabled(extensionId, enabled) {
+    const action = enabled ? 'enable' : 'disable';
+    try {
+        const response = await fetch(`/api/admin/extensions/${encodeURIComponent(extensionId)}/tools/${action}`, { method: 'POST' });
+        if (response.ok) {
+            const ext = state.extensionsData.find(e => e.id === extensionId);
+            if (ext) ext.toolsEnabled = enabled;
+            invalidateToolsCache();
+            renderExtensionsList();
+            loadExtensionTools();
+            showToast('Settings saved');
+        }
+    } catch (error) {
+        console.error(`Failed to ${action} extension tools:`, error);
+    }
+}
+
+/**
  * Toggle enable/disable for an individual server within an extension.
  */
 async function toggleExtensionServerEnabled(type, serverId, enabled) {
@@ -1065,23 +1090,45 @@ function switchExtDetailTab(tab, clickedBtn) {
 }
 
 async function loadExtensionTools() {
-    const toolsPanel = document.getElementById('extension-detail-tools');
-    if (!toolsPanel || !state.selectedExtension) return;
+    const toggleDiv = document.getElementById('extension-tools-toggle');
+    const contentDiv = document.getElementById('extension-tools-content');
+    if (!toggleDiv || !contentDiv || !state.selectedExtension) return;
+
+    const ext = state.extensionsData.find(e => e.id === state.selectedExtension);
+    const toolsCount = ext?.toolsCount ?? 0;
+
+    if (toolsCount > 0) {
+        toggleDiv.innerHTML = `
+            <div class="d-flex align-center gap-sm mb-md p-sm rounded-sm" style="background: var(--bg-panel); border: 1px solid var(--border-subtle);">
+                <span class="font-sm font-medium">${toolsCount} tool${toolsCount !== 1 ? 's' : ''}</span>
+                <label class="toggle-switch" onclick="event.stopPropagation()">
+                    <input type="checkbox" ${ext.toolsEnabled !== false ? 'checked' : ''} data-action="toggleExtensionToolsEnabled" data-extension-id="${ext.id}">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>`;
+    } else {
+        toggleDiv.innerHTML = '';
+    }
 
     try {
         await ensureToolsLoaded();
         if (!state.selectedExtension) return;
         const extTools = getToolsForExtension(state.selectedExtension);
 
-        if (extTools.length === 0) {
-            toolsPanel.innerHTML = '<div class="text-secondary p-lg">No tools provided by this extension</div>';
+        if (extTools.length === 0 && toolsCount === 0) {
+            contentDiv.innerHTML = '<div class="text-secondary p-lg">No tools provided by this extension</div>';
             return;
         }
 
-        renderToolsPanel('extension-detail-tools', extTools, {});
+        if (extTools.length === 0 && ext && ext.toolsEnabled === false) {
+            contentDiv.innerHTML = '<div class="text-secondary p-lg">Tools are hidden from MCP clients. Enable the toggle to expose them.</div>';
+            return;
+        }
+
+        renderToolsPanel('extension-tools-content', extTools, {});
     } catch (e) {
         console.error('Failed to load extension tools:', e);
-        toolsPanel.innerHTML = '<div class="text-secondary p-lg">Failed to load tools</div>';
+        contentDiv.innerHTML = '<div class="text-secondary p-lg">Failed to load tools</div>';
     }
 }
 
@@ -1106,6 +1153,7 @@ registerActions('click', {
 registerActions('change', {
     handleFileSelect: (el) => handleFileSelect(el),
     toggleExtensionEnabled: (el) => toggleExtensionEnabled(el.dataset.extensionId, el.checked),
+    toggleExtensionToolsEnabled: (el) => toggleExtensionToolsEnabled(el.dataset.extensionId, el.checked),
     toggleExtensionServerEnabled: (el) => toggleExtensionServerEnabled(el.dataset.serverType, el.dataset.serverId, el.checked),
 });
 

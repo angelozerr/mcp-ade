@@ -106,6 +106,7 @@ public class ExtensionAdminResource {
             }
             int toolsCount = ext.getToolsCount();
             if (toolsCount > 0) dto.put("toolsCount", toolsCount);
+            dto.put("toolsEnabled", registry.isExtensionToolsEnabled(ext.getId()));
             result.add(dto);
         }
         return result;
@@ -282,6 +283,34 @@ public class ExtensionAdminResource {
         try {
             application.disableExtension(id);
             return Response.ok(Map.of("success", true, "message", "Extension '" + id + "' disabled")).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        }
+    }
+
+    // ========== Extension tools enable/disable ==========
+
+    @POST
+    @Path("/{id}/tools/enable")
+    public Response enableExtensionTools(@PathParam("id") String id) {
+        try {
+            application.enableExtensionTools(id);
+            return Response.ok(Map.of("success", true, "message", "Tools for extension '" + id + "' enabled")).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/{id}/tools/disable")
+    public Response disableExtensionTools(@PathParam("id") String id) {
+        try {
+            application.disableExtensionTools(id);
+            return Response.ok(Map.of("success", true, "message", "Tools for extension '" + id + "' disabled")).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(Map.of("error", e.getMessage()))

@@ -205,6 +205,10 @@ public class Application {
         if (!disabledServers.isEmpty()) {
             extensionRegistry.setDisabledServers(disabledServers);
         }
+        List<String> toolsDisabledExtensions = applicationConfiguration.getToolsDisabledExtensionIds();
+        if (!toolsDisabledExtensions.isEmpty()) {
+            extensionRegistry.setToolsDisabledExtensions(toolsDisabledExtensions);
+        }
     }
 
     void onShutdown(@Observes ShutdownEvent ev) {
@@ -541,6 +545,14 @@ public class Application {
     public void disableExtension(String extensionId) {
         extensionRegistry.disableExtension(extensionId);
         extensionEnabledChangeEvent.fire(new ExtensionEnabledChangeEvent(extensionId, false));
+    }
+
+    public void enableExtensionTools(String extensionId) {
+        extensionRegistry.enableExtensionTools(extensionId);
+    }
+
+    public void disableExtensionTools(String extensionId) {
+        extensionRegistry.disableExtensionTools(extensionId);
     }
 
     private void stopServersForExtension(Extension extension) {

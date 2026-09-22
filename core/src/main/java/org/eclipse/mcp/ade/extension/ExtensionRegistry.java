@@ -73,7 +73,9 @@ public class ExtensionRegistry {
     private final Map<String, Extension> extensions = new ConcurrentHashMap<>();
     private final Set<String> disabledExtensions = ConcurrentHashMap.newKeySet();
     private final Set<String> disabledServers = ConcurrentHashMap.newKeySet();
+    private final Set<String> toolsDisabledExtensions = ConcurrentHashMap.newKeySet();
     private final Set<String> defaultDisabledBundledExtensions = ConcurrentHashMap.newKeySet();
+    private final Set<String> defaultToolsDisabledBundledExtensions = ConcurrentHashMap.newKeySet();
 
     private final List<ExtensionListener> extensionListeners = new CopyOnWriteArrayList<>();
     private final List<InstallerListener> installerListeners = new CopyOnWriteArrayList<>();
@@ -166,6 +168,9 @@ public class ExtensionRegistry {
             if (Boolean.FALSE.equals(descriptor.enabled)) {
                 defaultDisabledBundledExtensions.add(extensionId);
             }
+            if (Boolean.FALSE.equals(descriptor.toolsEnabled)) {
+                defaultToolsDisabledBundledExtensions.add(extensionId);
+            }
             if (descriptor.name != null) {
                 bundledExtensionNames.put(extensionId, descriptor.name);
             }
@@ -209,6 +214,7 @@ public class ExtensionRegistry {
         String name;
         String description;
         Boolean enabled;
+        Boolean toolsEnabled;
         List<String> profiles;
         List<String> projectDetectors;
     }
@@ -382,14 +388,21 @@ public class ExtensionRegistry {
     }
 
     /**
-     * Apply default-disabled state for bundled extensions that declare {@code "enabled": false}.
-     * Only disables if the user hasn't explicitly enabled the extension in their settings.
+     * Apply default-disabled state for bundled extensions that declare {@code "enabled": false}
+     * or {@code "toolsEnabled": false}.
+     * Only disables if the user hasn't explicitly enabled the extension/tools in their settings.
      */
     private void applyDefaultDisabledState() {
         for (String extensionId : defaultDisabledBundledExtensions) {
             if (!applicationConfiguration.isExtensionExplicitlyEnabled(extensionId)
                     && !disabledExtensions.contains(extensionId)) {
                 disabledExtensions.add(extensionId);
+            }
+        }
+        for (String extensionId : defaultToolsDisabledBundledExtensions) {
+            if (!applicationConfiguration.isExtensionToolsExplicitlyEnabled(extensionId)
+                    && !toolsDisabledExtensions.contains(extensionId)) {
+                toolsDisabledExtensions.add(extensionId);
             }
         }
     }
@@ -766,6 +779,32 @@ public class ExtensionRegistry {
         return !disabledExtensions.contains(extensionId);
     }
 
+    public void enableExtensionTools(String extensionId) {
+        if (!extensions.containsKey(extensionId)) {
+            throw new IllegalArgumentException("Extension '" + extensionId + "' not found");
+        }
+        toolsDisabledExtensions.remove(extensionId);
+        if (defaultToolsDisabledBundledExtensions.contains(extensionId)) {
+            applicationConfiguration.setExtensionToolsExplicitlyEnabled(extensionId);
+        }
+        persistToolsDisabledExtensions();
+        fireOnAdded(extensions.get(extensionId));
+    }
+
+    public void disableExtensionTools(String extensionId) {
+        Extension extension = extensions.get(extensionId);
+        if (extension == null) {
+            throw new IllegalArgumentException("Extension '" + extensionId + "' not found");
+        }
+        toolsDisabledExtensions.add(extensionId);
+        persistToolsDisabledExtensions();
+        fireOnRemoved(extension);
+    }
+
+    public boolean isExtensionToolsEnabled(String extensionId) {
+        return !toolsDisabledExtensions.contains(extensionId);
+    }
+
     public void enableServer(String serverId) {
         disabledServers.remove(serverId);
         persistDisabledServers();
@@ -801,6 +840,10 @@ public class ExtensionRegistry {
         return Collections.unmodifiableSet(disabledServers);
     }
 
+    public Set<String> getToolsDisabledExtensions() {
+        return Collections.unmodifiableSet(toolsDisabledExtensions);
+    }
+
     public void setDisabledExtensions(Collection<String> disabled) {
         disabledExtensions.clear();
         disabledExtensions.addAll(disabled);
@@ -809,6 +852,11 @@ public class ExtensionRegistry {
     public void setDisabledServers(Collection<String> disabled) {
         disabledServers.clear();
         disabledServers.addAll(disabled);
+    }
+
+    public void setToolsDisabledExtensions(Collection<String> disabled) {
+        toolsDisabledExtensions.clear();
+        toolsDisabledExtensions.addAll(disabled);
     }
 
     // ========== Queries ==========
@@ -1030,6 +1078,10 @@ public class ExtensionRegistry {
 
     private void persistDisabledServers() {
         applicationConfiguration.setDisabledServerIds(new ArrayList<>(disabledServers));
+    }
+
+    private void persistToolsDisabledExtensions() {
+        applicationConfiguration.setToolsDisabledExtensionIds(new ArrayList<>(toolsDisabledExtensions));
     }
 
     private static void deleteRecursively(Path path) {

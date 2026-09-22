@@ -3,5 +3,6 @@
     "name": "Java",
     "description": "Java language support via Eclipse JDT Language Server (jdtls) with debugging via java-debug",
     "profiles": ["maven", "gradle"],
-    "projectDetectors": [".classpath"]
+    "projectDetectors": [".classpath"],
+    "toolsEnabled": false
 }

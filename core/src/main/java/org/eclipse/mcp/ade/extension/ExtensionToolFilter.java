@@ -59,7 +59,8 @@ public class ExtensionToolFilter implements ToolFilter {
     public boolean test(ToolInfo tool, FilterContext context) {
         String extensionId = extensionRegistry.getToolExtensionId(tool.name());
         if (extensionId != null) {
-            return extensionRegistry.isExtensionEnabled(extensionId);
+            return extensionRegistry.isExtensionEnabled(extensionId)
+                    && extensionRegistry.isExtensionToolsEnabled(extensionId);
         }
         return true;
     }
