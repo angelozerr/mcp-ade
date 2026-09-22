@@ -26,6 +26,7 @@ public class WorkspaceSymbolRequestParams extends LspRequestParams {
     private String pathPattern;
     private String containerName;
     private Integer maxResults;
+    private String fileExt;
 
     public WorkspaceSymbolRequestParams(String cwd, String query) {
         super(cwd);
@@ -66,6 +67,14 @@ public class WorkspaceSymbolRequestParams extends LspRequestParams {
 
     public void setMaxResults(Integer maxResults) {
         this.maxResults = maxResults;
+    }
+
+    public String getFileExt() {
+        return fileExt;
+    }
+
+    public void setFileExt(String fileExt) {
+        this.fileExt = fileExt;
     }
 
     @Override

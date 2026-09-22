@@ -23,12 +23,20 @@ import static org.eclipse.mcp.ade.lsp.client.capabilities.TextDocumentServerCapa
 public class WorkspaceSymbolCapabilityRegistry {
 
     private ServerCapabilities serverCapabilities;
+    private boolean dynamicallyRegistered;
 
     public void setServerCapabilities(ServerCapabilities serverCapabilities) {
         this.serverCapabilities = serverCapabilities;
     }
 
+    public void setDynamicallyRegistered(boolean dynamicallyRegistered) {
+        this.dynamicallyRegistered = dynamicallyRegistered;
+    }
+
     public boolean isWorkspaceSymbolSupported() {
+        if (dynamicallyRegistered) {
+            return true;
+        }
         return serverCapabilities != null &&
                 hasCapability(serverCapabilities.getWorkspaceSymbolProvider());
     }

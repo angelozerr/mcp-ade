@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.lsp.tools.strategies;
 
+import org.eclipse.mcp.ade.language.LanguageRegistry;
 import org.eclipse.mcp.ade.lsp.client.LspCapability;
 import org.eclipse.mcp.ade.lsp.server.LspServer;
 import org.eclipse.mcp.ade.lsp.server.LspServerResolver;
@@ -22,6 +23,7 @@ import org.eclipse.mcp.ade.operation.OperationContext;
 import org.eclipse.mcp.ade.progress.ProgressMonitor;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.jboss.logging.Logger;
 
 import java.net.URI;
 import java.nio.file.FileSystems;
@@ -36,6 +38,14 @@ import java.util.stream.Stream;
  * Strategy for LSP workspace/symbol requests.
  */
 public class WorkspaceSymbolStrategy implements LspRequestExecutor.LspRequestStrategy<WorkspaceSymbolRequestParams, WorkspaceSymbolParams, Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> {
+
+    private static final Logger LOG = Logger.getLogger(WorkspaceSymbolStrategy.class);
+
+    private final LanguageRegistry languageRegistry;
+
+    public WorkspaceSymbolStrategy(LanguageRegistry languageRegistry) {
+        this.languageRegistry = languageRegistry;
+    }
 
     @Override
     public LspCapability getCapability() {
@@ -53,8 +63,38 @@ public class WorkspaceSymbolStrategy implements LspRequestExecutor.LspRequestStr
             WorkspaceSymbolRequestParams params, ProgressMonitor progressMonitor,
             OperationContext operationContext) {
 
+        String languageId = resolveLanguageId(params.getFileExt());
+
         return resolver.getLspServersForWorkspace(params.getCwd(),
-                server -> server.isEnabled() && server.supportsCapability(getCapability()));
+                server -> {
+                    boolean enabled = server.isEnabled();
+                    boolean hasCapability = server.supportsCapability(getCapability());
+                    boolean langMatch = matchesLanguage(server, languageId);
+                    boolean accepted = enabled && hasCapability && langMatch;
+                    LOG.infof("workspace/symbol filter: server='%s', enabled=%b, supportsCapability=%b, langMatch=%b → %s",
+                            server.getConfig().getServerId(), enabled, hasCapability, langMatch,
+                            accepted ? "INCLUDED" : "EXCLUDED");
+                    return accepted;
+                });
+    }
+
+    private String resolveLanguageId(String fileExt) {
+        if (fileExt == null || fileExt.isEmpty() || languageRegistry == null) {
+            return null;
+        }
+        String ext = fileExt.startsWith(".") ? fileExt : "." + fileExt;
+        return languageRegistry.detectLanguage(java.net.URI.create("file:///dummy" + ext)).orElse(null);
+    }
+
+    private static boolean matchesLanguage(LspServer server, String languageId) {
+        if (languageId == null) {
+            return true;
+        }
+        var selector = server.getConfig().getDocumentSelector();
+        if (selector == null) {
+            return true;
+        }
+        return selector.getLanguages().contains(languageId);
     }
 
     @Override

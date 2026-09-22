@@ -159,7 +159,7 @@ import { showToast } from './toast.js';
                 const { badgeHtml: fwBadgeHtml, errorHtml: fwErrorHtml } = renderFileWatcherBadge(ws);
 
                 return `
-                <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
+                <div class="workspace-item ${ws.rootUri === state.selectedWorkspace ? 'active' : ''} ${ws.closing ? 'closing' : ''}" data-action="selectWorkspace" data-uri="${ws.rootUri}">
                     <div class="d-flex justify-between align-center">
                         <div class="workspace-uri flex-1" title="${ws.rootUri}">📂 ${folderName}</div><span class="fw-badge-slot">${fwBadgeHtml}</span>
                         <button class="close-workspace-btn" data-action="openWorkspaceSettings" data-uri="${ws.rootUri}" data-stop-propagation title="Workspace settings" style="font-size:0.9rem">⚙</button>
@@ -258,12 +258,10 @@ import { showToast } from './toast.js';
                             throw new Error('Failed to close workspace');
                         }
 
-                        const idx = state.workspaces.findIndex(w => w.rootUri === uri);
-                        if (idx !== -1) {
-                            state.workspaces.splice(idx, 1);
-                        }
-                        if (state.selectedWorkspace === uri) {
-                            state.selectedWorkspace = state.workspaces.length > 0 ? state.workspaces[0].rootUri : null;
+                        // Mark as closing locally; WebSocket will remove it when fully closed
+                        const ws = state.workspaces.find(w => w.rootUri === uri);
+                        if (ws) {
+                            ws.closing = true;
                         }
                         renderWorkspaces();
 

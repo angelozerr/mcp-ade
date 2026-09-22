@@ -69,6 +69,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -616,9 +617,14 @@ public class Application {
 
         LOG.infof("Closing workspace: %s", workspaceUri);
 
-        // Shutdown all servers in this workspace
+        // Shutdown all servers in this workspace (with global timeout)
         return workspace
                 .shutdown()
+                .orTimeout(30, TimeUnit.SECONDS)
+                .exceptionally(ex -> {
+                    LOG.warnf("Workspace shutdown timed out or failed: %s - %s", workspaceUri, ex.getMessage());
+                    return null;
+                })
                 .thenRun(() -> {
                     // Remove from active workspaces
                     workspaces.remove(workspaceUri);

@@ -51,6 +51,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Collections;
@@ -82,6 +83,8 @@ public class Workspace {
     private Consumer<FileWatcherStatusChangeEvent> fileWatcherStatusChangeCallback;
 
     public record FileWatcherStatusChangeEvent(String workspaceUri, String status, String failureReason, int scannedDirs) {}
+
+    private volatile boolean closing;
 
     // BSP
     private final Map<String, BspServer> bspServers = new ConcurrentHashMap<>();
@@ -420,15 +423,32 @@ public class Workspace {
     /**
      * Shutdown the workspace (stop all LSP servers).
      */
+    public boolean isClosing() {
+        return closing;
+    }
+
     public CompletableFuture<Void> shutdown() {
+        closing = true;
         LOG.infof("Shutting down workspace: %s", rootUri);
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (LspServer server : lspServers.values()) {
-            futures.add(server.shutdown());
+            futures.add(server.shutdown()
+                    .orTimeout(15, TimeUnit.SECONDS)
+                    .exceptionally(ex -> {
+                        LOG.warnf("Server shutdown timed out, forcing STOPPED: %s", server.getConfig().getServerId());
+                        server.setStatus(ServerStatus.STOPPED);
+                        return null;
+                    }));
         }
         for (BspServer server : bspServers.values()) {
-            futures.add(server.shutdown());
+            futures.add(server.shutdown()
+                    .orTimeout(15, TimeUnit.SECONDS)
+                    .exceptionally(ex -> {
+                        LOG.warnf("BSP server shutdown timed out, forcing STOPPED: %s", server.getConfig().getServerId());
+                        server.setStatus(ServerStatus.STOPPED);
+                        return null;
+                    }));
         }
 
         return CompletableFuture

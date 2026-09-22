@@ -189,10 +189,10 @@ public class WorkspaceAdminResource {
     public Response closeWorkspace(@PathParam("uri") String uriParam) {
         URI uri = URI.create(uriParam);
 
-        application.closeWorkspace(uri).join();
+        application.closeWorkspace(uri);
 
         return Response.ok()
-                .entity("{\"status\": \"closed\", \"uri\": \"" + uri + "\"}")
+                .entity("{\"status\": \"closing\", \"uri\": \"" + uri + "\"}")
                 .build();
     }
 

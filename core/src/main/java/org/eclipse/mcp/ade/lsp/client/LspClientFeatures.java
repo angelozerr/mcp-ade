@@ -101,9 +101,12 @@ public class LspClientFeatures {
 
     public boolean supportsCapability(LspCapability capability) {
         if (capability == LspCapability.WORKSPACE_SYMBOL) {
-            return workspaceSymbolRegistry.isWorkspaceSymbolSupported();
+            if (workspaceSymbolRegistry.isWorkspaceSymbolSupported()) {
+                return true;
+            }
+            return config.hasCapability(capability.getCapabilityKey());
         }
-        return false;
+        return config.hasCapability(capability.getCapabilityKey());
     }
 
     /**
@@ -120,6 +123,12 @@ public class LspClientFeatures {
                 jsonOptions = jo;
             } else {
                 jsonOptions = null;
+            }
+
+            if (LspRequestConstants.WORKSPACE_SYMBOL.equals(method)) {
+                workspaceSymbolRegistry.setDynamicallyRegistered(true);
+                dynamicRegistrations.put(id, () -> workspaceSymbolRegistry.setDynamicallyRegistered(false));
+                return;
             }
 
             if (LspRequestConstants.WORKSPACE_DID_CHANGE_WATCHED_FILES.equals(method)) {

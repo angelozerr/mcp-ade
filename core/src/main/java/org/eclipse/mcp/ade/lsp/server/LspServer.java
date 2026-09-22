@@ -807,17 +807,33 @@ public class LspServer extends ServerBase<LspServerConfig> {
             return CompletableFuture.completedFuture(null);
         }
 
-        return CompletableFuture.runAsync(() -> {
+        return runAsync(() -> {
             try {
                 // Try graceful shutdown first
                 if (languageServer != null) {
+                    // Schedule forced cleanup after 3s to unblock shutdown()
+                    // if it's stuck writing to a full stdin pipe.
+                    // On Windows, closing a stream may not unblock a native write(),
+                    // so we also destroy the process to guarantee unblocking.
+                    CompletableFuture.delayedExecutor(3, TimeUnit.SECONDS)
+                            .execute(() -> {
+                                if (getStatus() == ServerStatus.STOPPING) {
+                                    LOG.warnf("Shutdown still pending for %s, destroying process to unblock", config.getServerId());
+                                    Process process = getServerProcess();
+                                    if (process != null && process.isAlive()) {
+                                        process.destroyForcibly();
+                                    }
+                                    cancelListeningFuture();
+                                    closeProcessStreams();
+                                }
+                            });
                     try {
                         languageServer.shutdown()
-                                .get(5, TimeUnit.SECONDS);
+                                .get(3, TimeUnit.SECONDS);
                     } catch (Exception e) {
                         LOG.warnf("Graceful shutdown failed for %s: %s", config.getServerId(), e.getMessage());
                     }
-                    // Fire-and-forget exit notification — may block if LS stdin pipe is full
+                    // Fire-and-forget exit notification
                     LanguageServer ls = languageServer;
                     languageServer = null;
                     CompletableFuture.runAsync(() -> {
@@ -829,8 +845,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                     });
                 }
 
-                // Close process streams to unblock any thread stuck writing
-                // to the LS (didOpen, didChange, exit, etc.)
+                // Close process streams (may already be closed by delayed task above)
                 cancelListeningFuture();
                 closeProcessStreams();
 
@@ -848,12 +863,12 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 if (!isSocketConnection) {
                     Process process = getServerProcess();
                     if (process != null && process.isAlive()) {
-                        boolean exited = process.waitFor(5, TimeUnit.SECONDS);
+                        boolean exited = process.waitFor(2, TimeUnit.SECONDS);
                         if (!exited) {
                             LOG.warnf("Server process did not exit after shutdown, forcing kill (PID: %d)",
                                     process.pid());
                             process.destroyForcibly();
-                            process.waitFor(3, TimeUnit.SECONDS);
+                            process.waitFor(2, TimeUnit.SECONDS);
                         }
                     }
                 }
@@ -868,7 +883,7 @@ public class LspServer extends ServerBase<LspServerConfig> {
                 // DON'T shutdown executor - it would reject future start() attempts
                 // (see ServerBase.cleanupResources() for the same reasoning)
             }
-        }, CompletableFuture.delayedExecutor(0, TimeUnit.MILLISECONDS));
+        });
     }
 
     /**

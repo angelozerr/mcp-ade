@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.mcp.ade.lsp.tools;
 
+import org.eclipse.mcp.ade.language.LanguageRegistry;
 import org.eclipse.mcp.ade.lsp.tools.params.WorkspaceSymbolRequestParams;
 import org.eclipse.mcp.ade.lsp.tools.strategies.WorkspaceSymbolStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
@@ -32,6 +33,9 @@ import java.util.concurrent.CompletableFuture;
 public class WorkspaceSymbolTools {
 
     @Inject
+    LanguageRegistry languageRegistry;
+
+    @Inject
     LspRequestExecutor requestExecutor;
 
     @Tool(name = "search_workspace_symbols",
@@ -43,6 +47,7 @@ public class WorkspaceSymbolTools {
             @ToolArg(description = ToolArgDescriptions.PATH_PATTERN, required = false) String pathPattern,
             @ToolArg(description = ToolArgDescriptions.CONTAINER_NAME, required = false) String containerName,
             @ToolArg(description = ToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
+            @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
             Progress progress) {
 
@@ -51,9 +56,10 @@ public class WorkspaceSymbolTools {
         params.setPathPattern(pathPattern);
         params.setContainerName(containerName);
         params.setMaxResults(maxResults);
+        params.setFileExt(fileExt);
         return requestExecutor.executeAsString(
                 params,
-                new WorkspaceSymbolStrategy(),
+                new WorkspaceSymbolStrategy(languageRegistry),
                 cancellation,
                 progress);
     }
