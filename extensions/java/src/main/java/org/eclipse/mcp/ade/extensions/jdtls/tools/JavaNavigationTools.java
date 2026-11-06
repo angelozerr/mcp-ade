@@ -17,6 +17,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -46,10 +47,11 @@ public class JavaNavigationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.GO_TO_DEFINITION,
                 RefactoringHelper.positionParams(uri, line, character),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_hover_info",
@@ -62,10 +64,11 @@ public class JavaNavigationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_HOVER_INFO,
                 RefactoringHelper.positionParams(uri, line, character),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_signature_help",
@@ -76,10 +79,11 @@ public class JavaNavigationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_SIGNATURE_HELP,
                 RefactoringHelper.positionParams(uri, line, character),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_super_method",
@@ -90,10 +94,11 @@ public class JavaNavigationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_SUPER_METHOD,
                 RefactoringHelper.positionParams(uri, line, character),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_document_symbols",
@@ -103,14 +108,15 @@ public class JavaNavigationTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.GET_DOCUMENT_SYMBOLS, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.GET_DOCUMENT_SYMBOLS,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 }

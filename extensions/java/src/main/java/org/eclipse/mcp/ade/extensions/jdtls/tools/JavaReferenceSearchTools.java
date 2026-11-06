@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.extensions.jdtls.tools;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -51,7 +52,8 @@ public class JavaReferenceSearchTools {
             @ToolArg(description = "Usage kind: 'cast', 'catch', 'instanceof', 'throws', or 'type_argument'") String kind,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         String commandId = KIND_TO_COMMAND.get(kind);
         if (commandId == null) {
             return CompletableFuture.completedFuture(
@@ -59,6 +61,6 @@ public class JavaReferenceSearchTools {
         }
         Map<String, Object> params = RefactoringHelper.fqnParams(fullyQualifiedName);
         RefactoringHelper.putMaxResults(params, maxResults);
-        return executor.executeCommand(cwd, commandId, params, cancellation, progress);
+        return executor.executeCommand(cwd, commandId, params, cancellation, progress, tasks);
     }
 }

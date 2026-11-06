@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.extensions.jdtls.tools;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -46,7 +47,8 @@ public class JavaCodeGenerationTools {
             @ToolArg(description = "Generate only setters (default true)", required = false) Boolean generateSetters,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> args = RefactoringHelper.positionParams(uri, line, character);
         if (generateGetters != null) {
             args.put("generateGetters", generateGetters);
@@ -55,7 +57,7 @@ public class JavaCodeGenerationTools {
             args.put("generateSetters", generateSetters);
         }
         RefactoringHelper.putApply(args, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_GETTERS_SETTERS, args, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_GETTERS_SETTERS, args, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_generate_constructor",
@@ -68,13 +70,14 @@ public class JavaCodeGenerationTools {
             @ToolArg(description = "Also generate a default no-arg constructor (default false)", required = false) Boolean generateDefault,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> args = RefactoringHelper.positionParams(uri, line, character);
         if (generateDefault != null) {
             args.put("generateDefault", generateDefault);
         }
         RefactoringHelper.putApply(args, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_CONSTRUCTOR, args, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_CONSTRUCTOR, args, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_generate_to_string",
@@ -86,10 +89,11 @@ public class JavaCodeGenerationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> args = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(args, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_TO_STRING, args, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_TO_STRING, args, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_generate_equals_hashcode",
@@ -101,10 +105,11 @@ public class JavaCodeGenerationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> args = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(args, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_EQUALS_HASHCODE, args, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_EQUALS_HASHCODE, args, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_generate_delegate_methods",
@@ -116,9 +121,10 @@ public class JavaCodeGenerationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> args = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(args, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_DELEGATE_METHODS, args, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.GENERATE_DELEGATE_METHODS, args, cancellation, progress, tasks);
     }
 }

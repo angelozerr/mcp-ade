@@ -21,6 +21,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import org.eclipse.mcp.ade.tools.ToolException;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -62,9 +63,10 @@ public class SymbolEditTools {
             @ToolArg(description = "Code to insert before the symbol") String body,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         boolean doApply = apply != null && apply;
-        return fetchDocumentSymbols(cwd, uri, cancellation, progress)
+        return fetchDocumentSymbols(cwd, uri, cancellation, progress, tasks)
                 .thenApply(symbols -> {
                     DocumentSymbol symbol = SymbolNamePathResolver.resolve(symbols, namePath);
                     int insertLine = symbol.getRange().getStart().getLine();
@@ -89,9 +91,10 @@ public class SymbolEditTools {
             @ToolArg(description = "Code to insert after the symbol") String body,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         boolean doApply = apply != null && apply;
-        return fetchDocumentSymbols(cwd, uri, cancellation, progress)
+        return fetchDocumentSymbols(cwd, uri, cancellation, progress, tasks)
                 .thenApply(symbols -> {
                     DocumentSymbol symbol = SymbolNamePathResolver.resolve(symbols, namePath);
                     int insertLine = symbol.getRange().getEnd().getLine() + 1;
@@ -116,9 +119,10 @@ public class SymbolEditTools {
             @ToolArg(description = "New code to replace the symbol's entire body") String body,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         boolean doApply = apply != null && apply;
-        return fetchDocumentSymbols(cwd, uri, cancellation, progress)
+        return fetchDocumentSymbols(cwd, uri, cancellation, progress, tasks)
                 .thenApply(symbols -> {
                     DocumentSymbol symbol = SymbolNamePathResolver.resolve(symbols, namePath);
                     Range range = symbol.getRange();
@@ -133,13 +137,14 @@ public class SymbolEditTools {
     }
 
     private CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> fetchDocumentSymbols(
-            String cwd, String fileUri, Cancellation cancellation, Progress progress) {
+            String cwd, String fileUri, Cancellation cancellation, Progress progress, Tasks tasks) {
         FileUriRequestParams params = new FileUriRequestParams(cwd, fileUri);
         return requestExecutor.execute(
                 params,
                 new DocumentSymbolStrategy(languageRegistry),
                 cancellation,
-                progress
+                progress,
+                tasks
         ).thenApply(results -> {
             if (results.isEmpty()) {
                 throw new ToolException("No document symbols found for: " + fileUri);

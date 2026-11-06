@@ -19,6 +19,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.CodeLensStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -41,13 +42,15 @@ public class CodeLensTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         FileUriRequestParams params = new FileUriRequestParams(cwd, uri);
         return requestExecutor.executeAsString(
                 params,
                 new CodeLensStrategy(languageRegistry),
                 cancellation,
-                progress
+                progress,
+                tasks
         );
     }
 }

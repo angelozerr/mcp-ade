@@ -20,6 +20,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.CallHierarchyOutgoingCallsStrate
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -44,14 +45,16 @@ public class CallHierarchyTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
         return requestExecutor.executeAsString(
                 params,
                 new CallHierarchyIncomingCallsStrategy(languageRegistry),
                 cancellation,
-                progress);
+                progress,
+                tasks);
     }
 
     @Tool(name = "get_call_hierarchy_outgoing",
@@ -62,13 +65,15 @@ public class CallHierarchyTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         FilePositionRequestParams params = new FilePositionRequestParams(cwd, uri, line, character);
         return requestExecutor.executeAsString(
                 params,
                 new CallHierarchyOutgoingCallsStrategy(languageRegistry),
                 cancellation,
-                progress);
+                progress,
+                tasks);
     }
 }

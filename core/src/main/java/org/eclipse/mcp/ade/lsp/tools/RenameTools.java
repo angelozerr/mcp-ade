@@ -19,6 +19,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.RenameStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -51,7 +52,8 @@ public class RenameTools {
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         boolean doApply = apply == null || apply;
         return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character, fileExt)
@@ -67,7 +69,8 @@ public class RenameTools {
                             params,
                             new RenameStrategy(languageRegistry),
                             cancellation,
-                            progress);
+                            progress,
+                            tasks);
                 });
     }
 }

@@ -24,6 +24,7 @@ import org.eclipse.mcp.ade.tools.ToolException;
 import org.eclipse.mcp.ade.utils.UriUtils;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -66,9 +67,10 @@ public class SafeDeleteTools {
             @ToolArg(description = NAME_PATH_DESC) String namePath,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         boolean doApply = apply != null && apply;
-        return fetchDocumentSymbols(cwd, uri, cancellation, progress)
+        return fetchDocumentSymbols(cwd, uri, cancellation, progress, tasks)
                 .thenCompose(symbols -> {
                     DocumentSymbol symbol = SymbolNamePathResolver.resolve(symbols, namePath);
                     Position refPosition = symbol.getSelectionRange().getStart();
@@ -80,7 +82,8 @@ public class SafeDeleteTools {
                             refParams,
                             new ReferencesStrategy(languageRegistry),
                             cancellation,
-                            progress
+                            progress,
+                            tasks
                     ).thenApply(results -> {
                         List<? extends Location> allReferences = results.stream()
                                 .flatMap(List::stream)
@@ -137,13 +140,14 @@ public class SafeDeleteTools {
     }
 
     private CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> fetchDocumentSymbols(
-            String cwd, String fileUri, Cancellation cancellation, Progress progress) {
+            String cwd, String fileUri, Cancellation cancellation, Progress progress, Tasks tasks) {
         FileUriRequestParams params = new FileUriRequestParams(cwd, fileUri);
         return requestExecutor.execute(
                 params,
                 new DocumentSymbolStrategy(languageRegistry),
                 cancellation,
-                progress
+                progress,
+                tasks
         ).thenApply(results -> {
             if (results.isEmpty()) {
                 throw new ToolException("No document symbols found for: " + fileUri);

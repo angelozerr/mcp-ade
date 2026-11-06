@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.extensions.jdtls.tools;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -50,7 +51,8 @@ public class JavaFrameworkTools {
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         String commandId = KIND_TO_COMMAND.get(kind);
         if (commandId == null) {
             return CompletableFuture.completedFuture(
@@ -58,6 +60,6 @@ public class JavaFrameworkTools {
         }
         Map<String, Object> args = new HashMap<>();
         RefactoringHelper.putScope(args, scope, projectName);
-        return executor.executeCommand(cwd, commandId, args, cancellation, progress);
+        return executor.executeCommand(cwd, commandId, args, cancellation, progress, tasks);
     }
 }

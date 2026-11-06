@@ -17,6 +17,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -47,11 +48,12 @@ public class JavaAnalysisTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         return executor.executeCommand(cwd, JdtlsCommands.TYPE_HIERARCHY,
                 RefactoringHelper.positionParams(uri, line, character),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_call_hierarchy_incoming",
@@ -64,10 +66,11 @@ public class JavaAnalysisTools {
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putScope(params, scope, projectName);
-        return executor.executeCommand(cwd, JdtlsCommands.CALL_HIERARCHY_INCOMING, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.CALL_HIERARCHY_INCOMING, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_call_hierarchy_outgoing",
@@ -78,11 +81,12 @@ public class JavaAnalysisTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         return executor.executeCommand(cwd, JdtlsCommands.CALL_HIERARCHY_OUTGOING,
                 RefactoringHelper.positionParams(uri, line, character),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_annotation_usages",
@@ -94,11 +98,12 @@ public class JavaAnalysisTools {
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.fqnParams(fullyQualifiedName);
         RefactoringHelper.putScope(params, scope, projectName);
         RefactoringHelper.putMaxResults(params, maxResults);
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_ANNOTATION_USAGES, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.FIND_ANNOTATION_USAGES, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_type_instantiations",
@@ -110,11 +115,12 @@ public class JavaAnalysisTools {
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.fqnParams(fullyQualifiedName);
         RefactoringHelper.putScope(params, scope, projectName);
         RefactoringHelper.putMaxResults(params, maxResults);
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_TYPE_INSTANTIATIONS, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.FIND_TYPE_INSTANTIATIONS, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_analyze_file",
@@ -124,15 +130,16 @@ public class JavaAnalysisTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.ANALYZE_FILE, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_FILE,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_analyze_type",
@@ -141,10 +148,11 @@ public class JavaAnalysisTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Fully qualified name of the type") String fullyQualifiedName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_TYPE,
                 RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_analyze_method",
@@ -155,10 +163,11 @@ public class JavaAnalysisTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_LINE) int line,
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_METHOD,
                 RefactoringHelper.positionParams(uri, line, character),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_analyze_change_impact",
@@ -170,10 +179,11 @@ public class JavaAnalysisTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putMaxResults(params, maxResults);
-        return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_CHANGE_IMPACT, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.ANALYZE_CHANGE_IMPACT, params, cancellation, progress, tasks);
     }
 
 }
