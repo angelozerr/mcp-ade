@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.extensions.jdtls.tools;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -42,10 +43,11 @@ public class JavaTypeMemberTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Fully qualified name of the type") String fullyQualifiedName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_TYPE_MEMBERS,
                 RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_dependency_graph",
@@ -55,11 +57,12 @@ public class JavaTypeMemberTools {
             @ToolArg(description = "Maximum number of edges to return (0 or omit for unlimited). When truncated, response includes truncated=true",
                      required = false) Integer maxEdges,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = new java.util.HashMap<>();
         if (maxEdges != null && maxEdges > 0) {
             params.put("maxEdges", maxEdges);
         }
-        return executor.executeCommand(cwd, JdtlsCommands.GET_DEPENDENCY_GRAPH, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.GET_DEPENDENCY_GRAPH, params, cancellation, progress, tasks);
     }
 }

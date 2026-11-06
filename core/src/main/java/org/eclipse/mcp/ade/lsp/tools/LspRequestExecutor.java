@@ -25,13 +25,17 @@ import org.eclipse.mcp.ade.progress.ProgressContext;
 import org.eclipse.mcp.ade.progress.ProgressMonitor;
 import org.eclipse.mcp.ade.progress.ProgressMonitorManager;
 import org.eclipse.mcp.ade.progress.ProgressStep;
+import org.eclipse.mcp.ade.progress.TaskProgressMonitor;
 import org.eclipse.mcp.ade.tools.ToolException;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.ToolResponse;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -62,6 +66,17 @@ public class LspRequestExecutor {
             LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
             Cancellation cancellation,
             Progress progress) {
+        return execute(params, strategy, cancellation, progress, null);
+    }
+
+    public <TRequestParams extends LspRequestParams, TLspParams, TResult> CompletableFuture<List<TResult>> execute(
+            TRequestParams params,
+            LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
+            Cancellation cancellation,
+            Progress progress,
+            Tasks tasks) {
+
+        throwTaskIfNeeded(tasks, params, strategy);
 
         OperationContext operationContext = createOperationContext(strategy, params);
 
@@ -88,6 +103,17 @@ public class LspRequestExecutor {
             LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
             Cancellation cancellation,
             Progress progress) {
+        return executeAsString(params, strategy, cancellation, progress, null);
+    }
+
+    public <TRequestParams extends LspRequestParams, TLspParams, TResult> CompletableFuture<String> executeAsString(
+            TRequestParams params,
+            LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy,
+            Cancellation cancellation,
+            Progress progress,
+            Tasks tasks) {
+
+        throwTaskIfNeeded(tasks, params, strategy);
 
         OperationContext operationContext = createOperationContext(strategy, params);
 
@@ -107,6 +133,60 @@ public class LspRequestExecutor {
                     }
                 })
                 .exceptionally(ToolException::rethrow);
+    }
+
+    /**
+     * If the client supports MCP tasks and servers need setup (installation,
+     * startup, or indexing), throw a task so the AI agent is not blocked.
+     * The task handler runs the full execution chain on a virtual thread,
+     * updating status messages as work progresses.
+     */
+    private <TRequestParams extends LspRequestParams, TLspParams, TResult> void throwTaskIfNeeded(
+            Tasks tasks,
+            TRequestParams params,
+            LspRequestStrategy<TRequestParams, TLspParams, TResult> strategy) {
+
+        if (tasks == null || !tasks.isSupported()) {
+            return;
+        }
+        if (!application.needsServerSetup(params.getCwd())) {
+            return;
+        }
+
+        throw tasks.newTask()
+                .setPollInterval(Duration.ofSeconds(5))
+                .setTtl(Duration.ofHours(1))
+                .setHandler(task -> {
+                    TaskProgressMonitor taskMonitor = new TaskProgressMonitor(task);
+                    taskMonitor
+                            .addStep(ProgressStep.INSTALLING_RUNTIME, 0.15)
+                            .addStep(ProgressStep.INSTALLING, 0.25)
+                            .addStep(ProgressStep.STARTING, 0.10)
+                            .addStep(ProgressStep.INDEXING, 0.35)
+                            .addStep(ProgressStep.EXECUTING, 0.15);
+
+                    taskMonitor.beginStep(ProgressStep.INSTALLING_RUNTIME);
+                    taskMonitor.reportProgress(0.0, "Installing language server");
+
+                    OperationContext operationContext = createOperationContext(strategy, params);
+
+                    try {
+                        List<TResult> results = executeWithMonitor(
+                                params, strategy, taskMonitor, operationContext).join();
+
+                        String formatted = results.isEmpty()
+                                ? strategy.formatNoResultFound(params)
+                                : strategy.formatResults(params, results);
+
+                        operationContext.setResult(formatted);
+                        operationContext.complete();
+                        return ToolResponse.success(formatted);
+                    } catch (Exception e) {
+                        operationContext.fail(ToolException.resolveErrorMessage(e));
+                        throw e;
+                    }
+                }, true)
+                .create();
     }
 
     /**

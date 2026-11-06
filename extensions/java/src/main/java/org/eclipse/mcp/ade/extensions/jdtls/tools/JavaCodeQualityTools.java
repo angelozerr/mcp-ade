@@ -17,6 +17,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -45,15 +46,16 @@ public class JavaCodeQualityTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_POSSIBLE_BUGS, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_POSSIBLE_BUGS,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_circular_dependencies",
@@ -61,10 +63,11 @@ public class JavaCodeQualityTools {
     public CompletableFuture<String> findCircularDependencies(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.FIND_CIRCULAR_DEPENDENCIES,
                 Map.of(),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_code_quality_report",
@@ -73,7 +76,8 @@ public class JavaCodeQualityTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> uriArgs = Map.of("uri", uri);
         CompletableFuture<Object> unused = executor.executeCommandRaw(cwd, JdtlsCommands.FIND_UNUSED_CODE, uriArgs);
         CompletableFuture<Object> bugs = executor.executeCommandRaw(cwd, JdtlsCommands.FIND_POSSIBLE_BUGS, uriArgs);

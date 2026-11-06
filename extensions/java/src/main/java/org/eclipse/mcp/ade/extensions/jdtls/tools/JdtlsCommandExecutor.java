@@ -22,14 +22,19 @@ import org.eclipse.mcp.ade.operation.OperationContext;
 import org.eclipse.mcp.ade.operation.OperationEntry;
 import org.eclipse.mcp.ade.operation.OperationTracker;
 import org.eclipse.mcp.ade.progress.ProgressMonitor;
+import org.eclipse.mcp.ade.progress.ProgressStep;
+import org.eclipse.mcp.ade.progress.TaskProgressMonitor;
 import org.eclipse.mcp.ade.tools.ToolException;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.ToolResponse;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +71,16 @@ public class JdtlsCommandExecutor {
     @SuppressWarnings("unchecked")
     public CompletableFuture<String> executeCommand(String cwd, String commandId, Object arguments,
                                                      Cancellation cancellation, Progress progress) {
+        return executeCommand(cwd, commandId, arguments, cancellation, progress, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public CompletableFuture<String> executeCommand(String cwd, String commandId, Object arguments,
+                                                     Cancellation cancellation, Progress progress,
+                                                     Tasks tasks) {
+        throwTaskIfNeeded(tasks, cwd, () ->
+                executeCommand(cwd, commandId, arguments, cancellation, progress, null).join());
+
         String toolName = OperationTracker.resolveToolName(commandId);
         OperationContext operationContext = operationTracker.startOperation(toolName, "tool", cwd);
         Map<String, Object> args = new LinkedHashMap<>();
@@ -204,6 +219,17 @@ public class JdtlsCommandExecutor {
                                                           List<String> fileUris,
                                                           Function<String, Object> argsBuilder,
                                                           Cancellation cancellation, Progress progress) {
+        return executeBatchCommand(cwd, commandId, fileUris, argsBuilder, cancellation, progress, null);
+    }
+
+    public CompletableFuture<String> executeBatchCommand(String cwd, String commandId,
+                                                          List<String> fileUris,
+                                                          Function<String, Object> argsBuilder,
+                                                          Cancellation cancellation, Progress progress,
+                                                          Tasks tasks) {
+        throwTaskIfNeeded(tasks, cwd, () ->
+                executeBatchCommand(cwd, commandId, fileUris, argsBuilder, cancellation, progress, null).join());
+
         String toolName = OperationTracker.resolveToolName(commandId);
         OperationContext operationContext = operationTracker.startOperation(toolName, "tool", cwd);
         Map<String, Object> batchArgs = new LinkedHashMap<>();
@@ -281,6 +307,24 @@ public class JdtlsCommandExecutor {
 
     String formatResult(Object result, String cwd) {
         return formatResultWithPrefix(result, UriUtils.cwdToUriPrefix(cwd));
+    }
+
+    private void throwTaskIfNeeded(Tasks tasks, String cwd, java.util.function.Supplier<String> blockingWork) {
+        if (tasks == null || !tasks.isSupported()) {
+            return;
+        }
+        if (!application.needsServerSetup(cwd)) {
+            return;
+        }
+        throw tasks.newTask()
+                .setPollInterval(Duration.ofSeconds(5))
+                .setTtl(Duration.ofHours(1))
+                .setHandler(task -> {
+                    task.setStatusMessage("Installing language server");
+                    String result = blockingWork.get();
+                    return ToolResponse.success(result);
+                }, true)
+                .create();
     }
 
     private String formatResultWithPrefix(Object result, String cwdUriPrefix) {

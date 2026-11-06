@@ -19,6 +19,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.InlayHintStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -45,13 +46,15 @@ public class InlayHintTools {
             @ToolArg(description = "End line of the range (0-based)") int endLine,
             @ToolArg(description = "End character of the range (0-based)") int endCharacter,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         InlayHintRequestParams params = new InlayHintRequestParams(cwd, uri, startLine, startCharacter, endLine, endCharacter);
         return requestExecutor.executeAsString(
                 params,
                 new InlayHintStrategy(languageRegistry),
                 cancellation,
-                progress
+                progress,
+                tasks
         );
     }
 }

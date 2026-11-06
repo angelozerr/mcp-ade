@@ -21,6 +21,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.RangeFormattingStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -46,13 +47,15 @@ public class FormattingTools {
             @ToolArg(description = "Use spaces instead of tabs (default: true)") boolean insertSpaces,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         FormattingRequestParams params = new FormattingRequestParams(cwd, uri, tabSize, insertSpaces, apply != null && apply);
         return requestExecutor.executeAsString(
                 params,
                 new FormattingStrategy(languageRegistry),
                 cancellation,
-                progress
+                progress,
+                tasks
         );
     }
 
@@ -69,13 +72,15 @@ public class FormattingTools {
             @ToolArg(description = "End line of the range (0-based)") int endLine,
             @ToolArg(description = "End character of the range (0-based)") int endCharacter,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         RangeFormattingRequestParams params = new RangeFormattingRequestParams(cwd, uri, tabSize, insertSpaces, apply != null && apply, startLine, startCharacter, endLine, endCharacter);
         return requestExecutor.executeAsString(
                 params,
                 new RangeFormattingStrategy(languageRegistry),
                 cancellation,
-                progress
+                progress,
+                tasks
         );
     }
 }

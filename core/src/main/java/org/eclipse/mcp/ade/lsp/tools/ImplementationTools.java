@@ -18,6 +18,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.ImplementationStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -41,8 +42,8 @@ public class ImplementationTools {
     SymbolNameResolver symbolNameResolver;
 
     @Tool(name = "find_implementations",
-          description = "Find all implementations of an interface or abstract class. " +
-                        "Use symbolName (e.g. 'MyInterface') or uri+line+character.")
+          description = "Find all subtypes (subclasses, implementations) of any class or interface. " +
+                        "Use symbolName (e.g. 'DOMNode') or uri+line+character.")
     public CompletableFuture<String> findImplementations(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = ToolArgDescriptions.SYMBOL_NAME, required = false) String symbolName,
@@ -51,13 +52,15 @@ public class ImplementationTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character, fileExt)
                 .thenCompose(params -> requestExecutor.executeAsString(
                         params,
                         new ImplementationStrategy(languageRegistry),
                         cancellation,
-                        progress));
+                        progress,
+                        tasks));
     }
 }

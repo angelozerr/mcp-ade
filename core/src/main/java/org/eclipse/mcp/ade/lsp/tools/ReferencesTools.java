@@ -31,6 +31,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import org.eclipse.mcp.ade.tools.ToolException;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -87,7 +88,8 @@ public class ReferencesTools {
             @ToolArg(description = ToolArgDescriptions.INCLUDE_ENCLOSING_SYMBOL, required = false) Boolean includeEnclosingSymbol,
             @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         boolean enrich = includeEnclosingSymbol != null && includeEnclosingSymbol;
 
@@ -98,7 +100,8 @@ public class ReferencesTools {
                                 params,
                                 new ReferencesStrategy(languageRegistry),
                                 cancellation,
-                                progress);
+                                progress,
+                                tasks);
                     }
                     return findReferencesWithContext(params, cancellation, progress);
                 });

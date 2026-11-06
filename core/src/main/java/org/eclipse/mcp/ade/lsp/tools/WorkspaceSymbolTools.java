@@ -19,6 +19,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.WorkspaceSymbolStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -49,7 +50,8 @@ public class WorkspaceSymbolTools {
             @ToolArg(description = ToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         WorkspaceSymbolRequestParams params = new WorkspaceSymbolRequestParams(cwd, query);
         params.setKind(kind);
@@ -61,6 +63,7 @@ public class WorkspaceSymbolTools {
                 params,
                 new WorkspaceSymbolStrategy(languageRegistry),
                 cancellation,
-                progress);
+                progress,
+                tasks);
     }
 }

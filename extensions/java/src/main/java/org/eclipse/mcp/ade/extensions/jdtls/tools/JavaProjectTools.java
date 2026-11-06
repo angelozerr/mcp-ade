@@ -16,6 +16,7 @@ package org.eclipse.mcp.ade.extensions.jdtls.tools;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -43,14 +44,15 @@ public class JavaProjectTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Name of the Java project to inspect (defaults to first Java project in workspace)", required = false) String projectName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> args = new HashMap<>();
         if (projectName != null) {
             args.put("projectName", projectName);
         }
         return executor.executeCommand(cwd, JdtlsCommands.GET_PROJECT_STRUCTURE,
                 args,
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_classpath_info",
@@ -58,9 +60,10 @@ public class JavaProjectTools {
     public CompletableFuture<String> getClasspathInfo(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_CLASSPATH_INFO,
                 Map.of(),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 }

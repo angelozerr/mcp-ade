@@ -17,6 +17,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -47,10 +48,11 @@ public class JavaCodeSearchTools {
             @ToolArg(description = JavaToolArgDescriptions.SEARCH_SCOPE, required = false) String scope,
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putScope(params, scope, projectName);
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_FIELD_WRITES, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.FIND_FIELD_WRITES, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_tests",
@@ -60,15 +62,16 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_TESTS, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_TESTS,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_affected_tests",
@@ -80,10 +83,11 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putMaxResults(params, maxResults);
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_AFFECTED_TESTS, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.FIND_AFFECTED_TESTS, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_unused_code",
@@ -93,15 +97,16 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_UNUSED_CODE, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_UNUSED_CODE,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_unreachable_code",
@@ -111,15 +116,16 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.FIND_UNREACHABLE_CODE, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_UNREACHABLE_CODE,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_suggest_imports",
@@ -128,10 +134,11 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Simple type name to search for (e.g., 'List', 'Map')") String typeName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.SUGGEST_IMPORTS,
                 Map.of("typeName", typeName),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_type_usage_summary",
@@ -140,10 +147,11 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Fully qualified name of the type") String fullyQualifiedName,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.GET_TYPE_USAGE_SUMMARY,
                 RefactoringHelper.fqnParams(fullyQualifiedName),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_search_symbols",
@@ -152,10 +160,11 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
             @ToolArg(description = "Search query string or glob pattern") String query,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         return executor.executeCommand(cwd, JdtlsCommands.SEARCH_SYMBOLS,
                 Map.of("query", query),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_references",
@@ -170,20 +179,20 @@ public class JavaCodeSearchTools {
             @ToolArg(description = JavaToolArgDescriptions.PROJECT_NAME, required = false) String projectName,
             @ToolArg(description = JavaToolArgDescriptions.MAX_RESULTS, required = false) Integer maxResults,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putScope(params, scope, projectName);
         RefactoringHelper.putMaxResults(params, maxResults);
-        return executor.executeCommand(cwd, JdtlsCommands.FIND_REFERENCES, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.FIND_REFERENCES, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_find_implementations",
-          description = "Find all implementations of a Java interface, abstract class, or method. "
-                  + "Provide either fullyQualifiedName (for types) or uri+line+character "
-                  + "(for types or methods at a cursor position)")
+          description = "Find all subtypes (subclasses, implementations) of any Java class or interface, or method overrides. "
+                  + "Provide fullyQualifiedName or uri+line+character.")
     public CompletableFuture<String> findImplementations(
             @ToolArg(description = ToolArgDescriptions.CWD) String cwd,
-            @ToolArg(description = "Fully qualified name of the interface or abstract class",
+            @ToolArg(description = "Fully qualified name of the type (class, interface, or enum)",
                      required = false) String fullyQualifiedName,
             @ToolArg(description = ToolArgDescriptions.URI,
                      required = false) String uri,
@@ -192,7 +201,8 @@ public class JavaCodeSearchTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER,
                      required = false) Integer character,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Object params;
         if (uri != null && line != null && character != null) {
             params = RefactoringHelper.positionParams(uri, line, character);
@@ -203,6 +213,6 @@ public class JavaCodeSearchTools {
                     "Error: provide either fullyQualifiedName or uri+line+character");
         }
         return executor.executeCommand(cwd, JdtlsCommands.FIND_IMPLEMENTATIONS,
-                params, cancellation, progress);
+                params, cancellation, progress, tasks);
     }
 }

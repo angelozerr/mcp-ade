@@ -17,6 +17,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -48,11 +49,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "New name for the symbol") String newName,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         params.put("newName", newName);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.RENAME_SYMBOL, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.RENAME_SYMBOL, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_organize_imports",
@@ -62,15 +64,16 @@ public class JavaRefactoringTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) java.util.List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         java.util.List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.ORGANIZE_IMPORTS, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.ORGANIZE_IMPORTS,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_extract_method",
@@ -85,11 +88,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "Name for the extracted method") String methodName,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.rangeParams(uri, startLine, startCharacter, endLine, endCharacter);
         params.put("methodName", methodName);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_METHOD, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_METHOD, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_extract_variable",
@@ -104,11 +108,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "Name for the new variable") String variableName,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.rangeParams(uri, startLine, startCharacter, endLine, endCharacter);
         params.put("variableName", variableName);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_VARIABLE, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_VARIABLE, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_extract_constant",
@@ -123,11 +128,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "Name for the constant (e.g., 'MAX_SIZE')") String constantName,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.rangeParams(uri, startLine, startCharacter, endLine, endCharacter);
         params.put("constantName", constantName);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_CONSTANT, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_CONSTANT, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_extract_interface",
@@ -141,12 +147,13 @@ public class JavaRefactoringTools {
             @ToolArg(description = "List of method names to include in the interface") List<String> methodNames,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         params.put("interfaceName", interfaceName);
         params.put("methodNames", methodNames);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_INTERFACE, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_INTERFACE, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_extract_superclass",
@@ -160,12 +167,13 @@ public class JavaRefactoringTools {
             @ToolArg(description = "List of member names (fields and methods) to pull into the superclass") List<String> memberNames,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         params.put("superclassName", superclassName);
         params.put("memberNames", memberNames);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_SUPERCLASS, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.EXTRACT_SUPERCLASS, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_inline_method",
@@ -177,10 +185,11 @@ public class JavaRefactoringTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.INLINE_METHOD, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.INLINE_METHOD, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_inline_variable",
@@ -192,10 +201,11 @@ public class JavaRefactoringTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.INLINE_VARIABLE, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.INLINE_VARIABLE, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_change_method_signature",
@@ -208,11 +218,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "New method name (optional, keep current if empty)") String newName,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         params.put("newName", newName);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.CHANGE_METHOD_SIGNATURE, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.CHANGE_METHOD_SIGNATURE, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_convert_anonymous_to_lambda",
@@ -224,10 +235,11 @@ public class JavaRefactoringTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.CONVERT_ANONYMOUS_TO_LAMBDA, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.CONVERT_ANONYMOUS_TO_LAMBDA, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_encapsulate_field",
@@ -239,10 +251,11 @@ public class JavaRefactoringTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.ENCAPSULATE_FIELD, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.ENCAPSULATE_FIELD, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_introduce_parameter_object",
@@ -256,12 +269,13 @@ public class JavaRefactoringTools {
             @ToolArg(description = "List of parameter names to bundle into the object") List<String> parameterNames,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         params.put("className", className);
         params.put("parameterNames", parameterNames);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.INTRODUCE_PARAMETER_OBJECT, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.INTRODUCE_PARAMETER_OBJECT, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_move_type_to_new_file",
@@ -273,10 +287,11 @@ public class JavaRefactoringTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.MOVE_TYPE_TO_NEW_FILE, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.MOVE_TYPE_TO_NEW_FILE, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_pull_up",
@@ -289,11 +304,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "List of member names (fields and methods) to pull up") List<String> memberNames,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         params.put("memberNames", memberNames);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.PULL_UP, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.PULL_UP, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_push_down",
@@ -306,11 +322,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "List of member names (fields and methods) to push down") List<String> memberNames,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         params.put("memberNames", memberNames);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.PUSH_DOWN, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.PUSH_DOWN, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_convert_to_record",
@@ -322,10 +339,11 @@ public class JavaRefactoringTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER) int character,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = RefactoringHelper.positionParams(uri, line, character);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.CONVERT_TO_RECORD, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.CONVERT_TO_RECORD, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_move_type_to_package",
@@ -336,11 +354,12 @@ public class JavaRefactoringTools {
             @ToolArg(description = "Target package name (e.g., 'com.example.common')") String targetPackage,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("uri", uri);
         params.put("targetPackage", targetPackage);
         RefactoringHelper.putApply(params, apply);
-        return executor.executeCommand(cwd, JdtlsCommands.MOVE_TYPE_TO_PACKAGE, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.MOVE_TYPE_TO_PACKAGE, params, cancellation, progress, tasks);
     }
 }

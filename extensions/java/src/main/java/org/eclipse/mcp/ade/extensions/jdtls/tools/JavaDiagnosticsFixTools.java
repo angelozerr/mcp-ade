@@ -17,6 +17,7 @@ import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
 import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -47,15 +48,16 @@ public class JavaDiagnosticsFixTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.VALIDATE_SYNTAX, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.VALIDATE_SYNTAX,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_get_quick_fixes",
@@ -68,14 +70,15 @@ public class JavaDiagnosticsFixTools {
             @ToolArg(description = "ID of the fix to apply (from a previous call without fixId)", required = false) String fixId,
             @ToolArg(description = ToolArgDescriptions.APPLY, required = false) Boolean apply,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         Map<String, Object> params = positionParams(uri, line, character);
         if (fixId != null) {
             params.put("fixId", fixId);
             RefactoringHelper.putApply(params, apply);
-            return executor.executeCommand(cwd, JdtlsCommands.APPLY_QUICK_FIX, params, cancellation, progress);
+            return executor.executeCommand(cwd, JdtlsCommands.APPLY_QUICK_FIX, params, cancellation, progress, tasks);
         }
-        return executor.executeCommand(cwd, JdtlsCommands.GET_QUICK_FIXES, params, cancellation, progress);
+        return executor.executeCommand(cwd, JdtlsCommands.GET_QUICK_FIXES, params, cancellation, progress, tasks);
     }
 
     @Tool(name = "java_diagnose_and_fix",
@@ -85,15 +88,16 @@ public class JavaDiagnosticsFixTools {
             @ToolArg(description = ToolArgDescriptions.URI) String uri,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.DIAGNOSE_AND_FIX, resolvedUris,
-                    u -> Map.of("uri", u), cancellation, progress);
+                    u -> Map.of("uri", u), cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.DIAGNOSE_AND_FIX,
                 Map.of("uri", uri),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 
     @Tool(name = "java_apply_cleanup",
@@ -104,7 +108,8 @@ public class JavaDiagnosticsFixTools {
             @ToolArg(description = "Cleanup ID: remove_unused_imports, add_missing_override, convert_to_lambda, remove_unnecessary_casts, add_final_modifier") String cleanupId,
             @ToolArg(description = JavaToolArgDescriptions.URIS, required = false) List<String> uris,
             Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
         List<String> resolvedUris = RefactoringHelper.resolveUris(uri, uris);
         if (resolvedUris.size() > 1) {
             return executor.executeBatchCommand(cwd, JdtlsCommands.APPLY_CLEANUP, resolvedUris,
@@ -113,10 +118,10 @@ public class JavaDiagnosticsFixTools {
                         params.put("uri", u);
                         params.put("cleanupId", cleanupId);
                         return params;
-                    }, cancellation, progress);
+                    }, cancellation, progress, tasks);
         }
         return executor.executeCommand(cwd, JdtlsCommands.APPLY_CLEANUP,
                 Map.of("uri", uri, "cleanupId", cleanupId),
-                cancellation, progress);
+                cancellation, progress, tasks);
     }
 }

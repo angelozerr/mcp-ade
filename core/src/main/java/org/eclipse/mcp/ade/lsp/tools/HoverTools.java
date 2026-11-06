@@ -18,6 +18,7 @@ import org.eclipse.mcp.ade.lsp.tools.strategies.HoverStrategy;
 import org.eclipse.mcp.ade.tools.ToolArgDescriptions;
 import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.Progress;
+import io.quarkiverse.mcp.server.tasks.Tasks;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -51,13 +52,15 @@ public class HoverTools {
             @ToolArg(description = ToolArgDescriptions.POSITION_CHARACTER, required = false) Integer character,
             @ToolArg(description = ToolArgDescriptions.FILE_EXT, required = false) String fileExt,
             @ToolArg(description = ToolArgDescriptions.CANCELLATION) Cancellation cancellation,
-            Progress progress) {
+            Progress progress,
+            Tasks tasks) {
 
         return symbolNameResolver.resolveParams(cwd, symbolName, uri, line, character, fileExt)
                 .thenCompose(params -> requestExecutor.executeAsString(
                         params,
                         new HoverStrategy(languageRegistry),
                         cancellation,
-                        progress));
+                        progress,
+                        tasks));
     }
 }

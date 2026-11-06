@@ -281,6 +281,24 @@ public class Application {
 
 
     /**
+     * Quick non-blocking check: does this workspace need server installation,
+     * startup, or indexing before tool calls can execute?
+     * Used by the Tasks integration to decide whether to create an async task
+     * instead of blocking the tool call.
+     */
+    public boolean needsServerSetup(String cwd) {
+        Workspace workspace = getWorkspaceForPath(cwd);
+        if (workspace == null) {
+            return false;
+        }
+        Collection<LspServer> servers = workspace.getLspServers();
+        if (servers.isEmpty()) {
+            return true;
+        }
+        return servers.stream().anyMatch(s -> !s.isReady());
+    }
+
+    /**
      * Ensure LSP and DAP servers are running for the given file in the workspace.
      * Detects language, finds matching server configs, and starts them.
      */
